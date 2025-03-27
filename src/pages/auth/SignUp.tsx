@@ -9,7 +9,7 @@ export default function SignUp() {
   return (
     <AuthLayout 
       title="Create your WillTank account" 
-      subtitle="Start securing your estate with bank-grade protection."
+      subtitle="Join our secure platform and start protecting your legacy with bank-grade encryption."
       rightPanel={<SecurityInfoPanel mode="signup" />}
     >
       <SignUpForm />
