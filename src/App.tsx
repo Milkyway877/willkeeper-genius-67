@@ -27,18 +27,6 @@ import Terms from "./pages/Terms";
 import Cookies from "./pages/Cookies";
 import GDPR from "./pages/GDPR";
 
-// Import new pages for the sidebar navigation
-import MyWills from "./pages/wills/MyWills";
-import LegalTemplates from "./pages/templates/LegalTemplates";
-import EncryptionKeys from "./pages/keys/EncryptionKeys";
-import Beneficiaries from "./pages/beneficiaries/Beneficiaries";
-import AIAssistant from "./pages/ai-assistant/AIAssistant";
-import IdentitySecurity from "./pages/security/IdentitySecurity";
-import Subscriptions from "./pages/subscriptions/Subscriptions";
-import Notifications from "./pages/notifications/Notifications";
-import HelpSupport from "./pages/help/HelpSupport";
-import Settings from "./pages/settings/Settings";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -48,24 +36,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Main Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          
-          {/* Sidebar Navigation Routes */}
-          <Route path="/wills" element={<MyWills />} />
-          <Route path="/templates" element={<LegalTemplates />} />
-          <Route path="/keys" element={<EncryptionKeys />} />
-          <Route path="/beneficiaries" element={<Beneficiaries />} />
-          <Route path="/ai-assistant" element={<AIAssistant />} />
-          <Route path="/security" element={<IdentitySecurity />} />
-          <Route path="/subscriptions" element={<Subscriptions />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/help" element={<HelpSupport />} />
-          <Route path="/settings" element={<Settings />} />
-          
-          {/* Marketing Pages */}
           <Route path="/services" element={<Services />} />
+          <Route path="/security" element={<Security />} />
           <Route path="/business" element={<Business />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact" element={<Contact />} />
@@ -77,6 +51,7 @@ const App = () => (
           
           {/* Footer Pages - Resources Section */}
           <Route path="/documentation" element={<Documentation />} />
+          <Route path="/help" element={<Help />} />
           <Route path="/api" element={<API />} />
           <Route path="/community" element={<Community />} />
           
@@ -96,7 +71,7 @@ const App = () => (
           <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
           <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
           
-          {/* Catch-all Route */}
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
