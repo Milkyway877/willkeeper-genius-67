@@ -7,7 +7,7 @@ import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 
 const signInSchema = z.object({
@@ -19,6 +19,7 @@ type SignInFormInputs = z.infer<typeof signInSchema>;
 
 export function SignInForm() {
   const [showTanKey, setShowTanKey] = useState(false);
+  const navigate = useNavigate();
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
@@ -39,7 +40,7 @@ export function SignInForm() {
     
     // Redirect to dashboard (would normally check auth first)
     setTimeout(() => {
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
     }, 1500);
   };
 

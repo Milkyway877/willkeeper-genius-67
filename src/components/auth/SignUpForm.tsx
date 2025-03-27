@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -12,6 +11,7 @@ import { PasswordStrengthMeter } from './PasswordStrengthMeter';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const userDetailsSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -49,6 +49,7 @@ export function SignUpForm() {
   const [userDetails, setUserDetails] = useState<UserDetailsInputs | null>(null);
   const [pinDetails, setPinDetails] = useState<PinInputs | null>(null);
   const [tanKey, setTanKey] = useState<string>('');
+  const navigate = useNavigate();
   
   // Generate a random TanKey when the component is mounted or when reaching step 3
   React.useEffect(() => {
@@ -119,9 +120,9 @@ export function SignUpForm() {
       description: "Your WillTank account has been successfully created.",
     });
     
-    // Redirect to login (would normally use react-router here)
+    // Redirect to login
     setTimeout(() => {
-      window.location.href = '/auth/signin';
+      navigate('/auth/signin');
     }, 2000);
   };
 
@@ -145,7 +146,7 @@ export function SignUpForm() {
       {step === 1 && (
         <Form {...userDetailsForm}>
           <form onSubmit={userDetailsForm.handleSubmit(onUserDetailsSubmit)} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={userDetailsForm.control}
                 name="firstName"
