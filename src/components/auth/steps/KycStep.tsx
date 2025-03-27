@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
@@ -17,6 +17,8 @@ interface KycStepProps {
 }
 
 export function KycStep({ onNext }: KycStepProps) {
+  const idDocumentRef = useRef<HTMLInputElement>(null);
+  
   const form = useForm<KycInputs>({
     resolver: zodResolver(kycSchema),
     defaultValues: {
@@ -33,6 +35,12 @@ export function KycStep({ onNext }: KycStepProps) {
       description: "Your identity has been successfully verified.",
       variant: "default"
     });
+  };
+
+  const triggerIdDocumentUpload = () => {
+    if (idDocumentRef.current) {
+      idDocumentRef.current.click();
+    }
   };
 
   return (
@@ -89,10 +97,15 @@ export function KycStep({ onNext }: KycStepProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Upload ID Document</FormLabel>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-willtank-400 transition-colors cursor-pointer">
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-willtank-400 transition-colors cursor-pointer"
+                  onClick={triggerIdDocumentUpload}
+                >
                   <div className="flex flex-col items-center justify-center">
                     <Upload className="mb-2 h-10 w-10 text-muted-foreground" />
-                    <p className="mb-1 text-sm font-medium">Click or drag to upload</p>
+                    <p className="mb-1 text-sm font-medium">
+                      {field.value ? `File: ${field.value}` : 'Click or drag to upload'}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       PNG, JPG or PDF up to 10MB
                     </p>
@@ -100,9 +113,15 @@ export function KycStep({ onNext }: KycStepProps) {
                       type="file" 
                       className="hidden" 
                       id="id-document"
+                      ref={idDocumentRef}
+                      accept=".png,.jpg,.jpeg,.pdf"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
                           field.onChange(e.target.files[0].name);
+                          toast({
+                            title: "File uploaded",
+                            description: `File ${e.target.files[0].name} has been uploaded successfully.`,
+                          });
                         }
                       }}
                     />
@@ -122,7 +141,9 @@ export function KycStep({ onNext }: KycStepProps) {
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-willtank-400 transition-colors cursor-pointer">
                   <div className="flex flex-col items-center justify-center">
                     <Camera className="mb-2 h-10 w-10 text-muted-foreground" />
-                    <p className="mb-1 text-sm font-medium">Click to take a selfie</p>
+                    <p className="mb-1 text-sm font-medium">
+                      {field.value ? 'Selfie captured' : 'Click to take a selfie'}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Make sure your face is clearly visible
                     </p>
