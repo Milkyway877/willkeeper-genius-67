@@ -1,63 +1,74 @@
 
 import React from 'react';
-import { Shield, Lock, Key } from 'lucide-react';
+import { Shield, ShieldCheck, Info, Lock } from 'lucide-react';
 
 interface SecurityInfoPanelProps {
-  mode: 'signin' | 'signup';
+  mode: 'signup' | 'signin';
 }
 
 export function SecurityInfoPanel({ mode }: SecurityInfoPanelProps) {
   return (
-    <div className="text-gray-800 dark:text-gray-200 space-y-8 max-w-md">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="h-6 w-6 text-willtank-600 dark:text-willtank-400" />
-          <h3 className="text-xl font-semibold">Security First</h3>
+    <div className="w-full max-w-md space-y-8">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-willtank-100 text-willtank-600 mb-4">
+          <ShieldCheck className="h-8 w-8" />
         </div>
-        <p>
-          WillTank employs bank-grade encryption to ensure your estate planning documents remain secure and private.
+        <h2 className="text-2xl font-semibold mb-2">Security Matters</h2>
+        <p className="text-muted-foreground">
+          {mode === 'signup' 
+            ? 'Protect your estate planning with bank-grade security.'
+            : 'Safely access your secure estate planning documents.'}
         </p>
       </div>
-
-      <div className="space-y-4">
-        <h4 className="font-medium text-lg">Security Best Practices:</h4>
-        <ul className="space-y-3">
-          <li className="flex gap-3">
-            <Key className="h-5 w-5 text-willtank-600 dark:text-willtank-400 flex-shrink-0 mt-0.5" />
-            <span>
-              <strong>TanKey is your unique access key.</strong> Keep it offline and secure.
-            </span>
-          </li>
-          <li className="flex gap-3">
-            <Lock className="h-5 w-5 text-willtank-600 dark:text-willtank-400 flex-shrink-0 mt-0.5" />
-            <span>
-              <strong>Your 6-digit PIN</strong> is essential for account recovery.
-            </span>
-          </li>
-          <li className="flex gap-3">
-            <Shield className="h-5 w-5 text-willtank-600 dark:text-willtank-400 flex-shrink-0 mt-0.5" />
-            <span>
-              Never share your TanKey or PIN with anyone.
-            </span>
-          </li>
-        </ul>
+      
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg p-4 border border-border shadow-sm">
+          <div className="flex gap-3">
+            <Shield className="h-5 w-5 text-willtank-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium mb-1">TanKey Protection</h3>
+              <p className="text-sm text-muted-foreground">
+                Your TanKey is a unique access key. Store it offline and securely.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 border border-border shadow-sm">
+          <div className="flex gap-3">
+            <Lock className="h-5 w-5 text-willtank-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium mb-1">PIN Recovery</h3>
+              <p className="text-sm text-muted-foreground">
+                Your 6-digit PIN is essential for account recovery. Keep it confidential.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg p-4 border border-border shadow-sm">
+          <div className="flex gap-3">
+            <Info className="h-5 w-5 text-willtank-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium mb-1">Security Best Practices</h3>
+              <ul className="text-sm text-muted-foreground space-y-2 mt-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-willtank-500 text-lg leading-none">•</span>
+                  <span>Never share your TanKey or PIN with anyone</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-willtank-500 text-lg leading-none">•</span>
+                  <span>Use a password manager for additional security</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-willtank-500 text-lg leading-none">•</span>
+                  <span>Enable extra security settings inside your account</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
-
-      {mode === 'signup' ? (
-        <div className="bg-willtank-50 dark:bg-slate-800 p-4 rounded-lg border border-willtank-100 dark:border-slate-700">
-          <h4 className="font-medium mb-2">Creating Your Account</h4>
-          <p className="text-sm">
-            Your WillTank account requires a strong password and a unique TanKey that you'll need to store securely. This multi-layered approach ensures maximum protection.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-willtank-50 dark:bg-slate-800 p-4 rounded-lg border border-willtank-100 dark:border-slate-700">
-          <h4 className="font-medium mb-2">Accessing Your Account</h4>
-          <p className="text-sm">
-            To sign in, you'll need your email and TanKey. If you've lost your TanKey, you can recover access using your 6-digit PIN.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

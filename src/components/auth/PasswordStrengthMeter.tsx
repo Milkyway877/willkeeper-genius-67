@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface PasswordStrengthMeterProps {
@@ -7,67 +7,57 @@ interface PasswordStrengthMeterProps {
 }
 
 export function PasswordStrengthMeter({ password }: PasswordStrengthMeterProps) {
-  const getPasswordStrength = (password: string): { strength: number; label: string } => {
-    if (!password) return { strength: 0, label: '' };
+  const strength = useMemo(() => {
+    if (!password) return 0;
     
-    // Calculate password strength
-    let strength = 0;
+    let score = 0;
     
     // Length check
-    if (password.length >= 8) strength += 1;
-    if (password.length >= 12) strength += 1;
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
     
-    // Character type checks
-    if (/[0-9]/.test(password)) strength += 1; // Has numbers
-    if (/[a-z]/.test(password)) strength += 1; // Has lowercase
-    if (/[A-Z]/.test(password)) strength += 1; // Has uppercase
-    if (/[^a-zA-Z0-9]/.test(password)) strength += 1; // Has special chars
+    // Complexity checks
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
     
-    // Map strength to label
-    let label = '';
-    if (strength === 0) label = '';
-    else if (strength <= 2) label = 'Weak';
-    else if (strength <= 4) label = 'Medium';
-    else label = 'Strong';
-    
-    // Normalize strength to 0-3 scale
-    strength = Math.min(Math.floor(strength / 2), 3);
-    
-    return { strength, label };
-  };
+    // Return a score from 0-4
+    return Math.min(Math.floor(score / 1.5), 4);
+  }, [password]);
   
-  const { strength, label } = getPasswordStrength(password);
+  const strengthLabels = ['', 'Weak', 'Medium', 'Strong', 'Very Strong'];
+  const strengthColors = [
+    '', 
+    'bg-red-500', 
+    'bg-yellow-500', 
+    'bg-green-500', 
+    'bg-green-600'
+  ];
   
   if (!password) return null;
   
-  const strengthColors = [
-    'bg-red-500',         // Weak (strength 1)
-    'bg-yellow-500',      // Medium (strength 2)
-    'bg-green-500',       // Strong (strength 3)
-  ];
-  
   return (
     <div className="mt-2 space-y-1.5">
-      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-        {strength > 0 && (
+      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+        {[1, 2, 3, 4].map((level) => (
           <div 
+            key={level}
             className={cn(
-              "transition-all duration-300",
-              strengthColors[strength - 1]
-            )} 
-            style={{ width: `${(strength / 3) * 100}%` }}
+              "h-full w-1/4 transition-all duration-300 ease-in-out",
+              level <= strength ? strengthColors[strength] : "bg-transparent"
+            )}
           />
-        )}
+        ))}
       </div>
-      
-      {label && (
+      {strength > 0 && (
         <p className={cn(
-          "text-xs",
-          strength === 1 ? "text-red-600" : "",
-          strength === 2 ? "text-yellow-600" : "",
-          strength === 3 ? "text-green-600" : ""
+          "text-xs font-medium",
+          strength === 1 ? "text-red-500" : 
+          strength === 2 ? "text-yellow-500" : 
+          "text-green-600"
         )}>
-          {label} password
+          {strengthLabels[strength]}
         </p>
       )}
     </div>

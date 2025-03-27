@@ -1,9 +1,8 @@
 
 import React, { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Bell, User, Menu, X } from 'lucide-react';
+import { Button } from '@/components/common/Button';
 import { Logo } from '@/components/ui/logo/Logo';
-import { Button } from '@/components/ui/button';
-import { X, Menu, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavbarProps {
@@ -12,245 +11,75 @@ interface NavbarProps {
 }
 
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  
   const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
+    setShowMobileMenu(!showMobileMenu);
   };
-
+  
   return (
-    <nav className="bg-white border-b border-gray-200 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              {onMenuToggle && (
-                <button
-                  onClick={onMenuToggle}
-                  className="mr-4 p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none lg:hidden"
-                >
-                  <Menu className="h-5 w-5" aria-hidden="true" />
-                </button>
-              )}
-              <Link to="/">
-                <Logo color="primary" className="h-8 w-auto" />
-              </Link>
-            </div>
-
-            <div className="hidden md:ml-6 md:flex md:space-x-4 md:items-center">
-              {!isAuthenticated ? (
-                <>
-                  <NavLink
-                    to="/"
-                    end
-                    className={({ isActive }) =>
-                      cn(
-                        "px-3 py-2 text-sm font-medium",
-                        isActive
-                          ? "text-willtank-700 border-b-2 border-willtank-500"
-                          : "text-gray-500 hover:text-gray-700"
-                      )
-                    }
-                  >
-                    Home
-                  </NavLink>
-                  <NavLink
-                    to="/features"
-                    className={({ isActive }) =>
-                      cn(
-                        "px-3 py-2 text-sm font-medium",
-                        isActive
-                          ? "text-willtank-700 border-b-2 border-willtank-500"
-                          : "text-gray-500 hover:text-gray-700"
-                      )
-                    }
-                  >
-                    Features
-                  </NavLink>
-                  <NavLink
-                    to="/pricing"
-                    className={({ isActive }) =>
-                      cn(
-                        "px-3 py-2 text-sm font-medium",
-                        isActive
-                          ? "text-willtank-700 border-b-2 border-willtank-500"
-                          : "text-gray-500 hover:text-gray-700"
-                      )
-                    }
-                  >
-                    Pricing
-                  </NavLink>
-                </>
-              ) : (
-                <>
-                  <NavLink
-                    to="/dashboard"
-                    className={({ isActive }) =>
-                      cn(
-                        "px-3 py-2 text-sm font-medium",
-                        isActive
-                          ? "text-willtank-700 border-b-2 border-willtank-500"
-                          : "text-gray-500 hover:text-gray-700"
-                      )
-                    }
-                  >
-                    Dashboard
-                  </NavLink>
-                  <NavLink
-                    to="/wills"
-                    className={({ isActive }) =>
-                      cn(
-                        "px-3 py-2 text-sm font-medium",
-                        isActive
-                          ? "text-willtank-700 border-b-2 border-willtank-500"
-                          : "text-gray-500 hover:text-gray-700"
-                      )
-                    }
-                  >
-                    My Wills
-                  </NavLink>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="hidden md:flex items-center">
-            {!isAuthenticated ? (
-              <>
-                <NavLink to="/auth/signin">
-                  <Button variant="ghost" className="mr-2">
-                    Sign In
-                  </Button>
-                </NavLink>
-                <NavLink to="/auth/signup">
-                  <Button>Get Started</Button>
-                </NavLink>
-              </>
-            ) : (
-              <div className="ml-4 flex items-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="-mr-2 flex items-center md:hidden">
-            <button
-              onClick={toggleMobileMenu}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
+    <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white/90 backdrop-blur-md">
+      <div className="container py-4 px-4 md:px-6 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          {isAuthenticated && (
+            <button 
+              onClick={onMenuToggle}
+              className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
             >
-              <span className="sr-only">Open main menu</span>
-              {mobileMenuOpen ? (
-                <X className="block h-6 w-6" aria-hidden="true" />
-              ) : (
-                <Menu className="block h-6 w-6" aria-hidden="true" />
-              )}
+              <Menu size={20} />
             </button>
-          </div>
+          )}
+          <Logo />
+          
+          <nav className="hidden md:flex items-center space-x-6 ml-6">
+            <a href="#features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition">Features</a>
+            <a href="#security" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition">Security</a>
+            <a href="#pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition">Pricing</a>
+          </nav>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <>
+              <button className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 relative">
+                <Bell size={20} />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
+              </button>
+              <button className="p-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200">
+                <User size={20} />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <Button variant="outline" size="sm">Log in</Button>
+              </div>
+              <Button>Get Started</Button>
+            </>
+          )}
+          
+          <button 
+            className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+            onClick={toggleMobileMenu}
+          >
+            {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
-
-      {/* Mobile menu, show/hide based on menu state */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-gray-200 pb-3 pt-2">
-          <div className="space-y-1 px-2">
-            {!isAuthenticated ? (
-              <>
-                <NavLink
-                  to="/"
-                  end
-                  className={({ isActive }) =>
-                    cn(
-                      "block px-3 py-2 rounded-md text-base font-medium",
-                      isActive
-                        ? "bg-willtank-50 text-willtank-700"
-                        : "text-gray-700 hover:bg-gray-50"
-                    )
-                  }
-                >
-                  Home
-                </NavLink>
-                <NavLink
-                  to="/features"
-                  className={({ isActive }) =>
-                    cn(
-                      "block px-3 py-2 rounded-md text-base font-medium",
-                      isActive
-                        ? "bg-willtank-50 text-willtank-700"
-                        : "text-gray-700 hover:bg-gray-50"
-                    )
-                  }
-                >
-                  Features
-                </NavLink>
-                <NavLink
-                  to="/pricing"
-                  className={({ isActive }) =>
-                    cn(
-                      "block px-3 py-2 rounded-md text-base font-medium",
-                      isActive
-                        ? "bg-willtank-50 text-willtank-700"
-                        : "text-gray-700 hover:bg-gray-50"
-                    )
-                  }
-                >
-                  Pricing
-                </NavLink>
-                <div className="pt-4 pb-3 border-t border-gray-200">
-                  <div className="space-y-1">
-                    <NavLink
-                      to="/auth/signin"
-                      className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                    >
-                      Sign In
-                    </NavLink>
-                    <NavLink
-                      to="/auth/signup"
-                      className="block w-full text-left px-4 py-2 text-base font-medium text-white bg-willtank-600 hover:bg-willtank-700 rounded-md"
-                    >
-                      Get Started
-                    </NavLink>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <NavLink
-                  to="/dashboard"
-                  className={({ isActive }) =>
-                    cn(
-                      "block px-3 py-2 rounded-md text-base font-medium",
-                      isActive
-                        ? "bg-willtank-50 text-willtank-700"
-                        : "text-gray-700 hover:bg-gray-50"
-                    )
-                  }
-                >
-                  Dashboard
-                </NavLink>
-                <NavLink
-                  to="/wills"
-                  className={({ isActive }) =>
-                    cn(
-                      "block px-3 py-2 rounded-md text-base font-medium",
-                      isActive
-                        ? "bg-willtank-50 text-willtank-700"
-                        : "text-gray-700 hover:bg-gray-50"
-                    )
-                  }
-                >
-                  My Wills
-                </NavLink>
-              </>
+      
+      {/* Mobile menu */}
+      {showMobileMenu && (
+        <div className="md:hidden py-4 px-6 space-y-4 border-t border-gray-100 bg-white animate-fade-in">
+          <nav className="flex flex-col space-y-4">
+            <a href="#features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition py-2">Features</a>
+            <a href="#security" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition py-2">Security</a>
+            <a href="#pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition py-2">Pricing</a>
+            {!isAuthenticated && (
+              <Button variant="outline" size="sm" className="justify-center">Log in</Button>
             )}
-          </div>
+          </nav>
         </div>
       )}
-    </nav>
+    </header>
   );
 }
