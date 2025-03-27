@@ -7,7 +7,6 @@ import { SecuritySection } from '@/components/home/SecuritySection';
 import { Pricing } from '@/components/home/Pricing';
 import { Logo } from '@/components/ui/logo/Logo';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
-import { Button } from '@/components/common/Button';
 
 export default function Index() {
   return (
@@ -16,9 +15,86 @@ export default function Index() {
       
       <main className="flex-1">
         <Hero />
-        <Features />
-        <SecuritySection />
-        <Pricing />
+        <section id="features">
+          <Features />
+        </section>
+        <section id="security">
+          <SecuritySection />
+        </section>
+        <section id="business" className="py-20 bg-gray-50">
+          <div className="container px-4 md:px-6">
+            <h2 className="text-3xl font-bold text-center mb-12">For Businesses</h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              <div className="bg-white rounded-lg shadow-md p-6 hover-lift">
+                <h3 className="text-xl font-semibold mb-3">Law Firms</h3>
+                <p className="text-gray-600">Streamline will management for your clients with our secure platform.</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-md p-6 hover-lift">
+                <h3 className="text-xl font-semibold mb-3">Financial Advisors</h3>
+                <p className="text-gray-600">Integrate estate planning seamlessly into your wealth management services.</p>
+              </div>
+              <div className="bg-white rounded-lg shadow-md p-6 hover-lift">
+                <h3 className="text-xl font-semibold mb-3">Banks & Institutions</h3>
+                <p className="text-gray-600">Offer WillTank as a value-added service to your premium clients.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="how-it-works" className="py-20">
+          <div className="container px-4 md:px-6">
+            <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+            <div className="max-w-3xl mx-auto">
+              <div className="space-y-8">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-willtank-500 text-white flex items-center justify-center font-bold">1</div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Create Your Account</h3>
+                    <p className="text-gray-600">Sign up in minutes with our secure, user-friendly platform.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-willtank-500 text-white flex items-center justify-center font-bold">2</div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Draft Your Will</h3>
+                    <p className="text-gray-600">Follow our guided process to create a legally sound document.</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-willtank-500 text-white flex items-center justify-center font-bold">3</div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Securely Store & Share</h3>
+                    <p className="text-gray-600">Your will is encrypted and accessible only to designated individuals.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="contact" className="py-20 bg-gray-50">
+          <div className="container px-4 md:px-6">
+            <h2 className="text-3xl font-bold text-center mb-12">Contact Us</h2>
+            <div className="max-w-md mx-auto">
+              <form className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input type="text" id="name" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" />
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" id="email" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" />
+                </div>
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                  <textarea id="message" rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500"></textarea>
+                </div>
+                <button type="submit" className="w-full bg-willtank-500 text-white py-2 px-4 rounded-md hover:bg-willtank-600 transition">Send Message</button>
+              </form>
+            </div>
+          </div>
+        </section>
+        <section id="pricing">
+          <Pricing />
+        </section>
       </main>
       
       <footer className="bg-gray-900 text-gray-200 py-12">
