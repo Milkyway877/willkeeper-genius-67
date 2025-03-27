@@ -15,6 +15,17 @@ import Security from "./pages/Security";
 import Business from "./pages/Business";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
+import About from "./pages/About";
+import Blog from "./pages/Blog";
+import Careers from "./pages/Careers";
+import Documentation from "./pages/Documentation";
+import Help from "./pages/Help";
+import API from "./pages/API";
+import Community from "./pages/Community";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Cookies from "./pages/Cookies";
+import GDPR from "./pages/GDPR";
 
 const queryClient = new QueryClient();
 
@@ -32,13 +43,34 @@ const App = () => (
           <Route path="/business" element={<Business />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact" element={<Contact />} />
+          
+          {/* Footer Pages - Company Section */}
+          <Route path="/about" element={<About />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/careers" element={<Careers />} />
+          
+          {/* Footer Pages - Resources Section */}
+          <Route path="/documentation" element={<Documentation />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/api" element={<API />} />
+          <Route path="/community" element={<Community />} />
+          
+          {/* Footer Pages - Legal Section */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/gdpr" element={<GDPR />} />
+          
+          {/* Auth Routes */}
           <Route path="/auth/signup" element={<SignUp />} />
           <Route path="/auth/signin" element={<SignIn />} />
           <Route path="/auth/recover" element={<Recover />} />
-          {/* Add routes for auth separately with shorter paths as alternatives */}
+          
+          {/* Auth Short Routes */}
           <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
           <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
           <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
