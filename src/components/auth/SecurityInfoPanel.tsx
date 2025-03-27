@@ -1,74 +1,82 @@
 
 import React from 'react';
-import { Shield, ShieldCheck, Info, Lock } from 'lucide-react';
+import { Shield, Lock, KeySquare } from 'lucide-react';
 
 interface SecurityInfoPanelProps {
-  mode: 'signup' | 'signin';
+  mode: 'signin' | 'signup' | 'recover';
 }
 
 export function SecurityInfoPanel({ mode }: SecurityInfoPanelProps) {
-  return (
-    <div className="w-full max-w-md space-y-8">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-willtank-100 text-willtank-600 mb-4">
-          <ShieldCheck className="h-8 w-8" />
-        </div>
-        <h2 className="text-2xl font-semibold mb-2">Security Matters</h2>
-        <p className="text-muted-foreground">
-          {mode === 'signup' 
-            ? 'Protect your estate planning with bank-grade security.'
-            : 'Safely access your secure estate planning documents.'}
-        </p>
-      </div>
+  const renderContent = () => {
+    switch (mode) {
+      case 'signin':
+        return (
+          <>
+            <Shield className="h-16 w-16 text-willtank-600 mb-6" />
+            <h2 className="text-2xl font-bold mb-4">Secure Sign In</h2>
+            <div className="space-y-4">
+              <p>
+                Your TanKey is a unique identifier that grants you access to your secure will management platform.
+              </p>
+              <p>
+                Unlike traditional passwords, your TanKey is generated using advanced cryptography, making it significantly more secure against brute force attacks.
+              </p>
+              <p>
+                Keep your TanKey in a password manager or secure location. If lost, you can recover access using your PIN.
+              </p>
+            </div>
+          </>
+        );
       
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg p-4 border border-border shadow-sm">
-          <div className="flex gap-3">
-            <Shield className="h-5 w-5 text-willtank-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium mb-1">TanKey Protection</h3>
-              <p className="text-sm text-muted-foreground">
-                Your TanKey is a unique access key. Store it offline and securely.
+      case 'signup':
+        return (
+          <>
+            <Lock className="h-16 w-16 text-willtank-600 mb-6" />
+            <h2 className="text-2xl font-bold mb-4">Bank-Grade Security</h2>
+            <div className="space-y-4">
+              <p>
+                WillTank uses the same security standards employed by financial institutions to protect your sensitive information.
+              </p>
+              <p>
+                Your data is encrypted using AES-256, the same encryption standard used by banks and governments worldwide.
+              </p>
+              <p>
+                Our multi-factor authentication process ensures that only you can access your will and estate documents.
+              </p>
+              <p>
+                Store your recovery PIN in a safe place. It's your backup access method if you ever lose your TanKey.
               </p>
             </div>
-          </div>
-        </div>
+          </>
+        );
         
-        <div className="bg-white rounded-lg p-4 border border-border shadow-sm">
-          <div className="flex gap-3">
-            <Lock className="h-5 w-5 text-willtank-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium mb-1">PIN Recovery</h3>
-              <p className="text-sm text-muted-foreground">
-                Your 6-digit PIN is essential for account recovery. Keep it confidential.
+      case 'recover':
+        return (
+          <>
+            <KeySquare className="h-16 w-16 text-willtank-600 mb-6" />
+            <h2 className="text-2xl font-bold mb-4">Account Recovery</h2>
+            <div className="space-y-4">
+              <p>
+                Lost access to your TanKey? No problem. We've designed a secure recovery process.
+              </p>
+              <p>
+                Enter your email address and the 6-digit PIN you created when you first registered.
+              </p>
+              <p>
+                After verification, we'll generate a new TanKey and send it to your registered email address.
+              </p>
+              <p>
+                For your security, the recovery process has rate limitations to prevent unauthorized access attempts.
               </p>
             </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-4 border border-border shadow-sm">
-          <div className="flex gap-3">
-            <Info className="h-5 w-5 text-willtank-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-medium mb-1">Security Best Practices</h3>
-              <ul className="text-sm text-muted-foreground space-y-2 mt-2">
-                <li className="flex items-start gap-2">
-                  <span className="text-willtank-500 text-lg leading-none">•</span>
-                  <span>Never share your TanKey or PIN with anyone</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-willtank-500 text-lg leading-none">•</span>
-                  <span>Use a password manager for additional security</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-willtank-500 text-lg leading-none">•</span>
-                  <span>Enable extra security settings inside your account</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+          </>
+        );
+    }
+  };
+  
+  return (
+    <div className="text-slate-700 dark:text-slate-300">
+      {renderContent()}
     </div>
   );
 }

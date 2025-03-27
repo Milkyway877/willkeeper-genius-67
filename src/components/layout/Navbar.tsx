@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { Bell, User, Menu, X } from 'lucide-react';
-import { Button } from '@/components/common/Button';
+import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -12,6 +13,7 @@ interface NavbarProps {
 
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const navigate = useNavigate();
   
   const toggleMobileMenu = () => {
     setShowMobileMenu(!showMobileMenu);
@@ -29,7 +31,9 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
               <Menu size={20} />
             </button>
           )}
-          <Logo />
+          <Link to="/">
+            <Logo />
+          </Link>
           
           <nav className="hidden md:flex items-center space-x-6 ml-6">
             <a href="#features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition">Features</a>
@@ -52,9 +56,15 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           ) : (
             <>
               <div className="hidden md:block">
-                <Button variant="outline" size="sm">Log in</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/auth/signin')}
+                >
+                  Log in
+                </Button>
               </div>
-              <Button>Get Started</Button>
+              <Button onClick={() => navigate('/auth/signup')}>Get Started</Button>
             </>
           )}
           
@@ -75,7 +85,9 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
             <a href="#security" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition py-2">Security</a>
             <a href="#pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition py-2">Pricing</a>
             {!isAuthenticated && (
-              <Button variant="outline" size="sm" className="justify-center">Log in</Button>
+              <Link to="/auth/signin">
+                <Button variant="outline" size="sm" className="justify-center w-full">Log in</Button>
+              </Link>
             )}
           </nav>
         </div>

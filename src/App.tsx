@@ -3,12 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import SignUp from "./pages/auth/SignUp";
 import SignIn from "./pages/auth/SignIn";
+import Recover from "./pages/auth/Recover";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,11 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/auth/signup" element={<SignUp />} />
           <Route path="/auth/signin" element={<SignIn />} />
+          <Route path="/auth/recover" element={<Recover />} />
+          {/* Add routes for auth separately with shorter paths as alternatives */}
+          <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
+          <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
+          <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
