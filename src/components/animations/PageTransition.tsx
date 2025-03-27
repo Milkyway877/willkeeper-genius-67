@@ -11,7 +11,8 @@ export function PageTransition({ children, className }: PageTransitionProps) {
   return (
     <div 
       className={cn(
-        'animate-fade-in w-full transition-all duration-300 ease-in-out',
+        'animate-fade-in w-full transition-all duration-500 ease-in-out', 
+        'transform-gpu motion-reduce:transform-none motion-reduce:transition-none',
         className
       )}
     >
