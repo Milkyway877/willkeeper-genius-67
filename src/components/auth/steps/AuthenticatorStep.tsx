@@ -1,14 +1,15 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { fadeInUp } from '../animations';
+import { toast } from '@/hooks/use-toast';
 
 interface AuthenticatorStepProps {
   authenticatorKey: string;
@@ -17,6 +18,8 @@ interface AuthenticatorStepProps {
 }
 
 export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: AuthenticatorStepProps) {
+  const [copied, setCopied] = useState(false);
+  
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),
     defaultValues: {
@@ -24,13 +27,24 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     },
   });
 
-  // Normally we would validate the OTP here, but for this demo we'll just accept any 6-digit code
-  const handleSubmit = () => {
+  const copyAuthKey = () => {
+    navigator.clipboard.writeText(authenticatorKey);
+    setCopied(true);
+    toast({
+      title: "Key copied",
+      description: "Authentication key copied to clipboard",
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // For demo purposes, we'll accept any 6-digit code
+  const handleSubmit = (data: AuthenticatorInputs) => {
+    console.log('Authenticator code submitted:', data.otp);
     onNext();
   };
 
   return (
-    <motion.div key="step6" {...fadeInUp}>
+    <motion.div key="authenticator" {...fadeInUp}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <div className="mb-4">
@@ -53,8 +67,16 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
               <p className="text-sm text-muted-foreground mb-2">
                 If you can't scan the QR code, enter this key in your authenticator app:
               </p>
-              <div className="bg-slate-50 p-3 rounded-md border border-slate-200 font-mono text-center break-all mb-4">
+              <div className="relative bg-slate-50 p-3 rounded-md border border-slate-200 font-mono text-center break-all mb-4">
                 {authenticatorKey}
+                <button
+                  type="button"
+                  onClick={copyAuthKey}
+                  className="absolute top-2 right-2 p-1 bg-slate-100 rounded hover:bg-slate-200"
+                  aria-label="Copy to clipboard"
+                >
+                  {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                </button>
               </div>
               
               <h4 className="text-sm font-medium mt-4 mb-2">3. Verify Setup</h4>

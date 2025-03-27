@@ -8,13 +8,15 @@ interface StepperProps {
 }
 
 export function Stepper({ currentStep, totalSteps }: StepperProps) {
+  const percentage = Math.round((currentStep / totalSteps) * 100);
+  
   return (
     <div className="mb-8">
       <div className="flex justify-between mb-2">
         <span className="text-sm text-muted-foreground">Step {currentStep} of {totalSteps}</span>
-        <span className="text-sm font-medium">{Math.round((currentStep / totalSteps) * 100)}% Complete</span>
+        <span className="text-sm font-medium">{percentage}% Complete</span>
       </div>
-      <Progress value={(currentStep / totalSteps) * 100} className="h-2" />
+      <Progress value={percentage} className="h-2" />
     </div>
   );
 }
