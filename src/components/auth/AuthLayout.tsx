@@ -19,7 +19,7 @@ export function AuthLayout({ children, rightPanel, title, subtitle }: AuthLayout
       <div className="flex-1 flex flex-col min-h-screen">
         <header className="p-6 md:p-8">
           <Link to="/" className="inline-block">
-            <Logo color="default" className="h-8 w-auto" />
+            <Logo color="primary" className="h-8 w-auto" />
           </Link>
         </header>
         
