@@ -69,11 +69,11 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   
   const navItems: NavItem[] = [
     { icon: <Home size={20} />, label: "Home", href: "/" },
-    { icon: <Layers size={20} />, label: "Our Services", href: "#features" },
-    { icon: <Shield size={20} />, label: "Security", href: "#security" },
-    { icon: <Briefcase size={20} />, label: "For Businesses", href: "#business" },
-    { icon: <Settings size={20} />, label: "How It Works", href: "#how-it-works" },
-    { icon: <Mail size={20} />, label: "Contact Us", href: "#contact" },
+    { icon: <Layers size={20} />, label: "Our Services", href: "/services" },
+    { icon: <Shield size={20} />, label: "Security", href: "/security" },
+    { icon: <Briefcase size={20} />, label: "For Businesses", href: "/business" },
+    { icon: <Settings size={20} />, label: "How It Works", href: "/how-it-works" },
+    { icon: <Mail size={20} />, label: "Contact Us", href: "/contact" },
   ];
   
   return (

@@ -10,6 +10,11 @@ import NotFound from "./pages/NotFound";
 import SignUp from "./pages/auth/SignUp";
 import SignIn from "./pages/auth/SignIn";
 import Recover from "./pages/auth/Recover";
+import Services from "./pages/Services";
+import Security from "./pages/Security";
+import Business from "./pages/Business";
+import HowItWorks from "./pages/HowItWorks";
+import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +27,11 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/business" element={<Business />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/auth/signup" element={<SignUp />} />
           <Route path="/auth/signin" element={<SignIn />} />
           <Route path="/auth/recover" element={<Recover />} />
