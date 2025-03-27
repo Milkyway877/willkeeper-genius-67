@@ -34,20 +34,23 @@ const NavItemComponent = ({ icon, label, href }: NavItem) => {
       onClick={handleClick}
     >
       <motion.div 
-        className="p-2 rounded-full text-gray-600 hover:text-willtank-500 transition-colors z-10"
+        className="p-2 rounded-full text-gray-600 hover:text-willtank-500 transition-colors z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+        whileHover={{ y: 2 }}
+        transition={{ type: "spring", stiffness: 500, damping: 17 }}
       >
         {icon}
       </motion.div>
       
       <motion.span
         className={cn(
-          "absolute left-0 pl-9 whitespace-nowrap text-sm font-medium text-gray-600 group-hover:text-willtank-500",
-          "opacity-0 group-hover:opacity-100 transition-opacity",
+          "absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm shadow-sm",
+          "whitespace-nowrap text-xs font-medium text-gray-700 border border-gray-100",
+          "opacity-0 group-hover:opacity-100 transition-all duration-200",
           isMobile ? "pointer-events-none" : ""
         )}
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 0, x: -10 }}
-        whileHover={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 0, y: 10 }}
+        whileHover={{ opacity: 1, y: 0 }}
       >
         {label}
       </motion.span>
@@ -96,32 +99,39 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
         </div>
         
         {/* Desktop Navigation - Icon Based */}
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center space-x-6">
           {navItems.map((item, index) => (
             <NavItemComponent key={index} {...item} />
           ))}
           
           {isAuthenticated ? (
-            <div className="flex items-center gap-3 ml-2">
-              <button className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 relative">
+            <div className="flex items-center gap-4 ml-2">
+              <motion.button 
+                className="p-2 rounded-full text-gray-500 hover:text-gray-900 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md relative"
+                whileHover={{ y: 2 }}
+                transition={{ type: "spring", stiffness: 500, damping: 17 }}
+              >
                 <Bell size={20} />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
-              </button>
+              </motion.button>
               <motion.button 
-                className="p-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200"
-                whileHover={{ scale: 1.05 }}
+                className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm hover:shadow-md"
+                whileHover={{ scale: 1.05, y: 2 }}
+                transition={{ type: "spring", stiffness: 500, damping: 17 }}
               >
                 <User size={20} />
               </motion.button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 ml-4">
+            <div className="flex items-center gap-4 ml-4">
               <NavItemComponent 
                 icon={<LogIn size={20} />} 
                 label="Sign In / Sign Up" 
                 href="/auth/signin" 
               />
-              <Button onClick={() => navigate('/auth/signup')}>Get Started</Button>
+              <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 500, damping: 17 }}>
+                <Button onClick={() => navigate('/auth/signup')}>Get Started</Button>
+              </motion.div>
             </div>
           )}
         </div>
