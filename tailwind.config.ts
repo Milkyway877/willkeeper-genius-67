@@ -1,5 +1,6 @@
 
-import type { Config } from "tailwindcss";
+import { type Config } from "tailwindcss"
+import { fontFamily } from "tailwindcss/defaultTheme"
 
 export default {
   darkMode: ["class"],
@@ -8,151 +9,90 @@ export default {
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
+    "./index.html",
   ],
-  prefix: "",
   theme: {
     container: {
       center: true,
-      padding: '2rem',
+      padding: "2rem",
       screens: {
-        'sm': '640px',
-        'md': '768px',
-        'lg': '1024px',
-        'xl': '1280px',
-        '2xl': '1400px',
-      }
+        "2xl": "1400px",
+      },
     },
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))'
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))'
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))'
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))'
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))'
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))'
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))'
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: 'hsl(var(--sidebar-background))',
-          foreground: 'hsl(var(--sidebar-foreground))',
-          primary: 'hsl(var(--sidebar-primary))',
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-          accent: 'hsl(var(--sidebar-accent))',
-          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-          border: 'hsl(var(--sidebar-border))',
-          ring: 'hsl(var(--sidebar-ring))'
-        },
-        // WillTank custom colors
         willtank: {
-          50: '#EEF2FF',
-          100: '#D9E2FF',
-          200: '#B3C6FF',
-          300: '#809FFF',
-          400: '#4D77FF',
-          500: '#1A53FF',
-          600: '#0033CC',
-          700: '#002699',
-          800: '#001A66',
-          900: '#000D33',
+          50: "hsl(var(--willtank-50))",
+          100: "hsl(var(--willtank-100))",
+          200: "hsl(var(--willtank-200))",
+          300: "hsl(var(--willtank-300))",
+          400: "hsl(var(--willtank-400))",
+          500: "hsl(var(--willtank-500))",
+          600: "hsl(var(--willtank-600))",
+          700: "hsl(var(--willtank-700))",
+          800: "hsl(var(--willtank-800))",
+          900: "hsl(var(--willtank-900))",
         },
-        navy: {
-          DEFAULT: '#1A1F2C',
-          light: '#2A3142',
-          dark: '#12161F',
-        },
-        silver: {
-          DEFAULT: '#E5E7EB',
-          light: '#F3F4F6',
-          dark: '#D1D5DB',
-        }
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)'
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", ...fontFamily.sans],
       },
       keyframes: {
-        'accordion-down': {
-          from: { height: '0' },
-          to: { height: 'var(--radix-accordion-content-height)' }
+        "accordion-down": {
+          from: { height: 0 },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
-        'accordion-up': {
-          from: { height: 'var(--radix-accordion-content-height)' },
-          to: { height: '0' }
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: 0 },
         },
-        'fade-in': {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' }
-        },
-        'fade-out': {
-          '0%': { opacity: '1', transform: 'translateY(0)' },
-          '100%': { opacity: '0', transform: 'translateY(10px)' }
-        },
-        'slide-in': {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(0)' }
-        },
-        'scale-in': {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' }
-        },
-        'float': {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-5px)' }
-        },
-        'pulse-soft': {
-          '0%, 100%': { opacity: '0.9' },
-          '50%': { opacity: '1' }
-        }
       },
       animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-in': 'fade-in 0.4s ease-out',
-        'fade-out': 'fade-out 0.4s ease-out',
-        'slide-in': 'slide-in 0.3s ease-out',
-        'scale-in': 'scale-in 0.2s ease-out',
-        'float': 'float 3s ease-in-out infinite',
-        'pulse-soft': 'pulse-soft 3s ease-in-out infinite'
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
       boxShadow: {
-        'soft': '0 2px 10px rgba(0, 0, 0, 0.05)',
-        'medium': '0 4px 20px rgba(0, 0, 0, 0.08)',
-        'hard': '0 8px 30px rgba(0, 0, 0, 0.12)',
-        'inner-soft': 'inset 0 2px 4px rgba(0, 0, 0, 0.05)',
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.05)',
-        'blue-glow': '0 0 20px rgba(77, 119, 255, 0.3)',
+        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
       },
-      backdropFilter: {
-        'none': 'none',
-        'blur': 'blur(8px)',
-      },
-    }
+    },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config;
+} satisfies Config
