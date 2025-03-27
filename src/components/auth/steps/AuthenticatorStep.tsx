@@ -40,7 +40,17 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   // For demo purposes, we'll accept any 6-digit code
   const handleSubmit = (data: AuthenticatorInputs) => {
     console.log('Authenticator code submitted:', data.otp);
-    onNext();
+    // Before calling onNext, let's check if the form is valid
+    if (form.formState.isValid) {
+      onNext();
+    } else {
+      console.log('Form is invalid:', form.formState.errors);
+      toast({
+        title: "Invalid code",
+        description: "Please enter a valid 6-digit code",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
