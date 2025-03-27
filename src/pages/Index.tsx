@@ -7,7 +7,6 @@ import { SecuritySection } from '@/components/home/SecuritySection';
 import { Pricing } from '@/components/home/Pricing';
 import { Logo } from '@/components/ui/logo/Logo';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
-import { Button } from '@/components/common/Button';
 
 export default function Index() {
   return (
@@ -16,9 +15,110 @@ export default function Index() {
       
       <main className="flex-1">
         <Hero />
-        <Features />
-        <SecuritySection />
-        <Pricing />
+        <section id="services">
+          <Features />
+        </section>
+        <section id="security">
+          <SecuritySection />
+        </section>
+        <section id="business" className="py-24 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12">For Businesses</h2>
+            {/* Business section content goes here */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold mb-3">Law Firms</h3>
+                <p className="text-gray-600">Specialized solutions for legal professionals to manage client wills and trusts.</p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold mb-3">Financial Institutions</h3>
+                <p className="text-gray-600">Secure will management solutions integrated with financial planning services.</p>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold mb-3">Estate Planners</h3>
+                <p className="text-gray-600">Comprehensive tools for professional estate planning and management.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="how-it-works" className="py-24">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12">How It Works</h2>
+            <div className="max-w-3xl mx-auto">
+              <div className="flex flex-col space-y-12">
+                <div className="flex flex-col md:flex-row items-start gap-6">
+                  <div className="bg-willtank-100 rounded-full w-12 h-12 flex items-center justify-center flex-shrink-0">
+                    <span className="text-willtank-700 font-bold">1</span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Create Your Account</h3>
+                    <p className="text-gray-600">Sign up for WillTank in minutes with our secure, easy-to-use platform.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col md:flex-row items-start gap-6">
+                  <div className="bg-willtank-100 rounded-full w-12 h-12 flex items-center justify-center flex-shrink-0">
+                    <span className="text-willtank-700 font-bold">2</span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Draft Your Will</h3>
+                    <p className="text-gray-600">Use our guided interface to create a legally sound will tailored to your needs.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col md:flex-row items-start gap-6">
+                  <div className="bg-willtank-100 rounded-full w-12 h-12 flex items-center justify-center flex-shrink-0">
+                    <span className="text-willtank-700 font-bold">3</span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Secure Storage</h3>
+                    <p className="text-gray-600">Your will is encrypted and securely stored, accessible only to authorized individuals.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col md:flex-row items-start gap-6">
+                  <div className="bg-willtank-100 rounded-full w-12 h-12 flex items-center justify-center flex-shrink-0">
+                    <span className="text-willtank-700 font-bold">4</span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Update When Needed</h3>
+                    <p className="text-gray-600">Life changes? Update your will anytime, with all revisions tracked and secured.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="contact" className="py-24 bg-gray-900 text-white">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12">Contact Us</h2>
+            <div className="max-w-3xl mx-auto">
+              <div className="bg-gray-800 p-8 rounded-lg">
+                <form className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="name" className="block mb-2 text-sm font-medium">Name</label>
+                      <input type="text" id="name" className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white" placeholder="Your name" />
+                    </div>
+                    <div>
+                      <label htmlFor="email" className="block mb-2 text-sm font-medium">Email</label>
+                      <input type="email" id="email" className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white" placeholder="Your email" />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="subject" className="block mb-2 text-sm font-medium">Subject</label>
+                    <input type="text" id="subject" className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white" placeholder="Subject" />
+                  </div>
+                  <div>
+                    <label htmlFor="message" className="block mb-2 text-sm font-medium">Message</label>
+                    <textarea id="message" rows={5} className="w-full p-3 rounded-md bg-gray-700 border border-gray-600 text-white" placeholder="Your message"></textarea>
+                  </div>
+                  <button type="submit" className="w-full py-3 px-6 bg-willtank-500 hover:bg-willtank-600 transition-colors rounded-md font-medium">Send Message</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="pricing">
+          <Pricing />
+        </section>
       </main>
       
       <footer className="bg-gray-900 text-gray-200 py-12">
@@ -27,10 +127,10 @@ export default function Index() {
             <div>
               <h4 className="font-medium mb-4">Product</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white transition">Features</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition">Security</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition">Pricing</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition">FAQ</a></li>
+                <li><a href="#services" className="text-gray-400 hover:text-white transition">Features</a></li>
+                <li><a href="#security" className="text-gray-400 hover:text-white transition">Security</a></li>
+                <li><a href="#pricing" className="text-gray-400 hover:text-white transition">Pricing</a></li>
+                <li><a href="#how-it-works" className="text-gray-400 hover:text-white transition">How It Works</a></li>
               </ul>
             </div>
             
@@ -40,7 +140,7 @@ export default function Index() {
                 <li><a href="#" className="text-gray-400 hover:text-white transition">About</a></li>
                 <li><a href="#" className="text-gray-400 hover:text-white transition">Blog</a></li>
                 <li><a href="#" className="text-gray-400 hover:text-white transition">Careers</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition">Contact</a></li>
+                <li><a href="#contact" className="text-gray-400 hover:text-white transition">Contact</a></li>
               </ul>
             </div>
             
