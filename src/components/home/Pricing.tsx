@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
-import { Button } from '@/components/common/Button';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import { Check, CreditCard, Calendar, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -68,28 +70,68 @@ const plans = [
 export function Pricing() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.5 }
+    }
+  };
+  
   return (
-    <section id="pricing" className="py-12 sm:py-16 lg:py-20 bg-white border-t border-gray-100">
+    <section id="pricing" className="py-16 sm:py-20 lg:py-24 bg-gradient-to-b from-white to-gray-50 border-t border-gray-100">
       <div className="container px-4 md:px-6">
-        <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+        <motion.div 
+          className="text-center max-w-3xl mx-auto mb-12 md:mb-16"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-gray-900">
             Simple, Transparent Pricing
           </h2>
           <p className="mt-4 text-lg text-gray-600">
             Choose the perfect plan for your needs. All plans include our core security features.
           </p>
-        </div>
+        </motion.div>
         
-        <div className="grid gap-8 md:grid-cols-3">
+        <motion.div 
+          className="grid gap-8 md:grid-cols-3"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+        >
           {plans.map((plan, index) => (
-            <div 
+            <motion.div 
               key={index}
               className={cn(
-                "rounded-xl overflow-hidden relative",
+                "rounded-xl overflow-hidden relative bg-white",
                 plan.highlighted 
-                  ? "border-2 border-willtank-500 shadow-blue-glow" 
-                  : "border border-gray-200 shadow-soft"
+                  ? "border-2 border-willtank-500 shadow-lg shadow-willtank-100/50" 
+                  : "border border-gray-200 shadow-md"
               )}
+              variants={itemVariants}
+              whileHover={{ 
+                y: -8, 
+                transition: { duration: 0.2 },
+                boxShadow: plan.highlighted 
+                  ? '0 20px 25px -5px rgba(14, 165, 233, 0.1), 0 10px 10px -5px rgba(14, 165, 233, 0.04)'
+                  : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+              }}
             >
               {plan.badge && (
                 <div className="absolute top-0 right-0 bg-willtank-500 text-white text-xs font-medium px-3 py-1 rounded-bl-lg">
@@ -99,7 +141,7 @@ export function Pricing() {
               
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
                   <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
                     {plan.icon}
                   </div>
@@ -109,7 +151,7 @@ export function Pricing() {
                 
                 <div className="mb-6">
                   <div className="flex items-baseline">
-                    <span className="text-4xl font-bold">{plan.price}</span>
+                    <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
                     <span className="ml-2 text-gray-500">{plan.period}</span>
                   </div>
                   {plan.originalPrice && (
@@ -126,24 +168,34 @@ export function Pricing() {
                   ))}
                 </ul>
                 
-                <Button 
-                  className={cn(
-                    "w-full",
-                    !plan.highlighted && "bg-white border-2 border-willtank-500 text-willtank-500 hover:bg-willtank-50"
-                  )}
-                >
-                  {plan.cta}
-                </Button>
+                <Link to="/auth/signup">
+                  <Button 
+                    className={cn(
+                      "w-full",
+                      plan.highlighted 
+                        ? "bg-willtank-500 hover:bg-willtank-600" 
+                        : "bg-white border-2 border-willtank-500 text-willtank-500 hover:bg-willtank-50"
+                    )}
+                  >
+                    {plan.cta}
+                  </Button>
+                </Link>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
         
-        <div className="mt-12 text-center">
+        <motion.div 
+          className="mt-12 text-center"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
           <p className="text-sm text-gray-500">
             All plans include a 14-day money-back guarantee. No questions asked.
           </p>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

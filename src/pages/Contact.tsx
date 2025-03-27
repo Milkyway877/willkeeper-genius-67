@@ -1,51 +1,11 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { Mail, Phone, MapPin, Clock, MessageSquare, Send } from 'lucide-react';
 
 export default function Contact() {
-  const { toast } = useToast();
-  const [formState, setFormState] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormState({
-      ...formState,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      setFormState({
-        name: '',
-        email: '',
-        subject: '',
-        message: ''
-      });
-      
-      toast({
-        title: "Message sent!",
-        description: "We'll get back to you as soon as possible.",
-      });
-    }, 1500);
-  };
-
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
@@ -53,22 +13,28 @@ export default function Contact() {
 
   const contactInfo = [
     {
-      icon: <Mail className="text-willtank-500" size={24} />,
+      icon: <Mail className="h-5 w-5 text-willtank-500" />,
       title: "Email Us",
       details: "support@willtank.com",
-      description: "For general inquiries and support"
+      description: "For general inquiries and support requests"
     },
     {
-      icon: <Phone className="text-willtank-500" size={24} />,
+      icon: <Phone className="h-5 w-5 text-willtank-500" />,
       title: "Call Us",
-      details: "+1 (555) 123-4567",
+      details: "+1 (888) 456-7890",
       description: "Monday to Friday, 9am to 5pm EST"
     },
     {
-      icon: <MapPin className="text-willtank-500" size={24} />,
+      icon: <MapPin className="h-5 w-5 text-willtank-500" />,
       title: "Visit Us",
-      details: "123 Legal Street, Suite 100",
+      details: "123 Legal Avenue, Suite 400",
       description: "New York, NY 10001, USA"
+    },
+    {
+      icon: <Clock className="h-5 w-5 text-willtank-500" />,
+      title: "Hours",
+      details: "Mon-Fri: 9am - 5pm EST",
+      description: "Weekend support available for emergencies"
     }
   ];
 
@@ -76,167 +42,179 @@ export default function Contact() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <main className="flex-1 py-20">
+      <main className="flex-1 py-16 md:py-20">
         <div className="container px-4 md:px-6 max-w-6xl mx-auto">
           <motion.div 
             initial="hidden"
             animate="visible"
             variants={fadeIn}
-            className="text-center mb-16"
+            className="text-center mb-12"
           >
+            <div className="inline-flex items-center gap-2 rounded-full bg-willtank-50 px-3 py-1 text-sm font-medium text-willtank-700 mb-4">
+              <MessageSquare size={14} />
+              <span>Get In Touch</span>
+            </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Have questions about WillTank? Our team is here to help. Reach out through any of the channels below.
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Have questions about our services? Our team is ready to assist you with any inquiries regarding estate planning and will management.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            {contactInfo.map((item, index) => (
-              <motion.div 
-                key={index}
-                className="bg-white rounded-xl shadow-sm p-6 text-center"
-                initial="hidden"
-                animate="visible"
-                variants={fadeIn}
-                whileHover={{ y: -5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="bg-willtank-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  {item.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">{item.title}</h3>
-                <p className="text-willtank-600 font-medium mb-2">{item.details}</p>
-                <p className="text-gray-500 text-sm">{item.description}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-12 items-start">
+          <div className="grid md:grid-cols-2 gap-10 mb-16">
             <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeIn}
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Send Us a Message</h2>
-              
-              {isSubmitted ? (
-                <div className="bg-green-50 rounded-xl p-8 text-center">
-                  <CheckCircle className="text-green-500 mx-auto mb-4" size={48} />
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">Message Sent!</h3>
-                  <p className="text-gray-600 mb-4">
-                    Thank you for reaching out. We'll get back to you as soon as possible.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsSubmitted(false)}
-                  >
-                    Send Another Message
-                  </Button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
+                <h2 className="text-2xl font-bold mb-6 text-gray-900">Send Us a Message</h2>
+                <form className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={formState.name}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500"
+                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                      <input 
+                        type="text" 
+                        id="firstName" 
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" 
                       />
                     </div>
                     <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formState.email}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500"
+                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                      <input 
+                        type="text" 
+                        id="lastName" 
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" 
                       />
                     </div>
                   </div>
                   <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input 
+                      type="email" 
+                      id="email" 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" 
+                    />
+                  </div>
+                  <div>
                     <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                    <select
-                      id="subject"
-                      name="subject"
-                      value={formState.subject}
-                      onChange={handleChange}
-                      required
+                    <select 
+                      id="subject" 
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500"
                     >
                       <option value="">Select a subject</option>
-                      <option value="General Inquiry">General Inquiry</option>
-                      <option value="Technical Support">Technical Support</option>
-                      <option value="Business Partnership">Business Partnership</option>
-                      <option value="Feature Request">Feature Request</option>
-                      <option value="Billing Question">Billing Question</option>
+                      <option value="general">General Inquiry</option>
+                      <option value="support">Technical Support</option>
+                      <option value="billing">Billing Question</option>
+                      <option value="partnership">Partnership Opportunity</option>
+                      <option value="feedback">Feedback</option>
                     </select>
                   </div>
                   <div>
                     <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      value={formState.message}
-                      onChange={handleChange}
-                      required
-                      rows={5}
+                    <textarea 
+                      id="message" 
+                      rows={5} 
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500"
                     ></textarea>
                   </div>
-                  <Button type="submit" disabled={isSubmitting} className="w-full">
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center">
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Sending...
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center">
-                        <Send className="mr-2" size={18} /> Send Message
-                      </span>
-                    )}
+                  <Button className="w-full bg-willtank-500 hover:bg-willtank-600">
+                    Send Message <Send className="ml-2 h-4 w-4" />
                   </Button>
                 </form>
-              )}
+              </div>
             </motion.div>
             
             <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={fadeIn}
-              className="bg-willtank-50 rounded-xl p-8"
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h2>
               <div className="space-y-6">
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">How quickly will I receive a response?</h3>
-                  <p className="text-gray-600">We typically respond to all inquiries within 24 business hours.</p>
+                <div className="bg-gradient-to-br from-willtank-500 to-willtank-600 rounded-xl shadow-lg p-6 md:p-8 text-white">
+                  <h3 className="text-xl font-bold mb-4">Customer Support Hours</h3>
+                  <p className="mb-4">Our dedicated support team is available during the following hours to assist you with any questions or concerns:</p>
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-2">
+                      <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Clock size={12} className="text-white" />
+                      </div>
+                      <span><strong>Weekdays:</strong> 9:00 AM - 8:00 PM EST</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Clock size={12} className="text-white" />
+                      </div>
+                      <span><strong>Weekends:</strong> 10:00 AM - 5:00 PM EST</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Clock size={12} className="text-white" />
+                      </div>
+                      <span><strong>Holidays:</strong> Limited availability (check our holiday schedule)</span>
+                    </li>
+                  </ul>
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Can I schedule a demo of WillTank?</h3>
-                  <p className="text-gray-600">Yes! Select "Business Partnership" in the subject dropdown and we'll arrange a personalized demo.</p>
+                
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {contactInfo.map((item, index) => (
+                    <motion.div 
+                      key={index}
+                      className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 hover:shadow-md transition-shadow duration-200"
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.3, delay: 0.1 * index }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center flex-shrink-0">
+                          {item.icon}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                          <p className="text-willtank-600 font-medium">{item.details}</p>
+                          <p className="text-sm text-gray-500 mt-1">{item.description}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Do you offer technical support on weekends?</h3>
-                  <p className="text-gray-600">Premium plan members have access to 24/7 support, including weekends and holidays.</p>
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Where can I find legal resources?</h3>
-                  <p className="text-gray-600">Check our Resources section for guides, templates, and legal information about estate planning.</p>
+                
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
+                  <h3 className="font-semibold mb-3 text-gray-900">Frequently Asked Questions</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Looking for quick answers? Check our comprehensive FAQ section for information on common topics.
+                  </p>
+                  <Button variant="outline" className="w-full border-willtank-500 text-willtank-500 hover:bg-willtank-50">
+                    View FAQ
+                  </Button>
                 </div>
               </div>
             </motion.div>
           </div>
+          
+          <motion.div 
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Our Locations</h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                WillTank maintains offices in major cities to serve our global client base.
+              </p>
+            </div>
+            
+            <div className="h-[400px] bg-gray-100 rounded-lg">
+              {/* Map placeholder - would be replaced with actual Google Maps integration */}
+              <div className="h-full flex items-center justify-center">
+                <p className="text-gray-500">Interactive map would be displayed here</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </main>
     </div>
