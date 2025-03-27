@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
@@ -16,10 +16,21 @@ interface LocationStepProps {
 }
 
 export function LocationStep({ defaultLocation, onNext }: LocationStepProps) {
+  // Initialize form with provided default location or fallback values
   const form = useForm<LocationInputs>({
     resolver: zodResolver(locationSchema),
-    defaultValues: defaultLocation,
+    defaultValues: defaultLocation || {
+      country: 'United States',
+      city: 'New York'
+    },
   });
+
+  // Update form values if defaultLocation changes
+  useEffect(() => {
+    if (defaultLocation && (defaultLocation.country || defaultLocation.city)) {
+      form.reset(defaultLocation);
+    }
+  }, [defaultLocation, form]);
 
   return (
     <motion.div key="step7" {...fadeInUp}>
@@ -37,7 +48,7 @@ export function LocationStep({ defaultLocation, onNext }: LocationStepProps) {
               <MapPin className="h-5 w-5 text-willtank-600 mt-0.5 mr-2 flex-shrink-0" />
               <p className="text-sm">
                 <span className="font-medium">Auto-detected location:</span><br />
-                {defaultLocation.city}, {defaultLocation.country}
+                {form.getValues().city || 'Unknown'}, {form.getValues().country || 'Unknown'}
               </p>
             </div>
           </div>
