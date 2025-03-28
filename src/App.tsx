@@ -27,6 +27,7 @@ import Terms from "./pages/Terms";
 import Cookies from "./pages/Cookies";
 import GDPR from "./pages/GDPR";
 import Will from "./pages/will/Will";
+import WillCreation from "./pages/will/WillCreation";
 import Templates from "./pages/templates/Templates";
 import Encryption from "./pages/encryption/Encryption";
 import Executors from "./pages/executors/Executors";
@@ -55,6 +56,7 @@ const App = () => (
           
           {/* Dashboard Pages */}
           <Route path="/will" element={<Will />} />
+          <Route path="/will/create" element={<WillCreation />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/encryption" element={<Encryption />} />
           <Route path="/executors" element={<Executors />} />

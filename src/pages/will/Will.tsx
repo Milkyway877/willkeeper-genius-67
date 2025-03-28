@@ -2,8 +2,10 @@
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Copy, Clock, Save, Edit } from 'lucide-react';
+import { FileText, Download, Copy, Clock, Save, Edit, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Will() {
   const [willContent, setWillContent] = useState(`
@@ -39,6 +41,8 @@ Witnesses: [Witness 1], [Witness 2]
   `);
   const [isEditing, setIsEditing] = useState(false);
   const [lastSaved, setLastSaved] = useState(new Date().toLocaleTimeString());
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
@@ -49,12 +53,23 @@ Witnesses: [Witness 1], [Witness 2]
     setTimeout(() => {
       setIsEditing(false);
       setLastSaved(new Date().toLocaleTimeString());
+      toast({
+        title: "Will saved",
+        description: "Your will has been saved successfully.",
+      });
     }, 500);
   };
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(willContent);
-    // Add toast notification here
+    toast({
+      title: "Copied to clipboard",
+      description: "Will content has been copied to clipboard.",
+    });
+  };
+
+  const handleCreateNewWill = () => {
+    navigate('/will/create');
   };
 
   return (
@@ -67,6 +82,10 @@ Witnesses: [Witness 1], [Witness 2]
           </div>
           
           <div className="flex gap-2">
+            <Button onClick={handleCreateNewWill} variant="default">
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Will
+            </Button>
             {isEditing ? (
               <Button onClick={handleSave} variant="default">
                 <Save className="mr-2 h-4 w-4" />
