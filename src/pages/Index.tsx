@@ -5,6 +5,7 @@ import { Hero } from '@/components/home/Hero';
 import { ServicesSection } from '@/components/home/ServicesSection';
 import { SecuritySection } from '@/components/home/SecuritySection';
 import { FeatureCarousel } from '@/components/home/FeatureCarousel';
+import { InfoCards } from '@/components/home/InfoCards';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { motion } from 'framer-motion';
 import { ArrowRight, Users, BarChart, Briefcase, Map, FileCheck, Phone } from 'lucide-react';
@@ -29,6 +30,8 @@ export default function Index() {
         <section id="security">
           <SecuritySection />
         </section>
+        
+        <InfoCards />
         
         <motion.section
           id="business"
