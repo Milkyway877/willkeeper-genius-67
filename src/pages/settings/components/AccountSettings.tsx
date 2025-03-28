@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -81,24 +80,24 @@ export function AccountSettings() {
       // Create a unique file path
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${fileName}`;
       
       // Upload the file
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from('avatars')
         .upload(filePath, avatarFile);
       
       if (uploadError) throw uploadError;
       
       // Get the public URL
-      const { data } = supabase.storage
+      const { data: publicUrlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
       
-      if (data.publicUrl) {
+      if (publicUrlData?.publicUrl) {
         // Update profile with new avatar URL
         await updateUserProfile({
-          avatar_url: data.publicUrl,
+          avatar_url: publicUrlData.publicUrl,
         });
         
         // Refresh the profile
@@ -132,12 +131,11 @@ export function AccountSettings() {
       const url = new URL(profile.avatar_url);
       const pathParts = url.pathname.split('/');
       const fileName = pathParts[pathParts.length - 1];
-      const filePath = `avatars/${fileName}`;
       
       // Delete the file from storage (if it exists)
       await supabase.storage
         .from('avatars')
-        .remove([filePath]);
+        .remove([fileName]);
       
       // Update profile to remove avatar URL
       await updateUserProfile({
