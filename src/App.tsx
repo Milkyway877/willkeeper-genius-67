@@ -45,7 +45,6 @@ import Settings from "./pages/settings/Settings";
 import Tank from "./pages/tank/Tank";
 import TankCreation from "./pages/tank/TankCreation";
 import Search from "./pages/search/Search";
-import DeathVerification from './pages/settings/DeathVerification';
 
 const initSupabaseStorage = async () => {
   try {
@@ -93,7 +92,7 @@ const AppWithProviders = ({ children }: { children: React.ReactNode }) => (
   </QueryClientProvider>
 );
 
-function App() {
+const App = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -176,8 +175,6 @@ function App() {
               <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
               <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
               
-              <Route path="/settings/death-verification" element={<DeathVerification />} />
-              
               <Route path="*" element={<NotFound />} />
             </Routes>
           )}
@@ -187,6 +184,6 @@ function App() {
       </BrowserRouter>
     </AppWithProviders>
   );
-}
+};
 
 export default App;

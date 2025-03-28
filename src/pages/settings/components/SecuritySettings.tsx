@@ -1,13 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from "@/components/ui/switch";
-import { Shield, Key, Save, Loader2, Skull } from 'lucide-react';
+import { Shield, Key, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserSecurity, createUserSecurity } from '@/services/encryptionService';
-import { Link } from 'react-router-dom';
 
 export function SecuritySettings() {
   const { toast } = useToast();
@@ -224,55 +224,7 @@ export function SecuritySettings() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.15 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6"
-      >
-        <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center">
-          <Skull className="text-willtank-700 mr-2" size={18} />
-          <h3 className="font-medium">Death Verification</h3>
-        </div>
-        
-        <div className="p-6">
-          <div className="mb-6">
-            <h4 className="font-medium mb-2">Death Verification System</h4>
-            <p className="text-gray-600 text-sm mb-4">
-              Ensure your will is only accessible after your passing is confirmed through our secure verification system
-            </p>
-            
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h5 className="font-medium text-sm mb-2">Features</h5>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-start">
-                    <span className="inline-block h-5 w-5 rounded-full bg-green-100 text-green-600 text-xs flex items-center justify-center mr-2 mt-0.5">✓</span>
-                    Automated check-in system
-                  </li>
-                  <li className="flex items-start">
-                    <span className="inline-block h-5 w-5 rounded-full bg-green-100 text-green-600 text-xs flex items-center justify-center mr-2 mt-0.5">✓</span>
-                    Multi-source death verification
-                  </li>
-                  <li className="flex items-start">
-                    <span className="inline-block h-5 w-5 rounded-full bg-green-100 text-green-600 text-xs flex items-center justify-center mr-2 mt-0.5">✓</span>
-                    10-Way PIN unlock system
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          <Button asChild>
-            <Link to="/settings/death-verification">
-              <Skull className="mr-2 h-4 w-4" />
-              Configure Death Verification
-            </Link>
-          </Button>
-        </div>
-      </motion.div>
-      
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
         className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6"
       >
         <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center">
