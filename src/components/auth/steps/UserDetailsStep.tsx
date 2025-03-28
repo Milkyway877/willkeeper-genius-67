@@ -73,38 +73,60 @@ export function UserDetailsStep({ onNext, isLoading = false }: UserDetailsStepPr
 
       console.log("Auth user created:", authData.user.id);
 
-      // Wait a moment to ensure the auth is processed
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Store user profile with retry logic
+      let profileCreated = false;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (!profileCreated && retryCount < maxRetries) {
+        try {
+          // Wait a moment before trying to ensure auth is processed
+          // Increase wait time with each retry
+          await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+          
+          // Call the store-user-profile function
+          const { data: profileData, error: profileError } = await supabase.functions.invoke(
+            'store-user-profile',
+            {
+              body: {
+                user_id: authData.user.id,
+                email: data.email,
+                first_name: data.firstName,
+                last_name: data.lastName
+              }
+            }
+          );
 
-      // Store user profile in our custom table
-      const { data: profileData, error: profileError } = await supabase.functions.invoke(
-        'store-user-profile',
-        {
-          body: {
-            user_id: authData.user.id,
-            email: data.email,
-            first_name: data.firstName,
-            last_name: data.lastName
+          if (profileError) {
+            console.error(`Error creating user profile (attempt ${retryCount + 1}):`, profileError);
+            retryCount++;
+            // Will retry unless max retries reached
+          } else {
+            console.log('User profile created:', profileData);
+            profileCreated = true;
           }
+        } catch (profileException) {
+          console.error(`Exception in profile creation (attempt ${retryCount + 1}):`, profileException);
+          retryCount++;
+          // Will retry unless max retries reached
         }
-      );
-
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
+      }
+      
+      // Even if profile creation failed after retries, continue with the flow
+      // The user can still use the app without a complete profile
+      if (!profileCreated) {
+        console.warn("Failed to create user profile after multiple attempts. Continuing anyway.");
         toast({
           title: "Profile creation warning",
           description: "Your account was created but we had issues setting up your profile. You can continue anyway.",
           variant: "destructive"
         });
-        // Continue anyway as the auth user was created
       } else {
-        console.log('User profile created:', profileData);
+        toast({
+          title: "Account registered",
+          description: "Your account has been created successfully. Please check your email to verify your account.",
+        });
       }
-      
-      toast({
-        title: "Account registered",
-        description: "Your account has been created. Now let's set up your security.",
-      });
       
       // Call the parent component's onNext function with the form data
       onNext(data);

@@ -9,7 +9,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Create Supabase client function - extracted to reduce repeated code
+const createSupabaseClient = () => {
+  return createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+};
+
 serve(async (req) => {
+  console.log("store-user-profile function called");
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -19,26 +29,22 @@ serve(async (req) => {
   }
 
   try {
-    console.log("store-user-profile function called");
-    
     // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseClient = createSupabaseClient();
 
     // Get request data
     const requestData = await req.json();
+    console.log("Request data:", requestData);
+    
     const { user_id, email, first_name, last_name } = requestData;
 
-    // Validate input
+    // Basic validation
     if (!user_id) {
       console.error("Missing required field: user_id", requestData);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: "Missing required field: user_id is required",
-          request: requestData
+          error: "Missing required field: user_id is required"
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -47,11 +53,12 @@ serve(async (req) => {
       );
     }
 
-    // If email is not provided, try to get it from auth
+    // Determine user information
     let userEmail = email;
     let firstName = first_name || "New";
     let lastName = last_name || "User";
     
+    // If email is not provided, try to get it from auth
     if (!userEmail) {
       console.log("Email not provided, fetching from auth");
       try {
@@ -66,13 +73,15 @@ serve(async (req) => {
         } else {
           userEmail = userData.user.email;
           
-          // Also get first/last name if available
-          if (userData.user.user_metadata?.first_name) {
-            firstName = userData.user.user_metadata.first_name;
-          }
-          
-          if (userData.user.user_metadata?.last_name) {
-            lastName = userData.user.user_metadata.last_name;
+          // Get metadata if available
+          if (userData.user.user_metadata) {
+            if (userData.user.user_metadata.first_name) {
+              firstName = userData.user.user_metadata.first_name;
+            }
+            
+            if (userData.user.user_metadata.last_name) {
+              lastName = userData.user.user_metadata.last_name;
+            }
           }
           
           console.log("Retrieved email and metadata from auth:", {
@@ -87,7 +96,7 @@ serve(async (req) => {
       }
     }
 
-    // Check if user already exists in the users table
+    // Check if user already exists in the users table to avoid duplicate entries
     const { data: existingUser, error: checkError } = await supabaseClient
       .from("users")
       .select("*")
@@ -96,12 +105,12 @@ serve(async (req) => {
 
     if (checkError) {
       console.error("Error checking user existence:", checkError);
-      // Continue anyway and try to create/update the user
+      // Continue anyway as the user might still not exist
     }
 
-    // If user already exists, return success
+    // If user already exists, return success without trying to create again
     if (existingUser) {
-      console.log("User already exists:", existingUser);
+      console.log("User already exists, returning:", existingUser);
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -115,93 +124,117 @@ serve(async (req) => {
       );
     }
     
-    console.log("Creating new user profile for:", user_id, {
+    console.log("Creating new user profile:", {
+      id: user_id,
       email: userEmail,
       firstName,
       lastName
     });
     
-    try {
-      // Create user profile in the users table with password instead of passkey/recovery_phrase
-      const { data: newUser, error: insertError } = await supabaseClient
-        .from("users")
-        .insert({
-          id: user_id,
-          email: userEmail,
-          full_name: firstName,
-          surname: lastName,
-          passkey: "email_auth", // Default value since we're now using email auth
-          recovery_phrase: "email_auth" // Default value since we're now using email auth
-        })
-        .select()
-        .single();
+    // Create user profile with email_auth values for passkey/recovery_phrase
+    const { data: newUser, error: insertError } = await supabaseClient
+      .from("users")
+      .insert({
+        id: user_id,
+        email: userEmail,
+        full_name: firstName,
+        surname: lastName,
+        passkey: "email_auth", 
+        recovery_phrase: "email_auth"
+      })
+      .select()
+      .single();
 
-      if (insertError) {
-        console.error("Error creating user profile:", insertError);
-        
-        // Check if error is due to a duplicate key (user might already exist)
-        if (insertError.code === "23505") {
-          // Try to fetch the user again, in case they were created in the meantime
-          const { data: existingUserRetry, error: retryError } = await supabaseClient
-            .from("users")
-            .select("*")
-            .eq("id", user_id)
-            .maybeSingle();
-            
-          if (retryError) {
-            console.error("Error in retry check for existing user:", retryError);
-          }
-            
-          if (existingUserRetry) {
-            console.log("User profile already exists (retry check):", existingUserRetry);
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                message: "User already exists (caught by duplicate check)",
-                user: existingUserRetry
-              }),
-              { 
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 200 
-              }
-            );
-          }
+    if (insertError) {
+      console.error("Error creating user profile:", insertError);
+      
+      // Check if the error is due to duplicate key (may happen in race conditions)
+      if (insertError.code === "23505") {
+        // Try to fetch the existing user
+        const { data: retryUser, error: retryError } = await supabaseClient
+          .from("users")
+          .select("*")
+          .eq("id", user_id)
+          .maybeSingle();
+          
+        if (retryError) {
+          console.error("Error in retry check:", retryError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: "Database error when creating profile",
+              error: insertError 
+            }),
+            { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500 
+            }
+          );
+        }
+          
+        if (retryUser) {
+          console.log("User already exists (caught via retry):", retryUser);
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: "User already exists (captured by retry)",
+              user: retryUser
+            }),
+            { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200 
+            }
+          );
+        }
+      }
+      
+      // Handle a duplicate email error (if email is unique in table)
+      if (insertError.code === "23505" && insertError.details?.includes("email")) {
+        // Try updating the existing record instead if it's an email conflict
+        const { data: updatedUser, error: updateError } = await supabaseClient
+          .from("users")
+          .update({
+            full_name: firstName,
+            surname: lastName
+          })
+          .eq("email", userEmail)
+          .select()
+          .single();
+          
+        if (updateError) {
+          console.error("Error updating existing user:", updateError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: "Failed to update existing user profile",
+              error: updateError 
+            }),
+            { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500 
+            }
+          );
         }
         
         return new Response(
           JSON.stringify({ 
-            success: false, 
-            message: "Failed to create user profile",
-            error: insertError 
+            success: true, 
+            message: "Updated existing user profile with same email",
+            user: updatedUser
           }),
           { 
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500 
+            status: 200 
           }
         );
       }
-
-      console.log("Successfully created user profile:", newUser);
       
-      // Success response
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "User profile created successfully",
-          user: newUser
-        }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 201 
-        }
-      );
-    } catch (insertFatalError) {
-      console.error("Fatal error while creating user:", insertFatalError);
+      // Return error if we couldn't handle the issue
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "Fatal error while creating user profile",
-          error: insertFatalError.message 
+          message: "Failed to create user profile",
+          error: insertError 
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -209,8 +242,23 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log("Successfully created user profile:", newUser);
+    
+    // Return success response
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "User profile created successfully",
+        user: newUser
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 201 
+      }
+    );
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error("Unexpected error in store-user-profile:", error);
     return new Response(
       JSON.stringify({ 
         success: false,
