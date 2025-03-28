@@ -26,6 +26,15 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Cookies from "./pages/Cookies";
 import GDPR from "./pages/GDPR";
+import Will from "./pages/will/Will";
+import Templates from "./pages/templates/Templates";
+import Encryption from "./pages/encryption/Encryption";
+import Executors from "./pages/executors/Executors";
+import AIAssistance from "./pages/ai/AIAssistance";
+import IDSecurity from "./pages/security/IDSecurity";
+import Billing from "./pages/billing/Billing";
+import Notifications from "./pages/notifications/Notifications";
+import Settings from "./pages/settings/Settings";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +53,18 @@ const App = () => (
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact" element={<Contact />} />
           
+          {/* Dashboard Pages */}
+          <Route path="/will" element={<Will />} />
+          <Route path="/templates" element={<Templates />} />
+          <Route path="/encryption" element={<Encryption />} />
+          <Route path="/executors" element={<Executors />} />
+          <Route path="/ai-assistance" element={<AIAssistance />} />
+          <Route path="/id-security" element={<IDSecurity />} />
+          <Route path="/billing" element={<Billing />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/settings" element={<Settings />} />
+          
           {/* Footer Pages - Company Section */}
           <Route path="/about" element={<About />} />
           <Route path="/blog" element={<Blog />} />
@@ -51,7 +72,6 @@ const App = () => (
           
           {/* Footer Pages - Resources Section */}
           <Route path="/documentation" element={<Documentation />} />
-          <Route path="/help" element={<Help />} />
           <Route path="/api" element={<API />} />
           <Route path="/community" element={<Community />} />
           
