@@ -147,18 +147,41 @@ export const createWelcomeNotification = async (): Promise<Notification | null> 
   });
 };
 
+// Map event types to notification types
+const eventTypeToNotificationType = (
+  eventType: string
+): 'success' | 'warning' | 'info' | 'security' => {
+  const typeMap: Record<string, 'success' | 'warning' | 'info' | 'security'> = {
+    'will_updated': 'success',
+    'document_uploaded': 'info',
+    'security_key_generated': 'security',
+    'beneficiary_added': 'info',
+    'executor_added': 'info',
+    'item_saved': 'success',
+    'will_deleted': 'info'
+  };
+  
+  return typeMap[eventType] || 'info'; // Default to 'info' if not in the map
+};
+
 export const createSystemNotification = async (
-  type: 'success' | 'warning' | 'info' | 'security',
+  type: 'success' | 'warning' | 'info' | 'security' | string,
   details: { title: string, description: string }
 ): Promise<Notification | null> => {
+  // Convert event-based type to notification type if needed
+  const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
+    ? type as 'success' | 'warning' | 'info' | 'security'
+    : eventTypeToNotificationType(type);
+  
   return createNotification({
     title: details.title,
     description: details.description,
-    type: type,
+    type: notificationType,
     read: false
   });
 };
 
+// Legacy function - keeping for backward compatibility
 export const createSystemNotification2 = async (
   event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved' | 'will_deleted',
   details?: { title?: string, description?: string, itemId?: string }

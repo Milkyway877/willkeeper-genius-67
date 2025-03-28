@@ -3,6 +3,16 @@ import { useCallback } from 'react';
 import { createSystemNotification } from '@/services/notificationService';
 import { toast } from '@/components/ui/use-toast';
 
+// Define the supported event types for better TypeScript support
+export type NotificationEventType = 
+  | 'will_updated' 
+  | 'document_uploaded' 
+  | 'security_key_generated' 
+  | 'beneficiary_added' 
+  | 'executor_added' 
+  | 'item_saved' 
+  | 'will_deleted';
+
 export function useSystemNotifications() {
   const notifySuccess = useCallback(async (title: string, description: string) => {
     // Show immediate toast
@@ -115,12 +125,28 @@ export function useSystemNotifications() {
     return notifyInfo(title, description);
   }, [notifyInfo]);
 
+  // Create a generic method to notify by event type
+  const notifyByEventType = useCallback(async (eventType: NotificationEventType, details?: { title?: string, description?: string, itemId?: string }) => {
+    try {
+      return await createSystemNotification(eventType, { 
+        title: details?.title || `Event: ${eventType}`, 
+        description: details?.description || 'An event has occurred in your account.' 
+      });
+    } catch (error) {
+      console.error(`Failed to create notification for event ${eventType}:`, error);
+      return null;
+    }
+  }, []);
+
   return {
     // New simpler methods
     notifySuccess,
     notifyInfo,
     notifyWarning,
     notifySecurity,
+    
+    // Event-based method
+    notifyByEventType,
     
     // Legacy methods
     notifyWillUpdated,
