@@ -21,7 +21,7 @@ export function DotPatternText({
   dotColor = 'black',
   dotSize = 2,
   dotSpacing = 10,
-  animate = true,
+  animate = false,
   weight = 'bold',
   pixelated = false,
   fontSize = 'inherit'

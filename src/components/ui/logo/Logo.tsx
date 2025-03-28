@@ -15,9 +15,9 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
   const getSizeClasses = () => {
     switch (size) {
       case 'sm': return 'h-9';
-      case 'lg': return 'h-12';
+      case 'lg': return 'h-14';
       case 'md':
-      default: return 'h-10';
+      default: return 'h-12';
     }
   };
 
@@ -34,16 +34,14 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
     <div className={cn('flex items-center', className)}>
       <div className={cn('flex items-center gap-2', getSizeClasses(), getColorClasses())}>
         {pixelated ? (
-          <DotPatternText 
-            dotColor={color === 'white' ? 'white' : 'black'} 
-            dotSize={1.2} 
-            dotSpacing={5} 
-            pixelated={true}
-            fontSize={size === 'lg' ? '1.75rem' : size === 'md' ? '1.5rem' : '1.25rem'}
-            className="font-mono tracking-wider"
-          >
-            WillTank
-          </DotPatternText>
+          <div className="flex items-center">
+            <img 
+              src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
+              alt="WillTank Logo" 
+              className={cn('h-full w-auto object-contain mr-2')}
+            />
+            <span className="font-bold tracking-tight text-2xl">WillTank</span>
+          </div>
         ) : (
           <>
             <img 
@@ -51,7 +49,7 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
               alt="WillTank Logo" 
               className={cn('h-full w-auto object-contain')}
             />
-            <span className="tracking-tight font-bold">WillTank</span>
+            <span className="tracking-tight font-bold text-xl md:text-2xl">WillTank</span>
           </>
         )}
       </div>

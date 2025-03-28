@@ -101,16 +101,16 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
               scrolled ? "glassmorphism py-2 px-4 rounded-xl" : "py-2"
             )}>
               <Link to="/" className="flex items-center">
-                <DotPatternText 
-                  dotColor="black" 
-                  dotSize={1} 
-                  dotSpacing={6} 
-                  pixelated={true} 
-                  fontSize="2rem"
-                  className="tracking-wider"
-                >
-                  WillTank
-                </DotPatternText>
+                <div className="flex items-center">
+                  <img 
+                    src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
+                    alt="WillTank Logo" 
+                    className="h-12 w-auto mr-3" 
+                  />
+                  <span className="text-2xl md:text-3xl font-bold text-black tracking-tight">
+                    WillTank
+                  </span>
+                </div>
               </Link>
               
               <div className="hidden md:flex">
@@ -171,7 +171,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 </button>
               )}
               <Link to="/">
-                <Logo size="md" />
+                <Logo size="md" pixelated={false} />
               </Link>
             </div>
             
