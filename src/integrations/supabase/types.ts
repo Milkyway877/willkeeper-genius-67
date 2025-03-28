@@ -315,6 +315,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_recovery_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          used: boolean
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          used?: boolean
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          used?: boolean
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_security: {
         Row: {
           encryption_key: string

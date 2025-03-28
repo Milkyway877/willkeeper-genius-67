@@ -11,6 +11,15 @@ export interface UserSecurity {
   last_login: string;
 }
 
+export interface RecoveryCode {
+  id: string;
+  user_id: string;
+  code: string;
+  used: boolean;
+  created_at: string;
+  used_at?: string | null;
+}
+
 export const getUserSecurity = async (): Promise<UserSecurity | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -180,10 +189,9 @@ export const storeRecoveryCodes = async (codes: string[]): Promise<boolean> => {
       throw new Error('No user logged in');
     }
     
-    // Store the hashed recovery codes in the database
-    // In a real implementation, you would hash these codes
-    const { error } = await supabase
-      .from('user_recovery_codes')
+    // Use a custom type assertion to let TypeScript know the table exists
+    const query = supabase
+      .from('user_recovery_codes' as any)
       .upsert(
         codes.map(code => ({
           user_id: session.user.id,
@@ -193,6 +201,8 @@ export const storeRecoveryCodes = async (codes: string[]): Promise<boolean> => {
         { onConflict: 'user_id,code' }
       );
       
+    const { error } = await query;
+      
     if (error) {
       console.error('Error storing recovery codes:', error);
       throw error;
@@ -201,6 +211,80 @@ export const storeRecoveryCodes = async (codes: string[]): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error in storeRecoveryCodes:', error);
+    return false;
+  }
+};
+
+export const getUserRecoveryCodes = async (): Promise<RecoveryCode[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      throw new Error('No user logged in');
+    }
+    
+    // Use a custom type assertion to let TypeScript know the table exists
+    const { data, error } = await supabase
+      .from('user_recovery_codes' as any)
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching recovery codes:', error);
+      throw error;
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getUserRecoveryCodes:', error);
+    return [];
+  }
+};
+
+export const validateRecoveryCode = async (code: string): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      throw new Error('No user logged in');
+    }
+    
+    // Find the matching recovery code
+    const { data, error } = await supabase
+      .from('user_recovery_codes' as any)
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('code', code)
+      .eq('used', false)
+      .maybeSingle();
+      
+    if (error) {
+      console.error('Error validating recovery code:', error);
+      return false;
+    }
+    
+    if (!data) {
+      return false;
+    }
+    
+    // Mark the code as used
+    const { error: updateError } = await supabase
+      .from('user_recovery_codes' as any)
+      .update({
+        used: true,
+        used_at: new Date().toISOString()
+      })
+      .eq('id', data.id);
+      
+    if (updateError) {
+      console.error('Error marking recovery code as used:', updateError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in validateRecoveryCode:', error);
     return false;
   }
 };
