@@ -12,7 +12,7 @@ import {
   ToggleRight,
   ChevronDown,
   X,
-  Menu,
+  Menu as MenuIcon,
   Phone,
   Shield,
   Briefcase,
@@ -324,7 +324,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     onClick={onMenuToggle}
                     className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
                   >
-                    <Menu size={20} />
+                    <MenuIcon size={20} />
                   </button>
                 )}
                 <Link to="/">
@@ -416,7 +416,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 className="md:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
                 onClick={toggleMobileMenu}
               >
-                {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+                {showMobileMenu ? <X size={20} /> : <MenuIcon size={20} />}
               </button>
             </div>
           )}

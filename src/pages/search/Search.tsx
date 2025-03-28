@@ -64,7 +64,7 @@ export default function Search() {
           id: `will-${will.id}`,
           type: 'will',
           title: will.title || 'Untitled Will',
-          description: will.title || 'No description',
+          description: will.title || 'No description', // Using title as description if no dedicated field
           date: new Date(will.updated_at).toLocaleDateString(),
           link: `/will/${will.id}`
         })),
@@ -72,7 +72,7 @@ export default function Search() {
           id: `message-${message.id}`,
           type: 'message',
           title: message.title || 'Untitled Message',
-          description: message.preview?.substring(0, 100) || 'No content',
+          description: message.preview?.substring(0, 100) || 'No content', // Using preview instead of content
           date: new Date(message.created_at).toLocaleDateString(),
           link: `/tank`
         })),
@@ -80,7 +80,7 @@ export default function Search() {
           id: `vault-${item.id}`,
           type: 'vault',
           title: item.title || 'Untitled Item',
-          description: item.preview || 'No description',
+          description: item.preview || 'No description', // Using preview field
           date: new Date(item.created_at).toLocaleDateString(),
           link: `/tank#legacy`
         }))
