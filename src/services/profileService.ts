@@ -39,7 +39,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       created_at: data.created_at,
       updated_at: data.updated_at,
       is_activated: data.activation_complete, // Map from activation_complete to is_activated
-      subscription_plan: null, // Default to null since this column might not exist yet
+      subscription_plan: null, // Default to null since this column doesn't exist yet
       activation_date: null // Set a default value as it doesn't exist in the database
     };
     
@@ -72,11 +72,9 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       delete dbUpdates.activation_date;
     }
     
-    // Handle subscription_plan field if it doesn't exist in the database
-    // This ensures we don't send fields that don't exist in the database
+    // Remove subscription_plan field as it doesn't exist in the database
     if (dbUpdates.subscription_plan !== undefined) {
-      // We'll keep subscription_plan in the updates for now, but if errors persist,
-      // we might need to remove it here
+      delete dbUpdates.subscription_plan;
     }
     
     const { data, error } = await supabase
@@ -99,7 +97,7 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       created_at: data.created_at,
       updated_at: data.updated_at,
       is_activated: data.activation_complete, // Map from activation_complete to is_activated
-      subscription_plan: null, // Default to null since this column might not exist yet
+      subscription_plan: null, // Default to null since this column doesn't exist yet
       activation_date: null // Set a default value as it doesn't exist in the database
     };
     

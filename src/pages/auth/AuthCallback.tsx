@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { createWelcomeNotification } from '@/services/notificationService';
+import { createWelcomeNotification, createSystemNotification } from '@/services/notificationService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -51,9 +51,22 @@ export default function AuthCallback() {
         if (data?.session) {
           // Create a welcome notification for new users
           try {
+            // Send welcome notification
             await createWelcomeNotification();
+            
+            // Send getting started instructions
+            await createSystemNotification('info', {
+              title: "Getting Started with WillTank",
+              description: "Follow our quick guide to set up your account and create your first will."
+            });
+            
+            // Send a security reminder
+            await createSystemNotification('security', {
+              title: "Secure Your Account",
+              description: "For maximum security, we recommend enabling two-factor authentication in settings."
+            });
           } catch (notifError) {
-            console.error("Error creating welcome notification:", notifError);
+            console.error("Error creating welcome notifications:", notifError);
             // Don't block the flow if notification creation fails
           }
           
@@ -87,9 +100,22 @@ export default function AuthCallback() {
             
             // Create a welcome notification for new users
             try {
+              // Send welcome notification
               await createWelcomeNotification();
+              
+              // Send getting started instructions
+              await createSystemNotification('info', {
+                title: "Getting Started with WillTank",
+                description: "Follow our quick guide to set up your account and create your first will."
+              });
+              
+              // Send a security reminder
+              await createSystemNotification('security', {
+                title: "Secure Your Account",
+                description: "For maximum security, we recommend enabling two-factor authentication in settings."
+              });
             } catch (notifError) {
-              console.error("Error creating welcome notification:", notifError);
+              console.error("Error creating welcome notifications:", notifError);
               // Don't block the flow if notification creation fails
             }
             

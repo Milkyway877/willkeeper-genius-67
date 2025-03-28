@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -35,7 +34,6 @@ export const getNotifications = async (): Promise<Notification[]> => {
   }
 };
 
-// Helper function to validate notification types
 function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
   const validTypes = ['success', 'warning', 'info', 'security'];
   return validTypes.includes(type) ? type as 'success' | 'warning' | 'info' | 'security' : 'info';
@@ -140,7 +138,6 @@ export const deleteAllNotifications = async (): Promise<boolean> => {
   }
 };
 
-// Create welcome notification for new users
 export const createWelcomeNotification = async (): Promise<Notification | null> => {
   return createNotification({
     title: "Welcome to WillTank",
@@ -150,8 +147,19 @@ export const createWelcomeNotification = async (): Promise<Notification | null> 
   });
 };
 
-// Utility function to create notifications for common events
 export const createSystemNotification = async (
+  type: 'success' | 'warning' | 'info' | 'security',
+  details: { title: string, description: string }
+): Promise<Notification | null> => {
+  return createNotification({
+    title: details.title,
+    description: details.description,
+    type: type,
+    read: false
+  });
+};
+
+export const createSystemNotification2 = async (
   event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved' | 'will_deleted',
   details?: { title?: string, description?: string, itemId?: string }
 ): Promise<Notification | null> => {

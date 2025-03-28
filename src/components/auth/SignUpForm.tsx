@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -10,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useSystemNotifications } from '@/hooks/use-system-notifications';
+import { createSystemNotification } from '@/services/notificationService';
 
 const signUpSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -30,7 +29,6 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { notifySecurityKeyGenerated } = useSystemNotifications();
 
   const form = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -71,11 +69,8 @@ export function SignUpForm() {
         return;
       }
       
-      // Create a notification about account setup
-      await notifySecurityKeyGenerated({
-        title: "Account Created",
-        description: "Your WillTank account has been set up successfully. Please verify your email."
-      });
+      // We don't create notifications here because the user isn't fully registered yet
+      // Notifications will be created in AuthCallback.tsx after email verification
       
       // Success message
       toast({
