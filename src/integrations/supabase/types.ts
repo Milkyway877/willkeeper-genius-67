@@ -77,9 +77,11 @@ export type Database = {
           id: string
           message_type: string | null
           message_url: string | null
+          preview: string | null
           recipient_email: string
           recipient_name: string
           status: string | null
+          title: string | null
           user_id: string | null
         }
         Insert: {
@@ -88,9 +90,11 @@ export type Database = {
           id?: string
           message_type?: string | null
           message_url?: string | null
+          preview?: string | null
           recipient_email: string
           recipient_name: string
           status?: string | null
+          title?: string | null
           user_id?: string | null
         }
         Update: {
@@ -99,9 +103,11 @@ export type Database = {
           id?: string
           message_type?: string | null
           message_url?: string | null
+          preview?: string | null
           recipient_email?: string
           recipient_name?: string
           status?: string | null
+          title?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -120,6 +126,7 @@ export type Database = {
           created_at: string | null
           document_url: string
           id: string
+          preview: string | null
           title: string
           user_id: string | null
         }
@@ -128,6 +135,7 @@ export type Database = {
           created_at?: string | null
           document_url: string
           id?: string
+          preview?: string | null
           title: string
           user_id?: string | null
         }
@@ -136,6 +144,7 @@ export type Database = {
           created_at?: string | null
           document_url?: string
           id?: string
+          preview?: string | null
           title?: string
           user_id?: string | null
         }
@@ -409,7 +418,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_column_if_not_exists: {
+        Args: {
+          p_table_name: string
+          p_column_name: string
+          p_column_type: string
+        }
+        Returns: undefined
+      }
+      check_column_exists: {
+        Args: {
+          p_table_name: string
+          p_column_name: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

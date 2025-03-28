@@ -230,8 +230,8 @@ export const updateFutureMessagesSchema = async () => {
     // Check if title column exists
     const { data, error } = await supabase
       .rpc('check_column_exists', { 
-        table_name: 'future_messages',
-        column_name: 'title'
+        p_table_name: 'future_messages',
+        p_column_name: 'title'
       });
     
     if (error) {
@@ -243,9 +243,9 @@ export const updateFutureMessagesSchema = async () => {
       // Column doesn't exist, add it
       const { error: alterError } = await supabase
         .rpc('add_column_if_not_exists', {
-          table_name: 'future_messages',
-          column_name: 'title',
-          column_type: 'text'
+          p_table_name: 'future_messages',
+          p_column_name: 'title',
+          p_column_type: 'text'
         });
       
       if (alterError) {
@@ -257,8 +257,8 @@ export const updateFutureMessagesSchema = async () => {
     // Do the same for preview column
     const { data: previewExists, error: previewError } = await supabase
       .rpc('check_column_exists', { 
-        table_name: 'future_messages',
-        column_name: 'preview'
+        p_table_name: 'future_messages',
+        p_column_name: 'preview'
       });
     
     if (previewError) {
@@ -269,9 +269,9 @@ export const updateFutureMessagesSchema = async () => {
     if (!previewExists) {
       const { error: alterError } = await supabase
         .rpc('add_column_if_not_exists', {
-          table_name: 'future_messages',
-          column_name: 'preview',
-          column_type: 'text'
+          p_table_name: 'future_messages',
+          p_column_name: 'preview',
+          p_column_type: 'text'
         });
       
       if (alterError) {
