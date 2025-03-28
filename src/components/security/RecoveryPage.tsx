@@ -1,293 +1,338 @@
 
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Download, Copy, CheckCircle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import {
-  getUserRecoveryCodes,
-  generateRecoveryCodes,
-  storeRecoveryCodes,
-  getUserSecurity,
-  validateTOTP
-} from '@/services/encryptionService';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import { AlertTriangle, CheckCircle2, Copy, Download, KeyRound, Loader2 } from 'lucide-react';
+import { generateRecoveryCodes, getUserRecoveryCodes, RecoveryCode, validateRecoveryCode } from '@/services/encryptionService';
+import { supabase } from '@/integrations/supabase/client';
 
 export function RecoveryPage() {
-  const [recoveryCodes, setRecoveryCodes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [showCodes, setShowCodes] = useState(false);
+  const [existingCodes, setExistingCodes] = useState<RecoveryCode[]>([]);
+  const [verificationCode, setVerificationCode] = useState('');
   const [verifying, setVerifying] = useState(false);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
-  const [userSecurity, setUserSecurity] = useState<any | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const loadRecoveryCodes = async () => {
       try {
-        setLoading(true);
-        const security = await getUserSecurity();
-        setUserSecurity(security);
+        setIsLoading(true);
         
-        // Only fetch recovery codes if 2FA is enabled
-        if (security?.google_auth_enabled) {
-          const codes = await getUserRecoveryCodes();
-          setRecoveryCodes(codes);
+        // Check if user is authenticated
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast({
+            title: "Authentication required",
+            description: "Please sign in to access account recovery options",
+            variant: "destructive"
+          });
+          navigate('/auth/signin');
+          return;
         }
+        
+        // Load existing recovery codes
+        const codes = await getUserRecoveryCodes(user.id);
+        setExistingCodes(codes);
       } catch (error) {
-        console.error('Error fetching recovery data:', error);
+        console.error("Error loading recovery codes:", error);
         toast({
-          title: 'Error',
-          description: 'Failed to load recovery codes. Please try again.',
-          variant: 'destructive',
+          title: "Error loading recovery codes",
+          description: "An unexpected error occurred",
+          variant: "destructive"
         });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
+    
+    loadRecoveryCodes();
+  }, [navigate]);
 
-    fetchData();
-  }, []);
-
-  const handleGenerateCodes = () => {
-    setShowVerification(true);
+  const handleGenerateCodes = async () => {
+    try {
+      setIsGenerating(true);
+      
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to generate recovery codes",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Generate new recovery codes
+      const newCodes = await generateRecoveryCodes(user.id, 10);
+      setRecoveryCodes(newCodes);
+      setShowCodes(true);
+      
+      toast({
+        title: "Recovery codes generated",
+        description: "Keep these codes in a safe place",
+      });
+    } catch (error) {
+      console.error("Error generating recovery codes:", error);
+      toast({
+        title: "Error generating recovery codes",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const verifyAndGenerateCodes = async (code: string) => {
+  const handleVerifyCode = async () => {
+    if (!verificationCode) return;
+    
     try {
       setVerifying(true);
-      setVerificationError(null);
       
-      if (!userSecurity?.google_auth_secret) {
-        setVerificationError('2FA is not properly configured');
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to verify recovery codes",
+          variant: "destructive"
+        });
         return;
       }
       
-      // Verify the 2FA code
-      const isValid = validateTOTP(code, userSecurity.google_auth_secret);
+      // Verify the recovery code
+      const isValid = await validateRecoveryCode(user.id, verificationCode);
       
-      if (!isValid) {
-        setVerificationError('Invalid verification code');
-        return;
+      if (isValid) {
+        toast({
+          title: "Code verified successfully",
+          description: "Your recovery code is valid",
+        });
+        
+        // Refresh the list of existing codes
+        const codes = await getUserRecoveryCodes(user.id);
+        setExistingCodes(codes);
+        setVerificationCode('');
+      } else {
+        toast({
+          title: "Invalid recovery code",
+          description: "The code you entered is invalid or has already been used",
+          variant: "destructive"
+        });
       }
-      
-      setShowVerification(false);
-      generateNewCodes();
     } catch (error) {
-      console.error('Error verifying 2FA:', error);
-      setVerificationError('Verification failed. Please try again.');
+      console.error("Error verifying recovery code:", error);
+      toast({
+        title: "Error verifying recovery code",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
     } finally {
       setVerifying(false);
     }
   };
 
-  const generateNewCodes = async () => {
-    try {
-      setGenerating(true);
+  const copyToClipboard = () => {
+    if (recoveryCodes.length > 0) {
+      const text = recoveryCodes.join('\n');
+      navigator.clipboard.writeText(text);
+      setCopied(true);
       
-      // Generate new recovery codes
-      const newCodes = generateRecoveryCodes();
-      
-      // Store new codes
-      const success = await storeRecoveryCodes(newCodes);
-      
-      if (success) {
-        // Fetch updated codes
-        const updatedCodes = await getUserRecoveryCodes();
-        setRecoveryCodes(updatedCodes);
-        
-        toast({
-          title: 'Recovery Codes Generated',
-          description: 'New recovery codes have been generated. Please save them in a secure location.',
-        });
-      } else {
-        throw new Error('Failed to store recovery codes');
-      }
-    } catch (error) {
-      console.error('Error generating recovery codes:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to generate recovery codes. Please try again.',
-        variant: 'destructive',
+        title: "Codes copied",
+        description: "Recovery codes have been copied to your clipboard",
       });
-    } finally {
-      setGenerating(false);
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const copyToClipboard = (codes: any[]) => {
-    const text = codes.map(code => code.code).join('\n');
-    navigator.clipboard.writeText(text);
-    
-    toast({
-      title: 'Copied',
-      description: 'Recovery codes copied to clipboard',
-    });
+  const downloadCodes = () => {
+    if (recoveryCodes.length > 0) {
+      const text = "WillTank Account Recovery Codes\n\n" + 
+                   "Keep these codes in a safe place. Each code can only be used once.\n\n" +
+                   recoveryCodes.join('\n');
+      
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'willtank-recovery-codes.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Codes downloaded",
+        description: "Recovery codes have been downloaded",
+      });
+    }
   };
-
-  const downloadCodes = (codes: any[]) => {
-    const text = 'WillTank Recovery Codes\n\n' + 
-                 'Keep these codes in a safe place. Each code can only be used once.\n\n' +
-                 codes.map(code => code.code).join('\n');
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'willtank-recovery-codes.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: 'Downloaded',
-      description: 'Recovery codes downloaded',
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
-      </div>
-    );
-  }
-
-  if (!userSecurity?.google_auth_enabled) {
-    return (
-      <Alert className="bg-amber-50 border-amber-200">
-        <AlertCircle className="h-4 w-4 text-amber-600" />
-        <AlertTitle className="text-amber-800">Two-factor authentication not enabled</AlertTitle>
-        <AlertDescription className="text-amber-700">
-          Enable two-factor authentication to generate recovery codes for your account.
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Recovery Codes</CardTitle>
+          <CardTitle className="flex items-center">
+            <KeyRound className="mr-2 h-5 w-5 text-yellow-500" />
+            Account Recovery
+          </CardTitle>
           <CardDescription>
-            Recovery codes allow you to access your account if you lose your authentication device. Each code can only be used once.
+            Manage your account recovery options to ensure you can access your account if you lose your two-factor authentication device.
           </CardDescription>
         </CardHeader>
-        
-        <CardContent>
-          {recoveryCodes.length > 0 ? (
-            <div>
-              <div className="grid grid-cols-2 gap-2">
-                {recoveryCodes.map((code, index) => (
-                  <div 
-                    key={code.id} 
-                    className={`font-mono text-sm p-2 rounded border ${
-                      code.used ? 'bg-gray-100 text-gray-400 border-gray-200 line-through' : 'bg-gray-50 border-gray-200'
-                    }`}
-                  >
-                    {code.code}
-                    {code.used && (
-                      <span className="ml-2 text-xs text-gray-500">
-                        (Used {new Date(code.used_at).toLocaleDateString()})
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 flex space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => copyToClipboard(recoveryCodes)}
-                >
-                  <Copy className="mr-2 h-4 w-4" /> Copy Codes
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => downloadCodes(recoveryCodes)}
-                >
-                  <Download className="mr-2 h-4 w-4" /> Download Codes
-                </Button>
-              </div>
+        <CardContent className="space-y-6">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="text-center p-6">
-              <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No recovery codes found</h3>
-              <p className="text-gray-500 mb-4">
-                You don't have any recovery codes yet. Generate recovery codes to ensure you can access your account if you lose your authentication device.
-              </p>
-            </div>
+            <>
+              <div>
+                <h3 className="text-lg font-medium">Recovery Codes</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Recovery codes allow you to access your account if you lose access to your authenticator app.
+                  Each code can only be used once.
+                </p>
+                
+                {existingCodes.length > 0 ? (
+                  <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">
+                          You have {existingCodes.length} unused recovery codes
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          Keep these codes in a safe place. Generating new codes will invalidate all existing ones.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-red-800">
+                          You don't have any recovery codes
+                        </p>
+                        <p className="text-xs text-red-700 mt-1">
+                          If you lose access to your authenticator device, you may not be able to access your account.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {showCodes && recoveryCodes.length > 0 && (
+                <div className="p-4 border rounded-md space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-sm font-medium">Your Recovery Codes</h4>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyToClipboard}
+                        className="flex items-center"
+                      >
+                        <Copy className={`h-4 w-4 mr-1 ${copied ? 'text-green-500' : ''}`} />
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadCodes}
+                        className="flex items-center"
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {recoveryCodes.map((code, index) => (
+                      <div key={index} className="p-2 bg-slate-50 border border-slate-200 rounded-md font-mono text-sm">
+                        {code}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-amber-800">
+                        <strong>Important:</strong> Store these codes in a secure location. 
+                        They will be shown only once, and generating new codes will invalidate these ones.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="p-4 border rounded-md space-y-4">
+                <h4 className="text-sm font-medium">Verify Recovery Code</h4>
+                <div className="space-y-2">
+                  <Label htmlFor="recovery-code">Enter recovery code</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="recovery-code"
+                      placeholder="XXXX-XXXX-XXXX"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      className="font-mono"
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleVerifyCode} 
+                      disabled={!verificationCode || verifying}
+                    >
+                      {verifying ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="mr-2 h-4 w-4" /> Verify
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use this to check if a recovery code is valid
+                  </p>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
-        
         <CardFooter>
-          <Dialog open={showVerification} onOpenChange={setShowVerification}>
-            <DialogTrigger asChild>
-              <Button 
-                variant="default" 
-                onClick={handleGenerateCodes}
-                disabled={generating}
-              >
-                {generating ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Generate New Codes
-                  </>
-                )}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Verify Identity</DialogTitle>
-                <DialogDescription>
-                  Enter a verification code from your authenticator app to generate new recovery codes.
-                </DialogDescription>
-              </DialogHeader>
-              
-              <TwoFactorInput 
-                onSubmit={verifyAndGenerateCodes} 
-                loading={verifying}
-                error={verificationError}
-              />
-              
-              <DialogFooter className="mt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowVerification(false)}
-                >
-                  Cancel
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            onClick={handleGenerateCodes}
+            disabled={isGenerating || isLoading}
+            className="w-full"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
+              </>
+            ) : (
+              'Generate New Recovery Codes'
+            )}
+          </Button>
         </CardFooter>
       </Card>
-      
-      <Alert className="bg-blue-50 border-blue-200">
-        <CheckCircle className="h-4 w-4 text-blue-600" />
-        <AlertTitle className="text-blue-800">Keep your recovery codes safe</AlertTitle>
-        <AlertDescription className="text-blue-700">
-          Store your recovery codes in a secure location, such as a password manager. These codes will allow you to regain access to your account if you lose your authentication device.
-        </AlertDescription>
-      </Alert>
     </div>
   );
 }

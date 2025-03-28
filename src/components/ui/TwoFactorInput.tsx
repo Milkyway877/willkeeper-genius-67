@@ -7,7 +7,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 interface TwoFactorInputProps {
   onSubmit: (code: string) => void;
   loading?: boolean;
-  error?: string;
+  error?: string | null;
 }
 
 export function TwoFactorInput({ onSubmit, loading = false, error }: TwoFactorInputProps) {

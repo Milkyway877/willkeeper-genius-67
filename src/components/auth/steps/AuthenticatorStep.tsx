@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import { ArrowRight, Copy, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
@@ -27,7 +26,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   const [isLoading, setIsLoading] = useState(false);
   const [enableTwoFactor, setEnableTwoFactor] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const [otpCode, setOtpCode] = useState('');
 
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),

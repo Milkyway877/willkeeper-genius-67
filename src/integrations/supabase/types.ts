@@ -70,6 +70,45 @@ export type Database = {
           },
         ]
       }
+      encryption_keys: {
+        Row: {
+          algorithm: string
+          created_at: string
+          id: string
+          last_used: string | null
+          name: string
+          status: string
+          strength: string | null
+          type: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          algorithm: string
+          created_at?: string
+          id?: string
+          last_used?: string | null
+          name: string
+          status?: string
+          strength?: string | null
+          type: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          algorithm?: string
+          created_at?: string
+          id?: string
+          last_used?: string | null
+          name?: string
+          status?: string
+          strength?: string | null
+          type?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
+      }
       future_messages: {
         Row: {
           created_at: string | null
