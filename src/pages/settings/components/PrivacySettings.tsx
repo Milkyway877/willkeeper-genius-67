@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Switch } from "@/components/ui/switch";
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export function PrivacySettings() {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   
   // Privacy settings state
   const [privacySettings, setPrivacySettings] = useState({
@@ -19,34 +20,88 @@ export function PrivacySettings() {
     twoFactorForDocuments: true
   });
   
+  // Fetch user preferences when component mounts
+  useEffect(() => {
+    async function fetchUserPreferences() {
+      try {
+        setLoading(true);
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) throw new Error('User not authenticated');
+        
+        const { data, error } = await supabase
+          .from('user_preferences')
+          .select('privacy_settings')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (error) throw error;
+        
+        if (data?.privacy_settings) {
+          setPrivacySettings({
+            ...privacySettings,
+            ...data.privacy_settings
+          });
+        } else {
+          // If no preferences exist, create default ones
+          const { error: insertError } = await supabase
+            .from('user_preferences')
+            .insert({
+              user_id: user.id,
+              privacy_settings: privacySettings
+            });
+          
+          if (insertError) throw insertError;
+        }
+      } catch (error) {
+        console.error("Error fetching privacy settings:", error);
+        toast({
+          title: "Error Loading Settings",
+          description: "There was an error loading your privacy settings.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchUserPreferences();
+  }, [toast]);
+  
   // Toggle privacy setting
   const togglePrivacySetting = async (setting: keyof typeof privacySettings) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('User not authenticated');
+      
       // Create a new privacy settings object with the toggled value
       const updatedSettings = {
         ...privacySettings,
         [setting]: !privacySettings[setting]
       };
       
-      // Update local state
+      // Update local state immediately for better UX
       setPrivacySettings(updatedSettings);
       
-      // In a real app, you would save this to the database
+      // Update the database
       const { error } = await supabase
         .from('user_preferences')
-        .upsert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+        .update({
           privacy_settings: updatedSettings
-        });
+        })
+        .eq('user_id', user.id);
       
       if (error) throw error;
       
       toast({
-        title: "Privacy Setting Updated",
+        title: "Setting Updated",
         description: `${privacySettings[setting] ? 'Disabled' : 'Enabled'} ${setting.replace(/([A-Z])/g, ' $1').toLowerCase()}.`
       });
     } catch (error) {
       console.error("Error updating privacy setting:", error);
+      
       // Revert the change in case of error
       setPrivacySettings(privacySettings);
       
@@ -65,6 +120,21 @@ export function PrivacySettings() {
       description: `Your ${action.toLowerCase()} request has been submitted successfully.`,
     });
   };
+  
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="space-y-4">
+            <div className="h-12 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <>
