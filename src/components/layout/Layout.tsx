@@ -11,9 +11,10 @@ import { motion } from 'framer-motion';
 
 interface LayoutProps {
   children: React.ReactNode;
+  forceAuthenticated?: boolean;
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const location = useLocation();
   
@@ -23,23 +24,24 @@ export function Layout({ children }: LayoutProps) {
   
   // Don't show sidebar on auth pages
   const isAuthPage = location.pathname.includes('/auth/');
+  const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
   
   return (
     <div className="flex h-screen w-full bg-gray-50">
-      {!isAuthPage && (
+      {showAuthenticatedLayout && (
         <WillTankSidebar isCollapsed={!showSidebar} />
       )}
       
       <motion.div 
         className={cn(
           "flex flex-col w-full transition-all duration-300",
-          showSidebar && !isAuthPage ? "lg:ml-64" : "lg:ml-16"
+          showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
         )}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <Navbar isAuthenticated={!isAuthPage} onMenuToggle={toggleSidebar} />
+        <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
         
         <main className="flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8">
           <PageTransition>
@@ -47,7 +49,7 @@ export function Layout({ children }: LayoutProps) {
           </PageTransition>
         </main>
         
-        {!isAuthPage && (
+        {showAuthenticatedLayout && (
           <>
             <FloatingAssistant />
             <FloatingHelp />
