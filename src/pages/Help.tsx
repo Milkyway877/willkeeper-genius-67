@@ -1,13 +1,17 @@
 
 import React from 'react';
 import { Navbar } from '@/components/layout/Navbar';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, HelpCircle, Book, MessageSquare, FileText, Mail, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Footer } from '@/components/layout/Footer';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Help() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
@@ -75,6 +79,21 @@ export default function Help() {
     }
   ];
 
+  const handleTopicClick = (slug: string) => {
+    // In a real app, this would navigate to a specific topic page
+    // For now, we'll show a toast to indicate functionality
+    toast({
+      title: "Help Topic Selected",
+      description: `Viewing information about: ${slug}`,
+    });
+    
+    // Create a simulated delay before navigating back to help
+    // This simulates viewing the content
+    setTimeout(() => {
+      navigate(`/help`);
+    }, 100);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -114,9 +133,10 @@ export default function Help() {
               {popularTopics.map((topic, index) => (
                 <motion.div 
                   key={index}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
                   whileHover={{ y: -5 }}
                   transition={{ type: "spring", stiffness: 300 }}
+                  onClick={() => handleTopicClick(topic.slug)}
                 >
                   <div className="flex items-start gap-4">
                     <div className="mt-1 p-2 rounded-full bg-willtank-50">
@@ -125,9 +145,9 @@ export default function Help() {
                     <div>
                       <h3 className="font-medium text-gray-900 mb-1">{topic.title}</h3>
                       <p className="text-sm text-gray-600 mb-3">{topic.description}</p>
-                      <Link to={`/help/${topic.slug}`} className="text-sm text-willtank-600 hover:text-willtank-700 font-medium inline-flex items-center">
+                      <div className="text-sm text-willtank-600 hover:text-willtank-700 font-medium inline-flex items-center">
                         Learn more <ChevronRight className="h-4 w-4 ml-1" />
-                      </Link>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -153,9 +173,17 @@ export default function Help() {
             </div>
             
             <div className="mt-6 text-center">
-              <Link to="/help/faq">
-                <Button variant="outline">View All FAQs</Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  toast({
+                    title: "FAQs",
+                    description: "Viewing all frequently asked questions",
+                  });
+                }}
+              >
+                View All FAQs
+              </Button>
             </div>
           </motion.div>
           
@@ -173,12 +201,30 @@ export default function Help() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-4">
-                <Link to="/contact">
-                  <Button variant="default">Contact Support</Button>
-                </Link>
-                <Link to="/community">
-                  <Button variant="outline">Join Community</Button>
-                </Link>
+                <Button 
+                  variant="default" 
+                  onClick={() => {
+                    toast({
+                      title: "Contact Support",
+                      description: "Opening support contact form",
+                    });
+                    navigate("/contact");
+                  }}
+                >
+                  Contact Support
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    toast({
+                      title: "Community",
+                      description: "Joining the WillTank community forum",
+                    });
+                    navigate("/community");
+                  }}
+                >
+                  Join Community
+                </Button>
               </div>
             </div>
           </motion.div>

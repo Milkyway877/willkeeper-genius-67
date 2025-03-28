@@ -1,80 +1,40 @@
 
 import React, { useState } from 'react';
-import { Bell, User, Menu, X, Home, Layers, Shield, Briefcase, Settings, Mail, LogIn } from 'lucide-react';
+import { Bell, User, Menu, X, Search, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from '@/components/ui/input';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
   onMenuToggle?: () => void;
 }
 
-interface NavItem {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-}
-
-const NavItemComponent = ({ icon, label, href }: NavItem) => {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  
-  const handleClick = () => {
-    navigate(href);
-  };
-  
-  return (
-    <motion.div
-      className="relative flex items-center cursor-pointer group"
-      whileHover={{ scale: 1.05 }}
-      onClick={handleClick}
-    >
-      <motion.div 
-        className="p-2 rounded-full text-gray-600 hover:text-willtank-500 transition-colors z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
-        whileHover={{ y: 2 }}
-        transition={{ type: "spring", stiffness: 500, damping: 17 }}
-      >
-        {icon}
-      </motion.div>
-      
-      <motion.span
-        className={cn(
-          "absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm shadow-sm",
-          "whitespace-nowrap text-xs font-medium text-gray-700 border border-gray-100",
-          "opacity-0 group-hover:opacity-100 transition-all duration-200",
-          isMobile ? "pointer-events-none" : ""
-        )}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 0, y: 10 }}
-        whileHover={{ opacity: 1, y: 0 }}
-      >
-        {label}
-      </motion.span>
-    </motion.div>
-  );
-};
-
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const location = useLocation();
   
   const toggleMobileMenu = () => {
     setShowMobileMenu(!showMobileMenu);
   };
   
-  const navItems: NavItem[] = [
-    { icon: <Home size={20} />, label: "Home", href: "/" },
-    { icon: <Layers size={20} />, label: "Our Services", href: "/services" },
-    { icon: <Shield size={20} />, label: "Security", href: "/security" },
-    { icon: <Briefcase size={20} />, label: "For Businesses", href: "/business" },
-    { icon: <Settings size={20} />, label: "How It Works", href: "/how-it-works" },
-    { icon: <Mail size={20} />, label: "Contact Us", href: "/contact" },
-  ];
+  // Check if we're on a dashboard-style page (authenticated) but not on landing pages
+  const isDashboardPage = isAuthenticated && !location.pathname.match(/^\/(services|security|business|how-it-works|contact|about|blog|careers|privacy|terms|cookies|gdpr)$/);
   
   return (
     <motion.header 
@@ -98,43 +58,98 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           </Link>
         </div>
         
-        {/* Desktop Navigation - Icon Based */}
-        <div className="hidden md:flex items-center space-x-6">
-          {navItems.map((item, index) => (
-            <NavItemComponent key={index} {...item} />
-          ))}
-          
-          {isAuthenticated ? (
-            <div className="flex items-center gap-4 ml-2">
-              <motion.button 
-                className="p-2 rounded-full text-gray-500 hover:text-gray-900 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md relative"
-                whileHover={{ y: 2 }}
-                transition={{ type: "spring", stiffness: 500, damping: 17 }}
-              >
-                <Bell size={20} />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
-              </motion.button>
-              <motion.button 
-                className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm hover:shadow-md"
-                whileHover={{ scale: 1.05, y: 2 }}
-                transition={{ type: "spring", stiffness: 500, damping: 17 }}
-              >
-                <User size={20} />
-              </motion.button>
+        {isDashboardPage ? (
+          <>
+            {/* Dashboard Navbar - with search, support, notifications and profile */}
+            <div className="flex items-center space-x-4">
+              <div className="relative hidden md:flex items-center">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <Input placeholder="Search..." className="pl-10 w-[200px] lg:w-[300px]" />
+              </div>
+              
+              <Link to="/help" className="p-2 rounded-full text-gray-600 hover:text-willtank-500 transition-colors">
+                <HelpCircle size={20} />
+              </Link>
+              
+              <div className="relative">
+                <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
+                  <Bell size={20} />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
+                </Button>
+              </div>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="p-0 hover:bg-transparent">
+                    <Avatar>
+                      <AvatarImage src="/avatar-placeholder.png" />
+                      <AvatarFallback className="bg-willtank-100 text-willtank-700">AM</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    Profile Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/security')}>
+                    Security
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/billing')}>
+                    Billing
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/auth/signin')}>
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          ) : (
-            <div className="flex items-center gap-4 ml-4">
-              <NavItemComponent 
-                icon={<LogIn size={20} />} 
-                label="Sign In / Sign Up" 
-                href="/auth/signin" 
-              />
-              <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 500, damping: 17 }}>
-                <Button onClick={() => navigate('/auth/signup')}>Get Started</Button>
-              </motion.div>
+          </>
+        ) : (
+          <>
+            {/* Original Navigation for non-dashboard pages */}
+            <div className="hidden md:flex items-center space-x-6">
+              <Link to="/services" className="text-gray-600 hover:text-willtank-500 transition-colors">Our Services</Link>
+              <Link to="/security" className="text-gray-600 hover:text-willtank-500 transition-colors">Security</Link>
+              <Link to="/business" className="text-gray-600 hover:text-willtank-500 transition-colors">For Businesses</Link>
+              <Link to="/how-it-works" className="text-gray-600 hover:text-willtank-500 transition-colors">How It Works</Link>
+              <Link to="/contact" className="text-gray-600 hover:text-willtank-500 transition-colors">Contact Us</Link>
+              
+              {isAuthenticated ? (
+                <div className="flex items-center gap-4 ml-2">
+                  <motion.button 
+                    className="p-2 rounded-full text-gray-500 hover:text-gray-900 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md relative"
+                    whileHover={{ y: 2 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 17 }}
+                    onClick={() => navigate('/notifications')}
+                  >
+                    <Bell size={20} />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
+                  </motion.button>
+                  <motion.button 
+                    className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm hover:shadow-md"
+                    whileHover={{ scale: 1.05, y: 2 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 17 }}
+                    onClick={() => navigate('/settings')}
+                  >
+                    <User size={20} />
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 ml-4">
+                  <Link to="/auth/signin">
+                    <Button variant="outline">Sign In</Button>
+                  </Link>
+                  <Link to="/auth/signup">
+                    <Button>Get Started</Button>
+                  </Link>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
         
         {/* Mobile Navigation Toggle */}
         <button 
@@ -153,31 +168,58 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
         >
-          <nav className="flex flex-col space-y-4">
-            {navItems.map((item, index) => (
-              <Link 
-                key={index} 
-                to={item.href} 
-                className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2"
-                onClick={toggleMobileMenu}
-              >
-                <div className="p-1 rounded-full bg-gray-100">{item.icon}</div>
-                {item.label}
+          {isDashboardPage ? (
+            <nav className="flex flex-col space-y-4">
+              <div className="relative flex items-center mb-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <Input placeholder="Search..." className="pl-10 w-full" />
+              </div>
+              <Link to="/dashboard" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                Dashboard
               </Link>
-            ))}
-            
-            {!isAuthenticated && (
-              <>
-                <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
-                  <div className="p-1 rounded-full bg-gray-100"><LogIn size={20} /></div>
-                  Sign In
-                </Link>
-                <Link to="/auth/signup">
-                  <Button className="justify-center w-full">Get Started</Button>
-                </Link>
-              </>
-            )}
-          </nav>
+              <Link to="/will" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                My Will
+              </Link>
+              <Link to="/help" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                Help & Support
+              </Link>
+              <Link to="/settings" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                Settings
+              </Link>
+              <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                Log Out
+              </Link>
+            </nav>
+          ) : (
+            <nav className="flex flex-col space-y-4">
+              <Link to="/services" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                Our Services
+              </Link>
+              <Link to="/security" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                Security
+              </Link>
+              <Link to="/business" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                For Business
+              </Link>
+              <Link to="/how-it-works" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                How It Works
+              </Link>
+              <Link to="/contact" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                Contact Us
+              </Link>
+              
+              {!isAuthenticated && (
+                <>
+                  <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                    Sign In
+                  </Link>
+                  <Link to="/auth/signup">
+                    <Button className="justify-center w-full">Get Started</Button>
+                  </Link>
+                </>
+              )}
+            </nav>
+          )}
         </motion.div>
       )}
     </motion.header>
