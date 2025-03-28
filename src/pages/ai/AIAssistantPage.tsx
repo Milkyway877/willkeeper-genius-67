@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Layout } from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
-import { Bot, User, RefreshCw, Send, Sparkles, Copy, ThumbsUp, ThumbsDown, Clock, Search, MessageSquare, ArrowRight, PanelLeft } from 'lucide-react';
+import { Bot, User, RefreshCw, Send, Sparkles, Copy, ThumbsUp, ThumbsDown, Search, MessageSquare, ArrowRight, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -100,8 +99,33 @@ export default function AIAssistantPage() {
       }
     ];
     
-    setConversations(savedConversations);
+    const storedConversations = localStorage.getItem('ai-conversations');
+    if (storedConversations) {
+      try {
+        const parsed = JSON.parse(storedConversations);
+        const processedConversations = parsed.map((conv: any) => ({
+          ...conv,
+          lastUpdated: new Date(conv.lastUpdated),
+          messages: conv.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+        }));
+        setConversations(processedConversations);
+      } catch (e) {
+        console.error('Error parsing stored conversations:', e);
+        setConversations(savedConversations);
+      }
+    } else {
+      setConversations(savedConversations);
+    }
   }, []);
+
+  useEffect(() => {
+    if (conversations.length > 0) {
+      localStorage.setItem('ai-conversations', JSON.stringify(conversations));
+    }
+  }, [conversations]);
 
   useEffect(() => {
     scrollToBottom();
@@ -348,6 +372,21 @@ export default function AIAssistantPage() {
     });
   };
 
+  const deleteConversation = (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
+    setConversations(updatedConversations);
+    
+    if (currentConversation.id === conversationId) {
+      startNewConversation();
+    }
+    
+    toast({
+      title: "Conversation deleted",
+      description: "The conversation has been removed from your history."
+    });
+  };
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
@@ -358,35 +397,37 @@ export default function AIAssistantPage() {
   };
 
   return (
-    <Layout>
-      <div className="container px-0 md:px-4 max-w-7xl">
-        <div className="flex flex-col lg:flex-row gap-0 lg:gap-4 h-[calc(100vh-12rem)]">
-          <motion.div 
-            initial={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
-            animate={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
-            className={cn(
-              "bg-white rounded-l-xl shadow-sm border border-r-0 border-gray-200 flex-shrink-0 overflow-hidden",
-              isSidebarOpen ? "block" : "hidden lg:block"
-            )}
-          >
-            <div className="flex flex-col h-full">
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="font-medium text-lg flex items-center gap-2">
-                  <MessageSquare size={18} className="text-willtank-500" />
-                  Conversations
-                </h3>
-                <Button variant="ghost" size="sm" onClick={startNewConversation}>
-                  <span className="sr-only">New conversation</span>
-                  <span className="text-xs">+ New</span>
-                </Button>
-              </div>
-              
-              <ScrollArea className="flex-1">
-                <div className="p-2">
-                  {conversations.map((conv) => (
+    <div className="container px-0 md:px-4 max-w-7xl">
+      <div className="flex flex-col lg:flex-row gap-0 lg:gap-4 h-[calc(100vh-12rem)]">
+        <motion.div 
+          initial={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
+          animate={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+          className={cn(
+            "bg-white rounded-l-xl shadow-sm border border-r-0 border-gray-200 flex-shrink-0 overflow-hidden",
+            isSidebarOpen ? "block" : "hidden lg:block"
+          )}
+        >
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-medium text-lg flex items-center gap-2">
+                <MessageSquare size={18} className="text-willtank-500" />
+                Conversations
+              </h3>
+              <Button variant="ghost" size="sm" onClick={startNewConversation}>
+                <span className="sr-only">New conversation</span>
+                <span className="text-xs">+ New</span>
+              </Button>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-2">
+                {conversations.map((conv) => (
+                  <div
+                    key={conv.id}
+                    className="relative group"
+                  >
                     <button
-                      key={conv.id}
                       onClick={() => selectConversation(conv.id)}
                       className={cn(
                         "w-full text-left p-3 rounded-lg mb-1 transition-colors hover:bg-gray-100",
@@ -405,167 +446,182 @@ export default function AIAssistantPage() {
                         {conv.messages[conv.messages.length - 1]?.content.substring(0, 60)}...
                       </p>
                     </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-          </motion.div>
-          
-          <div className="flex-1 flex flex-col bg-white rounded-xl lg:rounded-l-none shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="lg:hidden" 
-                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                >
-                  <PanelLeft size={18} />
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Sparkles size={18} className="text-yellow-500" />
-                  <h2 className="font-medium">AI Assistant (GPT-4o Mini)</h2>
-                </div>
-              </div>
-              <Button 
-                variant="ghost"
-                size="sm"
-                className="hidden lg:flex"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              >
-                <PanelLeft size={16} className="mr-2" />
-                {isSidebarOpen ? "Hide history" : "Show history"}
-              </Button>
-            </div>
-            
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4 pb-2">
-                {currentConversation.messages.map((message) => (
-                  <div 
-                    key={message.id} 
-                    className={cn(
-                      "flex items-start gap-3 group animate-fade-in",
-                      message.role === 'user' ? "justify-end" : ""
-                    )}
-                  >
-                    {message.role !== 'user' && (
-                      <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot size={16} className="text-willtank-600" />
-                      </div>
-                    )}
-                    
-                    <div className={cn(
-                      "max-w-[85%] rounded-lg p-4 relative group",
-                      message.role === 'user' 
-                        ? "bg-willtank-500 text-white" 
-                        : "bg-gray-50 text-gray-800"
-                    )}>
-                      <div className="whitespace-pre-line text-sm">
-                        {message.content}
-                      </div>
-                      
-                      <div className={cn(
-                        "absolute -top-8 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
-                        message.role === 'user' ? "text-white" : "text-gray-500"
-                      )}>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6"
-                          onClick={() => copyToClipboard(message.content)}
-                        >
-                          <Copy size={12} />
-                          <span className="sr-only">Copy</span>
-                        </Button>
-                        
-                        {message.role === 'assistant' && (
-                          <>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <ThumbsUp size={12} />
-                              <span className="sr-only">Like</span>
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <ThumbsDown size={12} />
-                              <span className="sr-only">Dislike</span>
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                      
-                      <div className="mt-1 text-xs text-right opacity-60">
-                        {formatDate(message.timestamp)}
-                      </div>
-                    </div>
-                    
-                    {message.role === 'user' && (
-                      <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-1">
-                        <User size={16} className="text-gray-600" />
-                      </div>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6"
+                      onClick={(e) => deleteConversation(conv.id, e)}
+                    >
+                      <span className="sr-only">Delete</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 hover:text-red-500">
+                        <path d="M18 6L6 18"></path>
+                        <path d="M6 6l12 12"></path>
+                      </svg>
+                    </Button>
                   </div>
                 ))}
-                
-                {isProcessing && (
-                  <div className="flex items-start gap-3">
+              </div>
+            </ScrollArea>
+          </div>
+        </motion.div>
+        
+        <div className="flex-1 flex flex-col bg-white rounded-xl lg:rounded-l-none shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="lg:hidden" 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              >
+                <PanelLeft size={18} />
+              </Button>
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-yellow-500" />
+                <h2 className="font-medium">AI Assistant (GPT-4o Mini)</h2>
+              </div>
+            </div>
+            <Button 
+              variant="ghost"
+              size="sm"
+              className="hidden lg:flex"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              <PanelLeft size={16} className="mr-2" />
+              {isSidebarOpen ? "Hide history" : "Show history"}
+            </Button>
+          </div>
+          
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4 pb-2">
+              {currentConversation.messages.map((message) => (
+                <div 
+                  key={message.id} 
+                  className={cn(
+                    "flex items-start gap-3 group animate-fade-in",
+                    message.role === 'user' ? "justify-end" : ""
+                  )}
+                >
+                  {message.role !== 'user' && (
                     <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center flex-shrink-0 mt-1">
                       <Bot size={16} className="text-willtank-600" />
                     </div>
-                    <div className="max-w-[85%] rounded-lg p-4 bg-gray-50 text-gray-800">
-                      <div className="flex items-center gap-2">
-                        <RefreshCw size={16} className="animate-spin" />
-                        <p className="text-sm">Thinking...</p>
-                      </div>
+                  )}
+                  
+                  <div className={cn(
+                    "max-w-[85%] rounded-lg p-4 relative group",
+                    message.role === 'user' 
+                      ? "bg-willtank-500 text-white" 
+                      : "bg-gray-50 text-gray-800"
+                  )}>
+                    <div className="whitespace-pre-line text-sm">
+                      {message.content}
+                    </div>
+                    
+                    <div className={cn(
+                      "absolute -top-8 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
+                      message.role === 'user' ? "text-white" : "text-gray-500"
+                    )}>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => copyToClipboard(message.content)}
+                      >
+                        <Copy size={12} />
+                        <span className="sr-only">Copy</span>
+                      </Button>
+                      
+                      {message.role === 'assistant' && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <ThumbsUp size={12} />
+                            <span className="sr-only">Like</span>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <ThumbsDown size={12} />
+                            <span className="sr-only">Dislike</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    
+                    <div className="mt-1 text-xs text-right opacity-60">
+                      {formatDate(message.timestamp)}
                     </div>
                   </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
-            
-            {currentConversation.messages.length < 3 && (
-              <div className="px-4 py-2 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-2">Suggested questions:</p>
-                <div className="flex flex-wrap gap-2">
-                  {suggestedQuestions.map((question, index) => (
-                    <Badge 
-                      key={index} 
-                      variant="outline" 
-                      className="cursor-pointer hover:bg-gray-50"
-                      onClick={() => handleSuggestedQuestion(question)}
-                    >
-                      {question}
-                    </Badge>
-                  ))}
+                  
+                  {message.role === 'user' && (
+                    <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-1">
+                      <User size={16} className="text-gray-600" />
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-            
+              ))}
+              
+              {isProcessing && (
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot size={16} className="text-willtank-600" />
+                  </div>
+                  <div className="max-w-[85%] rounded-lg p-4 bg-gray-50 text-gray-800">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw size={16} className="animate-spin" />
+                      <span>Thinking...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+          
+          {currentConversation.id === 'new' && currentConversation.messages.length === 1 && (
             <div className="p-4 border-t border-gray-100">
-              <div className="flex items-center gap-2">
-                <Input
-                  id="message-input"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask about estate planning..."
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={handleSendMessage} 
-                  disabled={isProcessing || input.trim() === ''}
-                >
-                  <Send size={16} className="mr-2" />
-                  Send
-                </Button>
+              <h4 className="text-sm font-medium mb-2 flex items-center">
+                <Sparkles size={14} className="text-amber-500 mr-2" />
+                Suggested Questions
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {suggestedQuestions.map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestedQuestion(question)}
+                    className="px-3 py-2 text-sm rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center"
+                  >
+                    {question}
+                    <ArrowRight size={12} className="ml-1" />
+                  </button>
+                ))}
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Powered by GPT-4o Mini • Answers may not be accurate • Ask follow-up questions for clarification
-              </p>
+            </div>
+          )}
+          
+          <div className="p-4 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <Input
+                id="message-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about will creation, estate planning, or legacy options..."
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleSendMessage} 
+                disabled={isProcessing || input.trim() === ''}
+              >
+                {isProcessing ? (
+                  <RefreshCw size={16} className="animate-spin" />
+                ) : (
+                  <Send size={16} />
+                )}
+              </Button>
             </div>
           </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }

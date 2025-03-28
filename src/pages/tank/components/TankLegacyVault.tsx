@@ -17,14 +17,18 @@ import {
   Trash2, 
   Lock,
   Shield,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { LegacyVaultItem } from '../types';
-import { getLegacyVaultItems, deleteLegacyVaultItem } from '@/services/tankService';
+import { getLegacyVaultItems, deleteLegacyVaultItem, createLegacyVaultItem } from '@/services/tankService';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 const getTypeIcon = (type: LegacyVaultItem['type']) => {
   switch (type) {
@@ -63,7 +67,16 @@ export const TankLegacyVault: React.FC = () => {
   const [vaultItems, setVaultItems] = useState<LegacyVaultItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newItem, setNewItem] = useState({
+    title: '',
+    type: 'story' as LegacyVaultItem['type'],
+    preview: '',
+    document_url: 'https://placeholder-document-url.com'
+  });
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [viewItem, setViewItem] = useState<LegacyVaultItem | null>(null);
   
   useEffect(() => {
     const loadVaultItems = async () => {
@@ -75,41 +88,6 @@ export const TankLegacyVault: React.FC = () => {
       } catch (err) {
         console.error('Error loading vault items:', err);
         setError('Failed to load vault items. Please try again later.');
-        // Fallback to demo data if needed
-        setVaultItems([
-          {
-            id: 1,
-            title: 'My Life Journey',
-            type: 'story',
-            preview: 'The full story of my life journey, including the challenges and victories that shaped who I am...',
-            createdAt: '2023-09-15',
-            encryptionStatus: true
-          },
-          {
-            id: 2,
-            title: 'Family Secret',
-            type: 'confession',
-            preview: 'An important family secret that should only be revealed after my passing...',
-            createdAt: '2023-09-20',
-            encryptionStatus: true
-          },
-          {
-            id: 3,
-            title: 'Career Advice for My Children',
-            type: 'advice',
-            preview: 'Lessons learned from my career path and advice for my children as they navigate their own careers...',
-            createdAt: '2023-10-05',
-            encryptionStatus: true
-          },
-          {
-            id: 4,
-            title: 'My Final Wishes',
-            type: 'wishes',
-            preview: 'Special requests and personal wishes for my loved ones to consider after I\'m gone...',
-            createdAt: '2023-10-10',
-            encryptionStatus: true
-          }
-        ]);
       } finally {
         setIsLoading(false);
       }
@@ -127,11 +105,8 @@ export const TankLegacyVault: React.FC = () => {
     getTypeName(item.type).toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const handleView = (id: number | string) => {
-    toast({
-      title: "Viewing vault item",
-      description: `Opening vault item #${id} for viewing.`
-    });
+  const handleView = (item: LegacyVaultItem) => {
+    setViewItem(item);
   };
   
   const handleEdit = (id: number | string) => {
@@ -139,6 +114,18 @@ export const TankLegacyVault: React.FC = () => {
       title: "Edit vault item",
       description: `Opening vault item #${id} for editing.`
     });
+    
+    // Find the item and pre-populate the edit dialog
+    const itemToEdit = vaultItems.find(item => item.id === id);
+    if (itemToEdit) {
+      setNewItem({
+        title: itemToEdit.title,
+        type: itemToEdit.type,
+        preview: itemToEdit.preview || '',
+        document_url: itemToEdit.document_url || 'https://placeholder-document-url.com'
+      });
+      setShowCreateDialog(true);
+    }
   };
   
   const handleDelete = async (id: number | string) => {
@@ -160,7 +147,94 @@ export const TankLegacyVault: React.FC = () => {
   };
   
   const handleAddNew = () => {
-    setShowUpgradeModal(true);
+    // Reset the form
+    setNewItem({
+      title: '',
+      type: 'story',
+      preview: '',
+      document_url: 'https://placeholder-document-url.com'
+    });
+    setAiPrompt('');
+    setShowCreateDialog(true);
+  };
+
+  const handleCreateItem = async () => {
+    if (!newItem.title) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a title for your legacy item.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const createdItem = await createLegacyVaultItem(newItem);
+      if (createdItem) {
+        setVaultItems([createdItem, ...vaultItems]);
+        setShowCreateDialog(false);
+        toast({
+          title: "Item created",
+          description: "Your legacy item has been added to your vault."
+        });
+      }
+    } catch (err) {
+      console.error('Error creating vault item:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create the vault item. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const generateWithAI = async () => {
+    if (!aiPrompt) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a prompt for the AI.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // Call the AI assistant edge function
+      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        body: { 
+          query: `Generate a ${newItem.type} about ${aiPrompt}. Make it personal, emotional and detailed. Keep it under 500 words.`,
+          conversation_history: []
+        }
+      });
+      
+      if (error) {
+        throw new Error('Error generating content with AI');
+      }
+      
+      const generatedContent = data.response || '';
+      
+      // Update the new item with AI generated content
+      setNewItem({
+        ...newItem,
+        title: newItem.title || `My ${getTypeName(newItem.type)} about ${aiPrompt}`,
+        preview: generatedContent
+      });
+      
+      toast({
+        title: "Content generated",
+        description: "AI has created content based on your prompt."
+      });
+    } catch (err) {
+      console.error('Error generating content with AI:', err);
+      toast({
+        title: "Generation failed",
+        description: "Could not generate content. Please try again or create manually.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (isLoading) {
@@ -257,7 +331,7 @@ export const TankLegacyVault: React.FC = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleView(item.id)}>
+                      <DropdownMenuItem onClick={() => handleView(item)}>
                         <Eye size={14} className="mr-2" />
                         View
                       </DropdownMenuItem>
@@ -296,36 +370,153 @@ export const TankLegacyVault: React.FC = () => {
         )}
       </div>
       
-      {showUpgradeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
-          >
-            <div className="flex justify-center mb-4">
-              <div className="h-16 w-16 rounded-full bg-willtank-100 flex items-center justify-center">
-                <Lock className="h-8 w-8 text-willtank-600" />
+      {/* Create New Item Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add to Legacy Vault</DialogTitle>
+            <DialogDescription>
+              Create a new item for your legacy vault. These items will be securely stored and delivered according to your wishes.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="item-title" className="text-sm font-medium">Title</label>
+              <Input
+                id="item-title"
+                value={newItem.title}
+                onChange={(e) => setNewItem({...newItem, title: e.target.value})}
+                placeholder="Enter a title for your legacy item"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="item-type" className="text-sm font-medium">Item Type</label>
+              <select 
+                id="item-type"
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={newItem.type}
+                onChange={(e) => setNewItem({...newItem, type: e.target.value as LegacyVaultItem['type']})}
+              >
+                <option value="story">Personal Story</option>
+                <option value="confession">Confession/Secret</option>
+                <option value="wishes">Special Wishes</option>
+                <option value="advice">Life Advice</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label htmlFor="item-content" className="text-sm font-medium">Content</label>
+                <div className="flex items-center">
+                  <Sparkles size={14} className="text-amber-500 mr-1" />
+                  <span className="text-xs text-gray-500">AI Assistance Available</span>
+                </div>
               </div>
+              <div className="p-3 bg-amber-50 rounded-md mb-2">
+                <div className="flex gap-2 items-center mb-2">
+                  <Input
+                    placeholder="Describe what you want the AI to write about..."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    className="flex-grow"
+                  />
+                  <Button 
+                    onClick={generateWithAI} 
+                    disabled={isGenerating} 
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Generate
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Example: "my childhood summers at grandma's lake house" or "advice for my children about finding happiness"
+                </p>
+              </div>
+              <Textarea
+                id="item-content"
+                value={newItem.preview}
+                onChange={(e) => setNewItem({...newItem, preview: e.target.value})}
+                placeholder="Write your content or use AI to generate it..."
+                rows={8}
+              />
             </div>
-            
-            <h3 className="text-xl font-bold text-center mb-2">Upgrade to Access Legacy Vault</h3>
-            <p className="text-gray-600 text-center mb-6">
-              The Legacy Vault is available exclusively for Premium and Lifetime plan subscribers.
-              Upgrade your plan to unlock this powerful feature.
-            </p>
-            
-            <div className="space-y-4">
-              <Button className="w-full" onClick={() => navigate('/billing')}>
-                View Upgrade Options
-              </Button>
-              <Button variant="outline" className="w-full" onClick={() => setShowUpgradeModal(false)}>
-                Not Now
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+          </div>
+          
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleCreateItem}>
+              Save to Vault
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* View Item Dialog */}
+      <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          {viewItem && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                    {getTypeIcon(viewItem.type)}
+                  </div>
+                  <DialogTitle>{viewItem.title}</DialogTitle>
+                </div>
+                <DialogDescription>
+                  {getTypeName(viewItem.type)} · Created {new Date(viewItem.createdAt).toLocaleDateString()}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="bg-gray-50 p-4 rounded-md whitespace-pre-line">
+                  {viewItem.preview}
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setViewItem(null)}
+                >
+                  Close
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    setViewItem(null);
+                    handleEdit(viewItem.id);
+                  }}
+                >
+                  <Edit size={14} className="mr-2" />
+                  Edit
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
