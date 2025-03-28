@@ -47,6 +47,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
   const [copied, setCopied] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [authChecked, setAuthChecked] = useState(false);
   
   // Generate a secure TanKey if one doesn't exist yet
   useEffect(() => {
@@ -55,44 +56,78 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
     }
   }, [tanKey, setTanKey]);
 
-  // Check for authenticated user on component mount
+  // Comprehensive authentication check on component mount
   useEffect(() => {
-    const checkUser = async () => {
+    const checkAuthStatus = async () => {
       try {
+        // Try multiple methods to get the current user
+        console.log("TanKeyStep: Checking auth status");
+        
+        // Method 1: Get session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
-          console.error("Error getting session:", sessionError);
+          console.error("TanKeyStep: Error getting session:", sessionError);
         }
         
-        if (sessionData?.session) {
+        if (sessionData?.session?.user?.id) {
+          console.log("TanKeyStep: User found from session:", sessionData.session.user.id);
           setUserId(sessionData.session.user.id);
-          console.log("User authenticated from session:", sessionData.session.user.id);
-        } else {
-          console.log("No authenticated session found, trying getUser");
-          
-          // Fallback to getUser if session doesn't provide user
-          const { data } = await supabase.auth.getUser();
-          if (data?.user) {
-            setUserId(data.user.id);
-            console.log("User authenticated from getUser:", data.user.id);
-          } else {
-            console.log("No authenticated user found");
-          }
+          setAuthChecked(true);
+          return;
         }
+        
+        // Method 2: Get user
+        try {
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          if (userError) {
+            console.error("TanKeyStep: Error getting user:", userError);
+          }
+          
+          if (userData?.user?.id) {
+            console.log("TanKeyStep: User found from getUser:", userData.user.id);
+            setUserId(userData.user.id);
+            setAuthChecked(true);
+            return;
+          }
+        } catch (getUserError) {
+          console.error("TanKeyStep: Exception in getUser:", getUserError);
+        }
+        
+        // Method 3: Refresh session
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error("TanKeyStep: Error refreshing session:", refreshError);
+          }
+          
+          if (refreshData?.session?.user?.id) {
+            console.log("TanKeyStep: User found from refreshed session:", refreshData.session.user.id);
+            setUserId(refreshData.session.user.id);
+            setAuthChecked(true);
+            return;
+          }
+        } catch (refreshError) {
+          console.error("TanKeyStep: Exception in refreshSession:", refreshError);
+        }
+        
+        console.warn("TanKeyStep: No authenticated user found after all attempts");
+        setAuthChecked(true);
       } catch (error) {
-        console.error("Error in checkUser:", error);
+        console.error("TanKeyStep: Unexpected error in checkAuthStatus:", error);
+        setAuthChecked(true);
       }
     };
     
-    checkUser();
+    checkAuthStatus();
     
-    // Listen for auth state changes
+    // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event);
-      if (session?.user) {
+      console.log("TanKeyStep: Auth state changed:", event);
+      if (session?.user?.id) {
+        console.log("TanKeyStep: User from auth state change:", session.user.id);
         setUserId(session.user.id);
-        console.log("User set from auth state change:", session.user.id);
-      } else {
+      } else if (event === "SIGNED_OUT") {
+        console.log("TanKeyStep: User signed out");
         setUserId(null);
       }
     });
@@ -136,63 +171,113 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Handle errors with retry logic
+  const handleStoreTanKey = async (currentUserId: string): Promise<boolean> => {
+    let attempts = 0;
+    const maxAttempts = 3;
+    let delay = 800;
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      console.log(`TanKeyStep: Attempt ${attempts} to store TanKey for user ${currentUserId}`);
+      
+      try {
+        const success = await tanKeyService.storeTanKey(currentUserId, tanKey);
+        
+        if (success) {
+          console.log("TanKeyStep: Successfully stored TanKey");
+          return true;
+        }
+        
+        console.warn(`TanKeyStep: Failed to store TanKey on attempt ${attempts}`);
+        
+        // Wait before retry with exponential backoff
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 1.5; // Increase delay for next attempt
+        }
+      } catch (error) {
+        console.error(`TanKeyStep: Error on attempt ${attempts} to store TanKey:`, error);
+        
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 1.5;
+        }
+      }
+    }
+    
+    return false;
+  };
+
   const handleNext = async () => {
     try {
       setIsLoading(true);
       
-      // First check if we have a userId, if not, try to get it again
+      // Ensure we have a userId, retry auth check if needed
       let currentUserId = userId;
       if (!currentUserId) {
-        console.log("Refreshing auth state before proceeding");
+        console.log("TanKeyStep: No userId found, rechecking auth status");
+        
         try {
-          // Try to refresh the session
+          // Try refreshing the session first
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError) {
-            console.error("Error refreshing session:", refreshError);
+            console.error("TanKeyStep: Error refreshing session:", refreshError);
           }
           
-          if (refreshData?.session) {
+          if (refreshData?.session?.user?.id) {
             currentUserId = refreshData.session.user.id;
             setUserId(currentUserId);
-            console.log("User ID from refreshed session:", currentUserId);
+            console.log("TanKeyStep: User found from refreshed session:", currentUserId);
           } else {
-            // Try with getUser as fallback
-            const { data } = await supabase.auth.getUser();
-            if (!data?.user) {
-              throw new Error("User not found. Please ensure you're logged in and refresh the page.");
+            // Try getUser as fallback
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            if (userError) {
+              console.error("TanKeyStep: Error getting user:", userError);
             }
-            currentUserId = data.user.id;
-            setUserId(currentUserId);
-            console.log("User ID from getUser fallback:", currentUserId);
+            
+            if (userData?.user?.id) {
+              currentUserId = userData.user.id;
+              setUserId(currentUserId);
+              console.log("TanKeyStep: User found from getUser:", currentUserId);
+            } else {
+              console.error("TanKeyStep: Could not determine user ID after rechecking");
+              
+              if (retryCount >= 2) {
+                toast({
+                  title: "Authentication Error",
+                  description: "Unable to verify your login. Please refresh the page and try again.",
+                  variant: "destructive"
+                });
+                setIsLoading(false);
+                return;
+              }
+              
+              setRetryCount(prevCount => prevCount + 1);
+              setTimeout(() => handleNext(), 1500);
+              return;
+            }
           }
         } catch (authError) {
-          console.error("Error getting current user:", authError);
+          console.error("TanKeyStep: Exception rechecking auth:", authError);
           
-          // If we've tried a few times and still can't get the user, show an error
-          if (retryCount >= 2) {
-            toast({
-              title: "Authentication Error",
-              description: "Unable to verify your login. Please log out and log back in, then try again.",
-              variant: "destructive"
-            });
-            setIsLoading(false);
-            return;
-          }
-          
-          // Increment retry count and try again after a delay
-          setRetryCount(prevCount => prevCount + 1);
-          setTimeout(() => handleNext(), 1000); // Retry after 1 second
+          toast({
+            title: "Authentication Error",
+            description: "Please ensure you're logged in and refresh the page before continuing.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
           return;
         }
       }
       
-      console.log("Storing TanKey for user:", currentUserId);
+      console.log("TanKeyStep: Proceeding to store TanKey for user:", currentUserId);
       
-      // Attempt to store the TanKey using the service
-      const success = await tanKeyService.storeTanKey(currentUserId, tanKey);
+      // Store TanKey with retry logic
+      const success = await handleStoreTanKey(currentUserId);
       
       if (!success) {
-        throw new Error("Failed to store TanKey securely. Please try again.");
+        throw new Error("Failed to store your encryption key securely after multiple attempts. Please try again later.");
       }
       
       toast({
@@ -203,7 +288,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       // Proceed to the next step
       onNext(tanKey);
     } catch (error: any) {
-      console.error("Error storing TanKey:", error);
+      console.error("TanKeyStep: Error in handleNext:", error);
       
       toast({
         title: "Error",
@@ -214,6 +299,18 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       setIsLoading(false);
     }
   };
+
+  // Show loading state if auth status is still being checked
+  if (!authChecked) {
+    return (
+      <motion.div key="step3-loading" {...fadeInUp} className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-willtank-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Verifying authentication status...</p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div key="step3" {...fadeInUp}>

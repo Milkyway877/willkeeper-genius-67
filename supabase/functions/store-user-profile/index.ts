@@ -28,15 +28,17 @@ serve(async (req) => {
     );
 
     // Get request data
-    const { user_id, email, first_name, last_name } = await req.json();
+    const requestData = await req.json();
+    const { user_id, email, first_name, last_name } = requestData;
 
     // Validate input
     if (!user_id) {
-      console.error("Missing required field: user_id");
+      console.error("Missing required field: user_id", requestData);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: "Missing required field: user_id is required" 
+          error: "Missing required field: user_id is required",
+          request: requestData
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -47,13 +49,41 @@ serve(async (req) => {
 
     // If email is not provided, try to get it from auth
     let userEmail = email;
+    let firstName = first_name || "New";
+    let lastName = last_name || "User";
+    
     if (!userEmail) {
-      const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(user_id);
-      if (userError || !userData?.user?.email) {
-        console.error("Could not retrieve user email from auth:", userError);
-        userEmail = "unknown@example.com"; // Fallback
-      } else {
-        userEmail = userData.user.email;
+      console.log("Email not provided, fetching from auth");
+      try {
+        const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(user_id);
+        
+        if (userError) {
+          console.error("Could not retrieve user email from auth:", userError);
+          userEmail = `user_${user_id.substring(0, 8)}@placeholder.com`;
+        } else if (!userData?.user?.email) {
+          console.warn("Auth user found but no email present");
+          userEmail = `user_${user_id.substring(0, 8)}@placeholder.com`;
+        } else {
+          userEmail = userData.user.email;
+          
+          // Also get first/last name if available
+          if (userData.user.user_metadata?.first_name) {
+            firstName = userData.user.user_metadata.first_name;
+          }
+          
+          if (userData.user.user_metadata?.last_name) {
+            lastName = userData.user.user_metadata.last_name;
+          }
+          
+          console.log("Retrieved email and metadata from auth:", {
+            email: userEmail,
+            firstName,
+            lastName
+          });
+        }
+      } catch (authError) {
+        console.error("Exception fetching auth user:", authError);
+        userEmail = `user_${user_id.substring(0, 8)}@placeholder.com`;
       }
     }
 
@@ -65,18 +95,8 @@ serve(async (req) => {
       .maybeSingle();
 
     if (checkError) {
-      console.error("Error checking user:", checkError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: "Failed to check user existence",
-          error: checkError 
-        }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500 
-        }
-      );
+      console.error("Error checking user existence:", checkError);
+      // Continue anyway and try to create/update the user
     }
 
     // If user already exists, return success
@@ -99,7 +119,11 @@ serve(async (req) => {
     const placeholderPasskey = crypto.randomUUID();
     const placeholderRecoveryPhrase = "temporary_recovery_phrase";
     
-    console.log("Creating new user profile for:", user_id);
+    console.log("Creating new user profile for:", user_id, {
+      email: userEmail,
+      firstName,
+      lastName
+    });
     
     try {
       // Create user profile in the users table
@@ -108,8 +132,8 @@ serve(async (req) => {
         .insert({
           id: user_id,
           email: userEmail,
-          full_name: first_name || "New",
-          surname: last_name || "User",
+          full_name: firstName,
+          surname: lastName,
           passkey: placeholderPasskey,
           recovery_phrase: placeholderRecoveryPhrase
         })
@@ -122,11 +146,15 @@ serve(async (req) => {
         // Check if error is due to a duplicate key (user might already exist)
         if (insertError.code === "23505") {
           // Try to fetch the user again, in case they were created in the meantime
-          const { data: existingUserRetry } = await supabaseClient
+          const { data: existingUserRetry, error: retryError } = await supabaseClient
             .from("users")
             .select("*")
             .eq("id", user_id)
             .maybeSingle();
+            
+          if (retryError) {
+            console.error("Error in retry check for existing user:", retryError);
+          }
             
           if (existingUserRetry) {
             console.log("User profile already exists (retry check):", existingUserRetry);
