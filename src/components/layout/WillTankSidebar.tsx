@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/ui/logo/Logo';
@@ -32,7 +31,7 @@ interface SidebarLinkProps {
 
 const SidebarLink = ({ to, icon, label, isCollapsed }: SidebarLinkProps) => {
   const location = useLocation();
-  const isActive = location.pathname === to;
+  const isActive = location.pathname === to || location.pathname.startsWith(`${to}/`);
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -126,8 +125,6 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
             </motion.div>
           )}
         </AnimatePresence>
-        
-        {/* Mode toggle removed from here */}
       </div>
       
       <div className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">

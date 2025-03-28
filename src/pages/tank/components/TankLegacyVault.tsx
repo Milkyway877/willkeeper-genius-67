@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,13 +15,15 @@ import {
   Edit, 
   Trash2, 
   Lock,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { LegacyVaultItem } from '../types';
+import { getLegacyVaultItems, deleteLegacyVaultItem } from '@/services/tankService';
 
 const getTypeIcon = (type: LegacyVaultItem['type']) => {
   switch (type) {
@@ -54,47 +55,66 @@ const getTypeName = (type: LegacyVaultItem['type']) => {
   }
 };
 
-const demoVaultItems: LegacyVaultItem[] = [
-  {
-    id: 1,
-    title: 'My Life Journey',
-    type: 'story',
-    preview: 'The full story of my life journey, including the challenges and victories that shaped who I am...',
-    createdAt: '2023-09-15',
-    encryptionStatus: true
-  },
-  {
-    id: 2,
-    title: 'Family Secret',
-    type: 'confession',
-    preview: 'An important family secret that should only be revealed after my passing...',
-    createdAt: '2023-09-20',
-    encryptionStatus: true
-  },
-  {
-    id: 3,
-    title: 'Career Advice for My Children',
-    type: 'advice',
-    preview: 'Lessons learned from my career path and advice for my children as they navigate their own careers...',
-    createdAt: '2023-10-05',
-    encryptionStatus: true
-  },
-  {
-    id: 4,
-    title: 'My Final Wishes',
-    type: 'wishes',
-    preview: 'Special requests and personal wishes for my loved ones to consider after I\'m gone...',
-    createdAt: '2023-10-10',
-    encryptionStatus: true
-  }
-];
-
 export const TankLegacyVault: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
-  const [vaultItems, setVaultItems] = useState<LegacyVaultItem[]>(demoVaultItems);
+  const [vaultItems, setVaultItems] = useState<LegacyVaultItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  useEffect(() => {
+    const loadVaultItems = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getLegacyVaultItems();
+        setVaultItems(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading vault items:', err);
+        setError('Failed to load vault items. Please try again later.');
+        setVaultItems([
+          {
+            id: 1,
+            title: 'My Life Journey',
+            type: 'story',
+            preview: 'The full story of my life journey, including the challenges and victories that shaped who I am...',
+            createdAt: '2023-09-15',
+            encryptionStatus: true
+          },
+          {
+            id: 2,
+            title: 'Family Secret',
+            type: 'confession',
+            preview: 'An important family secret that should only be revealed after my passing...',
+            createdAt: '2023-09-20',
+            encryptionStatus: true
+          },
+          {
+            id: 3,
+            title: 'Career Advice for My Children',
+            type: 'advice',
+            preview: 'Lessons learned from my career path and advice for my children as they navigate their own careers...',
+            createdAt: '2023-10-05',
+            encryptionStatus: true
+          },
+          {
+            id: 4,
+            title: 'My Final Wishes',
+            type: 'wishes',
+            preview: 'Special requests and personal wishes for my loved ones to consider after I\'m gone...',
+            createdAt: '2023-10-10',
+            encryptionStatus: true
+          }
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadVaultItems();
+  }, []);
   
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -105,32 +125,63 @@ export const TankLegacyVault: React.FC = () => {
     getTypeName(item.type).toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const handleView = (id: number) => {
+  const handleView = (id: number | string) => {
     toast({
       title: "Viewing vault item",
       description: `Opening vault item #${id} for viewing.`
     });
   };
   
-  const handleEdit = (id: number) => {
+  const handleEdit = (id: number | string) => {
     toast({
       title: "Edit vault item",
       description: `Opening vault item #${id} for editing.`
     });
   };
   
-  const handleDelete = (id: number) => {
-    setVaultItems(vaultItems.filter(item => item.id !== id));
-    toast({
-      title: "Vault item deleted",
-      description: "The vault item has been permanently deleted."
-    });
+  const handleDelete = async (id: number | string) => {
+    try {
+      await deleteLegacyVaultItem(id.toString());
+      setVaultItems(vaultItems.filter(item => item.id !== id));
+      toast({
+        title: "Vault item deleted",
+        description: "The vault item has been permanently deleted."
+      });
+    } catch (err) {
+      console.error('Error deleting vault item:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete the vault item. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleAddNew = () => {
-    // In a demo, show an upgrade modal instead of creating
     setShowUpgradeModal(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 text-willtank-600 animate-spin mb-4" />
+        <p className="text-gray-600">Loading your vault items...</p>
+      </div>
+    );
+  }
+
+  if (error && vaultItems.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+          <BookOpen className="h-8 w-8 text-red-500" />
+        </div>
+        <h3 className="text-lg font-medium mb-2">Failed to load vault items</h3>
+        <p className="text-gray-500 mb-4">{error}</p>
+        <Button onClick={() => window.location.reload()}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div>

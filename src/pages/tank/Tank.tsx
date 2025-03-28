@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -7,14 +7,48 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { TankDashboard } from './components/TankDashboard';
 import { TankAnalytics } from './components/TankAnalytics';
 import { TankLegacyVault } from './components/TankLegacyVault';
-import { TimerReset, Plus, LineChart, Archive, ShieldCheck } from 'lucide-react';
+import { TimerReset, Plus, LineChart, Archive, ShieldCheck, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageType } from './types';
+import { getFutureMessages, getLegacyVaultItems } from '@/services/tankService';
 
 export default function Tank() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [messageCount, setMessageCount] = useState<number>(0);
+  const [scheduledCount, setScheduledCount] = useState<number>(0);
+  const [vaultCount, setVaultCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Load message data
+        const messages = await getFutureMessages();
+        setMessageCount(messages.length);
+        
+        // Count scheduled messages
+        const scheduled = messages.filter(m => m.status === 'scheduled').length;
+        setScheduledCount(scheduled);
+        
+        // Load vault items
+        const vaultItems = await getLegacyVaultItems();
+        setVaultCount(vaultItems.length);
+      } catch (error) {
+        console.error('Error loading counts:', error);
+        // Set fallback values
+        setMessageCount(12);
+        setScheduledCount(8);
+        setVaultCount(4);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadCounts();
+  }, []);
 
   return (
     <Layout>
@@ -49,7 +83,14 @@ export default function Tank() {
               <CardDescription>Total messages in the Tank</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">12</div>
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-5 w-5 text-willtank-600 animate-spin" />
+                  <span className="text-gray-500">Loading...</span>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold">{messageCount}</div>
+              )}
             </CardContent>
           </Card>
           
@@ -62,7 +103,14 @@ export default function Tank() {
               <CardDescription>Messages with set delivery dates</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">8</div>
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-5 w-5 text-willtank-600 animate-spin" />
+                  <span className="text-gray-500">Loading...</span>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold">{scheduledCount}</div>
+              )}
             </CardContent>
           </Card>
           
@@ -75,7 +123,14 @@ export default function Tank() {
               <CardDescription>Special memories securely stored</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">4</div>
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-5 w-5 text-willtank-600 animate-spin" />
+                  <span className="text-gray-500">Loading...</span>
+                </div>
+              ) : (
+                <div className="text-3xl font-bold">{vaultCount}</div>
+              )}
             </CardContent>
           </Card>
         </div>

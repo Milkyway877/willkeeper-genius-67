@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -14,7 +13,8 @@ import {
   Play, 
   SendHorizonal,
   Shield,
-  AlarmClock
+  AlarmClock,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Message, MessageStatus, MessageType } from '../types';
+import { getFutureMessages, deleteFutureMessage, updateFutureMessage } from '@/services/tankService';
 
 const getTypeIcon = (type: MessageType) => {
   switch (type) {
@@ -56,68 +57,87 @@ const getStatusBadge = (status: MessageStatus) => {
   }
 };
 
-const demoMessages: Message[] = [
-  {
-    id: 1,
-    type: 'letter',
-    title: 'Birthday Wishes for Sarah',
-    recipient: 'Sarah Williams',
-    deliveryDate: '2025-06-15',
-    status: 'scheduled',
-    preview: 'A heartfelt letter with birthday wishes and life advice for when...'
-  },
-  {
-    id: 2,
-    type: 'video',
-    title: 'Wedding Day Message',
-    recipient: 'Michael Johnson',
-    deliveryDate: '2026-08-20',
-    status: 'draft',
-    preview: 'Video recording with special messages for Michael\'s wedding day...'
-  },
-  {
-    id: 3,
-    type: 'audio',
-    title: 'Life Advice Recording',
-    recipient: 'Emily Wilson',
-    deliveryDate: '2024-12-25',
-    status: 'scheduled',
-    preview: 'Audio recording with life advice and special memories shared...'
-  },
-  {
-    id: 4,
-    type: 'document',
-    title: 'Family History Documents',
-    recipient: 'James Anderson',
-    deliveryDate: '2027-03-10',
-    status: 'scheduled',
-    preview: 'Collection of important family history documents and photos...'
-  },
-  {
-    id: 5,
-    type: 'letter',
-    title: 'Graduation Congratulations',
-    recipient: 'Lisa Parker',
-    deliveryDate: '2025-05-30',
-    status: 'scheduled',
-    preview: 'Congratulatory letter for Lisa\'s college graduation with advice...'
-  },
-  {
-    id: 6,
-    type: 'video',
-    title: 'Anniversary Video',
-    recipient: 'Robert & Emma',
-    deliveryDate: '2023-11-05',
-    status: 'delivered',
-    preview: 'Special video message for Robert and Emma\'s 25th wedding anniversary...'
-  }
-];
-
 export const TankDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
-  const [messages, setMessages] = useState<Message[]>(demoMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getFutureMessages();
+        setMessages(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading messages:', err);
+        setError('Failed to load messages. Please try again later.');
+        setMessages([
+          {
+            id: 1,
+            type: 'letter',
+            title: 'Birthday Wishes for Sarah',
+            recipient: 'Sarah Williams',
+            deliveryDate: '2025-06-15',
+            status: 'scheduled',
+            preview: 'A heartfelt letter with birthday wishes and life advice for when...'
+          },
+          {
+            id: 2,
+            type: 'video',
+            title: 'Wedding Day Message',
+            recipient: 'Michael Johnson',
+            deliveryDate: '2026-08-20',
+            status: 'draft',
+            preview: 'Video recording with special messages for Michael\'s wedding day...'
+          },
+          {
+            id: 3,
+            type: 'audio',
+            title: 'Life Advice Recording',
+            recipient: 'Emily Wilson',
+            deliveryDate: '2024-12-25',
+            status: 'scheduled',
+            preview: 'Audio recording with life advice and special memories shared...'
+          },
+          {
+            id: 4,
+            type: 'document',
+            title: 'Family History Documents',
+            recipient: 'James Anderson',
+            deliveryDate: '2027-03-10',
+            status: 'scheduled',
+            preview: 'Collection of important family history documents and photos...'
+          },
+          {
+            id: 5,
+            type: 'letter',
+            title: 'Graduation Congratulations',
+            recipient: 'Lisa Parker',
+            deliveryDate: '2025-05-30',
+            status: 'scheduled',
+            preview: 'Congratulatory letter for Lisa\'s college graduation with advice...'
+          },
+          {
+            id: 6,
+            type: 'video',
+            title: 'Anniversary Video',
+            recipient: 'Robert & Emma',
+            deliveryDate: '2023-11-05',
+            status: 'delivered',
+            preview: 'Special video message for Robert and Emma\'s 25th wedding anniversary...'
+          }
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadMessages();
+  }, []);
   
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -128,38 +148,80 @@ export const TankDashboard: React.FC = () => {
     message.recipient.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const handleEdit = (id: number) => {
-    // Navigate to edit page (in a real app)
+  const handleEdit = (id: number | string) => {
     toast({
       title: "Edit message",
       description: `Opening message #${id} for editing.`
     });
   };
   
-  const handleDelete = (id: number) => {
-    // Delete message logic (in a real app)
-    setMessages(messages.filter(message => message.id !== id));
-    toast({
-      title: "Message deleted",
-      description: "The message has been permanently deleted."
-    });
+  const handleDelete = async (id: number | string) => {
+    try {
+      await deleteFutureMessage(id.toString());
+      setMessages(messages.filter(message => message.id !== id));
+      toast({
+        title: "Message deleted",
+        description: "The message has been permanently deleted."
+      });
+    } catch (err) {
+      console.error('Error deleting message:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete the message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
-  const handlePreview = (id: number) => {
-    // Preview message logic (in a real app)
+  const handlePreview = (id: number | string) => {
     toast({
       title: "Preview message",
       description: `Previewing message #${id}.`
     });
   };
   
-  const handleVerify = (id: number) => {
-    // Verify message logic (in a real app)
-    toast({
-      title: "Message verified",
-      description: "The message has been verified for delivery."
-    });
+  const handleVerify = async (id: number | string) => {
+    try {
+      await updateFutureMessage(id.toString(), { status: 'verified' });
+      setMessages(messages.map(message => 
+        message.id === id ? { ...message, status: 'verified' } : message
+      ));
+      
+      toast({
+        title: "Message verified",
+        description: "The message has been verified for delivery."
+      });
+    } catch (err) {
+      console.error('Error verifying message:', err);
+      toast({
+        title: "Error",
+        description: "Failed to verify the message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 text-willtank-600 animate-spin mb-4" />
+        <p className="text-gray-600">Loading your messages...</p>
+      </div>
+    );
+  }
+
+  if (error && messages.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+          <FileText className="h-8 w-8 text-red-500" />
+        </div>
+        <h3 className="text-lg font-medium mb-2">Failed to load messages</h3>
+        <p className="text-gray-500 mb-4">{error}</p>
+        <Button onClick={() => window.location.reload()}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div>
