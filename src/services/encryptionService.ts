@@ -1,5 +1,5 @@
 
-// Fix the OTPAuth import
+// Import OTPAuth correctly
 import * as OTPAuth from 'otpauth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -62,8 +62,12 @@ export function generateTOTPUri(secret: string, account: string, issuer: string 
  * @returns A formatted TOTP secret key
  */
 export function generateTOTPSecret(): { secret: string; qrCodeUrl: string } {
-  // Generate a random secret key of 20 bytes (160 bits)
-  const secret = OTPAuth.Secret.random(20);
+  // Generate a random buffer of 20 bytes (160 bits)
+  const buffer = new Uint8Array(20);
+  crypto.getRandomValues(buffer);
+  
+  // Create a new Secret from the buffer
+  const secret = new OTPAuth.Secret({ buffer });
   const base32Secret = secret.base32;
   
   // Format the secret in groups of 4 characters for better readability
