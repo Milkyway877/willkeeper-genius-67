@@ -33,25 +33,12 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
   return (
     <div className={cn('flex items-center', className)}>
       <div className={cn('flex items-center gap-2', getSizeClasses(), getColorClasses())}>
-        {pixelated ? (
-          <div className="flex items-center">
-            <img 
-              src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
-              alt="WillTank Logo" 
-              className={cn('h-full w-auto object-contain mr-2')}
-            />
-            <span className="font-bold tracking-tight text-2xl">WillTank</span>
-          </div>
-        ) : (
-          <>
-            <img 
-              src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
-              alt="WillTank Logo" 
-              className={cn('h-full w-auto object-contain')}
-            />
-            <span className="tracking-tight font-bold text-xl md:text-2xl">WillTank</span>
-          </>
-        )}
+        <img 
+          src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
+          alt="WillTank Logo" 
+          className={cn('h-full w-auto object-contain')}
+        />
+        <span className="tracking-tight font-bold text-xl md:text-2xl">WillTank</span>
       </div>
       {showSlogan && (
         <span className="text-xs text-gray-500 italic ml-2">Your Trusted Legacy Keeper</span>

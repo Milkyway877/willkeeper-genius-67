@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/ui/logo/Logo';
@@ -29,7 +30,7 @@ interface SidebarLinkProps {
   isCollapsed: boolean;
 }
 
-const SidebarLink = ({ to, icon, label, isCollapsed }: SidebarLinkProps) => {
+const SidebarLink = ({ to, icon, label, isCollapsed }: SidebarLinkProps) {
   const location = useLocation();
   const isActive = location.pathname === to || location.pathname.startsWith(`${to}/`);
   const [isHovered, setIsHovered] = useState(false);
