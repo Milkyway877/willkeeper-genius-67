@@ -13,10 +13,12 @@ export interface Message {
   preview?: string;
 }
 
+export type VaultItemType = 'story' | 'confession' | 'wishes' | 'advice';
+
 export interface LegacyVaultItem {
   id: string;
   title: string;
-  type: 'story' | 'confession' | 'wishes' | 'advice';
+  type: VaultItemType;
   preview: string;
   document_url: string;
   createdAt: string;

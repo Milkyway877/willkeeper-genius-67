@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Plus, FileText, Loader2, Filter } from 'lucide-react';
+import { Search, Plus, FileText, Loader2, Filter, Sparkles } from 'lucide-react';
 import { getLegacyVaultItems, deleteLegacyVaultItem } from '@/services/tankService';
 import { LegacyVaultItem } from '../types';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ export const TankLegacyVault: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<LegacyVaultItem | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [filterType, setFilterType] = useState<string | null>(null);
   
   useEffect(() => {
     loadItems();
@@ -100,10 +101,25 @@ export const TankLegacyVault: React.FC = () => {
     setItems([newItem, ...items]);
   };
 
-  const filteredItems = items.filter(item => 
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.preview.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleFilterClick = (type: string | null) => {
+    setFilterType(type === filterType ? null : type);
+  };
+
+  const getFilteredItems = () => {
+    return items.filter(item => {
+      // Apply search filter
+      const matchesSearch = 
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.preview.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Apply type filter
+      const matchesType = filterType ? item.type === filterType : true;
+      
+      return matchesSearch && matchesType;
+    });
+  };
+
+  const filteredItems = getFilteredItems();
 
   if (isLoading) {
     return (
@@ -132,8 +148,16 @@ export const TankLegacyVault: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <Card className="w-full">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">
-              Legacy Vault ({items.length} {items.length === 1 ? 'item' : 'items'})
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>Legacy Vault ({items.length} {items.length === 1 ? 'item' : 'items'})</span>
+              <Button 
+                className="bg-willtank-600 hover:bg-willtank-700 text-white flex-shrink-0"
+                onClick={handleAddItemClick}
+                size="sm"
+              >
+                <Plus size={16} className="mr-2" />
+                Add Item
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -147,20 +171,34 @@ export const TankLegacyVault: React.FC = () => {
                   onChange={handleSearch}
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button 
-                  variant="outline" 
-                  className="flex-shrink-0"
+                  variant={filterType === 'story' ? "default" : "outline"} 
+                  className="flex-shrink-0 text-xs px-3 h-9"
+                  onClick={() => handleFilterClick('story')}
                 >
-                  <Filter size={16} className="mr-2" />
-                  Filter
+                  Stories
                 </Button>
                 <Button 
-                  className="bg-willtank-600 hover:bg-willtank-700 text-white flex-shrink-0"
-                  onClick={handleAddItemClick}
+                  variant={filterType === 'confession' ? "default" : "outline"} 
+                  className="flex-shrink-0 text-xs px-3 h-9"
+                  onClick={() => handleFilterClick('confession')}
                 >
-                  <Plus size={16} className="mr-2" />
-                  Add Item
+                  Confessions
+                </Button>
+                <Button 
+                  variant={filterType === 'wishes' ? "default" : "outline"} 
+                  className="flex-shrink-0 text-xs px-3 h-9"
+                  onClick={() => handleFilterClick('wishes')}
+                >
+                  Wishes
+                </Button>
+                <Button 
+                  variant={filterType === 'advice' ? "default" : "outline"} 
+                  className="flex-shrink-0 text-xs px-3 h-9"
+                  onClick={() => handleFilterClick('advice')}
+                >
+                  Advice
                 </Button>
               </div>
             </div>
@@ -172,13 +210,16 @@ export const TankLegacyVault: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-medium mb-2">No items found</h3>
                 <p className="text-gray-500 mb-4">
-                  {searchQuery ? 
-                    "No items match your search criteria. Try a different search term." : 
+                  {searchQuery || filterType ? 
+                    "No items match your search criteria. Try different filters." : 
                     "Your legacy vault is empty. Add your first item to get started."
                   }
                 </p>
-                {!searchQuery && (
-                  <Button onClick={handleAddItemClick}>Add Legacy Item</Button>
+                {!searchQuery && !filterType && (
+                  <Button onClick={handleAddItemClick} className="gap-2">
+                    <Plus size={16} />
+                    Add Legacy Item
+                  </Button>
                 )}
               </div>
             ) : (

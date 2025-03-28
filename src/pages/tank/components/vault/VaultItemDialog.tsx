@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { LegacyVaultItem } from '../../types';
-import { FileText, Lock, Unlock, Eye, Edit, Trash2, Save, XCircle } from 'lucide-react';
+import { LegacyVaultItem, VaultItemType } from '../../types';
+import { FileText, Lock, Unlock, Eye, Edit, Trash2, Save, XCircle, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { toggleItemEncryption, updateLegacyVaultItem, deleteLegacyVaultItem } from '@/services/tankService';
@@ -28,9 +28,10 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(item?.title || '');
-  const [type, setType] = useState<'story' | 'confession' | 'wishes' | 'advice'>(item?.type || 'story');
+  const [type, setType] = useState<VaultItemType>(item?.type || 'story');
   const [preview, setPreview] = useState(item?.preview || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUsingAI, setIsUsingAI] = useState(false);
 
   React.useEffect(() => {
     if (item) {
@@ -38,11 +39,13 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
       setType(item.type);
       setPreview(item.preview);
       setIsEditing(false);
+      setIsUsingAI(false);
     }
   }, [item]);
 
   const handleClose = () => {
     setIsEditing(false);
+    setIsUsingAI(false);
     onClose();
   };
 
@@ -57,6 +60,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
       setPreview(item.preview);
     }
     setIsEditing(false);
+    setIsUsingAI(false);
   };
 
   const handleSave = async () => {
@@ -144,6 +148,20 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
     }
   };
 
+  const enhanceWithAI = () => {
+    setIsLoading(true);
+    // Simulate AI enhancement
+    setTimeout(() => {
+      const enhancedPreview = `${preview}\n\nEnhanced by AI: This ${type} represents an important part of your legacy. It contains valuable information that future generations will appreciate.`;
+      setPreview(enhancedPreview);
+      toast({
+        title: "AI enhancement applied",
+        description: "Your content has been enhanced with AI suggestions."
+      });
+      setIsLoading(false);
+    }, 1000);
+  };
+
   const getItemTypeIcon = () => {
     switch (item?.type) {
       case 'story':
@@ -202,7 +220,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
               <Label htmlFor="type">Type</Label>
               <Select 
                 value={type} 
-                onValueChange={(value: 'story' | 'confession' | 'wishes' | 'advice') => setType(value)}
+                onValueChange={(value: string) => setType(value as VaultItemType)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
@@ -217,7 +235,19 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="preview">Preview / Summary</Label>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="preview">Preview / Summary</Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={enhanceWithAI}
+                  disabled={isLoading}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Enhance with AI
+                </Button>
+              </div>
               <Textarea 
                 id="preview" 
                 value={preview} 
@@ -245,7 +275,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
             
             <div className="border rounded-md p-4 bg-gray-50">
               <div className="text-sm text-gray-500 mb-1">Preview</div>
-              <p className="text-sm">{item.preview || "No preview available."}</p>
+              <p className="text-sm whitespace-pre-line">{item.preview || "No preview available."}</p>
             </div>
             
             {item.document_url && (

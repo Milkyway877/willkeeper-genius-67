@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem } from "../pages/tank/types";
+import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem, VaultItemType } from "../pages/tank/types";
 import { createSystemNotification } from "./notificationService";
 
 export interface FutureMessage {
@@ -129,8 +130,8 @@ export const getLegacyVaultItems = async (): Promise<UILegacyVaultItem[]> => {
 };
 
 // Helper function to map database category to UI type
-const mapCategoryToType = (category: string | null): 'story' | 'confession' | 'wishes' | 'advice' => {
-  const map: Record<string, 'story' | 'confession' | 'wishes' | 'advice'> = {
+const mapCategoryToType = (category: string | null): VaultItemType => {
+  const map: Record<string, VaultItemType> = {
     'story': 'story',
     'confession': 'confession',
     'wishes': 'wishes',
@@ -210,6 +211,11 @@ export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVa
       console.error('Error updating legacy vault item:', error);
       return null;
     }
+    
+    await createSystemNotification('item_saved', {
+      title: 'Legacy Item Updated',
+      description: `Your legacy item "${data.title}" has been updated.`
+    });
     
     // Convert back to UI schema
     return {
