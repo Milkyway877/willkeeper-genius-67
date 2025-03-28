@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as OTPAuth from "otpauth";
 
@@ -26,7 +25,7 @@ export interface EncryptionKey {
   type: string;
   algorithm: string;
   strength: string;
-  value: string;
+  key_material: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -76,8 +75,9 @@ export function validateTOTP(token: string, secret: string): boolean {
       secret: OTPAuth.Secret.fromBase32(cleanSecret)
     });
     
-    // Delta of 1 allows for a bit of time drift (±30 seconds)
-    const result = totp.validate({ token: cleanToken, window: 1 });
+    // Use a larger window to allow for time drift (±1 minute)
+    const result = totp.validate({ token: cleanToken, window: 2 });
+    console.log('TOTP validation result:', result !== null ? 'Valid' : 'Invalid');
     
     // If result is null, the token is invalid
     return result !== null;
@@ -99,13 +99,9 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
     if (!user) {
       throw new Error('No authenticated user found');
     }
-    
-    // Generate a new random string since fromRandom is not available
-    const randomBytes = Array.from(crypto.getRandomValues(new Uint8Array(20)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    const base32Encoded = base32Encode(randomBytes);
-    const secret = OTPAuth.Secret.fromBase32(base32Encoded);
+
+    // Generate a secure random string for the secret
+    const secret = generateSecureBase32(20); // 20 bytes = 160 bits (recommended for TOTP)
     
     // Create a new TOTP object
     const totp = new OTPAuth.TOTP({
@@ -114,14 +110,16 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
       algorithm: 'SHA1',
       digits: 6,
       period: 30,
-      secret: secret
+      secret: OTPAuth.Secret.fromBase32(secret)
     });
     
     // Generate the QR code URL
     const qrCodeUrl = totp.toString();
     
+    console.log('Generated new TOTP secret:', secret);
+    
     return {
-      secret: secret.base32,
+      secret,
       qrCodeUrl
     };
   } catch (error) {
@@ -130,33 +128,36 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
   }
 }
 
-// Helper function to encode strings as base32
-function base32Encode(str: string): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+/**
+ * Generates a secure random Base32 string
+ * @param byteLength Length in bytes of the random data
+ * @returns Base32 encoded string
+ */
+function generateSecureBase32(byteLength: number = 20): string {
+  const randomBytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(randomBytes);
+  
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let result = '';
   let bits = 0;
   let value = 0;
-  let output = '';
   
-  for (let i = 0; i < str.length; i++) {
-    value = (value << 8) | str.charCodeAt(i);
+  for (let i = 0; i < randomBytes.length; i++) {
+    value = (value << 8) | randomBytes[i];
     bits += 8;
     
     while (bits >= 5) {
-      output += alphabet[(value >>> (bits - 5)) & 31];
+      result += ALPHABET[(value >>> (bits - 5)) & 31];
       bits -= 5;
     }
   }
   
   if (bits > 0) {
-    output += alphabet[(value << (5 - bits)) & 31];
+    result += ALPHABET[(value << (5 - bits)) & 31];
   }
   
-  // Pad with '=' as needed
-  while (output.length % 8 !== 0) {
-    output += '=';
-  }
-  
-  return output;
+  // Format the secret with spaces for readability (every 4 characters)
+  return result.match(/.{1,4}/g)?.join(' ') || result;
 }
 
 /**
@@ -268,8 +269,11 @@ export async function getUserSecurity(): Promise<UserSecurity | null> {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      throw new Error('No authenticated user found');
+      console.log('No authenticated user found');
+      return null;
     }
+    
+    console.log('Getting security info for user:', user.id);
     
     // Get user's security record
     const { data, error } = await supabase
@@ -279,14 +283,11 @@ export async function getUserSecurity(): Promise<UserSecurity | null> {
       .maybeSingle();
       
     if (error) {
-      // Don't throw for PGRST116 - this just means no record was found
-      if (error.code !== 'PGRST116') {
-        console.error('Error getting user security:', error);
-        throw error;
-      }
+      console.error('Error getting user security:', error);
       return null;
     }
     
+    console.log('User security record:', data);
     return data as UserSecurity;
   } catch (error) {
     console.error('Error getting user security:', error);
@@ -306,6 +307,8 @@ export async function createUserSecurity(): Promise<UserSecurity | null> {
     if (!user) {
       throw new Error('No authenticated user found');
     }
+    
+    console.log('Creating security record for user:', user.id);
     
     // Create encryption key for user
     const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
@@ -329,6 +332,7 @@ export async function createUserSecurity(): Promise<UserSecurity | null> {
       throw error;
     }
     
+    console.log('Successfully created security record:', data);
     return data as UserSecurity;
   } catch (error) {
     console.error('Error creating user security:', error);

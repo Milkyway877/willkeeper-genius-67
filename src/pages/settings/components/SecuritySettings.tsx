@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Shield, Key, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { getUserSecurity } from '@/services/encryptionService';
+import { getUserSecurity, createUserSecurity } from '@/services/encryptionService';
 
 export function SecuritySettings() {
   const { toast } = useToast();
@@ -29,14 +29,43 @@ export function SecuritySettings() {
     try {
       setLoading(true);
       
+      // Check if the user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "You need to be signed in to access security settings.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      
+      console.log("Fetching security settings for user:", user.id);
+      
       // Get user security settings from the database
-      const userSecurity = await getUserSecurity();
+      let userSecurity = await getUserSecurity();
+      
+      // If no security record exists, create one
+      if (!userSecurity) {
+        console.log("No security record found, creating one...");
+        userSecurity = await createUserSecurity();
+      }
       
       if (userSecurity) {
+        console.log("Retrieved security settings:", userSecurity);
         setSecurity(prev => ({
           ...prev,
           twoFactorEnabled: userSecurity.google_auth_enabled || false,
         }));
+      } else {
+        console.error("Failed to get or create security settings");
+        toast({
+          title: "Error",
+          description: "Failed to load security settings. Please try again.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error fetching security settings:', error);
@@ -73,26 +102,46 @@ export function SecuritySettings() {
   
   // Handle password change
   const handlePasswordChange = async () => {
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      'your@email.com',
-      {
-        redirectTo: `${window.location.origin}/reset-password`,
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user || !user.email) {
+        toast({
+          title: "Error",
+          description: "User email not found. Please sign in again.",
+          variant: "destructive"
+        });
+        return;
       }
-    );
-    
-    if (error) {
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        user.email,
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+        }
+      );
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your email for the password reset link.",
+      });
+    } catch (error) {
+      console.error('Error sending password reset:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to send password reset email. Please try again.",
         variant: "destructive"
       });
-      return;
     }
-    
-    toast({
-      title: "Password Reset Email Sent",
-      description: "Check your email for the password reset link.",
-    });
   };
   
   return (

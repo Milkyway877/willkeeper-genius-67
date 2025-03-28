@@ -11,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { supabase } from '@/integrations/supabase/client';
-import { validateTOTP } from '@/services/encryptionService';
+import { validateTOTP, createUserSecurity } from '@/services/encryptionService';
 import { QRCode } from '@/components/ui/QRCode';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
@@ -47,6 +47,11 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   };
 
   const verifyOTP = async (code: string) => {
+    if (!code || code.length !== 6) {
+      setVerificationError("Please enter a valid 6-digit code");
+      return;
+    }
+    
     setVerificationError(null);
     setIsLoading(true);
     
@@ -57,8 +62,12 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         throw new Error("Missing authenticator key. Please refresh the page and try again.");
       }
       
-      // Validate the OTP code using the validateTOTP function from encryptionService
+      console.log("Verifying OTP:", cleanCode);
+      console.log("Using authenticator key:", authenticatorKey);
+      
+      // Validate the OTP code
       const isValid = validateTOTP(cleanCode, authenticatorKey);
+      console.log("OTP validation result:", isValid);
       
       if (!isValid) {
         setVerificationError("Invalid verification code. Please try again.");
@@ -73,51 +82,27 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         throw new Error("User not found. Please ensure you're logged in.");
       }
       
-      // Update user security record
-      const { data: existingRecord, error: queryError } = await supabase
-        .from('user_security')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-        
-      if (queryError && queryError.code !== 'PGRST116') {
-        console.error("Error checking user security record:", queryError);
-        throw new Error("Error checking security records");
-      }
+      console.log("Setting up 2FA for user:", user.id);
       
-      if (existingRecord) {
-        // Update existing record
-        const { error: updateError } = await supabase
-          .from('user_security')
-          .update({
-            google_auth_enabled: enableTwoFactor,
-            google_auth_secret: authenticatorKey,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-          
-        if (updateError) {
-          console.error("Error updating security record:", updateError);
-          throw new Error(updateError.message);
-        }
-      } else {
-        // Create new record
-        const { error: insertError } = await supabase
-          .from('user_security')
-          .insert({
-            user_id: user.id,
-            google_auth_enabled: enableTwoFactor,
-            google_auth_secret: authenticatorKey,
-            encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
-              .map(b => b.toString(16).padStart(2, '0'))
-              .join(''),
-            updated_at: new Date().toISOString()
-          });
-          
-        if (insertError) {
-          console.error("Error creating security record:", insertError);
-          throw new Error(insertError.message);
-        }
+      // First try to create a security record if it doesn't exist
+      await createUserSecurity();
+      
+      // Update user security record
+      const { error: updateError } = await supabase
+        .from('user_security')
+        .upsert({
+          user_id: user.id,
+          google_auth_enabled: enableTwoFactor,
+          google_auth_secret: authenticatorKey,
+          encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join(''),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        
+      if (updateError) {
+        console.error("Error updating security record:", updateError);
+        throw new Error(updateError.message);
       }
       
       toast({
@@ -130,7 +115,11 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       onNext();
     } catch (error) {
       console.error("Error setting up authenticator:", error);
-      setVerificationError(error.message || "Failed to set up authenticator. Please try again.");
+      setVerificationError(
+        error instanceof Error 
+          ? error.message 
+          : "Failed to set up authenticator. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
