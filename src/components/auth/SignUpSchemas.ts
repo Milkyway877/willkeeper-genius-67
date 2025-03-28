@@ -14,3 +14,53 @@ export const userDetailsSchema = z.object({
 });
 
 export type UserDetailsInputs = z.infer<typeof userDetailsSchema>;
+
+// Add all the missing schemas required by the step components
+export const authenticatorSchema = z.object({
+  authMethod: z.string().min(1, 'Please select an authentication method'),
+  phoneNumber: z.string().optional(),
+  verificationCode: z.string().optional(),
+});
+
+export type AuthenticatorInputs = z.infer<typeof authenticatorSchema>;
+
+export const kycSchema = z.object({
+  idType: z.string().min(1, 'Please select an ID type'),
+  idNumber: z.string().min(1, 'ID number is required'),
+  idExpiryDate: z.date().optional(),
+  idFrontImage: z.string().optional(),
+  idBackImage: z.string().optional(),
+  selfieImage: z.string().optional(),
+});
+
+export type KycInputs = z.infer<typeof kycSchema>;
+
+export const locationSchema = z.object({
+  country: z.string().min(1, 'Country is required'),
+  city: z.string().min(1, 'City is required'),
+});
+
+export type LocationInputs = z.infer<typeof locationSchema>;
+
+export const userBackgroundSchema = z.object({
+  occupation: z.string().min(1, 'Occupation is required'),
+  familyStatus: z.string().min(1, 'Family status is required'),
+  dependents: z.number().int().min(0, 'Number must be 0 or more'),
+  assets: z.array(z.string()).optional(),
+});
+
+export type UserBackgroundInputs = z.infer<typeof userBackgroundSchema>;
+
+export const subscriptionSchema = z.object({
+  plan: z.string().min(1, 'Please select a plan'),
+  billingCycle: z.string().optional(),
+  paymentMethod: z.string().optional(),
+});
+
+export type SubscriptionInputs = z.infer<typeof subscriptionSchema>;
+
+export const templateSchema = z.object({
+  templateChoice: z.string().min(1, 'Please select a template'),
+});
+
+export type TemplateInputs = z.infer<typeof templateSchema>;
