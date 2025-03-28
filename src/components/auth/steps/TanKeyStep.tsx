@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
@@ -12,13 +12,47 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { tanKeyService } from '@/services/tanKeyService';
 import { supabase } from '@/integrations/supabase/client';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+
+// Function to generate a cryptographically secure random TanKey
+function generateSecureTanKey(length = 24): string {
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+  let result = '';
+  const randomValues = new Uint32Array(length);
+  
+  // Get cryptographically strong random values
+  window.crypto.getRandomValues(randomValues);
+  
+  for (let i = 0; i < length; i++) {
+    // Use modulo to get an index within the charset range
+    const randomIndex = randomValues[i] % charset.length;
+    result += charset[randomIndex];
+    
+    // Add hyphen after every 6 characters except at the end
+    if ((i + 1) % 6 === 0 && i < length - 1) {
+      result += '-';
+    }
+  }
+  
+  return result;
+}
 
 interface TanKeyStepProps {
-  tanKey: string;
   onNext: () => void;
 }
 
-export function TanKeyStep({ tanKey, onNext }: TanKeyStepProps) {
+export function TanKeyStep({ onNext }: TanKeyStepProps) {
+  const [tanKey, setTanKey] = useLocalStorage<string>('temp_tan_key', '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  // Generate a secure TanKey if one doesn't exist yet
+  useEffect(() => {
+    if (!tanKey) {
+      setTanKey(generateSecureTanKey());
+    }
+  }, [tanKey, setTanKey]);
+
   const form = useForm<TanKeyInputs>({
     resolver: zodResolver(tanKeySchema),
     defaultValues: {
@@ -41,14 +75,34 @@ export function TanKeyStep({ tanKey, onNext }: TanKeyStepProps) {
     });
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(tanKey);
+    setCopied(true);
+    toast({
+      title: "TanKey copied",
+      description: "The encryption key has been copied to your clipboard."
+    });
+    
+    // Reset copied state after 2 seconds
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleNext = async () => {
     try {
+      setIsLoading(true);
+      
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (user) {
-        // Store the TanKey in the database
-        await tanKeyService.storeTanKey(user.id, tanKey);
+      if (!user) {
+        throw new Error("User not found");
+      }
+      
+      // Store the TanKey in the database
+      const success = await tanKeyService.storeTanKey(user.id, tanKey);
+      
+      if (!success) {
+        throw new Error("Failed to store TanKey");
       }
       
       // Proceed to the next step
@@ -61,6 +115,8 @@ export function TanKeyStep({ tanKey, onNext }: TanKeyStepProps) {
         description: "Could not save your TanKey. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,15 +134,10 @@ export function TanKeyStep({ tanKey, onNext }: TanKeyStepProps) {
                 <button
                   type="button"
                   className="p-1 bg-slate-100 rounded hover:bg-slate-200"
-                  onClick={() => {
-                    navigator.clipboard.writeText(tanKey);
-                    toast({ 
-                      title: "Copied to clipboard",
-                      description: "The encryption key has been copied to your clipboard."
-                    });
-                  }}
+                  onClick={copyToClipboard}
+                  aria-label="Copy to clipboard"
                 >
-                  <Copy size={14} />
+                  <Copy size={14} className={copied ? "text-green-500" : ""} />
                 </button>
               </div>
             </div>
@@ -132,8 +183,8 @@ export function TanKeyStep({ tanKey, onNext }: TanKeyStepProps) {
             )}
           />
           
-          <Button type="submit" className="w-full">
-            Continue <ArrowRight className="ml-2 h-4 w-4" />
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Saving..." : "Continue"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
         </form>
       </Form>

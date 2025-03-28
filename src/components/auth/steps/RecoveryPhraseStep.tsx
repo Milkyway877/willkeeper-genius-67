@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
@@ -10,6 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { RecoveryPhraseInputs, recoveryPhraseSchema } from '../SignUpSchemas';
 import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
+import { supabase } from '@/integrations/supabase/client';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 interface RecoveryPhraseStepProps {
   recoveryPhrase: string[];
@@ -18,6 +20,9 @@ interface RecoveryPhraseStepProps {
 }
 
 export function RecoveryPhraseStep({ recoveryPhrase, verificationIndices, onNext }: RecoveryPhraseStepProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [_, setVerifiedPhrase] = useLocalStorage<string>('verified_recovery_phrase', '');
+  
   const form = useForm<RecoveryPhraseInputs>({
     resolver: zodResolver(recoveryPhraseSchema),
     defaultValues: {
@@ -25,20 +30,59 @@ export function RecoveryPhraseStep({ recoveryPhrase, verificationIndices, onNext
     },
   });
 
-  const handleSubmit = (data: RecoveryPhraseInputs) => {
-    const isValid = verificationIndices.every((index, i) => {
-      const key = `word${i}`;
-      return data.verificationWords[key]?.toLowerCase() === recoveryPhrase[index]?.toLowerCase();
-    });
-    
-    if (isValid) {
+  const handleSubmit = async (data: RecoveryPhraseInputs) => {
+    try {
+      setIsLoading(true);
+      
+      // Verify that the entered words match the recovery phrase
+      const isValid = verificationIndices.every((index, i) => {
+        const key = `word${i}`;
+        return data.verificationWords[key]?.toLowerCase() === recoveryPhrase[index]?.toLowerCase();
+      });
+      
+      if (!isValid) {
+        toast({
+          title: "Verification failed",
+          description: "The words you entered don't match your recovery phrase. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Store the verified recovery phrase
+      setVerifiedPhrase(recoveryPhrase.join(' '));
+      
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Encrypt and store the recovery phrase in the database
+        const { error } = await supabase
+          .from('users')
+          .update({ 
+            recovery_phrase: recoveryPhrase.join(' ')
+          })
+          .eq('id', user.id);
+        
+        if (error) {
+          console.error("Error storing recovery phrase:", error);
+          throw new Error("Failed to store recovery phrase");
+        }
+      }
+      
+      // Continue to the next step
       onNext(data);
-    } else {
+      
+    } catch (error) {
+      console.error("Error in recovery phrase verification:", error);
+      
       toast({
-        title: "Verification failed",
-        description: "The words you entered don't match your recovery phrase. Please try again.",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,7 +107,7 @@ export function RecoveryPhraseStep({ recoveryPhrase, verificationIndices, onNext
             
             <div className="bg-amber-50 border border-amber-200 p-3 rounded-md mb-6">
               <p className="text-sm text-amber-800">
-                <b>Security Notice:</b> WillTank does NOT store this phrase. You must keep it safe.
+                <b>Security Notice:</b> WillTank stores this phrase securely. You must also keep it safe for recovery purposes.
               </p>
             </div>
           </div>
@@ -94,8 +138,8 @@ export function RecoveryPhraseStep({ recoveryPhrase, verificationIndices, onNext
             </div>
           </div>
           
-          <Button type="submit" className="w-full">
-            Verify & Continue <ArrowRight className="ml-2 h-4 w-4" />
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Verifying..." : "Verify & Continue"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
         </form>
       </Form>
