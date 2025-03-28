@@ -61,7 +61,11 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
       checkInFrequency: data.check_in_frequency.toString(),
       beneficiaryVerificationInterval: data.beneficiary_verification_interval.toString(),
       unlockMode: data.unlock_mode as 'pin' | 'executor' | 'trusted',
-      notificationPreferences: data.notification_preferences,
+      notificationPreferences: data.notification_preferences as {
+        email: boolean;
+        sms: boolean;
+        push: boolean;
+      },
       trustedContactEmail: data.trusted_contact_email || '',
       failsafeEnabled: data.failsafe_enabled
     };
@@ -81,7 +85,7 @@ const createDefaultVerificationSettings = async (userId: string): Promise<DeathV
       check_in_enabled: true,
       check_in_frequency: 7,
       beneficiary_verification_interval: 48,
-      unlock_mode: 'pin',
+      unlock_mode: 'pin' as const,
       notification_preferences: {
         email: true,
         sms: false,
@@ -112,7 +116,11 @@ const createDefaultVerificationSettings = async (userId: string): Promise<DeathV
       checkInFrequency: data.check_in_frequency.toString(),
       beneficiaryVerificationInterval: data.beneficiary_verification_interval.toString(),
       unlockMode: data.unlock_mode as 'pin' | 'executor' | 'trusted',
-      notificationPreferences: data.notification_preferences,
+      notificationPreferences: data.notification_preferences as {
+        email: boolean;
+        sms: boolean;
+        push: boolean;
+      },
       trustedContactEmail: data.trusted_contact_email || '',
       failsafeEnabled: data.failsafe_enabled
     };

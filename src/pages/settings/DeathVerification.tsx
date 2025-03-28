@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Calendar, 
@@ -34,7 +33,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getDeathVerificationSettings, updateDeathVerificationSettings } from '@/services/deathVerificationService';
+import { 
+  getDeathVerificationSettings, 
+  updateDeathVerificationSettings, 
+  DeathVerificationSettings 
+} from '@/services/deathVerificationService';
 
 export default function DeathVerification() {
   const { toast } = useToast();
@@ -43,7 +46,7 @@ export default function DeathVerification() {
   const [isLoading, setIsLoading] = useState(true);
   
   // Default settings
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<DeathVerificationSettings>({
     checkInEnabled: true,
     checkInFrequency: '7', // 7, 14, or 30 days
     beneficiaryVerificationInterval: '48', // 48 or 72 hours

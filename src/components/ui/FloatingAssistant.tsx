@@ -33,22 +33,32 @@ export function FloatingAssistant() {
       if (!user) return;
       
       // Check if user has death verification enabled
-      const { data: settings } = await supabase.rpc('get_death_verification_settings', { user_id_param: user.id });
+      const { data: settings, error: settingsError } = await supabase
+        .from('death_verification_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
         
-      if (!settings || !settings.length || !settings[0].check_in_enabled) {
+      if (settingsError || !settings || !settings.check_in_enabled) {
         return;
       }
       
       // Check last check-in
-      const { data: lastCheckIn } = await supabase.rpc('get_latest_checkin', { user_id_param: user.id });
+      const { data: lastCheckIn, error: checkInError } = await supabase
+        .from('death_verification_checkins')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('checked_in_at', { ascending: false })
+        .limit(1)
+        .single();
         
-      if (!lastCheckIn || !lastCheckIn.length) {
-        setCheckInNeeded(true);
+      if (checkInError && checkInError.code !== 'PGRST116') {
+        console.error('Error checking if check-in needed:', checkInError);
         return;
       }
       
-      // If next_check_in has passed, show notification
-      if (new Date(lastCheckIn[0].next_check_in) <= new Date()) {
+      // If no check-in found or next_check_in has passed, show notification
+      if (!lastCheckIn || new Date(lastCheckIn.next_check_in) <= new Date()) {
         setCheckInNeeded(true);
       } else {
         setCheckInNeeded(false);

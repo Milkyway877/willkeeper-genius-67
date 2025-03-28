@@ -45,7 +45,12 @@ export function DeathVerificationWidget() {
       }
       
       // Get last check-in info
-      const { data: checkInData, error: checkInError } = await supabase.rpc('get_latest_checkin', { user_id_param: user?.id });
+      const { data: checkInData, error: checkInError } = await supabase
+        .from('death_verification_checkins')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('checked_in_at', { ascending: false })
+        .limit(1);
       
       if (checkInError) {
         console.error('Error fetching check-in data:', checkInError);
