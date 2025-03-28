@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, User, Menu, X, Search, HelpCircle } from 'lucide-react';
+import { Bell, User, Menu, X, Search, HelpCircle, Shield, Briefcase, Map, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -28,9 +29,27 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const location = useLocation();
+  const { toast } = useToast();
   
   const toggleMobileMenu = () => {
     setShowMobileMenu(!showMobileMenu);
+  };
+
+  const handleProfileAction = (path: string) => {
+    navigate(path);
+    toast({
+      title: "Navigating",
+      description: `Going to ${path.split('/').pop() || 'dashboard'}`,
+    });
+  };
+  
+  const handleLogout = () => {
+    // In a real app, this would call an API to log out
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    });
+    navigate('/auth/signin');
   };
   
   // Check if we're on a dashboard-style page (authenticated) but not on landing pages
@@ -72,7 +91,12 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
               </Link>
               
               <div className="relative">
-                <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/notifications')}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative" 
+                  onClick={() => handleProfileAction('/notifications')}
+                >
                   <Bell size={20} />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
                 </Button>
@@ -82,25 +106,25 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="p-0 hover:bg-transparent">
                     <Avatar>
-                      <AvatarImage src="/avatar-placeholder.png" />
+                      <AvatarImage src="/avatar.png" alt="User" />
                       <AvatarFallback className="bg-willtank-100 text-willtank-700">AM</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 bg-white">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <DropdownMenuItem onClick={() => handleProfileAction('/settings')}>
                     Profile Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/security')}>
+                  <DropdownMenuItem onClick={() => handleProfileAction('/security')}>
                     Security
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/billing')}>
+                  <DropdownMenuItem onClick={() => handleProfileAction('/billing')}>
                     Billing
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/auth/signin')}>
+                  <DropdownMenuItem onClick={handleLogout}>
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -111,11 +135,26 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           <>
             {/* Original Navigation for non-dashboard pages */}
             <div className="hidden md:flex items-center space-x-6">
-              <Link to="/services" className="text-gray-600 hover:text-willtank-500 transition-colors">Our Services</Link>
-              <Link to="/security" className="text-gray-600 hover:text-willtank-500 transition-colors">Security</Link>
-              <Link to="/business" className="text-gray-600 hover:text-willtank-500 transition-colors">For Businesses</Link>
-              <Link to="/how-it-works" className="text-gray-600 hover:text-willtank-500 transition-colors">How It Works</Link>
-              <Link to="/contact" className="text-gray-600 hover:text-willtank-500 transition-colors">Contact Us</Link>
+              <Link to="/services" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
+                <Map size={18} />
+                <span>Our Services</span>
+              </Link>
+              <Link to="/security" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
+                <Shield size={18} />
+                <span>Security</span>
+              </Link>
+              <Link to="/business" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
+                <Briefcase size={18} />
+                <span>For Businesses</span>
+              </Link>
+              <Link to="/how-it-works" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
+                <Map size={18} />
+                <span>How It Works</span>
+              </Link>
+              <Link to="/contact" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
+                <Phone size={18} />
+                <span>Contact Us</span>
+              </Link>
               
               {isAuthenticated ? (
                 <div className="flex items-center gap-4 ml-2">
@@ -123,7 +162,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     className="p-2 rounded-full text-gray-500 hover:text-gray-900 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md relative"
                     whileHover={{ y: 2 }}
                     transition={{ type: "spring", stiffness: 500, damping: 17 }}
-                    onClick={() => navigate('/notifications')}
+                    onClick={() => handleProfileAction('/notifications')}
                   >
                     <Bell size={20} />
                     <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
@@ -132,7 +171,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm hover:shadow-md"
                     whileHover={{ scale: 1.05, y: 2 }}
                     transition={{ type: "spring", stiffness: 500, damping: 17 }}
-                    onClick={() => navigate('/settings')}
+                    onClick={() => handleProfileAction('/settings')}
                   >
                     <User size={20} />
                   </motion.button>
@@ -193,18 +232,23 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           ) : (
             <nav className="flex flex-col space-y-4">
               <Link to="/services" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                <Map size={16} />
                 Our Services
               </Link>
               <Link to="/security" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                <Shield size={16} />
                 Security
               </Link>
               <Link to="/business" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                <Briefcase size={16} />
                 For Business
               </Link>
               <Link to="/how-it-works" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                <Map size={16} />
                 How It Works
               </Link>
               <Link to="/contact" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                <Phone size={16} />
                 Contact Us
               </Link>
               
