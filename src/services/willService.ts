@@ -120,6 +120,38 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
   }
 };
 
+export const deleteWill = async (id: string): Promise<boolean> => {
+  try {
+    const { data: willToDelete } = await supabase
+      .from('wills')
+      .select('title')
+      .eq('id', id)
+      .single();
+    
+    const { error } = await supabase
+      .from('wills')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error deleting will:', error);
+      return false;
+    }
+    
+    if (willToDelete) {
+      await createSystemNotification('will_deleted', {
+        title: 'Will Deleted',
+        description: `Your will "${willToDelete.title}" has been deleted.`
+      });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteWill:', error);
+    return false;
+  }
+};
+
 export const getWillExecutors = async (): Promise<WillExecutor[]> => {
   try {
     const { data, error } = await supabase

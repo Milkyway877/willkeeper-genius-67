@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,6 +34,7 @@ import Cookies from "./pages/Cookies";
 import GDPR from "./pages/GDPR";
 import Will from "./pages/will/Will";
 import WillCreation from "./pages/will/WillCreation";
+import Wills from "./pages/wills/Wills";  // Import the new Wills page
 import Templates from "./pages/templates/Templates";
 import Encryption from "./pages/encryption/Encryption";
 import Executors from "./pages/executors/Executors";
@@ -111,7 +113,10 @@ const App = () => {
                   <Route path="/contact" element={<Contact />} />
                   
                   <Route path="/will" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
+                  <Route path="/will/:id" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
+                  <Route path="/will/edit/:id" element={session ? <WillCreation /> : <Navigate to="/auth/signin" replace />} />
                   <Route path="/will/create" element={session ? <WillCreation /> : <Navigate to="/auth/signin" replace />} />
+                  <Route path="/wills" element={session ? <Wills /> : <Navigate to="/auth/signin" replace />} />
                   <Route path="/templates" element={session ? <Templates /> : <Navigate to="/auth/signin" replace />} />
                   <Route path="/encryption" element={session ? <Encryption /> : <Navigate to="/auth/signin" replace />} />
                   <Route path="/executors" element={session ? <Executors /> : <Navigate to="/auth/signin" replace />} />

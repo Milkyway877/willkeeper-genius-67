@@ -4,11 +4,13 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserWills } from '@/services/dashboardService';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getWill, updateWill } from '@/services/willService';
+import { format } from 'date-fns';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -21,21 +23,76 @@ export default function Will() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { id } = useParams(); // Get will ID from URL params
 
   useEffect(() => {
     const fetchWillData = async () => {
       try {
         setIsLoading(true);
-        const wills = await getUserWills();
         
-        if (wills && wills.length > 0) {
-          const latestWill = wills[0]; // Get the most recent will
-          setCurrentWill(latestWill);
-          setWillTitle(latestWill.title || "Last Will and Testament");
+        // If ID is provided in the URL, fetch that specific will
+        if (id) {
+          const will = await getWill(id);
+          if (will) {
+            setCurrentWill(will);
+            setWillTitle(will.title || "Last Will and Testament");
+            
+            // For demonstration, we're creating sample will content based on the title
+            const sampleWillContent = `
+LAST WILL AND TESTAMENT OF ALEX MORGAN
+
+I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
+
+ARTICLE I: REVOCATION
+I revoke all previous wills and codicils.
+
+ARTICLE II: FAMILY INFORMATION
+I am married to Jamie Morgan. We have two children: Taylor Morgan and Riley Morgan.
+
+ARTICLE III: EXECUTOR
+I appoint Jamie Morgan as the Executor of this Will. If they are unable or unwilling to serve, I appoint my sibling, Casey Morgan, as alternate Executor.
+
+ARTICLE IV: GUARDIAN
+If my spouse does not survive me, I appoint my sibling, Casey Morgan, as guardian of my minor children.
+
+ARTICLE V: DISPOSITION OF PROPERTY
+I give all my property, real and personal, to my spouse, Jamie Morgan, if they survive me.
+If my spouse does not survive me, I give all my property in equal shares to my children, Taylor Morgan and Riley Morgan.
+
+ARTICLE VI: DIGITAL ASSETS
+I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
+
+ARTICLE VII: TAXES AND EXPENSES
+I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
+
+Signed: Alex Morgan
+Date: ${will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : new Date().toLocaleDateString()}
+Witnesses: [Witness 1], [Witness 2]
+`;
+            setWillContent(sampleWillContent);
+            
+            // Set dates
+            setLastSaved(will.updated_at ? format(new Date(will.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
+            setCreatedDate(will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : 'N/A');
+          } else {
+            toast({
+              title: "Will not found",
+              description: "The requested will document could not be found.",
+              variant: "destructive"
+            });
+            navigate('/wills');
+          }
+        } else {
+          // No ID provided, fetch the most recent will
+          const wills = await getUserWills();
           
-          // For demonstration, we're creating sample will content based on the title
-          // In a real implementation, you would fetch the actual document content
-          const sampleWillContent = `
+          if (wills && wills.length > 0) {
+            const latestWill = wills[0]; // Get the most recent will
+            setCurrentWill(latestWill);
+            setWillTitle(latestWill.title || "Last Will and Testament");
+            
+            // For demonstration, create sample will content
+            const sampleWillContent = `
 LAST WILL AND TESTAMENT OF ALEX MORGAN
 
 I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
@@ -66,16 +123,17 @@ Signed: Alex Morgan
 Date: ${new Date(latestWill.created_at).toLocaleDateString()}
 Witnesses: [Witness 1], [Witness 2]
 `;
-          setWillContent(sampleWillContent);
-          
-          // Set dates
-          setLastSaved(new Date(latestWill.updated_at).toLocaleTimeString());
-          setCreatedDate(new Date(latestWill.created_at).toLocaleDateString());
-        } else {
-          // No wills found
-          setWillContent("No will document found. Create your first will to get started.");
-          setLastSaved(new Date().toLocaleTimeString());
-          setCreatedDate("N/A");
+            setWillContent(sampleWillContent);
+            
+            // Set dates
+            setLastSaved(latestWill.updated_at ? format(new Date(latestWill.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
+            setCreatedDate(latestWill.created_at ? format(new Date(latestWill.created_at), 'MMMM dd, yyyy') : 'N/A');
+          } else {
+            // No wills found
+            setWillContent("No will document found. Create your first will to get started.");
+            setLastSaved(new Date().toLocaleTimeString());
+            setCreatedDate("N/A");
+          }
         }
       } catch (error) {
         console.error("Error fetching will data:", error);
@@ -90,7 +148,7 @@ Witnesses: [Witness 1], [Witness 2]
     };
     
     fetchWillData();
-  }, [toast]);
+  }, [id, toast, navigate]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
@@ -116,14 +174,11 @@ Witnesses: [Witness 1], [Witness 2]
         setCurrentWill(data);
       } else {
         // Update existing will
-        const { error } = await supabase
-          .from('wills')
-          .update({ 
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', currentWill.id);
-          
-        if (error) throw error;
+        const updated = await updateWill(currentWill.id, { 
+          updated_at: new Date().toISOString()
+        });
+        
+        if (!updated) throw new Error("Failed to update will");
       }
       
       setIsEditing(false);
@@ -156,6 +211,10 @@ Witnesses: [Witness 1], [Witness 2]
     navigate('/will/create');
   };
 
+  const handleViewAllWills = () => {
+    navigate('/wills');
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -185,6 +244,9 @@ Witnesses: [Witness 1], [Witness 2]
           </div>
           
           <div className="flex gap-2">
+            <Button onClick={handleViewAllWills} variant="outline">
+              View All Wills
+            </Button>
             <Button onClick={handleCreateNewWill} variant="default">
               <Plus className="mr-2 h-4 w-4" />
               Create New Will
