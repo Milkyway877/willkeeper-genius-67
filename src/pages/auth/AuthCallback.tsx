@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { createWelcomeNotification } from '@/services/notificationService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -25,6 +26,14 @@ export default function AuthCallback() {
 
         // If session exists, the email has been verified
         if (data?.session) {
+          // Create a welcome notification for new users
+          try {
+            await createWelcomeNotification();
+          } catch (notifError) {
+            console.error("Error creating welcome notification:", notifError);
+            // Don't block the flow if notification creation fails
+          }
+          
           toast({
             title: "Email Verified!",
             description: "Your email has been verified successfully.",
@@ -52,6 +61,14 @@ export default function AuthCallback() {
               setError("Failed to verify your email. Please try signing in again.");
               setIsProcessing(false);
               return;
+            }
+            
+            // Create a welcome notification for new users
+            try {
+              await createWelcomeNotification();
+            } catch (notifError) {
+              console.error("Error creating welcome notification:", notifError);
+              // Don't block the flow if notification creation fails
             }
             
             toast({

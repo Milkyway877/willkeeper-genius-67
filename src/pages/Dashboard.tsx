@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -17,10 +18,11 @@ export default function Dashboard() {
     willCount: 0,
     executorCount: 0,
     notificationCount: 0,
-    securityStatus: 'Checking...'
+    securityStatus: 'Good'
   });
   const [activities, setActivities] = useState<any[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -34,6 +36,7 @@ export default function Dashboard() {
         // Load recent activities
         const notifications = await getUserNotifications();
         const wills = await getUserWills();
+        const executors = await getUserExecutors();
         const subscription = await getUserSubscription();
         
         setSubscription(subscription);
@@ -56,17 +59,9 @@ export default function Dashboard() {
           }))
         ];
         
-        if (recentActivities.length === 0) {
-          // Fallback activities if no real data
-          recentActivities.push(
-            {
-              id: 'activity-1',
-              title: 'Welcome to WillTank',
-              description: 'Create your first will to get started with estate planning.',
-              date: 'Today',
-              icon: <FileText size={18} className="text-willtank-700" />
-            }
-          );
+        // Check if this appears to be a new user (no wills, no notifications, no executors)
+        if (wills.length === 0 && notifications.length === 0 && executors.length === 0) {
+          setIsNewUser(true);
         }
         
         setActivities(recentActivities);
@@ -85,6 +80,40 @@ export default function Dashboard() {
     loadDashboardData();
   }, [toast]);
 
+  // New user welcome component
+  const NewUserWelcome = () => (
+    <div className="bg-willtank-50 p-6 rounded-xl border border-willtank-100 mb-6">
+      <h3 className="text-lg font-medium mb-3">Welcome to WillTank</h3>
+      <p className="text-gray-600 mb-4">
+        This is your personal dashboard where you'll manage your will, digital assets, and future messages.
+        Here are some steps to get started:
+      </p>
+      <ul className="space-y-2 mb-4">
+        <li className="flex items-start gap-2">
+          <div className="h-5 w-5 rounded-full bg-willtank-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <span className="text-xs font-medium text-willtank-700">1</span>
+          </div>
+          <span className="text-gray-700">Create your first will document</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <div className="h-5 w-5 rounded-full bg-willtank-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <span className="text-xs font-medium text-willtank-700">2</span>
+          </div>
+          <span className="text-gray-700">Add executors who will handle your estate</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <div className="h-5 w-5 rounded-full bg-willtank-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+            <span className="text-xs font-medium text-willtank-700">3</span>
+          </div>
+          <span className="text-gray-700">Set up your security measures</span>
+        </li>
+      </ul>
+      <Link to="/will/create">
+        <Button className="w-full">Get Started</Button>
+      </Link>
+    </div>
+  );
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -94,9 +123,15 @@ export default function Dashboard() {
           transition={{ duration: 0.3 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold mb-2">Welcome back, {profile?.full_name?.split(' ')[0] || 'User'}</h1>
-          <p className="text-gray-600">Here's an overview of your will management activity.</p>
+          <h1 className="text-3xl font-bold mb-2">Welcome{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}</h1>
+          <p className="text-gray-600">
+            {isNewUser 
+              ? "Let's help you get started with managing your estate." 
+              : "Here's an overview of your will management activity."}
+          </p>
         </motion.div>
+        
+        {isNewUser && <NewUserWelcome />}
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -117,7 +152,11 @@ export default function Dashboard() {
               <p className="text-3xl font-bold mb-4">{summary.willCount}</p>
             )}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">Last updated recently</span>
+              <span className="text-sm text-gray-500">
+                {summary.willCount > 0 
+                  ? "Last updated recently" 
+                  : "No wills created yet"}
+              </span>
               <Link to="/will">
                 <Button variant="ghost" size="sm">View</Button>
               </Link>
@@ -137,7 +176,11 @@ export default function Dashboard() {
               <p className="text-3xl font-bold mb-4">{summary.executorCount}</p>
             )}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">{summary.executorCount > 0 ? `${summary.executorCount - 1} pending verification` : 'None added yet'}</span>
+              <span className="text-sm text-gray-500">
+                {summary.executorCount > 0 
+                  ? `${summary.executorCount} ${summary.executorCount === 1 ? 'executor' : 'executors'} added` 
+                  : "None added yet"}
+              </span>
               <Link to="/executors">
                 <Button variant="ghost" size="sm">Manage</Button>
               </Link>
@@ -157,7 +200,9 @@ export default function Dashboard() {
               <p className="text-3xl font-bold text-green-500 mb-4">{summary.securityStatus}</p>
             )}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">2FA enabled</span>
+              <span className="text-sm text-gray-500">
+                {isNewUser ? "Security setup pending" : "Your account is secure"}
+              </span>
               <Link to="/security">
                 <Button variant="ghost" size="sm">Check</Button>
               </Link>
@@ -240,7 +285,9 @@ export default function Dashboard() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-medium">Recent Activity</h3>
-                <Button variant="ghost" size="sm">View all</Button>
+                {activities.length > 0 && (
+                  <Button variant="ghost" size="sm">View all</Button>
+                )}
               </div>
               
               <div className="space-y-4">
@@ -270,7 +317,11 @@ export default function Dashboard() {
                   ))
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No recent activity</p>
+                    <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                      <FileText className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <h4 className="text-gray-600 font-medium mb-1">No activity yet</h4>
+                    <p className="text-gray-500 text-sm">Your recent actions will appear here</p>
                   </div>
                 )}
               </div>
@@ -324,12 +375,12 @@ export default function Dashboard() {
                 <>
                   <div className="mb-4">
                     <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                      <span>No Active Plan</span>
+                      <span>Free Plan</span>
                     </div>
                   </div>
                   
                   <p className="text-sm text-gray-600 mb-4">
-                    Subscribe to unlock premium features and secure your legacy.
+                    Upgrade to unlock premium features and secure your legacy.
                   </p>
                   
                   <Link to="/billing">
@@ -340,22 +391,17 @@ export default function Dashboard() {
             </div>
             
             <div className="bg-willtank-50 p-6 rounded-xl border border-willtank-100">
-              <h3 className="font-medium mb-4">AI Suggestions</h3>
+              <h3 className="font-medium mb-4">AI Assistant</h3>
               
               <div className="space-y-3">
                 <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Update your beneficiary details</p>
-                  <p className="text-gray-600">Ensure proper asset distribution by completing all beneficiary information.</p>
+                  <p className="text-willtank-800 font-medium mb-1">Need help getting started?</p>
+                  <p className="text-gray-600">Our AI assistant can guide you through the process.</p>
                 </div>
                 
                 <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Add emergency contacts</p>
-                  <p className="text-gray-600">Improve security by adding emergency contacts to your account.</p>
-                </div>
-                
-                <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Enable notifications</p>
-                  <p className="text-gray-600">Stay updated about important changes to your will and documents.</p>
+                  <p className="text-willtank-800 font-medium mb-1">Have questions?</p>
+                  <p className="text-gray-600">Ask about will creation, executors, or any other topics.</p>
                 </div>
               </div>
               

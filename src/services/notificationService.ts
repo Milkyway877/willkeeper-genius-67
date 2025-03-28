@@ -115,6 +115,41 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
   }
 };
 
+export const deleteAllNotifications = async (): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      throw new Error('No user logged in');
+    }
+    
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error deleting notifications:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteAllNotifications:', error);
+    return false;
+  }
+};
+
+// Create welcome notification for new users
+export const createWelcomeNotification = async (): Promise<Notification | null> => {
+  return createNotification({
+    title: "Welcome to WillTank",
+    description: "Get started by creating your first will and securing your legacy.",
+    type: 'info',
+    read: false
+  });
+};
+
 // Utility function to create notifications for common events
 export const createSystemNotification = async (
   event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved',

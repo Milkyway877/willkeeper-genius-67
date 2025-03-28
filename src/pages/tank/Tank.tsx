@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -43,20 +44,16 @@ export default function Tank() {
           
         if (vaultError) throw vaultError;
         
+        // Set actual counts from database
         setMessageCount(totalCount || 0);
         setScheduledCount(scheduledMessagesCount || 0);
         setVaultCount(vaultItemsCount || 0);
-        
-        if (totalCount === 0 && vaultItemsCount === 0) {
-          setMessageCount(12);
-          setScheduledCount(8);
-          setVaultCount(4);
-        }
       } catch (error) {
         console.error('Error loading counts:', error);
-        setMessageCount(12);
-        setScheduledCount(8);
-        setVaultCount(4);
+        // Don't set fake numbers, just show 0
+        setMessageCount(0);
+        setScheduledCount(0);
+        setVaultCount(0);
       } finally {
         setIsLoading(false);
       }
