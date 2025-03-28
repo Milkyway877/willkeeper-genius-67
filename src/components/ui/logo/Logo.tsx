@@ -11,10 +11,10 @@ interface LogoProps {
 export function Logo({ size = 'md', color = 'primary', className, showSlogan = true }: LogoProps) {
   const getSizeClasses = () => {
     switch (size) {
-      case 'sm': return 'h-7';
+      case 'sm': return 'h-9';
       case 'lg': return 'h-12';
       case 'md':
-      default: return 'h-9';
+      default: return 'h-10';
     }
   };
 

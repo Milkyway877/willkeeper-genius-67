@@ -122,7 +122,7 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
               <img 
                 src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
                 alt="WillTank Logo" 
-                className="h-7 w-auto" 
+                className="h-9 w-auto" 
               />
             </motion.div>
           )}
