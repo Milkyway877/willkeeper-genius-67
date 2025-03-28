@@ -32,7 +32,7 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
     <div className={cn('flex items-center', className)}>
       <div className={cn('flex items-center gap-2', getSizeClasses(), getColorClasses())}>
         <img 
-          src="/lovable-uploads/9d0c258a-2579-4a48-bb0b-84faaa04e1e5.png" 
+          src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
           alt="WillTank Logo" 
           className={cn('h-full w-auto object-contain')}
         />

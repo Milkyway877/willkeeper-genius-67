@@ -120,7 +120,7 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
               className="w-full flex justify-center"
             >
               <img 
-                src="/lovable-uploads/9d0c258a-2579-4a48-bb0b-84faaa04e1e5.png" 
+                src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
                 alt="WillTank Logo" 
                 className="h-6 w-auto" 
               />
