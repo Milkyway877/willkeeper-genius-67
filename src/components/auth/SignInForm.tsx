@@ -107,9 +107,9 @@ export function SignInForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Address</FormLabel>
+              <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="john.doe@example.com" {...field} />
+                <Input type="email" placeholder="john.doe@example.com" className="rounded-lg" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -121,13 +121,13 @@ export function SignInForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel className="font-medium text-gray-700">Password</FormLabel>
               <div className="relative">
                 <FormControl>
                   <Input 
                     type={showPassword ? "text" : "password"} 
                     placeholder="Enter your password" 
-                    className="pr-10"
+                    className="pr-10 rounded-lg"
                     {...field} 
                   />
                 </FormControl>
@@ -144,7 +144,7 @@ export function SignInForm() {
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
@@ -167,7 +167,7 @@ export function SignInForm() {
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p>Make sure to use the email address you registered with. If you've forgotten your password, you can recover it using the link above.</p>
+            <p className="font-medium">Make sure to use the email address you registered with. If you've forgotten your password, you can recover it using the link above.</p>
           </div>
         </div>
       </form>

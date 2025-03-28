@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -99,9 +100,9 @@ export function SignUpForm() {
               name="firstName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>First Name</FormLabel>
+                  <FormLabel className="font-medium text-gray-700">First Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John" {...field} disabled={isLoading} />
+                    <Input placeholder="John" className="rounded-lg" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -113,9 +114,9 @@ export function SignUpForm() {
               name="lastName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Last Name</FormLabel>
+                  <FormLabel className="font-medium text-gray-700">Last Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Doe" {...field} disabled={isLoading} />
+                    <Input placeholder="Doe" className="rounded-lg" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -128,9 +129,9 @@ export function SignUpForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Address</FormLabel>
+                <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="john.doe@example.com" {...field} disabled={isLoading} />
+                  <Input type="email" placeholder="john.doe@example.com" className="rounded-lg" {...field} disabled={isLoading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -142,13 +143,13 @@ export function SignUpForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className="font-medium text-gray-700">Password</FormLabel>
                 <div className="relative">
                   <FormControl>
                     <Input 
                       type={showPassword ? "text" : "password"} 
                       placeholder="••••••••••••" 
-                      className="pr-10"
+                      className="pr-10 rounded-lg"
                       {...field}
                       disabled={isLoading}
                     />
@@ -172,13 +173,13 @@ export function SignUpForm() {
             name="confirmPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Confirm Password</FormLabel>
+                <FormLabel className="font-medium text-gray-700">Confirm Password</FormLabel>
                 <div className="relative">
                   <FormControl>
                     <Input 
                       type={showConfirmPassword ? "text" : "password"} 
                       placeholder="••••••••••••" 
-                      className="pr-10"
+                      className="pr-10 rounded-lg"
                       {...field}
                       disabled={isLoading}
                     />
@@ -198,10 +199,10 @@ export function SignUpForm() {
           />
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p>After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
+            <p className="font-medium">After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
           </div>
           
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...

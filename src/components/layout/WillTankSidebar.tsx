@@ -50,11 +50,11 @@ const SidebarLink = ({ to, icon, label, isCollapsed }: SidebarLinkProps) => {
     >
       <span className="flex-shrink-0 w-5 h-5">{icon}</span>
       
-      {!isCollapsed && <span className="transition-opacity duration-200">{label}</span>}
+      {!isCollapsed && <span className="transition-opacity duration-200 font-medium">{label}</span>}
       
       {isCollapsed && isHovered && (
         <motion.div 
-          className="absolute left-full ml-2 px-2 py-1 bg-white rounded-md shadow-md text-sm whitespace-nowrap z-50"
+          className="absolute left-full ml-2 px-2 py-1 bg-white rounded-md shadow-md text-sm whitespace-nowrap z-50 font-medium"
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -10 }}

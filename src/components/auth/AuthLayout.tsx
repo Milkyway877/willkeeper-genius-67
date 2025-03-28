@@ -19,15 +19,15 @@ export function AuthLayout({ children, rightPanel, title, subtitle }: AuthLayout
       <div className="flex-1 flex flex-col min-h-screen">
         <header className="p-6 md:p-8">
           <Link to="/" className="inline-block">
-            <Logo color="primary" className="h-8 w-auto" />
+            <Logo color="black" className="h-10 w-auto" />
           </Link>
         </header>
         
         <main className="flex-1 flex items-center justify-center px-6 py-10 md:px-12">
           <PageTransition className="w-full max-w-md mx-auto">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold mb-2">{title}</h1>
-              {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
+              <h1 className="text-3xl font-bold mb-2 text-black">{title}</h1>
+              {subtitle && <p className="text-gray-600 font-medium">{subtitle}</p>}
             </div>
             
             {children}

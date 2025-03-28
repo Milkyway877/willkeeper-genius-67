@@ -51,9 +51,9 @@ export function DotPatternText({
     <motion.span
       className={cn("inline-block", fontWeightClass, className)}
       style={style}
-      initial={{ opacity: 0 }}
+      initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
+      transition={{ duration: 0.3 }}
     >
       {children}
     </motion.span>

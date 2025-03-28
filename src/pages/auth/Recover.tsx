@@ -14,9 +14,9 @@ export default function Recover() {
     >
       <RecoverForm />
       
-      <p className="text-center text-sm text-muted-foreground mt-6">
+      <p className="text-center text-sm text-muted-foreground mt-6 font-medium">
         Remembered your password?{" "}
-        <Link to="/auth/signin" className="font-medium text-willtank-600 hover:text-willtank-700">
+        <Link to="/auth/signin" className="font-bold text-willtank-600 hover:text-willtank-700">
           Sign in
         </Link>
       </p>

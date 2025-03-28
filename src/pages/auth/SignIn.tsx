@@ -14,9 +14,9 @@ export default function SignIn() {
     >
       <SignInForm />
       
-      <p className="text-center text-sm text-muted-foreground mt-6">
+      <p className="text-center text-sm text-muted-foreground mt-6 font-medium">
         New to WillTank?{" "}
-        <Link to="/auth/signup" className="font-medium text-willtank-600 hover:text-willtank-700">
+        <Link to="/auth/signup" className="font-bold text-willtank-600 hover:text-willtank-700">
           Create an account
         </Link>
       </p>
