@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { LegacyVaultItem as UILegacyVaultItem } from "../pages/tank/types";
+import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem } from "../pages/tank/types";
 import { createSystemNotification } from "./notificationService";
 
 export interface FutureMessage {
@@ -16,17 +15,7 @@ export interface FutureMessage {
   created_at: string;
 }
 
-// Database schema type
-export interface DBLegacyVaultItem {
-  id: string;
-  title: string;
-  document_url: string;
-  preview: string | null;
-  category: string | null;
-  created_at: string;
-  is_encrypted?: boolean;
-}
-
+// Database functions remain the same
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
     const { data, error } = await supabase
@@ -253,7 +242,7 @@ export const toggleItemEncryption = async (id: string, encrypt: boolean): Promis
       return null;
     }
     
-    await createSystemNotification('item_updated', {
+    await createSystemNotification('item_saved', {
       title: encrypt ? 'Item Encrypted' : 'Item Decrypted',
       description: `Your legacy item "${data.title}" has been ${encrypt ? 'encrypted' : 'decrypted'}.`
     });

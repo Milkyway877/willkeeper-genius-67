@@ -28,7 +28,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(item?.title || '');
-  const [type, setType] = useState(item?.type || 'story');
+  const [type, setType] = useState<'story' | 'confession' | 'wishes' | 'advice'>(item?.type || 'story');
   const [preview, setPreview] = useState(item?.preview || '');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -200,7 +200,10 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
             
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
-              <Select value={type} onValueChange={setType}>
+              <Select 
+                value={type} 
+                onValueChange={(value: 'story' | 'confession' | 'wishes' | 'advice') => setType(value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
