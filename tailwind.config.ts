@@ -21,7 +21,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", ...fontFamily.sans],
+        sans: ["var(--font-sans)", ...fontFamily.sans],
         mono: ["'JetBrains Mono'", "'Roboto Mono'", ...fontFamily.mono],
         pixel: ["'Press Start 2P'", "monospace"],
       },
@@ -121,12 +121,7 @@ export default {
         "dot-sm": "12px 12px",
         "dot-md": "24px 24px",
         "dot-lg": "36px 36px",
-      },
-      boxShadow: {
-        'stripe': '0 0 0 1px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.05)',
-        'stripe-md': '0 0 0 1px rgba(0, 0, 0, 0.03), 0 4px 8px rgba(0, 0, 0, 0.05)',
-        'stripe-lg': '0 0 0 1px rgba(0, 0, 0, 0.03), 0 8px 16px rgba(0, 0, 0, 0.06)',
-      },
+      }
     },
   },
   plugins: [animate],

@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -35,7 +35,7 @@
     --input: 214 32% 91%;
     --ring: 0 0% 0%; /* Black */
 
-    --radius: 0.5rem;
+    --radius: 0.8rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
@@ -98,23 +98,23 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight font-medium;
+    @apply tracking-tight font-semibold;
   }
 
   h1 {
-    @apply text-3xl sm:text-4xl md:text-5xl;
+    @apply text-4xl sm:text-5xl md:text-6xl;
   }
 
   h2 {
-    @apply text-2xl sm:text-3xl;
+    @apply text-3xl sm:text-4xl;
   }
 
   h3 {
-    @apply text-xl sm:text-2xl;
+    @apply text-2xl sm:text-3xl;
   }
 
   p {
-    @apply leading-relaxed text-sm;
+    @apply leading-relaxed;
   }
 }
 
@@ -192,25 +192,6 @@
   
   .button-glitch:hover::before {
     left: 100%;
-  }
-
-  /* Stripe design system utilities */
-  .stripe-shadow {
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .stripe-card {
-    @apply bg-white rounded-lg stripe-shadow border border-gray-200;
-  }
-
-  .stripe-text-xs {
-    font-size: 0.75rem;
-    line-height: 1rem;
-  }
-
-  .stripe-text-sm {
-    font-size: 0.825rem;
-    line-height: 1.25rem;
   }
 }
 
@@ -302,29 +283,4 @@ html {
   font-family: 'Press Start 2P', monospace;
   letter-spacing: 0.05em;
   image-rendering: pixelated;
-}
-
-/* Stripe-inspired styles */
-.stripe-dashboard-card {
-  @apply bg-white rounded-md border border-gray-200 shadow-stripe overflow-hidden;
-}
-
-.stripe-dashboard-title {
-  @apply text-sm font-medium text-gray-700;
-}
-
-.stripe-dashboard-value {
-  @apply text-2xl font-medium text-gray-900 my-1;
-}
-
-.stripe-dashboard-metric {
-  @apply text-xs text-gray-500;
-}
-
-.stripe-heading {
-  @apply text-xl font-medium text-gray-900;
-}
-
-.stripe-subheading {
-  @apply text-sm text-gray-500 mt-1;
 }

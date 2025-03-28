@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as OTPAuth from "otpauth";
 
@@ -26,26 +25,10 @@ export interface EncryptionKey {
   type: string;
   algorithm: string;
   strength: string;
-  key_material: string; // This maps to 'value' in the database
+  key_material: string;
   status: string;
   created_at: string;
-  updated_at?: string; // Make this optional since it might not be in the database
-  last_used: string | null;
-}
-
-/**
- * Interface for database Encryption Key (what comes back from Supabase)
- */
-interface DBEncryptionKey {
-  id: string;
-  user_id: string;
-  name: string;
-  type: string;
-  algorithm: string;
-  strength: string;
-  value: string; // This is 'key_material' in our interface
-  status: string;
-  created_at: string;
+  updated_at: string;
   last_used: string | null;
 }
 
@@ -521,16 +504,8 @@ export async function generateEncryptionKey(
       console.error('Error generating encryption key:', error);
       throw error;
     }
-
-    // Convert the database response to our interface format
-    const dbKey = data as DBEncryptionKey;
-    const encryptionKey: EncryptionKey = {
-      ...dbKey,
-      key_material: dbKey.value,
-      updated_at: dbKey.created_at // Use created_at as updated_at since it's not in the DB
-    };
     
-    return encryptionKey;
+    return data as EncryptionKey;
   } catch (error) {
     console.error('Error generating encryption key:', error);
     return null;
@@ -561,15 +536,8 @@ export async function getUserEncryptionKeys(): Promise<EncryptionKey[]> {
       console.error('Error getting encryption keys:', error);
       throw error;
     }
-
-    // Convert the database response to our interface format
-    const encryptionKeys: EncryptionKey[] = (data as DBEncryptionKey[]).map(dbKey => ({
-      ...dbKey,
-      key_material: dbKey.value,
-      updated_at: dbKey.created_at // Use created_at as updated_at since it's not in the DB
-    }));
     
-    return encryptionKeys;
+    return data as EncryptionKey[];
   } catch (error) {
     console.error('Error getting encryption keys:', error);
     return [];
@@ -603,4 +571,3 @@ export async function updateEncryptionKeyStatus(keyId: string, status: string): 
     return false;
   }
 }
-
