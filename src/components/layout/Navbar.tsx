@@ -1,23 +1,22 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Store, 
   Search, 
-  Grid, 
+  Grid2x2 as Grid, 
   BellRing, 
   HelpCircle, 
   Settings, 
   Plus,
-  Monitor,
+  MonitorSmartphone as Monitor,
   ToggleRight,
   ChevronDown,
   X,
   Menu as MenuIcon,
-  Phone,
-  Shield,
+  PhoneCall as Phone,
+  ShieldCheck as Shield,
   Briefcase,
   MapPin,
-  Home,
+  HomeIcon as Home,
   ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -151,8 +150,10 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const shouldShowDashboardLayout = isDashboardPage && !isAuthPage;
   const isHomePage = location.pathname === '/';
   
-  // Common styles for icons in both homepage and other pages
   const iconStyles = "transition-all duration-200";
+  
+  const dashboardIconWrapperStyles = "flex items-center justify-center h-10 w-10 rounded-md transition-all duration-200";
+  const dashboardIconStyles = "h-5 w-5 transition-colors duration-200";
   
   return (
     <>
@@ -194,16 +195,16 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   transition={{ delay: 0.3 }}
                 >
                   <Link to="/" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Home size={18} className={iconStyles} />
+                    <Home className={iconStyles} />
                   </Link>
                   <Link to="/security" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Shield size={18} className={iconStyles} />
+                    <Shield className={iconStyles} />
                   </Link>
                   <Link to="/business" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Briefcase size={18} className={iconStyles} />
+                    <Briefcase className={iconStyles} />
                   </Link>
                   <Link to="/how-it-works" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <MapPin size={18} className={iconStyles} />
+                    <MapPin className={iconStyles} />
                   </Link>
                 </motion.div>
               </div>
@@ -267,23 +268,49 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     />
                   </div>
                   
-                  <Link to="/dashboard" className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">
-                    <Grid className="h-5 w-5" />
+                  <Link 
+                    to="/dashboard" 
+                    className={cn(
+                      dashboardIconWrapperStyles,
+                      "hover:bg-gray-100"
+                    )}
+                    aria-label="Dashboard"
+                  >
+                    <Grid className={cn(dashboardIconStyles, "text-gray-600 hover:text-gray-900")} />
                   </Link>
                   
-                  <Link to="/help" className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">
-                    <HelpCircle className="h-5 w-5" />
+                  <Link 
+                    to="/help" 
+                    className={cn(
+                      dashboardIconWrapperStyles,
+                      "hover:bg-gray-100"
+                    )}
+                    aria-label="Help"
+                  >
+                    <HelpCircle className={cn(dashboardIconStyles, "text-gray-600 hover:text-gray-900")} />
                   </Link>
                   
-                  <NotificationDropdown />
+                  <div className={cn(
+                    dashboardIconWrapperStyles,
+                    "hover:bg-gray-100 relative"
+                  )}>
+                    <NotificationDropdown />
+                  </div>
                   
-                  <Link to="/settings" className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">
-                    <Settings className="h-5 w-5" />
+                  <Link 
+                    to="/settings" 
+                    className={cn(
+                      dashboardIconWrapperStyles,
+                      "hover:bg-gray-100"
+                    )}
+                    aria-label="Settings"
+                  >
+                    <Settings className={cn(dashboardIconStyles, "text-gray-600 hover:text-gray-900")} />
                   </Link>
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-9 w-9 p-0 rounded-full overflow-hidden border border-gray-200">
+                      <Button variant="ghost" className="h-9 w-9 p-0 rounded-full overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors">
                         <Avatar className="h-9 w-9">
                           <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
                           <AvatarFallback className="bg-gray-100 text-gray-700">WT</AvatarFallback>
@@ -293,17 +320,17 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     <DropdownMenuContent align="end" className="w-56 z-50 bg-white shadow-md border border-gray-200">
                       <DropdownMenuLabel>My Account</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="cursor-pointer hover:bg-gray-100">
                         Profile Settings
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="cursor-pointer hover:bg-gray-100">
                         Security
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="cursor-pointer hover:bg-gray-100">
                         Billing
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                      <DropdownMenuItem onClick={handleLogout} className="cursor-pointer hover:bg-gray-100 text-red-600 hover:text-red-700">
                         Log out
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -311,10 +338,10 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   
                   <Button 
                     onClick={() => navigate('/tank/create')}
-                    className="bg-black text-white hover:bg-gray-800 rounded-full"
+                    className="bg-black text-white hover:bg-gray-800 transition-colors rounded-full flex items-center gap-2"
                     size="sm"
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="h-4 w-4" />
                     <span>New</span>
                   </Button>
                 </div>
