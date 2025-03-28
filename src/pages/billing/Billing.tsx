@@ -1,34 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Calendar, Clock, Download, ArrowUp, CheckCircle, Shield, Loader2, Zap, Building, Star, Users } from 'lucide-react';
+import { Calendar, Download, CheckCircle, Shield, Loader2, Zap, Building, Star, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod, PlanDetails, SubscriptionPlan } from '../tank/types';
-
-interface Invoice {
-  id: string;
-  date: string;
-  amount: string;
-  status: string;
-}
-
-// Sample invoice data since there's no invoices table in the database
-const sampleInvoices: Invoice[] = [
-  { id: "#INV-001", date: "Jun 1, 2023", amount: "$79.99", status: "Paid" },
-  { id: "#INV-002", date: "May 1, 2023", amount: "$79.99", status: "Paid" },
-  { id: "#INV-003", date: "Apr 1, 2023", amount: "$79.99", status: "Paid" },
-];
-
-// Stripe publishable key
-const STRIPE_PUBLISHABLE_KEY = "pk_live_51QwmQwHTKA0osvsHaNzJayB8teIy7ekkJJWaeL62QeadZAstp44qErSoXVlgh3kN4pQDEsXoN8mbrRPPLu6Lrddm00o4NmnaGI";
+import { createCheckoutSession } from '@/api/createCheckoutSession';
 
 export default function Billing() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
@@ -131,9 +113,6 @@ export default function Billing() {
           setSubscription(subscriptionData);
         }
         
-        // Use sample invoices since there's no invoices table
-        setInvoices(sampleInvoices);
-        
       } catch (error) {
         console.error('Error fetching billing data:', error);
         toast({
@@ -141,9 +120,6 @@ export default function Billing() {
           description: "Could not load your subscription information. Please try again later.",
           variant: "destructive"
         });
-        
-        // Set sample data for invoices
-        setInvoices(sampleInvoices);
       } finally {
         setIsLoading(false);
       }
@@ -159,21 +135,10 @@ export default function Billing() {
         description: "Redirecting to Stripe checkout...",
       });
       
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          plan,
-          billingPeriod,
-        }),
-      });
+      const sessionData = await createCheckoutSession(plan, billingPeriod);
       
-      const session = await response.json();
-      
-      if (session.url) {
-        window.location.href = session.url;
+      if (sessionData?.url) {
+        window.location.href = sessionData.url;
       } else {
         throw new Error('Could not create checkout session');
       }
@@ -382,91 +347,6 @@ export default function Billing() {
                 </div>
               </div>
             ))}
-          </div>
-        </motion.div>
-        
-        {/* Payment Method */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8"
-        >
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h3 className="font-medium">Payment Method</h3>
-          </div>
-          
-          <div className="p-6">
-            <div className="flex items-center mb-6">
-              <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mr-4">
-                <CreditCard className="text-gray-600" size={20} />
-              </div>
-              <div>
-                <p className="font-medium">Visa ending in 4242</p>
-                <p className="text-sm text-gray-500">Expires 04/25</p>
-              </div>
-            </div>
-            
-            <Button variant="outline" className="w-full">
-              Update Payment Method
-            </Button>
-          </div>
-        </motion.div>
-        
-        {/* Billing History */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-        >
-          <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-            <h3 className="font-medium">Billing History</h3>
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Download All
-            </Button>
-          </div>
-          
-          <div className="p-0">
-            <table className="w-full">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="py-3 px-6 text-left">Invoice</th>
-                  <th className="py-3 px-6 text-left">Date</th>
-                  <th className="py-3 px-6 text-left">Amount</th>
-                  <th className="py-3 px-6 text-left">Status</th>
-                  <th className="py-3 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {invoices.length > 0 ? (
-                  invoices.map((invoice, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="py-4 px-6 font-medium">{invoice.id}</td>
-                      <td className="py-4 px-6 text-gray-600">{invoice.date}</td>
-                      <td className="py-4 px-6 font-medium">{invoice.amount}</td>
-                      <td className="py-4 px-6">
-                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                          {invoice.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-right">
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-gray-500">
-                      No invoices found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
         </motion.div>
       </div>
