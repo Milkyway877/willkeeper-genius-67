@@ -16,13 +16,13 @@ export function SecurityInfoPanel({ mode }: SecurityInfoPanelProps) {
             <h2 className="text-2xl font-bold mb-4">Secure Sign In</h2>
             <div className="space-y-4">
               <p>
-                Your TanKey is a unique identifier that grants you access to your secure will management platform.
+                We use enterprise-grade security to protect your account and your legacy planning documents.
               </p>
               <p>
-                Unlike traditional passwords, your TanKey is generated using advanced cryptography, making it significantly more secure against brute force attacks.
+                Your data is encrypted using advanced security standards to ensure your information remains private and secure.
               </p>
               <p>
-                Keep your TanKey in a password manager or secure location. If lost, you can recover access using your PIN.
+                We recommend using a strong password and keeping your login credentials secure.
               </p>
             </div>
           </>
@@ -41,10 +41,10 @@ export function SecurityInfoPanel({ mode }: SecurityInfoPanelProps) {
                 Your data is encrypted using AES-256, the same encryption standard used by banks and governments worldwide.
               </p>
               <p>
-                Our multi-factor authentication process ensures that only you can access your will and estate documents.
+                Our authentication process ensures that only you can access your will and estate documents.
               </p>
               <p>
-                Store your recovery PIN in a safe place. It's your backup access method if you ever lose your TanKey.
+                We recommend using a password manager to store your credentials securely.
               </p>
             </div>
           </>
@@ -57,16 +57,16 @@ export function SecurityInfoPanel({ mode }: SecurityInfoPanelProps) {
             <h2 className="text-2xl font-bold mb-4">Account Recovery</h2>
             <div className="space-y-4">
               <p>
-                Lost access to your TanKey? No problem. We've designed a secure recovery process.
+                Forgot your password? No problem. We've designed a secure recovery process.
               </p>
               <p>
-                Enter your email address and the 6-digit PIN you created when you first registered.
+                Enter your email address and we'll send you a password reset link.
               </p>
               <p>
-                After verification, we'll generate a new TanKey and send it to your registered email address.
+                For your security, password reset links expire after a short period of time.
               </p>
               <p>
-                For your security, the recovery process has rate limitations to prevent unauthorized access attempts.
+                If you continue to have issues, please contact our support team for assistance.
               </p>
             </div>
           </>
