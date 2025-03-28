@@ -16,7 +16,6 @@ import SignUp from "./pages/auth/SignUp";
 import SignIn from "./pages/auth/SignIn";
 import Recover from "./pages/auth/Recover";
 import AuthCallback from "./pages/auth/AuthCallback";
-import AccountActivation from "./pages/auth/AccountActivation";
 import Services from "./pages/Services";
 import Security from "./pages/Security";
 import Business from "./pages/Business";
@@ -130,7 +129,6 @@ const App = () => {
               <Route path="/auth/signin" element={session ? <Navigate to="/dashboard" replace /> : <SignIn />} />
               <Route path="/auth/recover" element={session ? <Navigate to="/dashboard" replace /> : <Recover />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/auth/activate" element={session ? <AccountActivation /> : <Navigate to="/auth/signin" replace />} />
               
               <Route 
                 path="/dashboard" 

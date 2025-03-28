@@ -1,20 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus, Users, Shield, Zap, CreditCard, Key, Bell, HelpCircle, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { getDashboardSummary, getUserNotifications, getUserWills, getUserExecutors, getUserSubscription } from '@/services/dashboardService';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
-import { AccountActivationBar } from '@/components/auth/AccountActivationBar';
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const { profile } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState({
@@ -83,10 +80,6 @@ export default function Dashboard() {
     loadDashboardData();
   }, [toast]);
 
-  const handleActivateAccount = () => {
-    navigate('/auth/activate');
-  };
-
   // New user welcome component
   const NewUserWelcome = () => (
     <div className="bg-willtank-50 p-6 rounded-xl border border-willtank-100 mb-6">
@@ -123,9 +116,6 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      {profile && profile.activation_complete === false && (
-        <AccountActivationBar onActivateClick={handleActivateAccount} />
-      )}
       <div className="max-w-6xl mx-auto">
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
