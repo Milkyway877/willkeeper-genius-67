@@ -1,9 +1,6 @@
 
-// Types for the Tank page components
-
 export type MessageType = 'letter' | 'video' | 'audio' | 'document';
-export type MessageStatus = 'scheduled' | 'draft' | 'delivered' | 'verified';
-export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
+export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
 
 export interface Message {
   id: string | number;
@@ -15,15 +12,13 @@ export interface Message {
   preview?: string;
 }
 
-// Updated to match database schema
 export interface LegacyVaultItem {
-  id: string | number;
+  id: string;
   title: string;
   type: 'story' | 'confession' | 'wishes' | 'advice';
-  category?: string;
-  preview?: string;
-  document_url?: string;
+  preview: string;
+  document_url: string;
   createdAt: string;
-  created_at?: string; // For compatibility with database response
+  created_at: string;
   encryptionStatus: boolean;
 }

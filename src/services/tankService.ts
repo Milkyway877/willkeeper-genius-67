@@ -24,6 +24,7 @@ export interface DBLegacyVaultItem {
   preview: string | null;
   category: string | null;
   created_at: string;
+  is_encrypted?: boolean;
 }
 
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
@@ -130,7 +131,7 @@ export const getLegacyVaultItems = async (): Promise<UILegacyVaultItem[]> => {
       document_url: item.document_url,
       createdAt: item.created_at,
       created_at: item.created_at,
-      encryptionStatus: true // Assuming all items in database are encrypted
+      encryptionStatus: item.is_encrypted || false
     }));
   } catch (error) {
     console.error('Error in getLegacyVaultItems:', error);
@@ -154,14 +155,15 @@ const mapCategoryToType = (category: string | null): 'story' | 'confession' | 'w
   return category && map[category] ? map[category] : 'story';
 };
 
-export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' | 'createdAt' | 'encryptionStatus'>): Promise<UILegacyVaultItem | null> => {
+export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' | 'createdAt' | 'created_at'>): Promise<UILegacyVaultItem | null> => {
   try {
     // Convert from UI schema to database schema
     const dbItem = {
       title: item.title,
       category: item.type, // Map type to category
       preview: item.preview,
-      document_url: item.document_url || '' // Default empty string if not provided
+      document_url: item.document_url || '', // Default empty string if not provided
+      is_encrypted: item.encryptionStatus || false // Include encryption status
     };
     
     const { data, error } = await supabase
@@ -189,7 +191,7 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
       document_url: data.document_url,
       createdAt: data.created_at,
       created_at: data.created_at,
-      encryptionStatus: true
+      encryptionStatus: data.is_encrypted || false
     };
   } catch (error) {
     console.error('Error in createLegacyVaultItem:', error);
@@ -206,6 +208,7 @@ export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVa
     if (item.type !== undefined) dbItem.category = item.type;
     if (item.preview !== undefined) dbItem.preview = item.preview;
     if (item.document_url !== undefined) dbItem.document_url = item.document_url;
+    if (item.encryptionStatus !== undefined) dbItem.is_encrypted = item.encryptionStatus;
     
     const { data, error } = await supabase
       .from('legacy_vault')
@@ -228,10 +231,46 @@ export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVa
       document_url: data.document_url,
       createdAt: data.created_at,
       created_at: data.created_at,
-      encryptionStatus: true
+      encryptionStatus: data.is_encrypted || false
     };
   } catch (error) {
     console.error('Error in updateLegacyVaultItem:', error);
+    return null;
+  }
+};
+
+export const toggleItemEncryption = async (id: string, encrypt: boolean): Promise<UILegacyVaultItem | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('legacy_vault')
+      .update({ is_encrypted: encrypt })
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error toggling encryption status:', error);
+      return null;
+    }
+    
+    await createSystemNotification('item_updated', {
+      title: encrypt ? 'Item Encrypted' : 'Item Decrypted',
+      description: `Your legacy item "${data.title}" has been ${encrypt ? 'encrypted' : 'decrypted'}.`
+    });
+    
+    // Convert back to UI schema
+    return {
+      id: data.id,
+      title: data.title,
+      type: mapCategoryToType(data.category),
+      preview: data.preview || '',
+      document_url: data.document_url,
+      createdAt: data.created_at,
+      created_at: data.created_at,
+      encryptionStatus: data.is_encrypted || false
+    };
+  } catch (error) {
+    console.error('Error in toggleItemEncryption:', error);
     return null;
   }
 };
