@@ -46,6 +46,25 @@ import Settings from "./pages/settings/Settings";
 import Tank from "./pages/tank/Tank";
 import TankCreation from "./pages/tank/TankCreation";
 
+// Initialize Supabase storage on app start
+const initSupabaseStorage = async () => {
+  try {
+    // Check if avatars bucket exists, if not create it
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+    
+    if (!avatarBucketExists) {
+      await supabase.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 1024 * 1024 * 2, // 2MB limit
+      });
+      console.log('Created avatars storage bucket');
+    }
+  } catch (error) {
+    console.error('Error initializing Supabase storage:', error);
+  }
+};
+
 const queryClient = new QueryClient();
 
 const RouteHandler = () => {
@@ -81,6 +100,9 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize Supabase storage
+    initSupabaseStorage();
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state changed:", event, session ? "session exists" : "no session");

@@ -91,7 +91,7 @@ export function Sidebar() {
         <SidebarLink to="/wills" icon={<FileText size={18} />} label="My Wills" isCollapsed={isCollapsed} />
         <SidebarLink to="/executors" icon={<Users size={18} />} label="Executors" isCollapsed={isCollapsed} />
         <SidebarLink to="/vault" icon={<Vault size={18} />} label="Vault" isCollapsed={isCollapsed} />
-        <SidebarLink to="/payments" icon={<CreditCard size={18} />} label="Payments" isCollapsed={isCollapsed} />
+        <SidebarLink to="/billing" icon={<CreditCard size={18} />} label="Payments" isCollapsed={isCollapsed} />
         <SidebarLink to="/security" icon={<Shield size={18} />} label="Security" isCollapsed={isCollapsed} />
         <SidebarLink to="/templates" icon={<FileCode size={18} />} label="Legal Templates" isCollapsed={isCollapsed} />
         <SidebarLink to="/settings" icon={<Settings size={18} />} label="Settings" isCollapsed={isCollapsed} />
