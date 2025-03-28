@@ -17,7 +17,44 @@ import { useNavigate } from 'react-router-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function NotificationDropdown() {
-  const { notifications, unreadCount, markAsRead } = useNotifications();
+  // Use a try-catch to handle cases where the context is not available
+  let notificationsContext;
+  try {
+    notificationsContext = useNotifications();
+  } catch (error) {
+    // Return a simplified version of the dropdown when context is not available
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative" 
+          >
+            <Bell size={20} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-80 z-50 bg-white shadow-md border border-gray-200">
+          <DropdownMenuLabel className="flex justify-between items-center">
+            <span>Notifications</span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <div className="py-6 text-center">
+            <Bell className="mx-auto h-8 w-8 text-gray-300 mb-2" />
+            <p className="text-gray-500 text-sm">Unable to load notifications</p>
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            className="p-2 cursor-pointer justify-center"
+          >
+            <span className="text-willtank-600 text-sm font-medium">View all notifications</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+  
+  const { notifications, unreadCount, markAsRead } = notificationsContext;
   const navigate = useNavigate();
   
   // Get only unread notifications

@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
-import { NotificationsProvider } from "@/contexts/NotificationsContext";
 
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -44,6 +43,7 @@ import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
 import Tank from "./pages/tank/Tank";
 import TankCreation from "./pages/tank/TankCreation";
+import { NotificationsProvider } from "./contexts/NotificationsContext";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +74,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <UserProfileProvider>
+        {/* Move NotificationsProvider here to wrap all routes instead of within Layout */}
         <NotificationsProvider>
           <TooltipProvider>
             <Toaster />

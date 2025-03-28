@@ -2,7 +2,7 @@
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Bell, Eye, FileText, Shield, Users, AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,7 +24,31 @@ const getNotificationIcon = (type: string) => {
 };
 
 export default function Notifications() {
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
+  let notificationsContext;
+  try {
+    notificationsContext = useNotifications();
+  } catch (error) {
+    // Show a loading state if the context is not available
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Notifications & Updates</h1>
+              <p className="text-gray-600">Stay informed about your account, security, and legal updates.</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-10 w-10 text-willtank-600 animate-spin" />
+            <p className="ml-3 text-willtank-600">Loading notifications...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+  
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = notificationsContext;
   const { toast } = useToast();
 
   const handleMarkAsRead = async (id: string) => {
