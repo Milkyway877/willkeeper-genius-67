@@ -38,7 +38,7 @@ function generateSecureTanKey(length = 24): string {
 }
 
 interface TanKeyStepProps {
-  onNext: () => void;
+  onNext: (tanKey: string) => void;
 }
 
 export function TanKeyStep({ onNext }: TanKeyStepProps) {
@@ -106,7 +106,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       }
       
       // Proceed to the next step
-      onNext();
+      onNext(tanKey);
     } catch (error) {
       console.error("Error storing TanKey:", error);
       

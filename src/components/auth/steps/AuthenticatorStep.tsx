@@ -11,6 +11,7 @@ import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { fadeInUp } from '../animations';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 interface AuthenticatorStepProps {
   authenticatorKey: string;
@@ -22,6 +23,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [tanKey, _] = useLocalStorage<string>('temp_tan_key', '');
   
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),
@@ -64,7 +66,8 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         .upsert({ 
           user_id: user.id,
           google_auth_enabled: true,
-          google_auth_secret: authenticatorKey.replace(/\s/g, '')
+          google_auth_secret: authenticatorKey.replace(/\s/g, ''),
+          encryption_key: tanKey || 'default-encryption-key' // Providing the required encryption_key
         });
       
       if (error) {
