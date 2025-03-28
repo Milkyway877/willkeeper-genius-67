@@ -37,3 +37,18 @@ export interface DBLegacyVaultItem {
   is_encrypted?: boolean;
   user_id?: string;
 }
+
+// Subscription types for billing
+export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
+export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
+
+export interface PlanDetails {
+  name: string;
+  price: {
+    monthly: number;
+    yearly: number;
+    lifetime?: number;
+  };
+  features: string[];
+  description: string;
+}

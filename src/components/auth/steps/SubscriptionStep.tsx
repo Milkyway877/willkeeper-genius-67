@@ -3,7 +3,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, CreditCard as CreditCardIcon } from 'lucide-react';
+import { ArrowRight, Check, CreditCard as CreditCardIcon, Zap, Star, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,19 +11,84 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SubscriptionInputs, subscriptionSchema } from '../SignUpSchemas';
 import { fadeInUp } from '../animations';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { BillingPeriod } from '@/pages/tank/types';
 
 interface SubscriptionStepProps {
   onNext: (data: SubscriptionInputs) => void;
 }
 
 export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
+  const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>('monthly');
+  
   const form = useForm<SubscriptionInputs>({
     resolver: zodResolver(subscriptionSchema),
     defaultValues: {
-      plan: 'gold',
+      plan: 'starter',
       agreeToTerms: false,
     },
   });
+
+  // Plan details with pricing
+  const planDetails = {
+    starter: {
+      icon: <Zap className="h-6 w-6 text-blue-600" />,
+      name: 'Starter',
+      description: 'Perfect for individuals',
+      monthly: 14.99,
+      yearly: 149.99,
+      lifetime: 299.99,
+      features: [
+        'Basic will templates',
+        'Up to 2 future messages',
+        'Standard encryption'
+      ]
+    },
+    gold: {
+      icon: <Star className="h-6 w-6 text-amber-500" />,
+      name: 'Gold',
+      description: 'Ideal for comprehensive needs',
+      monthly: 29,
+      yearly: 290,
+      lifetime: 599,
+      features: [
+        'Advanced will templates',
+        'Up to 10 future messages',
+        'Enhanced encryption',
+        'Priority support'
+      ]
+    },
+    platinum: {
+      icon: <Shield className="h-6 w-6 text-purple-600" />,
+      name: 'Platinum',
+      description: 'The complete solution',
+      monthly: 55,
+      yearly: 550,
+      lifetime: 999,
+      features: [
+        'Premium legal templates',
+        'Unlimited future messages',
+        'Military-grade encryption',
+        '24/7 support',
+        'Family sharing'
+      ]
+    }
+  };
+
+  // Function to get price based on billing period
+  const getPriceDisplay = (plan: keyof typeof planDetails) => {
+    const prices = planDetails[plan];
+    switch (billingPeriod) {
+      case 'monthly':
+        return `$${prices.monthly}/month`;
+      case 'yearly':
+        return `$${prices.yearly}/year`;
+      case 'lifetime':
+        return `$${prices.lifetime}`;
+      default:
+        return `$${prices.monthly}/month`;
+    }
+  };
 
   return (
     <motion.div key="step10" {...fadeInUp}>
@@ -34,6 +99,25 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
             <p className="text-sm text-muted-foreground">
               Choose the subscription plan that best fits your needs.
             </p>
+          </div>
+          
+          <div className="flex justify-center mb-6">
+            <ToggleGroup 
+              type="single" 
+              value={billingPeriod} 
+              onValueChange={(value) => value && setBillingPeriod(value as BillingPeriod)}
+              className="bg-gray-100 p-1 rounded-lg"
+            >
+              <ToggleGroupItem value="monthly" aria-label="Monthly" className="rounded-md text-sm">
+                Monthly
+              </ToggleGroupItem>
+              <ToggleGroupItem value="yearly" aria-label="Yearly" className="rounded-md text-sm">
+                Yearly
+              </ToggleGroupItem>
+              <ToggleGroupItem value="lifetime" aria-label="Lifetime" className="rounded-md text-sm">
+                Lifetime
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
           
           <FormField
@@ -47,104 +131,33 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
                     defaultValue={field.value}
                     className="grid grid-cols-1 md:grid-cols-3 gap-4"
                   >
-                    <FormItem className="col-span-1">
-                      <FormControl>
-                        <RadioGroupItem value="gold" className="peer sr-only" id="gold" />
-                      </FormControl>
-                      <label
-                        htmlFor="gold"
-                        className="flex flex-col h-full p-6 border rounded-xl cursor-pointer peer-data-[state=checked]:border-willtank-600 peer-data-[state=checked]:bg-willtank-50 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="mb-3">
-                          <span className="inline-block px-2.5 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 mb-2">
-                            Monthly
-                          </span>
-                          <h3 className="text-lg font-semibold">Gold Plan</h3>
-                          <p className="text-3xl font-bold my-2">$15.99<span className="text-sm font-normal text-muted-foreground">/month</span></p>
-                          <p className="text-sm text-muted-foreground">Perfect for individuals</p>
-                        </div>
-                        <ul className="space-y-2 text-sm flex-1">
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Standard will templates
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Secure storage
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Basic support
-                          </li>
-                        </ul>
-                      </label>
-                    </FormItem>
-                    
-                    <FormItem className="col-span-1">
-                      <FormControl>
-                        <RadioGroupItem value="platinum" className="peer sr-only" id="platinum" />
-                      </FormControl>
-                      <label
-                        htmlFor="platinum"
-                        className="flex flex-col h-full p-6 border rounded-xl cursor-pointer peer-data-[state=checked]:border-willtank-600 peer-data-[state=checked]:bg-willtank-50 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="mb-3">
-                          <span className="inline-block px-2.5 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-800 mb-2">
-                            Annual (Save 20%)
-                          </span>
-                          <h3 className="text-lg font-semibold">Platinum Plan</h3>
-                          <p className="text-3xl font-bold my-2">$191.88<span className="text-sm font-normal text-muted-foreground">/year</span></p>
-                          <p className="text-sm text-muted-foreground">For those seeking premium features</p>
-                        </div>
-                        <ul className="space-y-2 text-sm flex-1">
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Advanced will templates
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Advanced encryption
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Priority support
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Family access options
-                          </li>
-                        </ul>
-                      </label>
-                    </FormItem>
-                    
-                    <FormItem className="col-span-1">
-                      <FormControl>
-                        <RadioGroupItem value="lifetime" className="peer sr-only" id="lifetime" />
-                      </FormControl>
-                      <label
-                        htmlFor="lifetime"
-                        className="flex flex-col h-full p-6 border rounded-xl cursor-pointer peer-data-[state=checked]:border-willtank-600 peer-data-[state=checked]:bg-willtank-50 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="mb-3">
-                          <span className="inline-block px-2.5 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800 mb-2">
-                            One-time Payment
-                          </span>
-                          <h3 className="text-lg font-semibold">Lifetime Plan</h3>
-                          <p className="text-3xl font-bold my-2">$399<span className="text-sm font-normal text-muted-foreground"></span></p>
-                          <p className="text-sm text-muted-foreground">For long-term peace of mind</p>
-                        </div>
-                        <ul className="space-y-2 text-sm flex-1">
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> All premium templates
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Military-grade encryption
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> 24/7 VIP support
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Family & business options
-                          </li>
-                          <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-willtank-600" /> Lifetime updates
-                          </li>
-                        </ul>
-                      </label>
-                    </FormItem>
+                    {(Object.entries(planDetails) as [keyof typeof planDetails, any][]).map(([planKey, plan]) => (
+                      <FormItem className="col-span-1" key={planKey}>
+                        <FormControl>
+                          <RadioGroupItem value={planKey} className="peer sr-only" id={planKey} />
+                        </FormControl>
+                        <label
+                          htmlFor={planKey}
+                          className="flex flex-col h-full p-6 border rounded-xl cursor-pointer peer-data-[state=checked]:border-willtank-600 peer-data-[state=checked]:bg-willtank-50 hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="mb-3">
+                            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 mb-3">
+                              {plan.icon}
+                            </div>
+                            <h3 className="text-lg font-semibold">{plan.name}</h3>
+                            <p className="text-3xl font-bold my-2">{getPriceDisplay(planKey)}</p>
+                            <p className="text-sm text-muted-foreground">{plan.description}</p>
+                          </div>
+                          <ul className="space-y-2 text-sm flex-1">
+                            {plan.features.map((feature: string, i: number) => (
+                              <li key={i} className="flex items-center">
+                                <Check className="h-4 w-4 mr-2 text-willtank-600" /> {feature}
+                              </li>
+                            ))}
+                          </ul>
+                        </label>
+                      </FormItem>
+                    ))}
                   </RadioGroup>
                 </FormControl>
                 <FormMessage />
