@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 
 type Notification = {
-  id: number | string;
+  id: string;
   title: string;
   description: string;
   icon: React.ReactNode;
@@ -44,7 +44,10 @@ export default function Notifications() {
         if (data && data.length > 0) {
           const formattedNotifications = data.map(item => {
             let icon;
-            switch (item.type) {
+            // Make sure type is one of the allowed literal types
+            const notificationType = (item.type as 'success' | 'warning' | 'info' | 'security');
+            
+            switch (notificationType) {
               case 'success':
                 icon = <CheckCircle className="text-green-600" size={20} />;
                 break;
@@ -60,13 +63,13 @@ export default function Notifications() {
             }
             
             return {
-              id: item.id,
+              id: String(item.id), // Ensure id is always a string
               title: item.title,
               description: item.description,
               icon,
-              type: item.type,
+              type: notificationType,
               date: new Date(item.created_at).toLocaleDateString(),
-              read: item.read
+              read: Boolean(item.read)
             };
           });
           
@@ -75,7 +78,7 @@ export default function Notifications() {
           // No data, use sample notifications
           setNotifications([
             {
-              id: 1,
+              id: "1",
               title: "Will Updated Successfully",
               description: "Your will document was successfully updated and encrypted.",
               icon: <FileText className="text-green-600" size={20} />,
@@ -84,7 +87,7 @@ export default function Notifications() {
               read: false
             },
             {
-              id: 2,
+              id: "2",
               title: "Security Alert: New Login",
               description: "A new login to your account was detected from a new device in Boston.",
               icon: <Shield className="text-amber-600" size={20} />,
@@ -93,7 +96,7 @@ export default function Notifications() {
               read: false
             },
             {
-              id: 3,
+              id: "3",
               title: "Executor Invitation Accepted",
               description: "Casey Morgan has accepted your invitation to be an executor.",
               icon: <Users className="text-blue-600" size={20} />,
@@ -102,7 +105,7 @@ export default function Notifications() {
               read: true
             },
             {
-              id: 4,
+              id: "4",
               title: "Legal Update: Trust Law Changes",
               description: "Recent changes to trust laws in your state may affect your estate planning.",
               icon: <AlertTriangle className="text-amber-600" size={20} />,
@@ -111,7 +114,7 @@ export default function Notifications() {
               read: true
             },
             {
-              id: 5,
+              id: "5",
               title: "ID Verification Completed",
               description: "Your identity verification has been successfully completed.",
               icon: <CheckCircle className="text-green-600" size={20} />,
@@ -132,7 +135,7 @@ export default function Notifications() {
         // Set fallback notifications
         setNotifications([
           {
-            id: 1,
+            id: "1",
             title: "Welcome to WillTank",
             description: "Thank you for joining WillTank. Get started by creating your first will.",
             icon: <CheckCircle className="text-green-600" size={20} />,
@@ -149,7 +152,7 @@ export default function Notifications() {
     fetchNotifications();
   }, [toast]);
 
-  const markAsRead = async (id: number | string) => {
+  const markAsRead = async (id: string) => {
     try {
       // Update in the database if it exists
       await supabase

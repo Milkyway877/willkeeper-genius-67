@@ -72,7 +72,7 @@ export const getUserExecutors = async (): Promise<ExecutorData[]> => {
     
     if (data && data.length > 0) {
       return data.map(item => ({
-        id: item.id,
+        id: String(item.id),
         name: item.name,
         email: item.email,
         status: item.status,
@@ -163,12 +163,12 @@ export const getUserNotifications = async (): Promise<NotificationData[]> => {
     
     if (data && data.length > 0) {
       return data.map(item => ({
-        id: item.id,
+        id: String(item.id),
         title: item.title,
         description: item.description,
         type: item.type as 'success' | 'warning' | 'info' | 'security',
         date: new Date(item.created_at).toISOString(),
-        read: item.read
+        read: Boolean(item.read)
       }));
     }
     
