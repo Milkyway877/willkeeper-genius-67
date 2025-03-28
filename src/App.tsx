@@ -28,6 +28,7 @@ import Careers from "./pages/Careers";
 import Documentation from "./pages/Documentation";
 import Help from "./pages/Help";
 import API from "./pages/API";
+import Corporate from "./pages/Corporate";
 import Community from "./pages/Community";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -142,6 +143,7 @@ const App = () => {
               <Route path="/business" element={<Business />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/corporate" element={<Corporate />} />
               
               <Route path="/will" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
               <Route path="/will/:id" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />

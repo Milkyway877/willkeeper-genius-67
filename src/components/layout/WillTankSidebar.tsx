@@ -7,7 +7,8 @@ import { Logo } from '@/components/ui/logo/Logo';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { 
   LayoutDashboard, FileText, PackageOpen, Lock, Users, Brain, 
-  ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, Menu, Archive
+  ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, 
+  Archive, Briefcase
 } from 'lucide-react';
 
 interface WillTankSidebarProps {
@@ -56,7 +57,7 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
     },
     {
       title: 'Tank',
-      icon: Archive, // Changed from Tank to Archive as Tank isn't available in lucide-react
+      icon: Archive,
       href: '/tank',
     },
     {
@@ -141,17 +142,20 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
       
       {!isCollapsed && (
         <div className="mt-auto p-4">
-          <div className="rounded-lg bg-[#FFF5E6] dark:bg-gray-800 p-3">
+          <Link 
+            to="/corporate" 
+            className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
+          >
             <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-black flex items-center justify-center">
-                <Menu className="h-4 w-4 text-white" />
+              <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                <Briefcase className="h-4 w-4 text-white" />
               </div>
               <div className="ml-3">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-200">Need help?</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Check our docs</p>
+                <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
       )}
     </motion.aside>
