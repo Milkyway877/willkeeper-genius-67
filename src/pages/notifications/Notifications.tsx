@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2, Toggle } from 'lucide-react';
+import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
