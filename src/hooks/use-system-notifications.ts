@@ -26,6 +26,10 @@ export function useSystemNotifications() {
   const notifyItemSaved = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     return createSystemNotification('item_saved', details);
   }, []);
+  
+  const notifyWillDeleted = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
+    return createSystemNotification('will_deleted', details);
+  }, []);
 
   return {
     notifyWillUpdated,
@@ -33,6 +37,7 @@ export function useSystemNotifications() {
     notifySecurityKeyGenerated,
     notifyBeneficiaryAdded,
     notifyExecutorAdded,
-    notifyItemSaved
+    notifyItemSaved,
+    notifyWillDeleted
   };
 }

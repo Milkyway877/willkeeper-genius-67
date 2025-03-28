@@ -152,7 +152,7 @@ export const createWelcomeNotification = async (): Promise<Notification | null> 
 
 // Utility function to create notifications for common events
 export const createSystemNotification = async (
-  event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved',
+  event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved' | 'will_deleted',
   details?: { title?: string, description?: string, itemId?: string }
 ): Promise<Notification | null> => {
   // Default notification templates based on event type
@@ -186,6 +186,11 @@ export const createSystemNotification = async (
       title: 'Item Saved',
       description: 'A new item has been saved to your account.',
       type: 'success'
+    },
+    will_deleted: {
+      title: 'Will Deleted',
+      description: 'Your will has been deleted.',
+      type: 'info'
     }
   };
 
