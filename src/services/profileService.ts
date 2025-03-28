@@ -32,7 +32,19 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
     
-    return data as UserProfile;
+    // Ensure the return data matches the UserProfile interface
+    const profile: UserProfile = {
+      id: data.id,
+      full_name: data.full_name,
+      avatar_url: data.avatar_url,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      is_activated: data.is_activated,
+      subscription_plan: data.subscription_plan,
+      activation_date: data.activation_date
+    };
+    
+    return profile;
   } catch (error) {
     console.error('Error in getUserProfile:', error);
     return null;
@@ -59,7 +71,19 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw error;
     }
     
-    return data as UserProfile;
+    // Ensure the return data matches the UserProfile interface
+    const profile: UserProfile = {
+      id: data.id,
+      full_name: data.full_name,
+      avatar_url: data.avatar_url,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      is_activated: data.is_activated,
+      subscription_plan: data.subscription_plan,
+      activation_date: data.activation_date
+    };
+    
+    return profile;
   } catch (error) {
     console.error('Error in updateUserProfile:', error);
     return null;
