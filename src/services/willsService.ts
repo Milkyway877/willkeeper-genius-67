@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 import { toast } from "@/hooks/use-toast";
 
+// Base interfaces without circular references
 export interface Will {
   id: string;
   title: string;
@@ -42,7 +43,7 @@ export interface WillSignature {
   will_id?: string;
 }
 
-// Completely simplified to avoid circular references
+// Simple standalone interface with no references to Will
 export interface WillVersion {
   id: string;
   will_id: string;
