@@ -102,6 +102,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           toast({
             title: newNotification.title,
             description: newNotification.description,
+            // Fix: Map notification types to valid toast variants
             variant: getToastVariant(validatedType)
           });
         }
@@ -140,13 +141,17 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   }
   
   // Helper to determine toast variant based on notification type
-  function getToastVariant(type: 'success' | 'warning' | 'info' | 'security') {
+  // Fix: Map to valid toast variants only
+  function getToastVariant(type: 'success' | 'warning' | 'info' | 'security'): 'default' | 'destructive' {
     switch (type) {
-      case 'success': return 'default';
-      case 'warning': return 'warning';
-      case 'info': return 'info';
-      case 'security': return 'destructive';
-      default: return 'default';
+      case 'warning':
+      case 'info':
+      case 'success':
+        return 'default';
+      case 'security':
+        return 'destructive';
+      default:
+        return 'default';
     }
   }
 
