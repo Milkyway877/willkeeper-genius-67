@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { supabase } from '@/integrations/supabase/client';
-import { validateTOTP, createUserSecurity } from '@/services/encryptionService';
+import { validateTOTP, createUserSecurity, getUserSecurity } from '@/services/encryptionService';
 import { QRCode } from '@/components/ui/QRCode';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
@@ -84,21 +83,24 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       
       console.log("Setting up 2FA for user:", user.id);
       
-      // First try to create a security record if it doesn't exist
-      await createUserSecurity();
+      // First ensure user security record exists
+      let security = await getUserSecurity();
+      if (!security) {
+        security = await createUserSecurity();
+        if (!security) {
+          throw new Error("Failed to create security record");
+        }
+      }
       
       // Update user security record
       const { error: updateError } = await supabase
         .from('user_security')
-        .upsert({
-          user_id: user.id,
+        .update({
           google_auth_enabled: enableTwoFactor,
           google_auth_secret: authenticatorKey,
-          encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join(''),
           updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
+        })
+        .eq('user_id', user.id);
         
       if (updateError) {
         console.error("Error updating security record:", updateError);

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import * as OTPAuth from "otpauth";
 
@@ -328,16 +329,24 @@ export async function createUserSecurity(): Promise<UserSecurity | null> {
     const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-      
-    // Create new security record
+    
+    const now = new Date().toISOString();
+    
+    // Create new security record - make sure to include all required fields
+    const securityData = {
+      user_id: user.id,
+      encryption_key: encryptionKey,
+      google_auth_enabled: false,
+      google_auth_secret: null,
+      created_at: now,
+      updated_at: now,
+      last_login: now
+    };
+    
+    // Insert the security record
     const { data, error } = await supabase
       .from('user_security')
-      .insert({
-        user_id: user.id,
-        encryption_key: encryptionKey,
-        google_auth_enabled: false,
-        updated_at: new Date().toISOString()
-      })
+      .insert(securityData)
       .select()
       .single();
       
