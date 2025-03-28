@@ -42,6 +42,7 @@ export interface WillSignature {
   will_id?: string;
 }
 
+// Breaking the circular reference by simplifying the WillVersion interface
 export interface WillVersion {
   id: string;
   will_id: string;
