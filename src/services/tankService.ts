@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { LegacyVaultItem as UILegacyVaultItem } from "../pages/tank/types";
 import { createSystemNotification } from "./notificationService";
@@ -192,6 +193,45 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
     };
   } catch (error) {
     console.error('Error in createLegacyVaultItem:', error);
+    return null;
+  }
+};
+
+export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVaultItem>): Promise<UILegacyVaultItem | null> => {
+  try {
+    // Convert from UI schema to database schema
+    const dbItem: Record<string, any> = {};
+    
+    if (item.title !== undefined) dbItem.title = item.title;
+    if (item.type !== undefined) dbItem.category = item.type;
+    if (item.preview !== undefined) dbItem.preview = item.preview;
+    if (item.document_url !== undefined) dbItem.document_url = item.document_url;
+    
+    const { data, error } = await supabase
+      .from('legacy_vault')
+      .update(dbItem)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating legacy vault item:', error);
+      return null;
+    }
+    
+    // Convert back to UI schema
+    return {
+      id: data.id,
+      title: data.title,
+      type: mapCategoryToType(data.category),
+      preview: data.preview || '',
+      document_url: data.document_url,
+      createdAt: data.created_at,
+      created_at: data.created_at,
+      encryptionStatus: true
+    };
+  } catch (error) {
+    console.error('Error in updateLegacyVaultItem:', error);
     return null;
   }
 };

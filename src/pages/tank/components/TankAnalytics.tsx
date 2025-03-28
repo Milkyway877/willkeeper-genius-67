@@ -1,39 +1,36 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MessageType } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Video, FileAudio, File, Calendar, Clock, ShieldCheck } from 'lucide-react';
+import { FileText, Video, FileAudio, File, Calendar, Clock, ShieldCheck, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { FutureMessage } from '@/services/tankService';
 
 const COLORS = ['#0088FE', '#FF4F59', '#9061F9', '#48BB78'];
 
-const messageTypeData = [
-  { name: 'Letters', value: 5, color: '#0088FE' },
-  { name: 'Videos', value: 3, color: '#FF4F59' },
-  { name: 'Audio', value: 2, color: '#9061F9' },
-  { name: 'Documents', value: 2, color: '#48BB78' }
-];
+type MessageTypeCount = {
+  name: string;
+  value: number;
+  color: string;
+};
 
-const deliveryTimelineData = [
-  { name: '2023', letters: 1, videos: 1, audio: 0, documents: 0 },
-  { name: '2024', letters: 2, videos: 0, audio: 1, documents: 1 },
-  { name: '2025', letters: 1, videos: 1, audio: 1, documents: 0 },
-  { name: '2026+', letters: 1, videos: 1, audio: 0, documents: 1 }
-];
+type DeliveryTimelineData = {
+  name: string;
+  letters: number;
+  videos: number;
+  audio: number;
+  documents: number;
+};
 
-const upcomingDeliveries = [
-  { id: 1, title: 'Holiday Greetings', recipient: 'Family', date: '2023-12-25', type: 'video' as MessageType },
-  { id: 2, title: 'Birthday Wishes', recipient: 'Sarah', date: '2024-02-15', type: 'letter' as MessageType },
-  { id: 3, title: 'Graduation Message', recipient: 'Michael', date: '2024-06-10', type: 'audio' as MessageType }
-];
-
-const securityEvents = [
-  { id: 1, event: 'Message encryption updated', date: '2023-10-15 10:24 AM', status: 'success' },
-  { id: 2, event: 'Verification check completed', date: '2023-10-12 03:15 PM', status: 'success' },
-  { id: 3, event: 'Delivery system test', date: '2023-10-05 11:30 AM', status: 'warning' }
-];
+type SecurityEvent = {
+  id: number | string;
+  event: string;
+  date: string;
+  status: 'success' | 'warning' | 'error';
+};
 
 const getTypeIcon = (type: MessageType) => {
   switch (type) {
@@ -64,6 +61,154 @@ const getStatusBadge = (status: string) => {
 };
 
 export const TankAnalytics: React.FC = () => {
+  const [messageTypeData, setMessageTypeData] = useState<MessageTypeCount[]>([]);
+  const [deliveryTimelineData, setDeliveryTimelineData] = useState<DeliveryTimelineData[]>([]);
+  const [upcomingDeliveries, setUpcomingDeliveries] = useState<FutureMessage[]>([]);
+  const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch all future messages
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('future_messages')
+          .select('*')
+          .order('delivery_date', { ascending: true });
+          
+        if (messagesError) throw messagesError;
+        
+        if (messagesData) {
+          // Process message type data for pie chart
+          const typeCounts: Record<string, number> = {
+            'letter': 0,
+            'video': 0,
+            'audio': 0,
+            'document': 0
+          };
+          
+          messagesData.forEach(message => {
+            const type = message.message_type || 'letter';
+            if (typeCounts[type] !== undefined) {
+              typeCounts[type]++;
+            } else {
+              typeCounts['letter']++; // Default to letter if type is unknown
+            }
+          });
+          
+          const typeData: MessageTypeCount[] = [
+            { name: 'Letters', value: typeCounts['letter'], color: '#0088FE' },
+            { name: 'Videos', value: typeCounts['video'], color: '#FF4F59' },
+            { name: 'Audio', value: typeCounts['audio'], color: '#9061F9' },
+            { name: 'Documents', value: typeCounts['document'], color: '#48BB78' }
+          ].filter(item => item.value > 0); // Only show types that have messages
+          
+          setMessageTypeData(typeData.length ? typeData : [
+            { name: 'No Data', value: 1, color: '#CCCCCC' }
+          ]);
+          
+          // Process delivery timeline data for bar chart
+          const currentYear = new Date().getFullYear();
+          const years = [currentYear, currentYear + 1, currentYear + 2, `${currentYear + 3}+`];
+          
+          const timelineData = years.map(year => {
+            const yearStr = year.toString();
+            const isYearPlus = yearStr.includes('+');
+            const yearNumber = parseInt(yearStr.replace('+', ''), 10);
+            
+            // Filter messages for this year
+            const yearMessages = messagesData.filter(message => {
+              const messageYear = new Date(message.delivery_date).getFullYear();
+              return isYearPlus 
+                ? messageYear >= yearNumber 
+                : messageYear === yearNumber;
+            });
+            
+            // Count by type
+            const letters = yearMessages.filter(m => !m.message_type || m.message_type === 'letter').length;
+            const videos = yearMessages.filter(m => m.message_type === 'video').length;
+            const audio = yearMessages.filter(m => m.message_type === 'audio').length;
+            const documents = yearMessages.filter(m => m.message_type === 'document').length;
+            
+            return {
+              name: yearStr,
+              letters,
+              videos,
+              audio,
+              documents
+            };
+          });
+          
+          setDeliveryTimelineData(timelineData);
+          
+          // Get upcoming deliveries (next 3 by delivery date)
+          const upcoming = messagesData
+            .filter(m => m.status === 'Scheduled' || m.status === 'scheduled')
+            .sort((a, b) => 
+              new Date(a.delivery_date).getTime() - new Date(b.delivery_date).getTime()
+            )
+            .slice(0, 3);
+            
+          setUpcomingDeliveries(upcoming);
+          
+          // Fetch security events 
+          // (This is placeholder - in a real app, you'd fetch from an actual security events table)
+          // For now, we'll create some static security events
+          const securityEventsData: SecurityEvent[] = [
+            { 
+              id: 1, 
+              event: 'Message encryption updated', 
+              date: new Date().toLocaleString(), 
+              status: 'success' 
+            },
+            { 
+              id: 2, 
+              event: 'Verification check completed', 
+              date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toLocaleString(), 
+              status: 'success' 
+            },
+            { 
+              id: 3, 
+              event: 'Delivery system test', 
+              date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toLocaleString(), 
+              status: 'warning' 
+            }
+          ];
+          
+          setSecurityEvents(securityEventsData);
+        }
+      } catch (err) {
+        console.error('Error fetching analytics data:', err);
+        setError('Failed to load analytics data. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAnalyticsData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 text-willtank-600 animate-spin mb-4" />
+        <p className="text-gray-600">Loading analytics data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 p-4 rounded-md text-red-800 mb-6">
+        <h3 className="text-lg font-medium mb-2">Error Loading Analytics</h3>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -90,13 +235,16 @@ export const TankAnalytics: React.FC = () => {
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
                     {messageTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            {messageTypeData.length === 1 && messageTypeData[0].name === 'No Data' && (
+              <p className="text-center text-gray-500 mt-4">No messages found. Add messages to see analytics.</p>
+            )}
           </CardContent>
         </Card>
         
@@ -126,6 +274,9 @@ export const TankAnalytics: React.FC = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            {!deliveryTimelineData.some(d => d.letters || d.videos || d.audio || d.documents) && (
+              <p className="text-center text-gray-500 mt-4">No scheduled deliveries. Add messages to see timeline.</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -146,25 +297,31 @@ export const TankAnalytics: React.FC = () => {
               <CardDescription>Messages scheduled for delivery soon</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {upcomingDeliveries.map((delivery) => (
-                  <div key={delivery.id} className="flex items-center p-3 border rounded-lg">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
-                      {getTypeIcon(delivery.type)}
+              {upcomingDeliveries.length > 0 ? (
+                <div className="space-y-4">
+                  {upcomingDeliveries.map((delivery) => (
+                    <div key={delivery.id} className="flex items-center p-3 border rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
+                        {getTypeIcon((delivery.message_type as MessageType) || 'letter')}
+                      </div>
+                      
+                      <div className="flex-grow">
+                        <h4 className="font-medium">{delivery.title || 'Untitled Message'}</h4>
+                        <div className="text-sm text-gray-600">To: {delivery.recipient_name}</div>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 flex items-center">
+                        <Calendar size={14} className="mr-1" />
+                        {new Date(delivery.delivery_date).toLocaleDateString()}
+                      </div>
                     </div>
-                    
-                    <div className="flex-grow">
-                      <h4 className="font-medium">{delivery.title}</h4>
-                      <div className="text-sm text-gray-600">To: {delivery.recipient}</div>
-                    </div>
-                    
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <Calendar size={14} className="mr-1" />
-                      {new Date(delivery.date).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-gray-500">No upcoming deliveries scheduled.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

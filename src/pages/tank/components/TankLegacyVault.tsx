@@ -29,6 +29,7 @@ import { getLegacyVaultItems, deleteLegacyVaultItem, createLegacyVaultItem } fro
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useSystemNotifications } from '@/hooks/use-system-notifications';
 
 const getTypeIcon = (type: LegacyVaultItem['type']) => {
   switch (type) {
@@ -63,6 +64,7 @@ const getTypeName = (type: LegacyVaultItem['type']) => {
 export const TankLegacyVault: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { notifyDocumentUploaded } = useSystemNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [vaultItems, setVaultItems] = useState<LegacyVaultItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +79,8 @@ export const TankLegacyVault: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [viewItem, setViewItem] = useState<LegacyVaultItem | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentEditId, setCurrentEditId] = useState<string | null>(null);
   
   useEffect(() => {
     const loadVaultItems = async () => {
@@ -110,14 +114,10 @@ export const TankLegacyVault: React.FC = () => {
   };
   
   const handleEdit = (id: number | string) => {
-    toast({
-      title: "Edit vault item",
-      description: `Opening vault item #${id} for editing.`
-    });
-    
     // Find the item and pre-populate the edit dialog
     const itemToEdit = vaultItems.find(item => item.id === id);
     if (itemToEdit) {
+      setCurrentEditId(id.toString());
       setNewItem({
         title: itemToEdit.title,
         type: itemToEdit.type,
@@ -148,6 +148,7 @@ export const TankLegacyVault: React.FC = () => {
   
   const handleAddNew = () => {
     // Reset the form
+    setCurrentEditId(null);
     setNewItem({
       title: '',
       type: 'story',
@@ -169,22 +170,69 @@ export const TankLegacyVault: React.FC = () => {
     }
 
     try {
-      const createdItem = await createLegacyVaultItem(newItem);
-      if (createdItem) {
-        setVaultItems([createdItem, ...vaultItems]);
-        setShowCreateDialog(false);
-        toast({
-          title: "Item created",
-          description: "Your legacy item has been added to your vault."
-        });
+      setIsSaving(true);
+
+      if (currentEditId) {
+        // Update existing item
+        const { data, error } = await supabase
+          .from('legacy_vault')
+          .update({
+            title: newItem.title,
+            category: newItem.type,
+            preview: newItem.preview,
+            document_url: newItem.document_url
+          })
+          .eq('id', currentEditId)
+          .select();
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Update the item in the local state
+          setVaultItems(vaultItems.map(item => 
+            item.id === currentEditId ? {
+              ...item,
+              title: newItem.title,
+              type: newItem.type,
+              preview: newItem.preview,
+              document_url: newItem.document_url
+            } : item
+          ));
+          
+          toast({
+            title: "Item updated",
+            description: "Your legacy item has been updated successfully."
+          });
+        }
+      } else {
+        // Create new item
+        const createdItem = await createLegacyVaultItem(newItem);
+        if (createdItem) {
+          setVaultItems([createdItem, ...vaultItems]);
+          
+          // Send system notification
+          await notifyDocumentUploaded({
+            title: "Legacy Item Added",
+            description: `Your legacy item "${newItem.title}" has been added to your vault.`
+          });
+          
+          toast({
+            title: "Item created",
+            description: "Your legacy item has been added to your vault."
+          });
+        }
       }
+      
+      setShowCreateDialog(false);
     } catch (err) {
-      console.error('Error creating vault item:', err);
+      console.error('Error saving vault item:', err);
       toast({
         title: "Error",
-        description: "Failed to create the vault item. Please try again.",
+        description: "Failed to save the vault item. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -370,13 +418,15 @@ export const TankLegacyVault: React.FC = () => {
         )}
       </div>
       
-      {/* Create New Item Dialog */}
+      {/* Create/Edit Item Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add to Legacy Vault</DialogTitle>
+            <DialogTitle>{currentEditId ? 'Edit Legacy Item' : 'Add to Legacy Vault'}</DialogTitle>
             <DialogDescription>
-              Create a new item for your legacy vault. These items will be securely stored and delivered according to your wishes.
+              {currentEditId 
+                ? 'Update your legacy vault item details below.'
+                : 'Create a new item for your legacy vault. These items will be securely stored and delivered according to your wishes.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -464,8 +514,19 @@ export const TankLegacyVault: React.FC = () => {
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleCreateItem}>
-              Save to Vault
+            <Button 
+              type="button" 
+              onClick={handleCreateItem}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {currentEditId ? 'Updating...' : 'Saving...'}
+                </>
+              ) : (
+                currentEditId ? 'Update Item' : 'Save to Vault'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
