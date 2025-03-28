@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as OTPAuth from "otpauth";
 import { toast } from "@/hooks/use-toast";
@@ -189,19 +188,17 @@ export const storeRecoveryCodes = async (codes: string[]): Promise<boolean> => {
       throw new Error('No user logged in');
     }
     
-    // Use a custom type assertion to let TypeScript know the table exists
-    const query = supabase
-      .from('user_recovery_codes' as any)
-      .upsert(
-        codes.map(code => ({
-          user_id: session.user.id,
-          code: code,
-          used: false
-        })),
-        { onConflict: 'user_id,code' }
-      );
-      
-    const { error } = await query;
+    // Create an array of objects with the recovery codes data
+    const recoveryCodesData = codes.map(code => ({
+      user_id: session.user.id,
+      code: code,
+      used: false
+    }));
+    
+    // Make a type-safe insert
+    const { error } = await supabase
+      .from('user_recovery_codes')
+      .upsert(recoveryCodesData, { onConflict: 'user_id,code' });
       
     if (error) {
       console.error('Error storing recovery codes:', error);
@@ -223,9 +220,9 @@ export const getUserRecoveryCodes = async (): Promise<RecoveryCode[]> => {
       throw new Error('No user logged in');
     }
     
-    // Use a custom type assertion to let TypeScript know the table exists
+    // Use a properly typed select query
     const { data, error } = await supabase
-      .from('user_recovery_codes' as any)
+      .from('user_recovery_codes')
       .select('*')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false });
@@ -235,7 +232,8 @@ export const getUserRecoveryCodes = async (): Promise<RecoveryCode[]> => {
       throw error;
     }
     
-    return data || [];
+    // Explicitly cast the data to our RecoveryCode interface
+    return (data || []) as RecoveryCode[];
   } catch (error) {
     console.error('Error in getUserRecoveryCodes:', error);
     return [];
@@ -252,7 +250,7 @@ export const validateRecoveryCode = async (code: string): Promise<boolean> => {
     
     // Find the matching recovery code
     const { data, error } = await supabase
-      .from('user_recovery_codes' as any)
+      .from('user_recovery_codes')
       .select('*')
       .eq('user_id', session.user.id)
       .eq('code', code)
@@ -270,7 +268,7 @@ export const validateRecoveryCode = async (code: string): Promise<boolean> => {
     
     // Mark the code as used
     const { error: updateError } = await supabase
-      .from('user_recovery_codes' as any)
+      .from('user_recovery_codes')
       .update({
         used: true,
         used_at: new Date().toISOString()
