@@ -68,7 +68,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/will') && 
     !location.pathname.includes('/templates') && 
     !location.pathname.includes('/tank') && 
-    !location.pathname.includes('/settings');
+    !location.pathname.includes('/settings') &&
+    !location.pathname.includes('/search');
   
   return (
     <div className={cn(

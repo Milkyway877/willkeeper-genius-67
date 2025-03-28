@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -45,11 +44,10 @@ import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
 import Tank from "./pages/tank/Tank";
 import TankCreation from "./pages/tank/TankCreation";
+import Search from "./pages/search/Search";
 
-// Initialize Supabase storage on app start
 const initSupabaseStorage = async () => {
   try {
-    // Check if avatars bucket exists, if not create it
     const { data: buckets } = await supabase.storage.listBuckets();
     const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
     
@@ -82,7 +80,6 @@ const RouteHandler = () => {
   return null;
 };
 
-// Wrap the app in the necessary providers
 const AppWithProviders = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>
     <UserProfileProvider>
@@ -100,7 +97,6 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize Supabase storage
     initSupabaseStorage();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -155,6 +151,7 @@ const App = () => {
               <Route path="/id-security" element={session ? <IDSecurity /> : <Navigate to="/auth/signin" replace />} />
               <Route path="/billing" element={session ? <Billing /> : <Navigate to="/auth/signin" replace />} />
               <Route path="/notifications" element={session ? <Notifications /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/search" element={session ? <Search /> : <Navigate to="/auth/signin" replace />} />
               <Route path="/help" element={<Help />} />
               <Route path="/settings" element={session ? <Settings /> : <Navigate to="/auth/signin" replace />} />
               

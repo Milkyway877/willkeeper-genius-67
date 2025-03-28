@@ -1,172 +1,102 @@
 
-import React from 'react';
-import { useNotifications } from '@/contexts/NotificationsContext';
-import { 
+import React, { useState, useEffect } from 'react';
+import { BellRing, Check, X } from 'lucide-react';
+import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { Bell, Eye, CheckCircle, AlertTriangle, Shield, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 export function NotificationDropdown() {
-  // Use a try-catch to handle cases where the context is not available
-  let notificationsContext;
-  try {
-    notificationsContext = useNotifications();
-  } catch (error) {
-    // Return a simplified version of the dropdown when context is not available
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="relative" 
-          >
-            <Bell size={20} />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80 z-50 bg-white shadow-md border border-gray-200">
-          <DropdownMenuLabel className="flex justify-between items-center">
-            <span>Notifications</span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <div className="py-6 text-center">
-            <Bell className="mx-auto h-8 w-8 text-gray-300 mb-2" />
-            <p className="text-gray-500 text-sm">Unable to load notifications</p>
-          </div>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            className="p-2 cursor-pointer justify-center"
-          >
-            <span className="text-willtank-600 text-sm font-medium">View all notifications</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
+  const { notifications, markAsRead, hasUnread } = useNotifications();
+  const [isOpen, setIsOpen] = useState(false);
   
-  const { notifications, unreadCount, markAsRead } = notificationsContext;
-  const navigate = useNavigate();
-  
-  // Get only unread notifications
-  const unreadNotifications = notifications.filter(n => !n.read);
-
-  // Helper functions
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-        return <CheckCircle className="text-green-600" size={16} />;
-      case 'warning':
-        return <AlertTriangle className="text-amber-600" size={16} />;
-      case 'security':
-        return <Shield className="text-red-600" size={16} />;
-      case 'info':
-      default:
-        return <Info className="text-blue-600" size={16} />;
-    }
-  };
-
-  const handleViewNotification = (id: string) => {
+  const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     markAsRead(id);
-    navigate('/notifications');
   };
-
-  const handleViewAllNotifications = () => {
-    navigate('/notifications');
+  
+  const toggleOpen = () => {
+    setIsOpen(!isOpen);
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
-          size="icon" 
-          className="relative" 
+          className="relative p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         >
-          <Bell size={20} />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-willtank-500 text-white text-xs rounded-full">
-              {unreadCount > 9 ? '9+' : unreadCount}
+          <BellRing className="h-5 w-5" />
+          {hasUnread && (
+            <span className="absolute top-1 right-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-willtank-600 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-willtank-600"></span>
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 z-50 bg-white shadow-md border border-gray-200">
-        <DropdownMenuLabel className="flex justify-between items-center">
-          <span>Notifications</span>
-          {unreadCount > 0 && (
-            <span className="text-xs bg-willtank-100 text-willtank-700 px-2 py-1 rounded-full">
-              {unreadCount} unread
-            </span>
-          )}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+      <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto p-0">
+        <div className="flex items-center justify-between p-3 border-b">
+          <h3 className="font-medium">Notifications</h3>
+          <Link to="/notifications" className="text-sm text-willtank-600 hover:underline">
+            View all
+          </Link>
+        </div>
         
-        <ScrollArea className="h-[300px]">
-          <DropdownMenuGroup>
-            {unreadNotifications.length > 0 ? (
-              unreadNotifications.slice(0, 5).map((notification) => (
-                <DropdownMenuItem 
-                  key={notification.id} 
-                  className="p-3 cursor-pointer"
-                  onClick={() => handleViewNotification(notification.id)}
+        {notifications.length > 0 ? (
+          <div className="divide-y divide-gray-100">
+            <AnimatePresence>
+              {notifications.slice(0, 5).map((notification) => (
+                <motion.div
+                  key={notification.id}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
+                  <DropdownMenuItem className="flex flex-col items-start p-3 cursor-default">
+                    <div className="flex justify-between w-full mb-1">
+                      <span className="font-medium text-sm">{notification.title}</span>
+                      <div className="flex items-center space-x-1">
+                        {!notification.read && (
+                          <Badge variant="outline" className="text-xs bg-willtank-100 text-willtank-800 border-willtank-200">
+                            New
+                          </Badge>
+                        )}
+                        <button
+                          onClick={(e) => handleMarkAsRead(notification.id, e)}
+                          className="ml-1 text-gray-400 hover:text-gray-600"
+                        >
+                          {notification.read ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <X className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{notification.title}</p>
-                      <p className="text-xs text-gray-500 truncate">{notification.description}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(notification.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 w-6 p-0 flex-shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markAsRead(notification.id);
-                      }}
-                    >
-                      <Eye size={14} />
-                    </Button>
-                  </div>
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <div className="py-6 text-center">
-                <Bell className="mx-auto h-8 w-8 text-gray-300 mb-2" />
-                <p className="text-gray-500 text-sm">No unread notifications</p>
-              </div>
-            )}
-            
-            {unreadNotifications.length > 5 && (
-              <p className="text-xs text-center text-gray-500 py-2">
-                {unreadNotifications.length - 5} more unread notifications
-              </p>
-            )}
-          </DropdownMenuGroup>
-        </ScrollArea>
-        
-        <DropdownMenuSeparator />
-        <DropdownMenuItem 
-          className="p-2 cursor-pointer justify-center"
-          onClick={handleViewAllNotifications}
-        >
-          <span className="text-willtank-600 text-sm font-medium">View all notifications</span>
-        </DropdownMenuItem>
+                    <p className="text-xs text-gray-500">{notification.message}</p>
+                    <span className="text-xs text-gray-400 mt-1">
+                      {new Date(notification.timestamp).toLocaleString()}
+                    </span>
+                  </DropdownMenuItem>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="py-6 px-4 text-center">
+            <BellRing className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500 text-sm">No notifications yet</p>
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

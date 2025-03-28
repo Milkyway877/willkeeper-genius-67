@@ -1,6 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
-import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight } from 'lucide-react';
+import { 
+  Store, 
+  Search, 
+  Grid, 
+  BellRing, 
+  HelpCircle, 
+  Settings, 
+  Plus,
+  Monitor,
+  ToggleRight,
+  ChevronDown,
+  X
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
@@ -21,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DotPatternText } from '@/components/ui/DotPatternText';
 import { NotificationDropdown } from './NotificationDropdown';
 import { supabase } from '@/integrations/supabase/client';
+import { Switch } from '@/components/ui/switch';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -30,6 +42,8 @@ interface NavbarProps {
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [testMode, setTestMode] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -37,6 +51,27 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   
   const toggleMobileMenu = () => {
     setShowMobileMenu(!showMobileMenu);
+  };
+
+  const handleTestModeToggle = () => {
+    setTestMode(!testMode);
+    toast({
+      title: testMode ? "Test mode disabled" : "Test mode enabled",
+      description: testMode 
+        ? "Switched to production mode" 
+        : "You can now test features without affecting production data",
+    });
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchValue.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchValue)}`);
+      toast({
+        title: "Search initiated",
+        description: `Searching for "${searchValue}"`,
+      });
+    }
   };
 
   useEffect(() => {
@@ -188,42 +223,58 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           animate={{ y: 0 }}
           transition={{ type: "spring", stiffness: 100, damping: 20 }}
         >
-          <div className="container py-4 px-4 md:px-6 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              {shouldShowDashboardLayout && (
-                <button 
-                  onClick={onMenuToggle}
-                  className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
-                >
-                  <Menu size={20} />
-                </button>
-              )}
-              <Link to="/">
-                <Logo size="md" pixelated={false} />
-              </Link>
-            </div>
-            
-            {shouldShowDashboardLayout ? (
-              <>
-                <div className="flex items-center space-x-4">
-                  <div className="relative hidden md:flex items-center">
-                    <Input placeholder="Search..." className="pl-10 w-[200px] lg:w-[300px] rounded-full" />
-                  </div>
-                  
-                  <Link to="/help" className="p-2 rounded-full text-gray-600 hover:text-black transition-colors">
-                    <Phone size={20} className={iconStyles} />
+          {shouldShowDashboardLayout ? (
+            <div className="container py-3 px-4 md:px-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <Link to="/dashboard" className="flex items-center">
+                    <Store className="h-5 w-5 mr-2 text-gray-700" />
+                    <span className="font-semibold">WillTank</span>
                   </Link>
                   
-                  <div className="relative">
-                    <NotificationDropdown />
+                  <form onSubmit={handleSearch} className="relative hidden md:block">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input 
+                        type="text"
+                        placeholder="Search..." 
+                        className="pl-10 w-[300px] bg-gray-100 border-gray-100 focus:bg-white"
+                        value={searchValue}
+                        onChange={(e) => setSearchValue(e.target.value)}
+                      />
+                    </div>
+                  </form>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 mr-2">
+                    <span className="text-sm text-gray-600">Test mode</span>
+                    <Switch
+                      checked={testMode}
+                      onCheckedChange={handleTestModeToggle}
+                    />
                   </div>
+                  
+                  <Link to="/dashboard" className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+                    <Grid className="h-5 w-5" />
+                  </Link>
+                  
+                  <Link to="/help" className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+                    <HelpCircle className="h-5 w-5" />
+                  </Link>
+                  
+                  <NotificationDropdown />
+                  
+                  <Link to="/settings" className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">
+                    <Settings className="h-5 w-5" />
+                  </Link>
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="p-0 hover:bg-transparent">
-                        <Avatar>
+                      <Button variant="ghost" className="h-9 w-9 p-0 rounded-full overflow-hidden border border-gray-200">
+                        <Avatar className="h-9 w-9">
                           <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
-                          <AvatarFallback className="bg-gray-100 text-gray-700">AM</AvatarFallback>
+                          <AvatarFallback className="bg-gray-100 text-gray-700">WT</AvatarFallback>
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
@@ -245,51 +296,122 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="hidden md:flex items-center space-x-6">
-                  <Link to="/services" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                    <Map size={18} className={iconStyles} />
-                    <span>Our Services</span>
-                  </Link>
-                  <Link to="/security" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                    <Shield size={18} className={iconStyles} />
-                    <span>Security</span>
-                  </Link>
-                  <Link to="/business" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                    <Briefcase size={18} className={iconStyles} />
-                    <span>For Businesses</span>
-                  </Link>
-                  <Link to="/how-it-works" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                    <Map size={18} className={iconStyles} />
-                    <span>How It Works</span>
-                  </Link>
-                  <Link to="/contact" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                    <Phone size={18} className={iconStyles} />
-                    <span>Contact Us</span>
-                  </Link>
                   
-                  <div className="flex items-center gap-4 ml-4">
-                    <Link to="/auth/signin">
-                      <Button variant="outline" className="rounded-xl border-black text-black hover:bg-black hover:text-white">Sign In</Button>
-                    </Link>
-                    <Link to="/auth/signup">
-                      <Button className="rounded-xl bg-black text-white hover:bg-gray-800">Get Started</Button>
-                    </Link>
-                  </div>
+                  <Button 
+                    onClick={() => navigate('/tank/create')}
+                    className="bg-black text-white hover:bg-gray-800 rounded-full"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    <span>New</span>
+                  </Button>
                 </div>
-              </>
-            )}
-            
-            <button 
-              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
-              onClick={toggleMobileMenu}
-            >
-              {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
+              </div>
+            </div>
+          ) : (
+            <div className="container py-4 px-4 md:px-6 flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                {shouldShowDashboardLayout && (
+                  <button 
+                    onClick={onMenuToggle}
+                    className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
+                  >
+                    <Menu size={20} />
+                  </button>
+                )}
+                <Link to="/">
+                  <Logo size="md" pixelated={false} />
+                </Link>
+              </div>
+              
+              {shouldShowDashboardLayout ? (
+                <>
+                  <div className="flex items-center space-x-4">
+                    <div className="relative hidden md:flex items-center">
+                      <Input placeholder="Search..." className="pl-10 w-[200px] lg:w-[300px] rounded-full" />
+                    </div>
+                    
+                    <Link to="/help" className="p-2 rounded-full text-gray-600 hover:text-black transition-colors">
+                      <Phone size={20} className={iconStyles} />
+                    </Link>
+                    
+                    <div className="relative">
+                      <NotificationDropdown />
+                    </div>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="p-0 hover:bg-transparent">
+                          <Avatar>
+                            <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
+                            <AvatarFallback className="bg-gray-100 text-gray-700">AM</AvatarFallback>
+                          </Avatar>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 z-50 bg-white shadow-md border border-gray-200">
+                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="cursor-pointer">
+                          Profile Settings
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="cursor-pointer">
+                          Security
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="cursor-pointer">
+                          Billing
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                          Log out
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="hidden md:flex items-center space-x-6">
+                    <Link to="/services" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                      <Map size={18} className={iconStyles} />
+                      <span>Our Services</span>
+                    </Link>
+                    <Link to="/security" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                      <Shield size={18} className={iconStyles} />
+                      <span>Security</span>
+                    </Link>
+                    <Link to="/business" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                      <Briefcase size={18} className={iconStyles} />
+                      <span>For Businesses</span>
+                    </Link>
+                    <Link to="/how-it-works" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                      <Map size={18} className={iconStyles} />
+                      <span>How It Works</span>
+                    </Link>
+                    <Link to="/contact" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                      <Phone size={18} className={iconStyles} />
+                      <span>Contact Us</span>
+                    </Link>
+                    
+                    <div className="flex items-center gap-4 ml-4">
+                      <Link to="/auth/signin">
+                        <Button variant="outline" className="rounded-xl border-black text-black hover:bg-black hover:text-white">Sign In</Button>
+                      </Link>
+                      <Link to="/auth/signup">
+                        <Button className="rounded-xl bg-black text-white hover:bg-gray-800">Get Started</Button>
+                      </Link>
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              <button 
+                className="md:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
+                onClick={toggleMobileMenu}
+              >
+                {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
+          )}
           
           {showMobileMenu && (
             <motion.div 
