@@ -10,9 +10,10 @@ export interface UserSecurity {
   user_id: string;
   encryption_key: string;
   google_auth_enabled: boolean;
-  google_auth_secret: string;
+  google_auth_secret: string | null;
   created_at: string;
   updated_at: string;
+  last_login?: string | null;
 }
 
 /**
@@ -25,8 +26,10 @@ export interface EncryptionKey {
   type: string;
   algorithm: string;
   strength: string;
+  value: string;
   status: string;
   created_at: string;
+  updated_at: string;
   last_used: string | null;
 }
 
@@ -94,8 +97,8 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
       throw new Error('No authenticated user found');
     }
     
-    // Generate a new random secret
-    const secret = OTPAuth.Secret.generate();
+    // Generate a new random secret using fromRandom instead of generate
+    const secret = OTPAuth.Secret.fromRandom();
     
     // Create a new TOTP object
     const totp = new OTPAuth.TOTP({
@@ -299,7 +302,7 @@ export async function generateRecoveryCodes(userId: string, count: number = 10):
   try {
     // Delete any existing recovery codes
     await supabase
-      .from('recovery_codes')
+      .from('user_recovery_codes')
       .delete()
       .eq('user_id', userId);
       
@@ -323,7 +326,7 @@ export async function generateRecoveryCodes(userId: string, count: number = 10):
     }));
     
     const { error } = await supabase
-      .from('recovery_codes')
+      .from('user_recovery_codes')
       .insert(recoveryCodesData);
       
     if (error) {
@@ -346,7 +349,7 @@ export async function getUserRecoveryCodes(userId: string): Promise<RecoveryCode
   try {
     // Get recovery codes for the user
     const { data, error } = await supabase
-      .from('recovery_codes')
+      .from('user_recovery_codes')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -372,7 +375,7 @@ export async function validateRecoveryCode(userId: string, code: string): Promis
   try {
     // Get the recovery code
     const { data, error } = await supabase
-      .from('recovery_codes')
+      .from('user_recovery_codes')
       .select('*')
       .eq('user_id', userId)
       .eq('code', code)
@@ -385,7 +388,7 @@ export async function validateRecoveryCode(userId: string, code: string): Promis
     
     // Mark the code as used
     const { error: updateError } = await supabase
-      .from('recovery_codes')
+      .from('user_recovery_codes')
       .update({
         used: true,
         used_at: new Date().toISOString()
@@ -427,7 +430,7 @@ export async function generateEncryptionKey(
     
     // Generate a random key based on the strength
     const byteLength = parseInt(strength) / 8;
-    const keyMaterial = Array.from(crypto.getRandomValues(new Uint8Array(byteLength)))
+    const keyValue = Array.from(crypto.getRandomValues(new Uint8Array(byteLength)))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
       
@@ -440,7 +443,7 @@ export async function generateEncryptionKey(
         type,
         algorithm,
         strength,
-        key_material: keyMaterial,
+        value: keyValue,
         status: 'active'
       })
       .select()
