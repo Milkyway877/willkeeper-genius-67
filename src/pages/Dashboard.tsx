@@ -1,12 +1,96 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus, Users, Shield, Zap, CreditCard, Key, Bell, HelpCircle, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { getDashboardSummary, getUserNotifications, getUserWills, getUserExecutors, getUserSubscription } from '@/services/dashboardService';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState({
+    willCount: 0,
+    executorCount: 0,
+    notificationCount: 0,
+    securityStatus: 'Checking...'
+  });
+  const [activities, setActivities] = useState<any[]>([]);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [userFirstName, setUserFirstName] = useState('User');
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get user session to extract first name
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.user_metadata?.first_name) {
+          setUserFirstName(session.user.user_metadata.first_name);
+        }
+        
+        // Load dashboard summary
+        const summaryData = await getDashboardSummary();
+        setSummary(summaryData);
+        
+        // Load recent activities
+        const notifications = await getUserNotifications();
+        const wills = await getUserWills();
+        const subscription = await getUserSubscription();
+        
+        setSubscription(subscription);
+        
+        // Create activities from different data sources
+        const recentActivities = [
+          ...(wills.slice(0, 1).map(will => ({
+            id: `will-${will.id}`,
+            title: 'Will Updated',
+            description: `You updated your ${will.title || 'primary will'} document.`,
+            date: new Date(will.updated_at).toLocaleDateString(),
+            icon: <FileText size={18} className="text-willtank-700" />
+          }))),
+          ...(notifications.slice(0, 2).map(notification => ({
+            id: `notification-${notification.id}`,
+            title: notification.title,
+            description: notification.description,
+            date: new Date(notification.date).toLocaleDateString(),
+            icon: <Bell size={18} className="text-willtank-700" />
+          })))
+        ];
+        
+        if (recentActivities.length === 0) {
+          // Fallback activities if no real data
+          recentActivities.push(
+            {
+              id: 'activity-1',
+              title: 'Welcome to WillTank',
+              description: 'Create your first will to get started with estate planning.',
+              date: 'Today',
+              icon: <FileText size={18} className="text-willtank-700" />
+            }
+          );
+        }
+        
+        setActivities(recentActivities);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        toast({
+          title: "Error loading dashboard",
+          description: "Could not load some dashboard data. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadDashboardData();
+  }, [toast]);
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -16,7 +100,7 @@ export default function Dashboard() {
           transition={{ duration: 0.3 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold mb-2">Welcome back, Alex</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome back, {userFirstName}</h1>
           <p className="text-gray-600">Here's an overview of your will management activity.</p>
         </motion.div>
         
@@ -33,9 +117,13 @@ export default function Dashboard() {
                 <FileText size={20} className="text-willtank-500" />
               </div>
             </div>
-            <p className="text-3xl font-bold mb-4">1</p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-4" />
+            ) : (
+              <p className="text-3xl font-bold mb-4">{summary.willCount}</p>
+            )}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">Last updated 2 days ago</span>
+              <span className="text-sm text-gray-500">Last updated recently</span>
               <Link to="/will">
                 <Button variant="ghost" size="sm">View</Button>
               </Link>
@@ -49,9 +137,13 @@ export default function Dashboard() {
                 <Users size={20} className="text-willtank-500" />
               </div>
             </div>
-            <p className="text-3xl font-bold mb-4">2</p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-4" />
+            ) : (
+              <p className="text-3xl font-bold mb-4">{summary.executorCount}</p>
+            )}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">1 pending verification</span>
+              <span className="text-sm text-gray-500">{summary.executorCount > 0 ? `${summary.executorCount - 1} pending verification` : 'None added yet'}</span>
               <Link to="/executors">
                 <Button variant="ghost" size="sm">Manage</Button>
               </Link>
@@ -65,7 +157,11 @@ export default function Dashboard() {
                 <Shield size={20} className="text-willtank-500" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-green-500 mb-4">Secure</p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 mb-4" />
+            ) : (
+              <p className="text-3xl font-bold text-green-500 mb-4">{summary.securityStatus}</p>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500">2FA enabled</span>
               <Link to="/security">
@@ -85,7 +181,7 @@ export default function Dashboard() {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
               <h3 className="text-xl font-medium mb-4">Quick Actions</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Link to="/will">
+                <Link to="/will/create">
                   <Button 
                     className="flex flex-col items-center justify-center h-auto py-6 w-full" 
                     variant="outline"
@@ -154,38 +250,35 @@ export default function Dashboard() {
               </div>
               
               <div className="space-y-4">
-                <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center flex-shrink-0">
-                    <FileText size={18} className="text-willtank-700" />
+                {isLoading ? (
+                  Array(3).fill(0).map((_, index) => (
+                    <div key={index} className="flex items-start gap-4 p-4">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
+                  ))
+                ) : activities.length > 0 ? (
+                  activities.map((activity, index) => (
+                    <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center flex-shrink-0">
+                        {activity.icon}
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">{activity.title}</h4>
+                        <p className="text-xs text-gray-500 mt-1">{activity.description}</p>
+                        <p className="text-xs text-gray-400 mt-2">{activity.date}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No recent activity</p>
                   </div>
-                  <div>
-                    <h4 className="font-medium text-sm">Will Updated</h4>
-                    <p className="text-xs text-gray-500 mt-1">You updated your primary will document.</p>
-                    <p className="text-xs text-gray-400 mt-2">2 days ago</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center flex-shrink-0">
-                    <Users size={18} className="text-willtank-700" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm">Executor Added</h4>
-                    <p className="text-xs text-gray-500 mt-1">You added Casey Morgan as an executor.</p>
-                    <p className="text-xs text-gray-400 mt-2">5 days ago</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center flex-shrink-0">
-                    <Key size={18} className="text-willtank-700" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm">Encryption Key Generated</h4>
-                    <p className="text-xs text-gray-500 mt-1">New encryption key generated for document security.</p>
-                    <p className="text-xs text-gray-400 mt-2">1 week ago</p>
-                  </div>
-                </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -203,18 +296,53 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="mb-4">
-                <div className="inline-flex items-center gap-2 rounded-full bg-willtank-100 px-3 py-1 text-xs font-medium text-willtank-700">
-                  <Zap size={12} />
-                  <span>Premium Plan</span>
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-32 mb-2" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-8 w-full mt-4" />
                 </div>
-              </div>
-              
-              <p className="text-sm text-gray-600 mb-4">Your subscription renews on <span className="font-medium">July 15, 2023</span></p>
-              
-              <Link to="/billing">
-                <Button className="w-full" variant="outline">Manage Plan</Button>
-              </Link>
+              ) : subscription ? (
+                <>
+                  <div className="mb-4">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-willtank-100 px-3 py-1 text-xs font-medium text-willtank-700">
+                      <Zap size={12} />
+                      <span>{subscription.plan} Plan</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    Your subscription renews on{' '}
+                    <span className="font-medium">
+                      {new Date(subscription.end_date).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                  </p>
+                  
+                  <Link to="/billing">
+                    <Button className="w-full" variant="outline">Manage Plan</Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                      <span>No Active Plan</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    Subscribe to unlock premium features and secure your legacy.
+                  </p>
+                  
+                  <Link to="/billing">
+                    <Button className="w-full">Choose a Plan</Button>
+                  </Link>
+                </>
+              )}
             </div>
             
             <div className="bg-willtank-50 p-6 rounded-xl border border-willtank-100">

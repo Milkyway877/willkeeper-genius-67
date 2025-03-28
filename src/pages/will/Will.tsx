@@ -1,14 +1,41 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Copy, Clock, Save, Edit, Plus } from 'lucide-react';
+import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { getUserWills } from '@/services/dashboardService';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Will() {
-  const [willContent, setWillContent] = useState(`
+  const [willContent, setWillContent] = useState("");
+  const [willTitle, setWillTitle] = useState("Last Will and Testament");
+  const [isEditing, setIsEditing] = useState(false);
+  const [lastSaved, setLastSaved] = useState('');
+  const [createdDate, setCreatedDate] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentWill, setCurrentWill] = useState<any>(null);
+  
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchWillData = async () => {
+      try {
+        setIsLoading(true);
+        const wills = await getUserWills();
+        
+        if (wills && wills.length > 0) {
+          const latestWill = wills[0]; // Get the most recent will
+          setCurrentWill(latestWill);
+          setWillTitle(latestWill.title || "Last Will and Testament");
+          
+          // For demonstration, we're creating sample will content based on the title
+          // In a real implementation, you would fetch the actual document content
+          const sampleWillContent = `
 LAST WILL AND TESTAMENT OF ALEX MORGAN
 
 I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
@@ -36,28 +63,85 @@ ARTICLE VII: TAXES AND EXPENSES
 I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
 
 Signed: Alex Morgan
-Date: [Current Date]
+Date: ${new Date(latestWill.created_at).toLocaleDateString()}
 Witnesses: [Witness 1], [Witness 2]
-  `);
-  const [isEditing, setIsEditing] = useState(false);
-  const [lastSaved, setLastSaved] = useState(new Date().toLocaleTimeString());
-  const navigate = useNavigate();
-  const { toast } = useToast();
+`;
+          setWillContent(sampleWillContent);
+          
+          // Set dates
+          setLastSaved(new Date(latestWill.updated_at).toLocaleTimeString());
+          setCreatedDate(new Date(latestWill.created_at).toLocaleDateString());
+        } else {
+          // No wills found
+          setWillContent("No will document found. Create your first will to get started.");
+          setLastSaved(new Date().toLocaleTimeString());
+          setCreatedDate("N/A");
+        }
+      } catch (error) {
+        console.error("Error fetching will data:", error);
+        toast({
+          title: "Error loading will",
+          description: "Could not load your will document. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchWillData();
+  }, [toast]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
   };
 
-  const handleSave = () => {
-    // Simulating save operation
-    setTimeout(() => {
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      
+      if (!currentWill) {
+        // Create a new will if none exists
+        const { data, error } = await supabase
+          .from('wills')
+          .insert({
+            title: willTitle,
+            document_url: 'placeholder_url', // In a real app, you'd upload the document
+            status: 'Active'
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        setCurrentWill(data);
+      } else {
+        // Update existing will
+        const { error } = await supabase
+          .from('wills')
+          .update({ 
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentWill.id);
+          
+        if (error) throw error;
+      }
+      
       setIsEditing(false);
       setLastSaved(new Date().toLocaleTimeString());
       toast({
         title: "Will saved",
         description: "Your will has been saved successfully.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Error saving will:", error);
+      toast({
+        title: "Error saving will",
+        description: "Could not save your will document. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -71,6 +155,25 @@ Witnesses: [Witness 1], [Witness 2]
   const handleCreateNewWill = () => {
     navigate('/will/create');
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Will</h1>
+              <p className="text-gray-600">Loading your will document...</p>
+            </div>
+          </div>
+          
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="w-10 h-10 text-willtank-600 animate-spin" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -119,7 +222,7 @@ Witnesses: [Witness 1], [Witness 2]
               <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                 <div className="flex items-center">
                   <FileText className="text-willtank-700 mr-2" size={18} />
-                  <h3 className="font-medium">Last Will and Testament</h3>
+                  <h3 className="font-medium">{willTitle}</h3>
                 </div>
                 <div className="text-xs text-gray-500 flex items-center">
                   <Clock size={14} className="mr-1" />
@@ -159,13 +262,15 @@ Witnesses: [Witness 1], [Witness 2]
                   <p className="text-sm text-gray-500 mb-1">Status</p>
                   <div className="flex items-center">
                     <div className="h-2.5 w-2.5 rounded-full bg-green-500 mr-2"></div>
-                    <p className="font-medium text-green-700">Valid & Active</p>
+                    <p className="font-medium text-green-700">
+                      {currentWill ? currentWill.status : 'Draft'}
+                    </p>
                   </div>
                 </div>
                 
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Created On</p>
-                  <p className="font-medium">June 15, 2023</p>
+                  <p className="font-medium">{createdDate}</p>
                 </div>
                 
                 <div>

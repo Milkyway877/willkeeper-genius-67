@@ -1,16 +1,89 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Calendar, Clock, Download, ArrowUp, CheckCircle, Shield } from 'lucide-react';
+import { CreditCard, Calendar, Clock, Download, ArrowUp, CheckCircle, Shield, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface Invoice {
+  id: string;
+  date: string;
+  amount: string;
+  status: string;
+}
 
 export default function Billing() {
-  const invoices = [
-    { id: "#INV-001", date: "Jun 1, 2023", amount: "$79.99", status: "Paid" },
-    { id: "#INV-002", date: "May 1, 2023", amount: "$79.99", status: "Paid" },
-    { id: "#INV-003", date: "Apr 1, 2023", amount: "$79.99", status: "Paid" },
-  ];
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchBillingData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch subscription data
+        const { data: subscriptionData, error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (subscriptionError && subscriptionError.code !== 'PGRST116') {
+          // PGRST116 is "No rows returned"
+          throw subscriptionError;
+        }
+        
+        if (subscriptionData) {
+          setSubscription(subscriptionData);
+        }
+        
+        // In a real app, you'd fetch invoices from a billing provider like Stripe
+        // For now, use sample data
+        setInvoices([
+          { id: "#INV-001", date: "Jun 1, 2023", amount: "$79.99", status: "Paid" },
+          { id: "#INV-002", date: "May 1, 2023", amount: "$79.99", status: "Paid" },
+          { id: "#INV-003", date: "Apr 1, 2023", amount: "$79.99", status: "Paid" },
+        ]);
+        
+      } catch (error) {
+        console.error('Error fetching billing data:', error);
+        toast({
+          title: "Error loading billing data",
+          description: "Could not load your subscription information. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchBillingData();
+  }, [toast]);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Subscriptions & Billing</h1>
+              <p className="text-gray-600">Manage your subscription plan and payment methods.</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-10 w-10 text-willtank-600 animate-spin" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -34,17 +107,45 @@ export default function Billing() {
             </div>
             
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">PREMIUM PLAN</span>
-                  <h2 className="text-2xl font-bold mt-2">$79.99 <span className="text-sm font-normal text-gray-500">/month</span></h2>
-                </div>
-                
-                <Button>
-                  <ArrowUp className="mr-2 h-4 w-4" />
-                  Upgrade Plan
-                </Button>
-              </div>
+              {subscription ? (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        {subscription.plan.toUpperCase()} PLAN
+                      </span>
+                      <h2 className="text-2xl font-bold mt-2">
+                        $79.99 <span className="text-sm font-normal text-gray-500">/month</span>
+                      </h2>
+                    </div>
+                    
+                    {subscription.plan !== 'Premium' && (
+                      <Button>
+                        <ArrowUp className="mr-2 h-4 w-4" />
+                        Upgrade Plan
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                        FREE PLAN
+                      </span>
+                      <h2 className="text-2xl font-bold mt-2">
+                        $0 <span className="text-sm font-normal text-gray-500">/month</span>
+                      </h2>
+                    </div>
+                    
+                    <Button>
+                      <ArrowUp className="mr-2 h-4 w-4" />
+                      Upgrade Plan
+                    </Button>
+                  </div>
+                </>
+              )}
               
               <div className="space-y-4 mb-6">
                 <div className="flex items-start">
@@ -72,7 +173,19 @@ export default function Billing() {
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                 <div className="flex items-center">
                   <Calendar className="text-gray-500 mr-2" size={18} />
-                  <span className="text-sm">Your next billing date is <strong>July 1, 2023</strong></span>
+                  <span className="text-sm">
+                    {subscription ? (
+                      <>Your next billing date is <strong>
+                        {new Date(subscription.end_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </strong></>
+                    ) : (
+                      <>No active subscription</>
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -132,23 +245,31 @@ export default function Billing() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {invoices.map((invoice, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="py-4 px-6 font-medium">{invoice.id}</td>
-                    <td className="py-4 px-6 text-gray-600">{invoice.date}</td>
-                    <td className="py-4 px-6 font-medium">{invoice.amount}</td>
-                    <td className="py-4 px-6">
-                      <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                {invoices.length > 0 ? (
+                  invoices.map((invoice, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="py-4 px-6 font-medium">{invoice.id}</td>
+                      <td className="py-4 px-6 text-gray-600">{invoice.date}</td>
+                      <td className="py-4 px-6 font-medium">{invoice.amount}</td>
+                      <td className="py-4 px-6">
+                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          {invoice.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <Button variant="ghost" size="sm">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-gray-500">
+                      No invoices found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
