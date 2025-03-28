@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -76,6 +75,111 @@ export default function WillCreation() {
   const [progress, setProgress] = useState(0);
   const [isPaying, setIsPaying] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
+
+  const handleSelectTemplate = (template: WillTemplate) => {
+    setSelectedTemplate(template);
+    setWillContent(template.sample);
+    toast({
+      title: "Template Selected",
+      description: `You've selected the ${template.title} template.`
+    });
+  };
+
+  const handleQuestionsComplete = (responses: Record<string, any>, generatedWill: string) => {
+    setUserResponses(responses);
+    setWillContent(generatedWill);
+    setCurrentStep(currentStep + 1);
+    toast({
+      title: "Questionnaire Completed",
+      description: "Your will has been generated based on your answers."
+    });
+  };
+
+  const handleAnalyzeWill = () => {
+    setIsAnalyzing(true);
+    
+    // Simulating progress updates
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 500);
+    
+    // Simulate analysis with timeout
+    setTimeout(() => {
+      clearInterval(progressInterval);
+      setProgress(100);
+      setIsAnalyzing(false);
+      setAnalyzeComplete(true);
+      
+      // For demonstration, randomly decide if there are issues
+      if (Math.random() > 0.5) {
+        setLegalIssues([
+          "The executor appointment lacks an alternative in case your primary executor is unavailable.",
+          "Your digital assets section should specify which platforms and accounts are included.",
+          "Consider adding more specificity about how your personal belongings should be distributed."
+        ]);
+      }
+    }, 5000);
+  };
+
+  const handleIgnoreIssues = () => {
+    toast({
+      title: "Issues Acknowledged",
+      description: "You've chosen to continue with the current will document."
+    });
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handleSelectPlan = (plan: string) => {
+    setIsPaying(true);
+    setProgress(0);
+    
+    // Simulating payment processing
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 5;
+      });
+    }, 250);
+    
+    // Simulate payment completion
+    setTimeout(() => {
+      clearInterval(progressInterval);
+      setProgress(100);
+      setIsPaying(false);
+      setPaymentComplete(true);
+      
+      toast({
+        title: "Payment Successful",
+        description: `Your ${plan} plan has been activated successfully.`,
+        variant: "default"
+      });
+    }, 5000);
+  };
+
+  const handleDownloadWill = () => {
+    // In a real implementation, this would generate and download a PDF
+    toast({
+      title: "Download Started",
+      description: "Your will document is being prepared for download."
+    });
+    
+    // Simulate download delay
+    setTimeout(() => {
+      toast({
+        title: "Download Complete",
+        description: "Your will has been downloaded successfully."
+      });
+    }, 2000);
+  };
 
   const templates: WillTemplate[] = [
     {
@@ -413,112 +517,6 @@ export default function WillCreation() {
     }
   ];
 
-  // Handler functions
-  const handleSelectTemplate = (template: WillTemplate) => {
-    setSelectedTemplate(template);
-    setWillContent(template.sample);
-    toast({
-      title: "Template Selected",
-      description: `You've selected the ${template.title} template.`
-    });
-  };
-
-  const handleQuestionsComplete = (responses: Record<string, any>, generatedWill: string) => {
-    setUserResponses(responses);
-    setWillContent(generatedWill);
-    setCurrentStep(currentStep + 1);
-    toast({
-      title: "Questionnaire Completed",
-      description: "Your will has been generated based on your answers."
-    });
-  };
-
-  const handleAnalyzeWill = () => {
-    setIsAnalyzing(true);
-    
-    // Simulating progress updates
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 500);
-    
-    // Simulate analysis with timeout
-    setTimeout(() => {
-      clearInterval(progressInterval);
-      setProgress(100);
-      setIsAnalyzing(false);
-      setAnalyzeComplete(true);
-      
-      // For demonstration, randomly decide if there are issues
-      if (Math.random() > 0.5) {
-        setLegalIssues([
-          "The executor appointment lacks an alternative in case your primary executor is unavailable.",
-          "Your digital assets section should specify which platforms and accounts are included.",
-          "Consider adding more specificity about how your personal belongings should be distributed."
-        ]);
-      }
-    }, 5000);
-  };
-
-  const handleIgnoreIssues = () => {
-    toast({
-      title: "Issues Acknowledged",
-      description: "You've chosen to continue with the current will document."
-    });
-    setCurrentStep(currentStep + 1);
-  };
-
-  const handleSelectPlan = (plan: string) => {
-    setIsPaying(true);
-    setProgress(0);
-    
-    // Simulating payment processing
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 5;
-      });
-    }, 250);
-    
-    // Simulate payment completion
-    setTimeout(() => {
-      clearInterval(progressInterval);
-      setProgress(100);
-      setIsPaying(false);
-      setPaymentComplete(true);
-      
-      toast({
-        title: "Payment Successful",
-        description: `Your ${plan} plan has been activated successfully.`,
-        variant: "default"
-      });
-    }, 5000);
-  };
-
-  const handleDownloadWill = () => {
-    // In a real implementation, this would generate and download a PDF
-    toast({
-      title: "Download Started",
-      description: "Your will document is being prepared for download."
-    });
-    
-    // Simulate download delay
-    setTimeout(() => {
-      toast({
-        title: "Download Complete",
-        description: "Your will has been downloaded successfully."
-      });
-    }, 2000);
-  };
-
   const nextStep = () => {
     if (currentStep === 0 && !selectedTemplate) {
       toast({
@@ -536,7 +534,6 @@ export default function WillCreation() {
     setCurrentStep(currentStep - 1);
   };
 
-  // Calculate progress percentage
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
   return (

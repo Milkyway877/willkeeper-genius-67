@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -10,7 +9,7 @@ import {
   FileText, 
   Image, 
   FileSpreadsheet, 
-  FilePdf
+  FileIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +41,7 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
     if (type.includes('image')) {
       return <Image className="h-5 w-5 text-blue-500" />;
     } else if (type.includes('pdf')) {
-      return <FilePdf className="h-5 w-5 text-red-500" />;
+      return <FileIcon className="h-5 w-5 text-red-500" />;
     } else if (type.includes('spreadsheet') || type.includes('excel') || type.includes('csv')) {
       return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
     } else if (type.includes('document') || type.includes('word')) {
