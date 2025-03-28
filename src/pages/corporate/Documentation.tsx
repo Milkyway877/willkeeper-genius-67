@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
@@ -797,4 +798,427 @@ endpoint.name === "Get Templates" ?
                   <h3 className="text-xl font-semibold mb-4">Webhooks</h3>
                   <p className="mb-4">
                     Webhooks allow you to receive real-time notifications when events occur in the WillTank system. This is useful for keeping your systems in sync with WillTank data.
-                  </
+                  </p>
+                  
+                  <h4 className="font-semibold mt-6 mb-3">Available Webhook Events</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Event Name</TableHead>
+                        <TableHead>Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {webhookEvents.map((event, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono text-sm">{event.event}</TableCell>
+                          <TableCell>{event.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  <h4 className="font-semibold mt-6 mb-3">Setting Up Webhooks</h4>
+                  <p className="mb-4">
+                    You can set up webhooks through our API or from the developer dashboard. A webhook consists of a URL where we'll send HTTP POST requests when events occur, along with the specific events you want to be notified about.
+                  </p>
+                  
+                  <div className="bg-gray-900 text-white p-3 rounded-md overflow-x-auto font-mono text-sm mt-4">
+                    <pre>
+{`// Example webhook payload
+{
+  "event": "will.created",
+  "created_at": "2023-09-15T14:32:21Z",
+  "data": {
+    "will_id": "will_1234567890",
+    "user_id": "user_123",
+    "template_id": "template_standard",
+    "status": "draft"
+  }
+}`}
+                    </pre>
+                  </div>
+                  
+                  <Alert className="mt-6">
+                    <Key className="h-4 w-4" />
+                    <AlertTitle>Webhook Security</AlertTitle>
+                    <AlertDescription>
+                      All webhook requests include a signature header (<code className="bg-gray-100 px-1 py-0.5 rounded">X-WillTank-Signature</code>) that you can use to verify the request came from WillTank. We strongly recommend verifying this signature before processing webhook data.
+                    </AlertDescription>
+                  </Alert>
+                </section>
+              </section>
+
+              {/* SDKs & Code Examples */}
+              <section id="sdks" className="border-b pb-10">
+                <h2 className="text-2xl font-bold mb-4">SDKs & Code Examples</h2>
+                <p className="mb-4">
+                  We provide official SDKs for several popular programming languages to make integrating with the WillTank API as easy as possible.
+                </p>
+                
+                <div className="grid md:grid-cols-2 gap-4 mt-6">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Official SDKs</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        <li className="flex items-center">
+                          <Badge className="mr-2 bg-yellow-100 text-yellow-800 border-yellow-200">JS</Badge>
+                          <span>JavaScript/Node.js - <code className="text-sm bg-gray-100 px-1 py-0.5 rounded">npm install willtank-sdk</code></span>
+                        </li>
+                        <li className="flex items-center">
+                          <Badge className="mr-2 bg-blue-100 text-blue-800 border-blue-200">PY</Badge>
+                          <span>Python - <code className="text-sm bg-gray-100 px-1 py-0.5 rounded">pip install willtank-sdk</code></span>
+                        </li>
+                        <li className="flex items-center">
+                          <Badge className="mr-2 bg-red-100 text-red-800 border-red-200">RB</Badge>
+                          <span>Ruby - <code className="text-sm bg-gray-100 px-1 py-0.5 rounded">gem install willtank-sdk</code></span>
+                        </li>
+                        <li className="flex items-center">
+                          <Badge className="mr-2 bg-purple-100 text-purple-800 border-purple-200">PHP</Badge>
+                          <span>PHP - <code className="text-sm bg-gray-100 px-1 py-0.5 rounded">composer require willtank/willtank-php</code></span>
+                        </li>
+                        <li className="flex items-center">
+                          <Badge className="mr-2 bg-green-100 text-green-800 border-green-200">GO</Badge>
+                          <span>Go - <code className="text-sm bg-gray-100 px-1 py-0.5 rounded">go get github.com/willtank/willtank-go</code></span>
+                        </li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">SDK Benefits</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Automatic authentication handling</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Type-safe API interfaces</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Simplified error handling and retry logic</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Webhook signature verification utilities</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Comprehensive documentation and examples</span>
+                        </li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <h3 className="text-xl font-semibold mt-8 mb-4">Code Examples</h3>
+                
+                <Tabs defaultValue={codeExamples[0].language} className="w-full mt-4">
+                  <TabsList className="mb-2">
+                    {codeExamples.map((example, index) => (
+                      <TabsTrigger key={index} value={example.language}>{example.title}</TabsTrigger>
+                    ))}
+                  </TabsList>
+                  
+                  {codeExamples.map((example, index) => (
+                    <TabsContent key={index} value={example.language} className="mt-0">
+                      <div className="relative">
+                        <div className="bg-gray-900 text-white p-4 rounded-md overflow-x-auto font-mono text-sm">
+                          <pre>{example.code}</pre>
+                        </div>
+                        <button 
+                          onClick={() => handleCopyCode(example.code, index)}
+                          className="absolute top-3 right-3 p-2 rounded-md bg-gray-800 hover:bg-gray-700 transition-colors"
+                          aria-label="Copy code"
+                        >
+                          {copiedIndex === index ? (
+                            <Check className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </section>
+
+              {/* White Labeling */}
+              <section id="white-labeling" className="border-b pb-10">
+                <h2 className="text-2xl font-bold mb-4">White Labeling</h2>
+                <p className="mb-4">
+                  Our white-labeling capabilities allow you to integrate WillTank's powerful will creation and management features into your own platform under your own brand.
+                </p>
+                
+                <div className="grid md:grid-cols-2 gap-8 mt-6">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">White Labeling Options</h3>
+                    
+                    <ul className="space-y-4">
+                      <li className="flex items-start">
+                        <div className="mr-3 bg-blue-100 p-2 rounded-full">
+                          <Shield className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Custom Branding</h4>
+                          <p className="text-gray-600 text-sm">Customize all user-facing elements with your company's branding, including colors, logos, and terminology.</p>
+                        </div>
+                      </li>
+                      
+                      <li className="flex items-start">
+                        <div className="mr-3 bg-blue-100 p-2 rounded-full">
+                          <Terminal className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Custom Domain</h4>
+                          <p className="text-gray-600 text-sm">Host the solution on your own domain for a seamless user experience.</p>
+                        </div>
+                      </li>
+                      
+                      <li className="flex items-start">
+                        <div className="mr-3 bg-blue-100 p-2 rounded-full">
+                          <Lock className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Document Customization</h4>
+                          <p className="text-gray-600 text-sm">Customize the appearance and branding of all generated legal documents.</p>
+                        </div>
+                      </li>
+                      
+                      <li className="flex items-start">
+                        <div className="mr-3 bg-blue-100 p-2 rounded-full">
+                          <Clock className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">Custom Workflows</h4>
+                          <p className="text-gray-600 text-sm">Create tailored user journeys that match your existing business processes.</p>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">Implementation Steps</h3>
+                    
+                    <ol className="space-y-4 list-decimal pl-5">
+                      <li className="pl-2">
+                        <p className="font-semibold">Contact our enterprise sales team</p>
+                        <p className="text-gray-600 text-sm">Schedule a consultation to discuss your specific white-labeling requirements.</p>
+                      </li>
+                      
+                      <li className="pl-2">
+                        <p className="font-semibold">Provide branding assets</p>
+                        <p className="text-gray-600 text-sm">Share your logo, color scheme, and brand guidelines for implementation.</p>
+                      </li>
+                      
+                      <li className="pl-2">
+                        <p className="font-semibold">Configure integration options</p>
+                        <p className="text-gray-600 text-sm">Work with our team to set up the API integration and customize the user experience.</p>
+                      </li>
+                      
+                      <li className="pl-2">
+                        <p className="font-semibold">Review and test</p>
+                        <p className="text-gray-600 text-sm">Preview the white-labeled solution and test all functionality.</p>
+                      </li>
+                      
+                      <li className="pl-2">
+                        <p className="font-semibold">Launch</p>
+                        <p className="text-gray-600 text-sm">Deploy the white-labeled solution to your users.</p>
+                      </li>
+                    </ol>
+                    
+                    <div className="mt-6">
+                      <Button className="w-full">
+                        Request White-Label Information
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                <h3 className="text-xl font-semibold mt-8 mb-4">Pricing</h3>
+                <p className="mb-4">
+                  White-labeling is available on our Enterprise plan, with pricing based on your specific requirements and usage volume. Contact our sales team for a custom quote.
+                </p>
+                
+                <Alert variant="outline" className="mt-4">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>White-Label Support</AlertTitle>
+                  <AlertDescription>
+                    Enterprise customers with white-labeled solutions receive dedicated support and account management to ensure your integration remains smooth and up-to-date.
+                  </AlertDescription>
+                </Alert>
+              </section>
+
+              {/* Security */}
+              <section id="security" className="border-b pb-10">
+                <h2 className="text-2xl font-bold mb-4">Security</h2>
+                <p className="mb-4">
+                  At WillTank, security is our top priority. We implement industry-leading security measures to protect your data and your users' sensitive information.
+                </p>
+                
+                <div className="grid md:grid-cols-3 gap-4 mt-6">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center">
+                        <Lock className="h-5 w-5 mr-2 text-willtank-600" />
+                        Data Encryption
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600 text-sm">
+                        All data is encrypted in transit using TLS 1.3 and at rest using AES-256 encryption. Sensitive user data is additionally protected with field-level encryption.
+                      </p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center">
+                        <Shield className="h-5 w-5 mr-2 text-willtank-600" />
+                        Compliance
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600 text-sm">
+                        Our platform is compliant with SOC 2, GDPR, CCPA, and industry-specific regulations related to legal document management and privacy protection.
+                      </p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center">
+                        <Key className="h-5 w-5 mr-2 text-willtank-600" />
+                        Authentication
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600 text-sm">
+                        We support advanced authentication methods including MFA, SSO, and IP-based access restrictions for your administrative access.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <h3 className="text-xl font-semibold mt-8 mb-4">Security Documentation</h3>
+                <p className="mb-4">
+                  Detailed security information is available for enterprise customers, including:
+                </p>
+                
+                <ul className="list-disc pl-5 space-y-2">
+                  <li>Security whitepapers</li>
+                  <li>Compliance certifications</li>
+                  <li>Penetration test results (available under NDA)</li>
+                  <li>Data processing agreements</li>
+                  <li>Business continuity and disaster recovery plans</li>
+                </ul>
+                
+                <div className="mt-6">
+                  <Button variant="outline">
+                    Request Security Documentation
+                  </Button>
+                </div>
+              </section>
+
+              {/* Support */}
+              <section id="support" className="pb-10">
+                <h2 className="text-2xl font-bold mb-4">Support</h2>
+                <p className="mb-4">
+                  Our dedicated developer support team is available to help you with your integration needs.
+                </p>
+                
+                <div className="grid md:grid-cols-2 gap-6 mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Developer Support</CardTitle>
+                      <CardDescription>For technical assistance with API integration</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Email support: <a href="mailto:api-support@willtank.com" className="text-willtank-600 hover:underline">api-support@willtank.com</a></span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Developer forums</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>API status page</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>GitHub repository for SDK issues</span>
+                        </li>
+                      </ul>
+                      <div className="mt-6">
+                        <Button variant="outline" className="w-full">
+                          Contact Developer Support
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Enterprise Support</CardTitle>
+                      <CardDescription>For enterprise customers with dedicated needs</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Dedicated account manager</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Priority email and phone support</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Implementation consultation</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Check className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <span>Custom SLAs available</span>
+                        </li>
+                      </ul>
+                      <div className="mt-6">
+                        <Button className="w-full">
+                          Schedule Enterprise Support Call
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div className="mt-10 text-center">
+                  <h3 className="text-xl font-semibold mb-4">Ready to Get Started?</h3>
+                  <p className="mb-6 max-w-2xl mx-auto">
+                    Create your developer account today and start exploring the WillTank API in our sandbox environment.
+                  </p>
+                  <div className="flex justify-center space-x-4">
+                    <Button size="lg">
+                      Create Developer Account
+                    </Button>
+                    <Button size="lg" variant="outline">
+                      Contact Sales
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </main>
+        </div>
+      </div>
+    </Layout>
+  );
+}
