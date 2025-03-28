@@ -1,11 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { createSystemNotification } from './notificationService';
+import { addDays, addHours } from 'date-fns';
 
 export interface DeathVerificationSettings {
+  id?: string;
   checkInEnabled: boolean;
-  checkInFrequency: string; // "7", "14", or "30" days
-  beneficiaryVerificationInterval: string; // "48" or "72" hours
+  checkInFrequency: string;
+  beneficiaryVerificationInterval: string;
   unlockMode: 'pin' | 'executor' | 'trusted';
   notificationPreferences: {
     email: boolean;
@@ -16,77 +18,49 @@ export interface DeathVerificationSettings {
   failsafeEnabled: boolean;
 }
 
-export interface CheckInRecord {
-  id: string;
-  user_id: string;
-  checked_in_at: string;
-  status: 'alive' | 'no_response';
-  next_check_in: string;
+export interface CheckInInfo {
+  id?: string;
+  checkedInAt: string;
+  nextCheckIn: string;
+  status: string;
 }
 
-export interface VerificationRequest {
-  id: string;
-  user_id: string;
-  initiated_at: string;
-  status: 'pending' | 'confirmed_alive' | 'confirmed_deceased';
-  expires_at: string;
-}
-
-export interface UnlockPIN {
-  id: string;
-  person_id: string;
-  person_type: 'beneficiary' | 'executor' | 'trusted_contact';
-  pin_code: string;
-  created_at: string;
-  used: boolean;
-  used_at: string | null;
-}
-
-const defaultSettings: DeathVerificationSettings = {
-  checkInEnabled: true,
-  checkInFrequency: '7',
-  beneficiaryVerificationInterval: '48',
-  unlockMode: 'pin',
-  notificationPreferences: {
-    email: true,
-    sms: false,
-    push: false
-  },
-  trustedContactEmail: '',
-  failsafeEnabled: true
-};
-
-// Get death verification settings for the current user
+/**
+ * Get death verification settings for the current user
+ */
 export const getDeathVerificationSettings = async (): Promise<DeathVerificationSettings | null> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: user } = await supabase.auth.getUser();
     
-    if (!session?.user) {
-      throw new Error('No authenticated user found');
+    if (!user.user) {
+      console.error('No authenticated user found');
+      return null;
     }
-    
+
+    // Check if settings exist for this user
     const { data, error } = await supabase
       .from('death_verification_settings')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.user.id)
       .single();
-      
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // Record not found, create default settings
-        return createDefaultSettings();
-      }
-      
-      console.error('Error fetching death verification settings:', error);
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 is the error code for "no rows returned"
+      console.error('Error getting death verification settings:', error);
       return null;
     }
     
-    // Convert from database format to application format
+    // If no settings exist, create default settings
+    if (!data) {
+      return await createDefaultVerificationSettings(user.user.id);
+    }
+    
+    // Convert from database format to frontend format
     return {
+      id: data.id,
       checkInEnabled: data.check_in_enabled,
       checkInFrequency: data.check_in_frequency.toString(),
       beneficiaryVerificationInterval: data.beneficiary_verification_interval.toString(),
-      unlockMode: data.unlock_mode,
+      unlockMode: data.unlock_mode as 'pin' | 'executor' | 'trusted',
       notificationPreferences: data.notification_preferences,
       trustedContactEmail: data.trusted_contact_email || '',
       failsafeEnabled: data.failsafe_enabled
@@ -97,85 +71,93 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
   }
 };
 
-// Create default settings for a new user
-export const createDefaultSettings = async (): Promise<DeathVerificationSettings> => {
+/**
+ * Create default death verification settings for a new user
+ */
+const createDefaultVerificationSettings = async (userId: string): Promise<DeathVerificationSettings | null> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      throw new Error('No authenticated user found');
-    }
-    
-    // Convert from application format to database format
-    const dbSettings = {
-      user_id: session.user.id,
-      check_in_enabled: defaultSettings.checkInEnabled,
-      check_in_frequency: parseInt(defaultSettings.checkInFrequency),
-      beneficiary_verification_interval: parseInt(defaultSettings.beneficiaryVerificationInterval),
-      unlock_mode: defaultSettings.unlockMode,
-      notification_preferences: defaultSettings.notificationPreferences,
-      trusted_contact_email: defaultSettings.trustedContactEmail,
-      failsafe_enabled: defaultSettings.failsafeEnabled
+    const defaultSettings = {
+      user_id: userId,
+      check_in_enabled: true,
+      check_in_frequency: 7,
+      beneficiary_verification_interval: 48,
+      unlock_mode: 'pin',
+      notification_preferences: {
+        email: true,
+        sms: false,
+        push: false
+      },
+      failsafe_enabled: true
     };
     
     const { data, error } = await supabase
       .from('death_verification_settings')
-      .insert(dbSettings)
+      .insert(defaultSettings)
       .select()
       .single();
       
     if (error) {
-      console.error('Error creating default death verification settings:', error);
-      throw error;
+      console.error('Error creating default verification settings:', error);
+      return null;
     }
-
-    await createSystemNotification('security_update', {
+    
+    await createSystemNotification('will_updated', {
       title: 'Death Verification Enabled',
-      description: 'Death verification system has been set up with default settings. You can customize these in your security settings.'
+      description: 'Death verification system has been enabled for your will.'
     });
     
-    return defaultSettings;
+    return {
+      id: data.id,
+      checkInEnabled: data.check_in_enabled,
+      checkInFrequency: data.check_in_frequency.toString(),
+      beneficiaryVerificationInterval: data.beneficiary_verification_interval.toString(),
+      unlockMode: data.unlock_mode as 'pin' | 'executor' | 'trusted',
+      notificationPreferences: data.notification_preferences,
+      trustedContactEmail: data.trusted_contact_email || '',
+      failsafeEnabled: data.failsafe_enabled
+    };
   } catch (error) {
-    console.error('Error in createDefaultSettings:', error);
-    return defaultSettings;
+    console.error('Error in createDefaultVerificationSettings:', error);
+    return null;
   }
 };
 
-// Update death verification settings
+/**
+ * Update death verification settings
+ */
 export const updateDeathVerificationSettings = async (settings: DeathVerificationSettings): Promise<boolean> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: user } = await supabase.auth.getUser();
     
-    if (!session?.user) {
-      throw new Error('No authenticated user found');
+    if (!user.user) {
+      console.error('No authenticated user found');
+      return false;
     }
     
-    // Convert from application format to database format
+    // Convert from frontend format to database format
     const dbSettings = {
       check_in_enabled: settings.checkInEnabled,
       check_in_frequency: parseInt(settings.checkInFrequency),
       beneficiary_verification_interval: parseInt(settings.beneficiaryVerificationInterval),
       unlock_mode: settings.unlockMode,
       notification_preferences: settings.notificationPreferences,
-      trusted_contact_email: settings.trustedContactEmail,
+      trusted_contact_email: settings.trustedContactEmail || null,
       failsafe_enabled: settings.failsafeEnabled
     };
     
     const { error } = await supabase
       .from('death_verification_settings')
-      .upsert({ 
-        user_id: session.user.id,
-        ...dbSettings
-      });
+      .update(dbSettings)
+      .eq('user_id', user.user.id);
       
     if (error) {
-      console.error('Error updating death verification settings:', error);
+      console.error('Error updating verification settings:', error);
       return false;
     }
-
-    await createSystemNotification('security_update', {
-      title: 'Death Verification Settings Updated',
-      description: 'Your death verification settings have been successfully updated.'
+    
+    await createSystemNotification('will_updated', {
+      title: 'Settings Updated',
+      description: 'Your death verification settings have been updated successfully.'
     });
     
     return true;
@@ -185,34 +167,36 @@ export const updateDeathVerificationSettings = async (settings: DeathVerificatio
   }
 };
 
-// Record a check-in from the user
+/**
+ * Record a check-in for the user
+ */
 export const recordCheckIn = async (): Promise<boolean> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: user } = await supabase.auth.getUser();
     
-    if (!session?.user) {
-      throw new Error('No authenticated user found');
+    if (!user.user) {
+      console.error('No authenticated user found');
+      return false;
     }
     
-    // Get user settings to calculate next check-in date
+    // Get the user's settings to determine next check-in date
     const settings = await getDeathVerificationSettings();
+    
     if (!settings) {
-      throw new Error('Could not retrieve user settings');
+      console.error('No settings found for user');
+      return false;
     }
     
-    // Calculate next check-in date
-    const checkInFrequency = parseInt(settings.checkInFrequency);
-    const nextCheckIn = new Date();
-    nextCheckIn.setDate(nextCheckIn.getDate() + checkInFrequency);
+    // Calculate next check-in date based on settings
+    const nextCheckIn = addDays(new Date(), parseInt(settings.checkInFrequency));
     
-    // Update or insert check-in record
+    // Create check-in record
     const { error } = await supabase
       .from('death_verification_checkins')
-      .upsert({
-        user_id: session.user.id,
-        checked_in_at: new Date().toISOString(),
-        status: 'alive',
-        next_check_in: nextCheckIn.toISOString()
+      .insert({
+        user_id: user.user.id,
+        next_check_in: nextCheckIn.toISOString(),
+        status: 'alive'
       });
       
     if (error) {
@@ -220,9 +204,14 @@ export const recordCheckIn = async (): Promise<boolean> => {
       return false;
     }
     
-    await createSystemNotification('check_in_confirmed', {
+    // Log the check-in
+    await logVerificationEvent(user.user.id, 'check_in', {
+      timestamp: new Date().toISOString()
+    });
+    
+    await createSystemNotification('will_updated', {
       title: 'Check-in Confirmed',
-      description: `You have successfully checked in. Your next check-in is scheduled in ${checkInFrequency} days.`
+      description: 'Your status has been confirmed. Your next check-in will be in ' + settings.checkInFrequency + ' days.'
     });
     
     return true;
@@ -232,191 +221,197 @@ export const recordCheckIn = async (): Promise<boolean> => {
   }
 };
 
-// Initiate beneficiary verification process
-export const initiateBeneficiaryVerification = async (userId: string): Promise<boolean> => {
+/**
+ * Initiate death verification process
+ */
+export const initiateDeathVerification = async (userId: string): Promise<boolean> => {
   try {
-    // Get user settings to calculate expiration time
-    const { data, error } = await supabase
+    // Get the user's settings
+    const { data: settingsData, error: settingsError } = await supabase
       .from('death_verification_settings')
       .select('*')
       .eq('user_id', userId)
       .single();
-    
-    if (error) {
-      console.error('Error fetching user settings for verification:', error);
+      
+    if (settingsError) {
+      console.error('Error getting verification settings:', settingsError);
       return false;
     }
     
-    // Calculate expiration time
-    const verificationInterval = data.beneficiary_verification_interval;
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + verificationInterval);
+    // Calculate expiration time for the verification request
+    const expiresAt = addHours(new Date(), settingsData.beneficiary_verification_interval);
     
-    // Create verification request
-    const { error: requestError } = await supabase
+    // Create a verification request
+    const { data: requestData, error: requestError } = await supabase
       .from('death_verification_requests')
       .insert({
         user_id: userId,
-        initiated_at: new Date().toISOString(),
-        status: 'pending',
-        expires_at: expiresAt.toISOString()
-      });
+        expires_at: expiresAt.toISOString(),
+        status: 'pending'
+      })
+      .select()
+      .single();
       
     if (requestError) {
       console.error('Error creating verification request:', requestError);
       return false;
     }
     
-    // TODO: Send notifications to beneficiaries and executors
-    // This would be handled by a separate function or an edge function
+    // Log the verification initiation
+    await logVerificationEvent(userId, 'verification_initiated', {
+      request_id: requestData.id,
+      expires_at: expiresAt.toISOString()
+    });
     
     return true;
   } catch (error) {
-    console.error('Error in initiateBeneficiaryVerification:', error);
+    console.error('Error in initiateDeathVerification:', error);
     return false;
   }
 };
 
-// Handle beneficiary/executor verification response
-export const handleVerificationResponse = async (
+/**
+ * Record a response from a beneficiary or executor
+ */
+export const recordVerificationResponse = async (
   requestId: string, 
   responderId: string, 
   response: 'alive' | 'deceased'
 ): Promise<boolean> => {
   try {
-    // Record response
-    const { error: responseError } = await supabase
+    // Insert the response
+    const { error } = await supabase
       .from('death_verification_responses')
       .insert({
         request_id: requestId,
         responder_id: responderId,
-        response,
-        responded_at: new Date().toISOString()
+        response
       });
       
-    if (responseError) {
-      console.error('Error recording verification response:', responseError);
+    if (error) {
+      console.error('Error recording verification response:', error);
       return false;
     }
     
-    // If response is 'alive', cancel verification process
+    // If response is 'alive', update the request status to 'cancelled'
     if (response === 'alive') {
-      const { error: updateError } = await supabase
+      const { data: requestData, error: requestError } = await supabase
         .from('death_verification_requests')
-        .update({ status: 'confirmed_alive' })
-        .eq('id', requestId);
+        .update({ status: 'cancelled' })
+        .eq('id', requestId)
+        .select()
+        .single();
         
-      if (updateError) {
-        console.error('Error updating verification request status:', updateError);
+      if (requestError) {
+        console.error('Error updating verification request:', requestError);
         return false;
       }
       
-      // Reset check-in
-      // This would typically get the user_id from the request and call recordCheckIn for that user
-      
-      return true;
+      // Log the cancellation
+      await logVerificationEvent(requestData.user_id, 'verification_cancelled', {
+        request_id: requestId,
+        cancelled_by: responderId
+      });
     }
-    
-    // If response is 'deceased', check if all have responded as 'deceased'
-    // This would require a more complex query to check all responses
-    // If all confirmed deceased, trigger the PIN unlock process
     
     return true;
   } catch (error) {
-    console.error('Error in handleVerificationResponse:', error);
+    console.error('Error in recordVerificationResponse:', error);
     return false;
   }
 };
 
-// Generate PIN codes for all beneficiaries and executors
-export const generatePINCodes = async (userId: string): Promise<boolean> => {
+/**
+ * Generate PIN codes for all beneficiaries and executors
+ */
+export const generatePinCodes = async (userId: string): Promise<boolean> => {
   try {
-    // Get all beneficiaries and executors
+    // Get all beneficiaries for this user
     const { data: beneficiaries, error: beneficiariesError } = await supabase
       .from('will_beneficiaries')
       .select('id')
       .eq('user_id', userId);
       
     if (beneficiariesError) {
-      console.error('Error fetching beneficiaries:', beneficiariesError);
+      console.error('Error getting beneficiaries:', beneficiariesError);
       return false;
     }
     
+    // Get all executors for this user
     const { data: executors, error: executorsError } = await supabase
       .from('will_executors')
       .select('id')
       .eq('user_id', userId);
       
     if (executorsError) {
-      console.error('Error fetching executors:', executorsError);
+      console.error('Error getting executors:', executorsError);
       return false;
     }
     
-    // Generate PIN codes for each
+    // Generate PIN codes for each person
     const pinsToInsert = [
       ...beneficiaries.map(b => ({
         person_id: b.id,
         person_type: 'beneficiary',
-        pin_code: generateRandomPIN(10),
+        pin_code: generateRandomPin(),
         used: false
       })),
       ...executors.map(e => ({
         person_id: e.id,
         person_type: 'executor',
-        pin_code: generateRandomPIN(10),
+        pin_code: generateRandomPin(),
         used: false
       }))
     ];
     
-    if (pinsToInsert.length === 0) {
-      console.warn('No beneficiaries or executors found for PIN generation');
-      return false;
-    }
-    
-    // Insert PINs
+    // Insert the PIN codes
     const { error: pinsError } = await supabase
       .from('death_verification_pins')
       .insert(pinsToInsert);
       
     if (pinsError) {
-      console.error('Error generating PIN codes:', pinsError);
+      console.error('Error generating PINs:', pinsError);
       return false;
     }
     
-    // TODO: Send PIN codes to beneficiaries and executors
-    // This would be handled by a separate function or an edge function
-    
     return true;
   } catch (error) {
-    console.error('Error in generatePINCodes:', error);
+    console.error('Error in generatePinCodes:', error);
     return false;
   }
 };
 
-// Verify a PIN code
-export const verifyPIN = async (pinCode: string): Promise<boolean> => {
+/**
+ * Validate a PIN code
+ */
+export const validatePin = async (personId: string, pin: string): Promise<boolean> => {
   try {
-    // Check if PIN exists and hasn't been used
-    const { data: pin, error: pinError } = await supabase
+    // Find the PIN record
+    const { data, error } = await supabase
       .from('death_verification_pins')
       .select('*')
-      .eq('pin_code', pinCode)
-      .eq('used', false)
+      .eq('person_id', personId)
+      .eq('pin_code', pin)
       .single();
       
-    if (pinError) {
-      console.error('Error verifying PIN:', pinError);
+    if (error) {
+      console.error('Error validating PIN:', error);
       return false;
     }
     
-    // Mark PIN as used
+    // Check if PIN has already been used
+    if (data.used) {
+      return false;
+    }
+    
+    // Mark the PIN as used
     const { error: updateError } = await supabase
       .from('death_verification_pins')
-      .update({ 
+      .update({
         used: true,
         used_at: new Date().toISOString()
       })
-      .eq('id', pin.id);
+      .eq('id', data.id);
       
     if (updateError) {
       console.error('Error marking PIN as used:', updateError);
@@ -425,120 +420,89 @@ export const verifyPIN = async (pinCode: string): Promise<boolean> => {
     
     return true;
   } catch (error) {
-    console.error('Error in verifyPIN:', error);
+    console.error('Error in validatePin:', error);
     return false;
   }
 };
 
-// Helper: Generate a random PIN code
-const generateRandomPIN = (length: number): string => {
-  const digits = '0123456789';
-  let pin = '';
-  
-  for (let i = 0; i < length; i++) {
-    pin += digits[Math.floor(Math.random() * digits.length)];
-  }
-  
-  return pin;
-};
-
-// Check if all PINs have been used for a will
-export const checkAllPINsUsed = async (userId: string): Promise<boolean> => {
+/**
+ * Check if all required PINs have been used for a user
+ */
+export const checkAllPinsUsed = async (userId: string): Promise<boolean> => {
   try {
-    // Get all beneficiaries and executors
-    const { data: beneficiaries, error: beneficiariesError } = await supabase
-      .from('will_beneficiaries')
-      .select('id')
-      .eq('user_id', userId);
-      
-    if (beneficiariesError) {
-      console.error('Error fetching beneficiaries:', beneficiariesError);
-      return false;
-    }
-    
-    const { data: executors, error: executorsError } = await supabase
-      .from('will_executors')
-      .select('id')
-      .eq('user_id', userId);
-      
-    if (executorsError) {
-      console.error('Error fetching executors:', executorsError);
-      return false;
-    }
-    
-    // Get all person IDs
-    const personIds = [
-      ...beneficiaries.map(b => b.id),
-      ...executors.map(e => e.id)
-    ];
-    
-    // Check if all have used their PINs
-    const { data: pins, error: pinsError } = await supabase
-      .from('death_verification_pins')
-      .select('*')
-      .in('person_id', personIds);
-      
-    if (pinsError) {
-      console.error('Error checking PIN status:', pinsError);
-      return false;
-    }
-    
-    // Check if all required PINs have been used
-    const allUsed = pins.every(pin => pin.used);
-    
-    return allUsed;
-  } catch (error) {
-    console.error('Error in checkAllPINsUsed:', error);
-    return false;
-  }
-};
-
-// Send check-in reminder to user
-export const sendCheckInReminder = async (userId: string): Promise<boolean> => {
-  try {
-    // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-      
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError);
-      return false;
-    }
-    
-    // Get user notification preferences
+    // Get the settings to determine unlock mode
     const { data: settings, error: settingsError } = await supabase
       .from('death_verification_settings')
-      .select('notification_preferences')
+      .select('unlock_mode')
       .eq('user_id', userId)
       .single();
       
     if (settingsError) {
-      console.error('Error fetching notification preferences:', settingsError);
+      console.error('Error getting settings:', settingsError);
       return false;
     }
     
-    // TODO: Send reminder based on preferences
-    // This would be handled by a separate function or an edge function
+    // If using executor override or trusted contact override, different logic applies
+    if (settings.unlock_mode !== 'pin') {
+      // TODO: Implement logic for other unlock modes
+      return false;
+    }
     
-    // Log the reminder
-    const { error: logError } = await supabase
+    // Get all PIN codes for this user's beneficiaries and executors
+    const { data: pins, error: pinsError } = await supabase
+      .from('death_verification_pins')
+      .select('*')
+      .eq('user_id', userId);
+      
+    if (pinsError) {
+      console.error('Error getting PINs:', pinsError);
+      return false;
+    }
+    
+    // Check if all PINs have been used
+    const allUsed = pins.every(pin => pin.used);
+    
+    return allUsed;
+  } catch (error) {
+    console.error('Error in checkAllPinsUsed:', error);
+    return false;
+  }
+};
+
+/**
+ * Log a verification event
+ */
+export const logVerificationEvent = async (
+  userId: string,
+  action: string,
+  details?: any
+): Promise<boolean> => {
+  try {
+    const { error } = await supabase
       .from('death_verification_logs')
       .insert({
         user_id: userId,
-        action: 'check_in_reminder_sent',
-        timestamp: new Date().toISOString()
+        action,
+        details
       });
       
-    if (logError) {
-      console.error('Error logging reminder:', logError);
+    if (error) {
+      console.error('Error logging verification event:', error);
+      return false;
     }
     
     return true;
   } catch (error) {
-    console.error('Error in sendCheckInReminder:', error);
+    console.error('Error in logVerificationEvent:', error);
     return false;
   }
+};
+
+/**
+ * Generate a random 10-digit PIN code
+ */
+const generateRandomPin = (): string => {
+  const min = 1000000000; // 10-digit number (minimum)
+  const max = 9999999999; // 10-digit number (maximum)
+  return Math.floor(min + Math.random() * (max - min)).toString();
 };

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CheckInStatusDialog } from '@/components/ui/CheckInStatusDialog';
-import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { 
   MessageSquare, 
@@ -14,6 +13,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
 
 export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,34 +30,28 @@ export function FloatingAssistant() {
   
   const checkIfCheckInNeeded = async () => {
     try {
+      if (!user) return;
+      
       // Check if user has death verification enabled
-      const { data: settings, error: settingsError } = await supabase
-        .from('death_verification_settings')
-        .select('check_in_enabled')
-        .eq('user_id', user?.id)
-        .single();
+      const { data: settings } = await supabase.rpc('get_death_verification_settings', { user_id_param: user.id });
         
-      if (settingsError || !settings?.check_in_enabled) {
+      if (!settings || !settings.length || !settings[0].check_in_enabled) {
         return;
       }
       
       // Check last check-in
-      const { data: lastCheckIn, error: checkInError } = await supabase
-        .from('death_verification_checkins')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('checked_in_at', { ascending: false })
-        .limit(1)
-        .single();
+      const { data: lastCheckIn } = await supabase.rpc('get_latest_checkin', { user_id_param: user.id });
         
-      if (checkInError && checkInError.code !== 'PGRST116') {
-        console.error('Error checking last check-in:', checkInError);
+      if (!lastCheckIn || !lastCheckIn.length) {
+        setCheckInNeeded(true);
         return;
       }
       
-      // If no check-in record exists or next_check_in has passed, show notification
-      if (!lastCheckIn || new Date(lastCheckIn.next_check_in) <= new Date()) {
+      // If next_check_in has passed, show notification
+      if (new Date(lastCheckIn[0].next_check_in) <= new Date()) {
         setCheckInNeeded(true);
+      } else {
+        setCheckInNeeded(false);
       }
     } catch (error) {
       console.error('Error checking if check-in needed:', error);

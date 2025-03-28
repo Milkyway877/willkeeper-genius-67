@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CheckInStatusDialog } from '@/components/ui/CheckInStatusDialog';
 import { CheckCircle, Calendar, AlertTriangle, Settings } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { getDeathVerificationSettings } from '@/services/deathVerificationService';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export function DeathVerificationWidget() {
   const [loading, setLoading] = useState(true);
@@ -45,24 +45,19 @@ export function DeathVerificationWidget() {
       }
       
       // Get last check-in info
-      const { data: checkInData, error: checkInError } = await supabase
-        .from('death_verification_checkins')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('checked_in_at', { ascending: false })
-        .limit(1)
-        .single();
-        
-      if (checkInError && checkInError.code !== 'PGRST116') {
+      const { data: checkInData, error: checkInError } = await supabase.rpc('get_latest_checkin', { user_id_param: user?.id });
+      
+      if (checkInError) {
         console.error('Error fetching check-in data:', checkInError);
       }
       
-      if (checkInData) {
-        setLastCheckIn(checkInData.checked_in_at);
-        setNextCheckIn(checkInData.next_check_in);
+      if (checkInData && checkInData.length > 0) {
+        const latestCheckIn = checkInData[0];
+        setLastCheckIn(latestCheckIn.checked_in_at);
+        setNextCheckIn(latestCheckIn.next_check_in);
         
         // Check if next check-in date has passed
-        if (new Date(checkInData.next_check_in) <= new Date()) {
+        if (new Date(latestCheckIn.next_check_in) <= new Date()) {
           setCheckInNeeded(true);
         } else {
           setCheckInNeeded(false);
