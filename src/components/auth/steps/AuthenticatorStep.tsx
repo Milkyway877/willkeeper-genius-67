@@ -51,8 +51,10 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     setIsLoading(true);
     
     try {
+      const cleanCode = code.replace(/\s+/g, '');
+      
       // Validate the OTP code using the validateTOTP function from encryptionService
-      const isValid = validateTOTP(code, authenticatorKey);
+      const isValid = validateTOTP(cleanCode, authenticatorKey);
       
       if (!isValid) {
         setVerificationError("Invalid verification code. Please try again.");

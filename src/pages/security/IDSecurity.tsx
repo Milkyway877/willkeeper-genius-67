@@ -66,8 +66,8 @@ export default function IDSecurity() {
       
       if (!data?.google_auth_secret) {
         // Generate a new secret if user doesn't have one
-        const { secret, qrCodeUrl } = generateTOTPSecret();
-        setTotp({ secret, qrCodeUrl });
+        const secretData = await generateTOTPSecret();
+        setTotp(secretData);
       }
     } catch (error) {
       console.error('Error fetching security data:', error);
@@ -86,7 +86,17 @@ export default function IDSecurity() {
       setSetting2FA(true);
       setVerificationError(null);
       
-      const result = await setup2FA(otpCode);
+      // Clean up the code
+      const cleanCode = otpCode.replace(/\s+/g, '');
+      
+      // Verify the code against the current secret
+      if (!validateTOTP(cleanCode, totp.secret)) {
+        setVerificationError('Invalid verification code. Please try again.');
+        setSetting2FA(false);
+        return;
+      }
+      
+      const result = await setup2FA(cleanCode);
       
       if (result.success) {
         await fetchSecurityData(); // Refresh security data
@@ -101,7 +111,7 @@ export default function IDSecurity() {
           setActiveTab("recovery");
         }
       } else {
-        setVerificationError('Invalid verification code. Please try again.');
+        setVerificationError('Failed to set up 2FA. Please try again.');
       }
     } catch (error) {
       console.error('Error setting up 2FA:', error);
@@ -116,8 +126,11 @@ export default function IDSecurity() {
       setDisabling2FA(true);
       setVerificationError(null);
       
+      // Clean up the code
+      const cleanCode = otpCode.replace(/\s+/g, '');
+      
       // Verify the code first
-      if (!security?.google_auth_secret || !validateTOTP(otpCode, security.google_auth_secret)) {
+      if (!security?.google_auth_secret || !validateTOTP(cleanCode, security.google_auth_secret)) {
         setVerificationError('Invalid verification code');
         setDisabling2FA(false);
         return;
