@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,7 +36,7 @@ import IDSecurity from "./pages/security/IDSecurity";
 import Billing from "./pages/billing/Billing";
 import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
-import Tank from "./pages/Tank";
+import Tank from "./pages/tank/Tank";
 
 const queryClient = new QueryClient();
 

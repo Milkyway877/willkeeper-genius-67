@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +15,7 @@ import {
   Volume2,
   Upload,
   Sliders,
-  WaveformCircle,
+  Waveform,
   MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -51,9 +50,7 @@ export function TankAudioCreator({ onComplete, isAiEnhanced }: TankAudioCreatorP
     { id: 'warm', name: 'Warm Tone' },
   ];
   
-  // Initialize audio recording when component mounts
   useEffect(() => {
-    // Cleanup function
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -79,7 +76,6 @@ export function TankAudioCreator({ onComplete, isAiEnhanced }: TankAudioCreatorP
         const audioURL = URL.createObjectURL(recordedBlob);
         setAudioUrl(audioURL);
         
-        // Stop all tracks
         mediaStream.getTracks().forEach(track => track.stop());
       };
       
@@ -87,7 +83,6 @@ export function TankAudioCreator({ onComplete, isAiEnhanced }: TankAudioCreatorP
       mediaRecorder.start();
       setIsRecording(true);
       
-      // Start timer
       setRecordingTime(0);
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
@@ -107,7 +102,6 @@ export function TankAudioCreator({ onComplete, isAiEnhanced }: TankAudioCreatorP
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       
-      // Stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -138,7 +132,6 @@ export function TankAudioCreator({ onComplete, isAiEnhanced }: TankAudioCreatorP
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file type
       if (!file.type.startsWith('audio/')) {
         toast({
           title: "Invalid file type",
@@ -229,7 +222,7 @@ export function TankAudioCreator({ onComplete, isAiEnhanced }: TankAudioCreatorP
               <div className="flex flex-col items-center justify-center">
                 {isRecording ? (
                   <div className="mb-6">
-                    <WaveformCircle className="h-24 w-24 text-willtank-600 animate-pulse" />
+                    <Waveform className="h-24 w-24 text-willtank-600 animate-pulse" />
                   </div>
                 ) : audioUrl ? (
                   <div className="mb-6">

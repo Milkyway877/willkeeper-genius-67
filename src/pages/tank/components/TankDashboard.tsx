@@ -18,8 +18,22 @@ import {
 import { motion } from 'framer-motion';
 import { TankMessageCard } from './TankMessageCard';
 
+// Define types to match what TankMessageCard expects
+type MessageType = 'letter' | 'video' | 'audio' | 'document';
+type MessageStatus = 'scheduled' | 'delivered';
+
+type Message = {
+  id: number;
+  type: MessageType;
+  title: string;
+  recipient: string;
+  deliveryDate: string;
+  status: MessageStatus;
+  preview: string;
+};
+
 // Sample data for demonstration
-const demoMessages = [
+const demoMessages: Message[] = [
   {
     id: 1,
     type: 'letter',
@@ -72,7 +86,7 @@ type TankDashboardProps = {
 };
 
 export function TankDashboard({ onCreateNew }: TankDashboardProps) {
-  const [messages, setMessages] = useState(demoMessages);
+  const [messages, setMessages] = useState<Message[]>(demoMessages);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
