@@ -12,7 +12,6 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { supabase } from '@/integrations/supabase/client';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 
 interface AuthenticatorStepProps {
   authenticatorKey: string;
@@ -23,7 +22,6 @@ interface AuthenticatorStepProps {
 export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: AuthenticatorStepProps) {
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [tanKey] = useLocalStorage<string>('temp_tan_key', '');
   const [enableTwoFactor, setEnableTwoFactor] = useState(true);
 
   const form = useForm<AuthenticatorInputs>({
@@ -100,7 +98,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
             user_id: user.id,
             google_auth_enabled: enableTwoFactor,
             google_auth_secret: authenticatorKey.replace(/\s/g, ''),
-            encryption_key: tanKey || 'default_encryption_key'  // Using TanKey as encryption key
+            encryption_key: 'default_encryption_key' // Default encryption key instead of TanKey
           });
           
         if (insertError) {
