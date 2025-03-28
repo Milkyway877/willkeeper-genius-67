@@ -35,6 +35,7 @@ serve(async (req) => {
       console.error("Missing required field: user_id");
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: "Missing required field: user_id is required" 
         }),
         { 
@@ -49,7 +50,7 @@ serve(async (req) => {
     if (!userEmail) {
       const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(user_id);
       if (userError || !userData?.user?.email) {
-        console.error("Could not retrieve user email from auth", userError);
+        console.error("Could not retrieve user email from auth:", userError);
         userEmail = "unknown@example.com"; // Fallback
       } else {
         userEmail = userData.user.email;
@@ -61,9 +62,9 @@ serve(async (req) => {
       .from("users")
       .select("*")
       .eq("id", user_id)
-      .single();
+      .maybeSingle();
 
-    if (checkError && checkError.code !== "PGRST116") {
+    if (checkError) {
       console.error("Error checking user:", checkError);
       return new Response(
         JSON.stringify({ 
@@ -100,27 +101,83 @@ serve(async (req) => {
     
     console.log("Creating new user profile for:", user_id);
     
-    // Create user profile in the users table
-    const { data: newUser, error: insertError } = await supabaseClient
-      .from("users")
-      .insert({
-        id: user_id,
-        email: userEmail,
-        full_name: first_name || "New",
-        surname: last_name || "User",
-        passkey: placeholderPasskey,
-        recovery_phrase: placeholderRecoveryPhrase
-      })
-      .select()
-      .single();
+    try {
+      // Create user profile in the users table
+      const { data: newUser, error: insertError } = await supabaseClient
+        .from("users")
+        .insert({
+          id: user_id,
+          email: userEmail,
+          full_name: first_name || "New",
+          surname: last_name || "User",
+          passkey: placeholderPasskey,
+          recovery_phrase: placeholderRecoveryPhrase
+        })
+        .select()
+        .single();
 
-    if (insertError) {
-      console.error("Error creating user profile:", insertError);
+      if (insertError) {
+        console.error("Error creating user profile:", insertError);
+        
+        // Check if error is due to a duplicate key (user might already exist)
+        if (insertError.code === "23505") {
+          // Try to fetch the user again, in case they were created in the meantime
+          const { data: existingUserRetry } = await supabaseClient
+            .from("users")
+            .select("*")
+            .eq("id", user_id)
+            .maybeSingle();
+            
+          if (existingUserRetry) {
+            console.log("User profile already exists (retry check):", existingUserRetry);
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                message: "User already exists (caught by duplicate check)",
+                user: existingUserRetry
+              }),
+              { 
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200 
+              }
+            );
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: "Failed to create user profile",
+            error: insertError 
+          }),
+          { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500 
+          }
+        );
+      }
+
+      console.log("Successfully created user profile:", newUser);
+      
+      // Success response
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "User profile created successfully",
+          user: newUser
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 201 
+        }
+      );
+    } catch (insertFatalError) {
+      console.error("Fatal error while creating user:", insertFatalError);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: "Failed to create user profile",
-          error: insertError 
+          message: "Fatal error while creating user profile",
+          error: insertFatalError.message 
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -128,25 +185,14 @@ serve(async (req) => {
         }
       );
     }
-
-    console.log("Successfully created user profile:", newUser);
-    
-    // Success response
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "User profile created successfully",
-        user: newUser
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 201 
-      }
-    );
   } catch (error) {
     console.error("Unexpected error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: "Internal server error", 
+        details: error.message 
+      }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500 

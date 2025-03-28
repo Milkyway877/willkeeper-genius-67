@@ -27,6 +27,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("store-tankey function called");
+    
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -38,8 +40,10 @@ serve(async (req) => {
 
     // Validate input
     if (!user_id || !tan_key) {
+      console.error("Missing required fields: user_id or tan_key");
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: "Missing required fields: user_id and tan_key are required" 
         }),
         { 
@@ -49,8 +53,78 @@ serve(async (req) => {
       );
     }
 
+    // First check if the user exists in the users table
+    const { data: userData, error: userError } = await supabaseClient
+      .from("users")
+      .select("id")
+      .eq("id", user_id)
+      .maybeSingle();
+
+    // If the user doesn't exist, try to create a basic profile
+    if (!userData) {
+      console.log("User not found in users table, attempting to create profile");
+      
+      try {
+        // Get user details from auth
+        const { data: authUser, error: authError } = await supabaseClient.auth.admin.getUserById(user_id);
+        
+        if (authError || !authUser?.user) {
+          console.error("Error fetching auth user:", authError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: "User not found in auth system",
+              error: authError?.message || "User not found" 
+            }),
+            { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 404 
+            }
+          );
+        }
+        
+        // Insert user into users table
+        const { error: insertError } = await supabaseClient
+          .from("users")
+          .insert({
+            id: user_id,
+            email: authUser.user.email || "unknown@example.com",
+            full_name: authUser.user.user_metadata?.first_name || "New",
+            surname: authUser.user.user_metadata?.last_name || "User",
+            passkey: tan_key, // Use the provided TanKey directly
+            recovery_phrase: "temporary_recovery_phrase"
+          });
+          
+        if (insertError) {
+          console.error("Error creating user profile in store-tankey:", insertError);
+          
+          // Special case: if the error is a duplicate key, the user was probably created in a race condition
+          if (insertError.code !== "23505") { // Not a duplicate error
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                message: "Failed to create user profile",
+                error: insertError 
+              }),
+              { 
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 500 
+              }
+            );
+          }
+          console.log("Duplicate key error - user probably created in another request, continuing");
+        } else {
+          console.log("Created placeholder user profile in store-tankey function");
+        }
+      } catch (profileError) {
+        console.error("Error in profile creation:", profileError);
+      }
+    }
+
     // Hash the TanKey before storing
     const hashedTanKey = await hashTanKey(tan_key);
+    
+    console.log("Storing hashed TanKey for user:", user_id);
     
     // Store the hashed TanKey in the database
     const { error } = await supabaseClient
@@ -68,7 +142,11 @@ serve(async (req) => {
     if (error) {
       console.error("Error storing TanKey:", error);
       return new Response(
-        JSON.stringify({ error: "Failed to store TanKey" }),
+        JSON.stringify({ 
+          success: false,
+          error: "Failed to store TanKey",
+          details: error 
+        }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 500 
@@ -76,18 +154,31 @@ serve(async (req) => {
       );
     }
 
+    // Also update the user's passkey in the users table
+    await supabaseClient
+      .from("users")
+      .update({ passkey: tan_key })
+      .eq("id", user_id);
+
     // Success response
     return new Response(
-      JSON.stringify({ success: true, message: "TanKey stored successfully" }),
+      JSON.stringify({ 
+        success: true, 
+        message: "TanKey stored successfully" 
+      }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200 
       }
     );
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error("Unexpected error in store-tankey:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ 
+        success: false,
+        error: "Internal server error",
+        details: error.message 
+      }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500 

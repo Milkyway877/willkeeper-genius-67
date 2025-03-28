@@ -46,6 +46,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Generate a secure TanKey if one doesn't exist yet
   useEffect(() => {
@@ -57,12 +58,29 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
   // Check for authenticated user on component mount
   useEffect(() => {
     const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUserId(data.user.id);
-        console.log("User authenticated:", data.user.id);
-      } else {
-        console.log("No authenticated user found");
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error("Error getting session:", sessionError);
+        }
+        
+        if (sessionData?.session) {
+          setUserId(sessionData.session.user.id);
+          console.log("User authenticated from session:", sessionData.session.user.id);
+        } else {
+          console.log("No authenticated session found, trying getUser");
+          
+          // Fallback to getUser if session doesn't provide user
+          const { data } = await supabase.auth.getUser();
+          if (data?.user) {
+            setUserId(data.user.id);
+            console.log("User authenticated from getUser:", data.user.id);
+          } else {
+            console.log("No authenticated user found");
+          }
+        }
+      } catch (error) {
+        console.error("Error in checkUser:", error);
       }
     };
     
@@ -125,12 +143,47 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       // First check if we have a userId, if not, try to get it again
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data } = await supabase.auth.getUser();
-        if (!data?.user) {
-          throw new Error("User not found. Please ensure you're logged in and refresh the page.");
+        console.log("Refreshing auth state before proceeding");
+        try {
+          // Try to refresh the session
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error("Error refreshing session:", refreshError);
+          }
+          
+          if (refreshData?.session) {
+            currentUserId = refreshData.session.user.id;
+            setUserId(currentUserId);
+            console.log("User ID from refreshed session:", currentUserId);
+          } else {
+            // Try with getUser as fallback
+            const { data } = await supabase.auth.getUser();
+            if (!data?.user) {
+              throw new Error("User not found. Please ensure you're logged in and refresh the page.");
+            }
+            currentUserId = data.user.id;
+            setUserId(currentUserId);
+            console.log("User ID from getUser fallback:", currentUserId);
+          }
+        } catch (authError) {
+          console.error("Error getting current user:", authError);
+          
+          // If we've tried a few times and still can't get the user, show an error
+          if (retryCount >= 2) {
+            toast({
+              title: "Authentication Error",
+              description: "Unable to verify your login. Please log out and log back in, then try again.",
+              variant: "destructive"
+            });
+            setIsLoading(false);
+            return;
+          }
+          
+          // Increment retry count and try again after a delay
+          setRetryCount(prevCount => prevCount + 1);
+          setTimeout(() => handleNext(), 1000); // Retry after 1 second
+          return;
         }
-        currentUserId = data.user.id;
-        setUserId(currentUserId);
       }
       
       console.log("Storing TanKey for user:", currentUserId);
@@ -139,28 +192,13 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       const success = await tanKeyService.storeTanKey(currentUserId, tanKey);
       
       if (!success) {
-        throw new Error("Failed to store TanKey securely");
+        throw new Error("Failed to store TanKey securely. Please try again.");
       }
       
       toast({
         title: "TanKey saved",
         description: "Your encryption key has been securely stored.",
       });
-
-      // Update the users table with the TanKey
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ passkey: tanKey })
-        .eq("id", currentUserId);
-
-      if (updateError) {
-        console.error("Error updating user passkey:", updateError);
-        toast({
-          title: "Warning",
-          description: "Your TanKey was stored but we couldn't update your user profile. You can continue anyway.",
-          variant: "destructive"
-        });
-      }
       
       // Proceed to the next step
       onNext(tanKey);
@@ -170,7 +208,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       toast({
         title: "Error",
         description: error.message || "Could not save your TanKey. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
