@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { DotPatternText } from '@/components/ui/DotPatternText';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -96,42 +97,55 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
         >
           <div className="container max-w-6xl mx-auto px-4">
             <div className={cn(
-              "flex items-center justify-between rounded-full transition-all duration-300",
-              scrolled ? "glassmorphism py-2 px-4" : "py-2"
+              "flex items-center justify-between transition-all duration-300",
+              scrolled ? "glassmorphism py-2 px-4 rounded-xl" : "py-2"
             )}>
               <Link to="/" className="flex items-center">
-                <Logo size="md" color="primary" showSlogan={false} />
+                <DotPatternText 
+                  dotColor="black" 
+                  dotSize={1} 
+                  dotSpacing={6} 
+                  pixelated={true} 
+                  fontSize="2rem"
+                  className="tracking-wider"
+                >
+                  WillTank
+                </DotPatternText>
               </Link>
               
               <div className="hidden md:flex">
-                <div className={cn(
-                  "flex items-center gap-1 rounded-full glassmorphism px-2 py-1.5 transition-all duration-300",
-                  scrolled ? "bg-opacity-80" : ""
-                )}>
-                  <Link to="/" className="px-3 py-1 rounded-full hover:bg-white/30 transition-all duration-200">
+                <motion.div 
+                  className={cn(
+                    "flex items-center gap-2 rounded-full bg-black/90 px-2 py-1.5 transition-all duration-300",
+                  )}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Link to="/" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
                     <Home size={18} />
                   </Link>
-                  <Link to="/security" className="px-3 py-1 rounded-full hover:bg-white/30 transition-all duration-200">
+                  <Link to="/security" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
                     <Shield size={18} />
                   </Link>
-                  <Link to="/business" className="px-3 py-1 rounded-full hover:bg-white/30 transition-all duration-200">
+                  <Link to="/business" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
                     <Briefcase size={18} />
                   </Link>
-                  <Link to="/how-it-works" className="px-3 py-1 rounded-full hover:bg-white/30 transition-all duration-200">
+                  <Link to="/how-it-works" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
                     <Map size={18} />
                   </Link>
-                </div>
+                </motion.div>
               </div>
               
               <div className="flex items-center gap-3">
                 <Link to="/auth/signin">
-                  <Button variant="outline" size="sm" className="rounded-full border-black bg-transparent text-black hover:bg-black hover:text-white transition-all duration-200">
-                    Sign In
+                  <Button variant="outline" size="sm" className="rounded-xl border-black bg-transparent text-black hover:bg-black hover:text-white transition-all duration-200 px-4">
+                    login
                   </Button>
                 </Link>
                 <Link to="/auth/signup">
-                  <Button size="sm" className="rounded-full bg-black text-white hover:bg-gray-800 transition-all duration-200">
-                    <span>start</span>
+                  <Button size="sm" className="rounded-xl bg-black text-white hover:bg-gray-800 transition-all duration-200 px-6">
+                    <span className="font-mono tracking-wider">start</span>
                     <ArrowRight size={14} className="ml-1" />
                   </Button>
                 </Link>
@@ -239,10 +253,10 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   
                   <div className="flex items-center gap-4 ml-4">
                     <Link to="/auth/signin">
-                      <Button variant="outline" className="rounded-full">Sign In</Button>
+                      <Button variant="outline" className="rounded-xl">Sign In</Button>
                     </Link>
                     <Link to="/auth/signup">
-                      <Button className="rounded-full">Get Started</Button>
+                      <Button className="rounded-xl">Get Started</Button>
                     </Link>
                   </div>
                 </div>
@@ -312,7 +326,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     Sign In
                   </Link>
                   <Link to="/auth/signup">
-                    <Button className="justify-center w-full rounded-full">Get Started</Button>
+                    <Button className="justify-center w-full rounded-xl">Get Started</Button>
                   </Link>
                 </nav>
               )}

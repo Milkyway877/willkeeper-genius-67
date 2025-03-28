@@ -20,6 +20,11 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", ...fontFamily.sans],
+        mono: ["'JetBrains Mono'", "'Roboto Mono'", ...fontFamily.mono],
+        pixel: ["'Press Start 2P'", "monospace"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -73,9 +78,6 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      fontFamily: {
-        sans: ["var(--font-sans)", ...fontFamily.sans],
-      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -96,6 +98,11 @@ export default {
         "dot-pattern-move": {
           "0%": { backgroundPosition: "0 0" },
           "100%": { backgroundPosition: "100% 100%" }
+        },
+        "text-glitch": {
+          "0%, 100%": { transform: "skew(0deg)" },
+          "25%": { transform: "skew(-2deg)" },
+          "75%": { transform: "skew(2deg)" }
         }
       },
       animation: {
@@ -103,7 +110,8 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "float": "float 6s ease-in-out infinite",
         "pulse-soft": "pulse-soft 3s ease-in-out infinite",
-        "dot-pattern-move": "dot-pattern-move 40s linear infinite"
+        "dot-pattern-move": "dot-pattern-move 40s linear infinite",
+        "text-glitch": "text-glitch 2s ease-in-out infinite"
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

@@ -10,6 +10,9 @@ interface DotPatternTextProps {
   dotSize?: number;
   dotSpacing?: number;
   animate?: boolean;
+  weight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
+  pixelated?: boolean;
+  fontSize?: string;
 }
 
 export function DotPatternText({
@@ -18,7 +21,10 @@ export function DotPatternText({
   dotColor = 'black',
   dotSize = 2,
   dotSpacing = 10,
-  animate = true
+  animate = true,
+  weight = 'bold',
+  pixelated = false,
+  fontSize = 'inherit'
 }: DotPatternTextProps) {
   const style = {
     backgroundImage: `radial-gradient(circle, ${dotColor} ${dotSize}px, transparent ${dotSize}px)`,
@@ -27,12 +33,23 @@ export function DotPatternText({
     WebkitTextFillColor: 'transparent',
     backgroundClip: 'text',
     color: 'transparent',
-    animation: animate ? 'dotPatternMove 20s linear infinite' : 'none'
+    animation: animate ? 'dotPatternMove 20s linear infinite' : 'none',
+    fontSize,
+    fontFamily: pixelated ? "'Press Start 2P', monospace, system-ui" : 'inherit',
+    letterSpacing: pixelated ? '0.05em' : 'inherit',
   };
+
+  const fontWeightClass = {
+    'normal': 'font-normal',
+    'medium': 'font-medium',
+    'semibold': 'font-semibold',
+    'bold': 'font-bold',
+    'extrabold': 'font-extrabold',
+  }[weight];
 
   return (
     <motion.span
-      className={cn("inline-block font-bold", className)}
+      className={cn("inline-block", fontWeightClass, className)}
       style={style}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

@@ -1,14 +1,17 @@
+
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { DotPatternText } from '@/components/ui/DotPatternText';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   color?: 'primary' | 'white' | 'black';
   className?: string;
   showSlogan?: boolean;
+  pixelated?: boolean;
 }
 
-export function Logo({ size = 'md', color = 'primary', className, showSlogan = true }: LogoProps) {
+export function Logo({ size = 'md', color = 'primary', className, showSlogan = true, pixelated = false }: LogoProps) {
   const getSizeClasses = () => {
     switch (size) {
       case 'sm': return 'h-9';
@@ -30,12 +33,27 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
   return (
     <div className={cn('flex items-center', className)}>
       <div className={cn('flex items-center gap-2', getSizeClasses(), getColorClasses())}>
-        <img 
-          src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
-          alt="WillTank Logo" 
-          className={cn('h-full w-auto object-contain')}
-        />
-        <span className="tracking-tight font-bold">WillTank</span>
+        {pixelated ? (
+          <DotPatternText 
+            dotColor={color === 'white' ? 'white' : 'black'} 
+            dotSize={1.2} 
+            dotSpacing={5} 
+            pixelated={true}
+            fontSize={size === 'lg' ? '1.75rem' : size === 'md' ? '1.5rem' : '1.25rem'}
+            className="font-mono tracking-wider"
+          >
+            WillTank
+          </DotPatternText>
+        ) : (
+          <>
+            <img 
+              src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
+              alt="WillTank Logo" 
+              className={cn('h-full w-auto object-contain')}
+            />
+            <span className="tracking-tight font-bold">WillTank</span>
+          </>
+        )}
       </div>
       {showSlogan && (
         <span className="text-xs text-gray-500 italic ml-2">Your Trusted Legacy Keeper</span>
