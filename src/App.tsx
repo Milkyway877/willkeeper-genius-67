@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,6 +35,7 @@ import IDSecurity from "./pages/security/IDSecurity";
 import Billing from "./pages/billing/Billing";
 import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
+import Tank from "./pages/Tank";
 
 const queryClient = new QueryClient();
 
@@ -56,11 +56,11 @@ const App = () => (
           
           {/* Dashboard Pages */}
           <Route path="/will" element={<Will />} />
-          <Route path="/will/create" element={<WillCreation />} />
+          <Route path="/will/creation" element={<WillCreation />} />
+          <Route path="/tank" element={<Tank />} />
+          <Route path="/executors" element={<Executors />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/encryption" element={<Encryption />} />
-          <Route path="/executors" element={<Executors />} />
-          <Route path="/ai-assistance" element={<AIAssistance />} />
           <Route path="/id-security" element={<IDSecurity />} />
           <Route path="/billing" element={<Billing />} />
           <Route path="/notifications" element={<Notifications />} />
