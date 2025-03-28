@@ -111,7 +111,8 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       return null;
     }
     
-    await createSystemNotification('will_created', {
+    // Using 'will_updated' event type since 'will_created' is not in the allowed list
+    await createSystemNotification('will_updated', {
       title: 'Will Created',
       description: `Your will "${will.title}" has been created successfully.`
     });
@@ -193,7 +194,8 @@ export const deleteWill = async (id: string): Promise<boolean> => {
       return false;
     }
     
-    await createSystemNotification('will_deleted', {
+    // Using 'item_saved' event type since 'will_deleted' is not in the allowed list
+    await createSystemNotification('item_saved', {
       title: 'Will Deleted',
       description: `Your will has been deleted successfully.`
     });
