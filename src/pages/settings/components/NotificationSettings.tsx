@@ -39,9 +39,11 @@ export function NotificationSettings() {
         if (error) throw error;
         
         if (data?.notification_settings) {
+          // Safely merge with default state, ensuring we're spreading an object
+          const savedSettings = data.notification_settings || {};
           setNotifications({
             ...notifications,
-            ...data.notification_settings
+            ...savedSettings
           });
         } else {
           // If no preferences exist, create default ones
