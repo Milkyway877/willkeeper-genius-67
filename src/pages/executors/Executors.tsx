@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { 
@@ -16,7 +16,8 @@ import {
   Filter,
   Check,
   X,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -35,19 +36,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-
-type Person = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  relationship: string;
-  isVerified: boolean;
-  address?: string;
-  notes?: string;
-  avatar?: string;
-  percentage?: number;
-};
+import { 
+  Executor, 
+  Beneficiary,
+  getExecutors, 
+  getBeneficiaries, 
+  createExecutor, 
+  createBeneficiary,
+  updateExecutor,
+  updateBeneficiary,
+  deleteExecutor,
+  deleteBeneficiary,
+  sendVerificationRequest 
+} from '@/services/executorService';
 
 export default function Executors() {
   const { toast } = useToast();
@@ -56,9 +57,15 @@ export default function Executors() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [currentPerson, setCurrentPerson] = useState<Person | null>(null);
+  const [currentPerson, setCurrentPerson] = useState<Executor | Beneficiary | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState<Partial<Person>>({
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [executors, setExecutors] = useState<Executor[]>([]);
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+
+  const [formData, setFormData] = useState<Partial<Executor | Beneficiary>>({
     name: '',
     email: '',
     phone: '',
@@ -68,62 +75,32 @@ export default function Executors() {
     percentage: 0
   });
 
-  // Sample data for executors and beneficiaries
-  const [executors, setExecutors] = useState<Person[]>([
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@example.com',
-      phone: '(555) 123-4567',
-      relationship: 'Spouse',
-      isVerified: true,
-      address: '123 Main St, Anytown, USA',
-      notes: 'Primary executor responsible for all estate matters.'
-    },
-    {
-      id: '2',
-      name: 'Michael Rodriguez',
-      email: 'michael.r@example.com',
-      phone: '(555) 987-6543',
-      relationship: 'Brother',
-      isVerified: false,
-      address: '456 Oak Ave, Somewhere, USA',
-      notes: 'Backup executor if primary is unavailable.'
-    }
-  ]);
-
-  const [beneficiaries, setBeneficiaries] = useState<Person[]>([
-    {
-      id: '1',
-      name: 'Emily Johnson',
-      email: 'emily.j@example.com',
-      phone: '(555) 234-5678',
-      relationship: 'Daughter',
-      isVerified: true,
-      percentage: 40,
-      address: '789 Pine Ln, Othertown, USA'
-    },
-    {
-      id: '2',
-      name: 'James Johnson',
-      email: 'james.j@example.com',
-      phone: '(555) 345-6789',
-      relationship: 'Son',
-      isVerified: true,
-      percentage: 40,
-      address: '101 Maple Dr, Elsewhere, USA'
-    },
-    {
-      id: '3',
-      name: 'Charity Foundation',
-      email: 'contact@charityfoundation.org',
-      phone: '(555) 456-7890',
-      relationship: 'Organization',
-      isVerified: true,
-      percentage: 20,
-      notes: 'Annual donation to be made from estate.'
-    }
-  ]);
+  // Fetch data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [executorsData, beneficiariesData] = await Promise.all([
+          getExecutors(),
+          getBeneficiaries()
+        ]);
+        
+        setExecutors(executorsData);
+        setBeneficiaries(beneficiariesData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast({
+          title: "Error loading data",
+          description: "Could not load your executors and beneficiaries. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [toast]);
 
   // Filtered lists based on search
   const filteredExecutors = executors.filter(
@@ -143,7 +120,7 @@ export default function Executors() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'percentage' ? parseFloat(value) : value
     }));
   };
 
@@ -156,94 +133,143 @@ export default function Executors() {
   };
 
   // Handle person add
-  const handleAddPerson = () => {
-    const newPerson: Person = {
-      id: Date.now().toString(),
-      name: formData.name || '',
-      email: formData.email || '',
-      phone: formData.phone || '',
-      relationship: formData.relationship || '',
-      isVerified: false,
-      address: formData.address,
-      notes: formData.notes,
-      percentage: activeTab === "beneficiaries" ? (formData.percentage || 0) : undefined
-    };
-
-    if (activeTab === "executors") {
-      setExecutors(prev => [...prev, newPerson]);
+  const handleAddPerson = async () => {
+    if (!formData.name || !formData.email) {
       toast({
-        title: "Executor Added",
-        description: `${newPerson.name} has been added as an executor.`
+        title: "Missing information",
+        description: "Please provide at least a name and email.",
+        variant: "destructive"
       });
-    } else {
-      setBeneficiaries(prev => [...prev, newPerson]);
-      toast({
-        title: "Beneficiary Added",
-        description: `${newPerson.name} has been added as a beneficiary.`
-      });
+      return;
     }
-
-    setShowAddDialog(false);
-    resetForm();
+    
+    setIsSaving(true);
+    
+    try {
+      if (activeTab === "executors") {
+        const newExecutor = await createExecutor(formData as Omit<Executor, 'id' | 'created_at' | 'isVerified'>);
+        if (newExecutor) {
+          setExecutors(prev => [newExecutor, ...prev]);
+          toast({
+            title: "Executor Added",
+            description: `${newExecutor.name} has been added as an executor.`
+          });
+        }
+      } else {
+        const newBeneficiary = await createBeneficiary(formData as Omit<Beneficiary, 'id' | 'created_at' | 'isVerified'>);
+        if (newBeneficiary) {
+          setBeneficiaries(prev => [newBeneficiary, ...prev]);
+          toast({
+            title: "Beneficiary Added",
+            description: `${newBeneficiary.name} has been added as a beneficiary.`
+          });
+        }
+      }
+      
+      setShowAddDialog(false);
+      resetForm();
+    } catch (error) {
+      console.error("Error adding person:", error);
+      toast({
+        title: "Failed to add",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Handle person edit
-  const handleEditPerson = () => {
+  const handleEditPerson = async () => {
     if (!currentPerson) return;
-
-    const updatedPerson: Person = {
-      ...currentPerson,
-      name: formData.name || currentPerson.name,
-      email: formData.email || currentPerson.email,
-      phone: formData.phone || currentPerson.phone,
-      relationship: formData.relationship || currentPerson.relationship,
-      address: formData.address,
-      notes: formData.notes,
-      percentage: activeTab === "beneficiaries" ? (formData.percentage || currentPerson.percentage || 0) : undefined
-    };
-
-    if (activeTab === "executors") {
-      setExecutors(prev => prev.map(exec => 
-        exec.id === currentPerson.id ? updatedPerson : exec
-      ));
+    
+    setIsSaving(true);
+    
+    try {
+      if (activeTab === "executors") {
+        const updatedExecutor = await updateExecutor(currentPerson.id, formData as Partial<Executor>);
+        if (updatedExecutor) {
+          setExecutors(prev => prev.map(exec => 
+            exec.id === currentPerson.id ? updatedExecutor : exec
+          ));
+          toast({
+            title: "Executor Updated",
+            description: `${updatedExecutor.name}'s information has been updated.`
+          });
+        }
+      } else {
+        const updatedBeneficiary = await updateBeneficiary(currentPerson.id, formData as Partial<Beneficiary>);
+        if (updatedBeneficiary) {
+          setBeneficiaries(prev => prev.map(benef => 
+            benef.id === currentPerson.id ? updatedBeneficiary : benef
+          ));
+          toast({
+            title: "Beneficiary Updated",
+            description: `${updatedBeneficiary.name}'s information has been updated.`
+          });
+        }
+      }
+      
+      setShowEditDialog(false);
+      resetForm();
+    } catch (error) {
+      console.error("Error updating person:", error);
       toast({
-        title: "Executor Updated",
-        description: `${updatedPerson.name}'s information has been updated.`
+        title: "Failed to update",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
       });
-    } else {
-      setBeneficiaries(prev => prev.map(benef => 
-        benef.id === currentPerson.id ? updatedPerson : benef
-      ));
-      toast({
-        title: "Beneficiary Updated",
-        description: `${updatedPerson.name}'s information has been updated.`
-      });
+    } finally {
+      setIsSaving(false);
     }
-
-    setShowEditDialog(false);
-    resetForm();
   };
 
   // Handle person remove
-  const handleRemovePerson = () => {
+  const handleRemovePerson = async () => {
     if (!currentPerson) return;
-
-    if (activeTab === "executors") {
-      setExecutors(prev => prev.filter(exec => exec.id !== currentPerson.id));
+    
+    setIsSaving(true);
+    
+    try {
+      let success = false;
+      
+      if (activeTab === "executors") {
+        success = await deleteExecutor(currentPerson.id);
+        if (success) {
+          setExecutors(prev => prev.filter(exec => exec.id !== currentPerson.id));
+          toast({
+            title: "Executor Removed",
+            description: `${currentPerson.name} has been removed from your executors.`
+          });
+        }
+      } else {
+        success = await deleteBeneficiary(currentPerson.id);
+        if (success) {
+          setBeneficiaries(prev => prev.filter(benef => benef.id !== currentPerson.id));
+          toast({
+            title: "Beneficiary Removed",
+            description: `${currentPerson.name} has been removed from your beneficiaries.`
+          });
+        }
+      }
+      
+      if (!success) {
+        throw new Error("Failed to delete");
+      }
+      
+      setShowRemoveDialog(false);
+      setCurrentPerson(null);
+    } catch (error) {
+      console.error("Error removing person:", error);
       toast({
-        title: "Executor Removed",
-        description: `${currentPerson.name} has been removed from your executors.`
+        title: "Failed to remove",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
       });
-    } else {
-      setBeneficiaries(prev => prev.filter(benef => benef.id !== currentPerson.id));
-      toast({
-        title: "Beneficiary Removed",
-        description: `${currentPerson.name} has been removed from your beneficiaries.`
-      });
+    } finally {
+      setIsSaving(false);
     }
-
-    setShowRemoveDialog(false);
-    setCurrentPerson(null);
   };
 
   // Reset form data
@@ -261,7 +287,7 @@ export default function Executors() {
   };
 
   // Open edit dialog
-  const openEditDialog = (person: Person) => {
+  const openEditDialog = (person: Executor | Beneficiary) => {
     setCurrentPerson(person);
     setFormData({
       name: person.name,
@@ -270,13 +296,13 @@ export default function Executors() {
       relationship: person.relationship,
       address: person.address || '',
       notes: person.notes || '',
-      percentage: person.percentage
+      percentage: 'percentage' in person ? person.percentage : undefined
     });
     setShowEditDialog(true);
   };
 
   // Open view dialog
-  const openViewDialog = (person: Person) => {
+  const openViewDialog = (person: Executor | Beneficiary) => {
     setCurrentPerson(person);
     setShowViewDialog(true);
   };
@@ -292,12 +318,94 @@ export default function Executors() {
   };
 
   // Send verification request
-  const sendVerificationRequest = (person: Person) => {
-    toast({
-      title: "Verification Email Sent",
-      description: `A verification request has been sent to ${person.email}.`
-    });
+  const handleSendVerification = async (person: Executor | Beneficiary) => {
+    try {
+      const success = await sendVerificationRequest(
+        person.email, 
+        person.name, 
+        activeTab === "executors" ? 'executor' : 'beneficiary'
+      );
+      
+      if (success) {
+        toast({
+          title: "Verification Email Sent",
+          description: `A verification request has been sent to ${person.email}.`
+        });
+      } else {
+        throw new Error("Failed to send verification");
+      }
+    } catch (error) {
+      console.error("Error sending verification:", error);
+      toast({
+        title: "Failed to send verification",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
+
+  // Toggle verification status
+  const handleToggleVerification = async (person: Executor | Beneficiary, isVerified: boolean) => {
+    try {
+      let updatedPerson;
+      
+      if (activeTab === "executors") {
+        updatedPerson = await updateExecutor(person.id, { isVerified });
+      } else {
+        updatedPerson = await updateBeneficiary(person.id, { isVerified });
+      }
+      
+      if (updatedPerson) {
+        if (activeTab === "executors") {
+          setExecutors(prev => prev.map(exec => 
+            exec.id === person.id ? { ...exec, isVerified } : exec
+          ));
+        } else {
+          setBeneficiaries(prev => prev.map(benef => 
+            benef.id === person.id ? { ...benef, isVerified } : benef
+          ));
+        }
+        
+        if (isVerified) {
+          toast({
+            title: "Verification Status Updated",
+            description: `${person.name} is now marked as verified.`
+          });
+        } else {
+          toast({
+            title: "Verification Status Updated",
+            description: `${person.name} is now marked as not verified.`
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error updating verification status:", error);
+      toast({
+        title: "Failed to update verification",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Beneficiaries & Executors</h1>
+              <p className="text-gray-600">Loading your data...</p>
+            </div>
+          </div>
+          
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-10 w-10 text-willtank-600 animate-spin" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -343,91 +451,97 @@ export default function Executors() {
           
           <TabsContent value="executors">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredExecutors.map(executor => (
-                <motion.div
-                  key={executor.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center">
-                        <Avatar className="h-12 w-12 mr-4">
-                          <AvatarImage src={executor.avatar} />
-                          <AvatarFallback className="bg-willtank-100 text-willtank-700">{getInitials(executor.name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="text-lg font-medium">{executor.name}</h3>
-                          <p className="text-sm text-gray-500">{executor.relationship}</p>
+              {filteredExecutors.length > 0 ? (
+                filteredExecutors.map(executor => (
+                  <motion.div
+                    key={executor.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center">
+                          <Avatar className="h-12 w-12 mr-4">
+                            <AvatarImage src={undefined} />
+                            <AvatarFallback className="bg-willtank-100 text-willtank-700">{getInitials(executor.name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="text-lg font-medium">{executor.name}</h3>
+                            <p className="text-sm text-gray-500">{executor.relationship}</p>
+                          </div>
                         </div>
+                        {executor.isVerified && (
+                          <div className="flex items-center text-green-600 text-sm">
+                            <Check className="h-4 w-4 mr-1" />
+                            <span>Verified</span>
+                          </div>
+                        )}
                       </div>
-                      {executor.isVerified && (
-                        <div className="flex items-center text-green-600 text-sm">
-                          <Check className="h-4 w-4 mr-1" />
-                          <span>Verified</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm">
-                        <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-gray-600">{executor.email}</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-gray-600">{executor.phone}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center mt-6">
-                      {!executor.isVerified && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => sendVerificationRequest(executor)}
-                        >
-                          Send Verification
-                        </Button>
-                      )}
-                      {executor.isVerified && (
-                        <div className="text-xs text-gray-500">
-                          Verified on {new Date().toLocaleDateString()}
-                        </div>
-                      )}
                       
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openViewDialog(executor)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openEditDialog(executor)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => {
-                            setCurrentPerson(executor);
-                            setShowRemoveDialog(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm">
+                          <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-gray-600">{executor.email}</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-gray-600">{executor.phone || 'No phone provided'}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mt-6">
+                        {!executor.isVerified && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleSendVerification(executor)}
+                          >
+                            Send Verification
+                          </Button>
+                        )}
+                        {executor.isVerified && (
+                          <div className="text-xs text-gray-500">
+                            Verified on {new Date(executor.created_at).toLocaleDateString()}
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => openViewDialog(executor)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => openEditDialog(executor)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setCurrentPerson(executor);
+                              setShowRemoveDialog(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              ) : searchQuery ? (
+                <div className="col-span-3 text-center py-12">
+                  <p className="text-gray-500">No executors match your search criteria.</p>
+                </div>
+              ) : null}
               
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -450,73 +564,79 @@ export default function Executors() {
           
           <TabsContent value="beneficiaries">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBeneficiaries.map(beneficiary => (
-                <motion.div
-                  key={beneficiary.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center">
-                        <Avatar className="h-12 w-12 mr-4">
-                          <AvatarImage src={beneficiary.avatar} />
-                          <AvatarFallback className="bg-willtank-100 text-willtank-700">{getInitials(beneficiary.name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h3 className="text-lg font-medium">{beneficiary.name}</h3>
-                          <p className="text-sm text-gray-500">{beneficiary.relationship}</p>
+              {filteredBeneficiaries.length > 0 ? (
+                filteredBeneficiaries.map(beneficiary => (
+                  <motion.div
+                    key={beneficiary.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center">
+                          <Avatar className="h-12 w-12 mr-4">
+                            <AvatarImage src={undefined} />
+                            <AvatarFallback className="bg-willtank-100 text-willtank-700">{getInitials(beneficiary.name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="text-lg font-medium">{beneficiary.name}</h3>
+                            <p className="text-sm text-gray-500">{beneficiary.relationship}</p>
+                          </div>
+                        </div>
+                        <div className="bg-willtank-100 text-willtank-700 px-3 py-1 rounded-full text-sm font-medium">
+                          {beneficiary.percentage || 0}%
                         </div>
                       </div>
-                      <div className="bg-willtank-100 text-willtank-700 px-3 py-1 rounded-full text-sm font-medium">
-                        {beneficiary.percentage}%
+                      
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm">
+                          <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-gray-600">{beneficiary.email}</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-gray-600">{beneficiary.phone || 'No phone provided'}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end items-center mt-6">
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => openViewDialog(beneficiary)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => openEditDialog(beneficiary)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setCurrentPerson(beneficiary);
+                              setShowRemoveDialog(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm">
-                        <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-gray-600">{beneficiary.email}</span>
-                      </div>
-                      <div className="flex items-center text-sm">
-                        <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-gray-600">{beneficiary.phone}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-end items-center mt-6">
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openViewDialog(beneficiary)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openEditDialog(beneficiary)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => {
-                            setCurrentPerson(beneficiary);
-                            setShowRemoveDialog(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              ) : searchQuery ? (
+                <div className="col-span-3 text-center py-12">
+                  <p className="text-gray-500">No beneficiaries match your search criteria.</p>
+                </div>
+              ) : null}
               
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -559,7 +679,7 @@ export default function Executors() {
                   id="name" 
                   name="name" 
                   placeholder="Enter full name" 
-                  value={formData.name}
+                  value={formData.name || ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -567,7 +687,7 @@ export default function Executors() {
                 <Label htmlFor="relationship">Relationship</Label>
                 <Select 
                   onValueChange={(value) => handleSelectChange("relationship", value)}
-                  value={formData.relationship}
+                  value={formData.relationship || ''}
                 >
                   <SelectTrigger id="relationship">
                     <SelectValue placeholder="Select relationship" />
@@ -593,7 +713,7 @@ export default function Executors() {
                   name="email" 
                   type="email" 
                   placeholder="Enter email address" 
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -603,7 +723,7 @@ export default function Executors() {
                   id="phone" 
                   name="phone" 
                   placeholder="Enter phone number" 
-                  value={formData.phone}
+                  value={formData.phone || ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -615,7 +735,7 @@ export default function Executors() {
                 id="address" 
                 name="address" 
                 placeholder="Enter physical address" 
-                value={formData.address}
+                value={formData.address || ''}
                 onChange={handleFormChange}
               />
             </div>
@@ -630,7 +750,7 @@ export default function Executors() {
                   min="0" 
                   max="100" 
                   placeholder="Enter percentage" 
-                  value={formData.percentage}
+                  value={formData.percentage !== undefined ? formData.percentage : ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -642,7 +762,7 @@ export default function Executors() {
                 id="notes" 
                 name="notes" 
                 placeholder="Enter any additional notes" 
-                value={formData.notes}
+                value={formData.notes || ''}
                 onChange={handleFormChange}
               />
             </div>
@@ -650,9 +770,10 @@ export default function Executors() {
           
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isSaving}>Cancel</Button>
             </DialogClose>
-            <Button onClick={handleAddPerson}>
+            <Button onClick={handleAddPerson} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add {activeTab === "executors" ? "Executor" : "Beneficiary"}
             </Button>
           </DialogFooter>
@@ -677,7 +798,7 @@ export default function Executors() {
                   id="edit-name" 
                   name="name" 
                   placeholder="Enter full name" 
-                  value={formData.name}
+                  value={formData.name || ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -685,7 +806,7 @@ export default function Executors() {
                 <Label htmlFor="edit-relationship">Relationship</Label>
                 <Select 
                   onValueChange={(value) => handleSelectChange("relationship", value)}
-                  value={formData.relationship}
+                  value={formData.relationship || ''}
                 >
                   <SelectTrigger id="edit-relationship">
                     <SelectValue placeholder="Select relationship" />
@@ -711,7 +832,7 @@ export default function Executors() {
                   name="email" 
                   type="email" 
                   placeholder="Enter email address" 
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -721,7 +842,7 @@ export default function Executors() {
                   id="edit-phone" 
                   name="phone" 
                   placeholder="Enter phone number" 
-                  value={formData.phone}
+                  value={formData.phone || ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -733,7 +854,7 @@ export default function Executors() {
                 id="edit-address" 
                 name="address" 
                 placeholder="Enter physical address" 
-                value={formData.address}
+                value={formData.address || ''}
                 onChange={handleFormChange}
               />
             </div>
@@ -748,7 +869,7 @@ export default function Executors() {
                   min="0" 
                   max="100" 
                   placeholder="Enter percentage" 
-                  value={formData.percentage}
+                  value={formData.percentage !== undefined ? formData.percentage : ''}
                   onChange={handleFormChange}
                 />
               </div>
@@ -760,7 +881,7 @@ export default function Executors() {
                 id="edit-notes" 
                 name="notes" 
                 placeholder="Enter any additional notes" 
-                value={formData.notes}
+                value={formData.notes || ''}
                 onChange={handleFormChange}
               />
             </div>
@@ -776,17 +897,7 @@ export default function Executors() {
                   checked={currentPerson?.isVerified || false}
                   onCheckedChange={(checked) => {
                     if (currentPerson) {
-                      setCurrentPerson({
-                        ...currentPerson,
-                        isVerified: checked
-                      });
-                      
-                      if (checked) {
-                        toast({
-                          title: "Verification Status Updated",
-                          description: `${currentPerson.name} is now marked as verified.`
-                        });
-                      }
+                      handleToggleVerification(currentPerson, checked);
                     }
                   }}
                 />
@@ -796,9 +907,12 @@ export default function Executors() {
           
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isSaving}>Cancel</Button>
             </DialogClose>
-            <Button onClick={handleEditPerson}>Save Changes</Button>
+            <Button onClick={handleEditPerson} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -815,10 +929,14 @@ export default function Executors() {
           
           <div className="flex justify-between items-center py-4">
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline" disabled={isSaving}>Cancel</Button>
             </DialogClose>
-            <Button variant="destructive" onClick={handleRemovePerson}>
-              <Trash2 className="mr-2 h-4 w-4" />
+            <Button variant="destructive" onClick={handleRemovePerson} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
               Remove
             </Button>
           </div>
@@ -840,7 +958,7 @@ export default function Executors() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <Avatar className="h-16 w-16 mr-4">
-                    <AvatarImage src={currentPerson.avatar} />
+                    <AvatarImage src={undefined} />
                     <AvatarFallback className="bg-willtank-100 text-willtank-700 text-lg">{getInitials(currentPerson.name)}</AvatarFallback>
                   </Avatar>
                   <div>
@@ -858,7 +976,7 @@ export default function Executors() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => sendVerificationRequest(currentPerson)}
+                      onClick={() => handleSendVerification(currentPerson)}
                     >
                       Send Verification
                     </Button>
@@ -873,7 +991,7 @@ export default function Executors() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Phone Number</p>
-                  <p className="font-medium">{currentPerson.phone}</p>
+                  <p className="font-medium">{currentPerson.phone || 'No phone provided'}</p>
                 </div>
                 {currentPerson.address && (
                   <div className="col-span-2">
@@ -881,7 +999,7 @@ export default function Executors() {
                     <p className="font-medium">{currentPerson.address}</p>
                   </div>
                 )}
-                {activeTab === "beneficiaries" && currentPerson.percentage !== undefined && (
+                {'percentage' in currentPerson && currentPerson.percentage !== undefined && (
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Percentage of Estate</p>
                     <p className="font-medium">{currentPerson.percentage}%</p>
@@ -893,6 +1011,10 @@ export default function Executors() {
                     <p>{currentPerson.notes}</p>
                   </div>
                 )}
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Added On</p>
+                  <p className="font-medium">{new Date(currentPerson.created_at).toLocaleDateString()}</p>
+                </div>
               </div>
             </div>
           )}

@@ -17,10 +17,52 @@ export function WillPreview({ content, onDownload }: WillPreviewProps) {
     if (onDownload) {
       onDownload();
     } else {
-      toast({
-        title: "Download Started",
-        description: "Your document is being prepared for download"
-      });
+      // Default download implementation if no custom handler is provided
+      try {
+        // Create a blob with the will content
+        const willHtml = `
+          <html>
+            <head>
+              <title>Will Document</title>
+              <style>
+                body { font-family: 'Times New Roman', Times, serif; margin: 2cm; }
+                h1 { text-align: center; font-size: 18pt; margin-bottom: 24pt; }
+                .content { line-height: 1.5; font-size: 12pt; white-space: pre-line; }
+              </style>
+            </head>
+            <body>
+              <h1>LAST WILL AND TESTAMENT</h1>
+              <div class="content">${content}</div>
+            </body>
+          </html>
+        `;
+        
+        const blob = new Blob([willHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create a temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'will_document.html';
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Download Started",
+          description: "Your document is being downloaded"
+        });
+      } catch (error) {
+        console.error('Download error:', error);
+        toast({
+          title: "Download Error",
+          description: "There was a problem downloading your document.",
+          variant: "destructive"
+        });
+      }
     }
   };
   
@@ -87,10 +129,24 @@ export function WillPreview({ content, onDownload }: WillPreviewProps) {
         });
       });
     } else {
-      toast({
-        title: "Share Options",
-        description: "Sharing not supported on this device or browser"
-      });
+      // Fallback for browsers that don't support Web Share API
+      try {
+        navigator.clipboard.writeText(content)
+          .then(() => {
+            toast({
+              title: "Content Copied",
+              description: "Document content copied to clipboard since sharing is not supported on this device"
+            });
+          })
+          .catch(err => {
+            throw err;
+          });
+      } catch (error) {
+        toast({
+          title: "Share Options",
+          description: "Sharing not supported on this device or browser"
+        });
+      }
     }
   };
 
