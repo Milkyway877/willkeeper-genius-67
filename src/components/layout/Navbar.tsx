@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight } from 'lucide-react';
+import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
