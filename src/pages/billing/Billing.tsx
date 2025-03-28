@@ -9,14 +9,44 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod, PlanDetails, SubscriptionPlan } from '../tank/types';
 import { createCheckoutSession } from '@/api/createCheckoutSession';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function Billing() {
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const queryParams = new URLSearchParams(location.search);
+  const success = queryParams.get('success');
+  const canceled = queryParams.get('canceled');
+  const sessionId = queryParams.get('session_id');
 
-  // Define the subscription plans
+  useEffect(() => {
+    if (success === 'true') {
+      toast({
+        title: "Payment successful!",
+        description: "Your subscription has been activated successfully.",
+        variant: "default",
+      });
+      
+      navigate('/billing', { replace: true });
+      
+      fetchBillingData();
+    } else if (canceled === 'true') {
+      toast({
+        title: "Payment canceled",
+        description: "You have canceled the payment process.",
+        variant: "destructive",
+      });
+      
+      navigate('/billing', { replace: true });
+    }
+  }, [success, canceled, navigate, toast]);
+
   const plans: Record<SubscriptionPlan, PlanDetails> = {
     starter: {
       name: 'Starter',
@@ -75,7 +105,8 @@ export default function Billing() {
       name: 'Enterprise',
       price: {
         monthly: 0,
-        yearly: 0
+        yearly: 0,
+        lifetime: 0
       },
       features: [
         'Custom templates',
@@ -91,45 +122,65 @@ export default function Billing() {
     }
   };
 
-  useEffect(() => {
-    const fetchBillingData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Fetch subscription data
-        const { data: subscriptionData, error: subscriptionError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-          
-        if (subscriptionError && subscriptionError.code !== 'PGRST116') {
-          // PGRST116 is "No rows returned"
-          throw subscriptionError;
-        }
-        
-        if (subscriptionData) {
-          setSubscription(subscriptionData);
-        }
-        
-      } catch (error) {
-        console.error('Error fetching billing data:', error);
+  const fetchBillingData = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Error fetching user:', userError);
         toast({
-          title: "Error loading billing data",
-          description: "Could not load your subscription information. Please try again later.",
+          title: "Authentication error",
+          description: "Please log in to view your subscription information.",
           variant: "destructive"
         });
-      } finally {
         setIsLoading(false);
+        return;
       }
-    };
-    
+      
+      const { data: subscriptionData, error: subscriptionError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+          
+      if (subscriptionError) {
+        if (subscriptionError.code !== 'PGRST116') {
+          console.error('Error fetching subscription:', subscriptionError);
+          toast({
+            title: "Error loading billing data",
+            description: "Could not load your subscription information. Please try again later.",
+            variant: "destructive"
+          });
+        }
+      } else if (subscriptionData) {
+        console.log('Found subscription:', subscriptionData);
+        setSubscription(subscriptionData);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching billing data:', error);
+      toast({
+        title: "Error loading billing data",
+        description: "Could not load your subscription information. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchBillingData();
   }, [toast]);
 
   const handleUpgrade = async (plan: SubscriptionPlan) => {
     try {
+      setIsProcessing(true);
+      
       toast({
         title: "Processing payment",
         description: "Redirecting to Stripe checkout...",
@@ -138,6 +189,7 @@ export default function Billing() {
       const sessionData = await createCheckoutSession(plan, billingPeriod);
       
       if (sessionData?.url) {
+        console.log('Redirecting to checkout:', sessionData.url);
         window.location.href = sessionData.url;
       } else {
         throw new Error('Could not create checkout session');
@@ -149,6 +201,7 @@ export default function Billing() {
         description: "Could not process your payment. Please try again later.",
         variant: "destructive"
       });
+      setIsProcessing(false);
     }
   };
 
@@ -213,7 +266,6 @@ export default function Billing() {
           </div>
         </div>
         
-        {/* Current Subscription */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -236,6 +288,18 @@ export default function Billing() {
                       ${plans[subscription.plan.toLowerCase() as SubscriptionPlan]?.price.monthly || 0} 
                       <span className="text-sm font-normal text-gray-500">/month</span>
                     </h2>
+                    {subscription.is_lifetime && (
+                      <span className="text-green-600 text-sm font-medium">Lifetime access</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      subscription.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {subscription.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
                 </div>
                 
@@ -243,13 +307,14 @@ export default function Billing() {
                   <div className="flex items-center">
                     <Calendar className="text-gray-500 mr-2" size={18} />
                     <span className="text-sm">
-                      Your next billing date is <strong>
-                        {new Date(subscription.end_date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </strong>
+                      {subscription.is_lifetime 
+                        ? "Lifetime subscription - never expires" 
+                        : `Your next billing date is ${new Date(subscription.end_date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}`
+                      }
                     </span>
                   </div>
                 </div>
@@ -280,7 +345,6 @@ export default function Billing() {
           </div>
         </motion.div>
         
-        {/* Available Plans */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -339,9 +403,22 @@ export default function Billing() {
                     <Button 
                       className="w-full"
                       onClick={() => handleUpgrade(planKey)}
-                      disabled={subscription?.plan?.toLowerCase() === planKey}
+                      disabled={isProcessing || 
+                        (subscription?.plan?.toLowerCase() === planKey && 
+                         ((subscription?.is_lifetime && billingPeriod === 'lifetime') || 
+                          (!subscription?.is_lifetime && billingPeriod !== 'lifetime')))}
                     >
-                      {subscription?.plan?.toLowerCase() === planKey ? 'Current Plan' : 'Upgrade'}
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                        </>
+                      ) : subscription?.plan?.toLowerCase() === planKey && 
+                         ((subscription?.is_lifetime && billingPeriod === 'lifetime') || 
+                          (!subscription?.is_lifetime && billingPeriod !== 'lifetime')) ? (
+                        'Current Plan'
+                      ) : (
+                        'Upgrade'
+                      )}
                     </Button>
                   )}
                 </div>
