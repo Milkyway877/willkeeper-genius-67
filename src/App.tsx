@@ -1,9 +1,11 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
@@ -41,70 +43,89 @@ import TankCreation from "./pages/tank/TankCreation";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/security" element={<Security />} />
-          <Route path="/business" element={<Business />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/contact" element={<Contact />} />
-          
-          {/* Dashboard Pages */}
-          <Route path="/will" element={<Will />} />
-          <Route path="/will/create" element={<WillCreation />} />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="/encryption" element={<Encryption />} />
-          <Route path="/executors" element={<Executors />} />
-          <Route path="/ai-assistance" element={<AIAssistance />} />
-          <Route path="/id-security" element={<IDSecurity />} />
-          <Route path="/billing" element={<Billing />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/settings" element={<Settings />} />
-          
-          {/* Tank Pages */}
-          <Route path="/tank" element={<Tank />} />
-          <Route path="/tank/create" element={<TankCreation />} />
-          
-          {/* Footer Pages - Company Section */}
-          <Route path="/about" element={<About />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/careers" element={<Careers />} />
-          
-          {/* Footer Pages - Resources Section */}
-          <Route path="/documentation" element={<Documentation />} />
-          <Route path="/api" element={<API />} />
-          <Route path="/community" element={<Community />} />
-          
-          {/* Footer Pages - Legal Section */}
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/cookies" element={<Cookies />} />
-          <Route path="/gdpr" element={<GDPR />} />
-          
-          {/* Auth Routes */}
-          <Route path="/auth/signup" element={<SignUp />} />
-          <Route path="/auth/signin" element={<SignIn />} />
-          <Route path="/auth/recover" element={<Recover />} />
-          
-          {/* Auth Short Routes */}
-          <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
-          <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
-          <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setLoading(false);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          {!loading && (
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth/signup" element={<SignUp />} />
+              <Route path="/auth/signin" element={<SignIn />} />
+              <Route path="/auth/recover" element={<Recover />} />
+              
+              <Route 
+                path="/dashboard" 
+                element={session ? <Dashboard /> : <Navigate to="/auth/signin" replace />} 
+              />
+              
+              <Route path="/services" element={<Services />} />
+              <Route path="/security" element={<Security />} />
+              <Route path="/business" element={<Business />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/contact" element={<Contact />} />
+              
+              <Route path="/will" element={<Will />} />
+              <Route path="/will/create" element={<WillCreation />} />
+              <Route path="/templates" element={<Templates />} />
+              <Route path="/encryption" element={<Encryption />} />
+              <Route path="/executors" element={<Executors />} />
+              <Route path="/ai-assistance" element={<AIAssistance />} />
+              <Route path="/id-security" element={<IDSecurity />} />
+              <Route path="/billing" element={<Billing />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/settings" element={<Settings />} />
+              
+              <Route path="/tank" element={<Tank />} />
+              <Route path="/tank/create" element={<TankCreation />} />
+              
+              <Route path="/about" element={<About />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/careers" element={<Careers />} />
+              
+              <Route path="/documentation" element={<Documentation />} />
+              <Route path="/api" element={<API />} />
+              <Route path="/community" element={<Community />} />
+              
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/gdpr" element={<GDPR />} />
+              
+              <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
+              <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
+              <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          )}
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

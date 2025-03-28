@@ -131,7 +131,7 @@ serve(async (req) => {
       lastName
     });
     
-    // Create user profile with email_auth values for passkey/recovery_phrase
+    // Create user profile with simplified values
     const { data: newUser, error: insertError } = await supabaseClient
       .from("users")
       .insert({

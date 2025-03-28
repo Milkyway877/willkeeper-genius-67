@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, ArrowRight, Shield } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  otpCode: z.string().length(6, 'OTP code must be 6 digits').optional(),
 });
 
 type SignInFormInputs = z.infer<typeof signInSchema>;
@@ -22,16 +21,31 @@ type SignInFormInputs = z.infer<typeof signInSchema>;
 export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Email/Password, 2: OTP
-  const [requiresOtp, setRequiresOtp] = useState(false);
   const navigate = useNavigate();
+  
+  // Check for redirects from email verification
+  useEffect(() => {
+    const handleAuthRedirect = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (data?.session && !error) {
+        // User is already logged in
+        toast({
+          title: "Welcome back!",
+          description: "You are now signed in.",
+        });
+        navigate('/dashboard');
+      }
+    };
+    
+    handleAuthRedirect();
+  }, [navigate]);
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
       email: '',
       password: '',
-      otpCode: '',
     },
   });
 
@@ -39,65 +53,40 @@ export function SignInForm() {
     try {
       setIsLoading(true);
       
-      if (step === 1) {
-        // Sign in with email and password
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: data.email,
-          password: data.password,
+      // Sign in with email and password
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      
+      if (authError) {
+        toast({
+          title: "Authentication failed",
+          description: authError.message,
+          variant: "destructive",
         });
-        
-        if (authError) {
-          toast({
-            title: "Authentication failed",
-            description: authError.message,
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        if (!authData.user) {
-          toast({
-            title: "Authentication failed",
-            description: "User not found",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        // Check if 2FA is enabled for this user
-        const { data: securityData } = await supabase
-          .from('user_security')
-          .select('google_auth_enabled')
-          .eq('user_id', authData.user.id)
-          .single();
-        
-        // If 2FA is enabled, prompt for OTP code
-        if (securityData?.google_auth_enabled) {
-          setRequiresOtp(true);
-          setStep(2);
-          setIsLoading(false);
-          return;
-        }
-        
-        // If no 2FA, proceed with login
-        completeLogin();
-      } else if (step === 2 && requiresOtp) {
-        // Verify OTP code
-        // In production, we would validate the OTP against the stored secret
-        // For now, we'll just proceed if any 6-digit code is provided
-        if (data.otpCode?.length === 6) {
-          completeLogin();
-        } else {
-          toast({
-            title: "Invalid code",
-            description: "Please enter the 6-digit code from your authenticator app",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-        }
+        setIsLoading(false);
+        return;
       }
+      
+      if (!authData.user) {
+        toast({
+          title: "Authentication failed",
+          description: "User not found",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Show success toast
+      toast({
+        title: "Sign in successful",
+        description: "Redirecting to your dashboard...",
+      });
+      
+      // Redirect to dashboard
+      navigate('/dashboard');
     } catch (error) {
       console.error("Sign in error:", error);
       
@@ -109,104 +98,62 @@ export function SignInForm() {
       setIsLoading(false);
     }
   };
-  
-  const completeLogin = () => {
-    // Show success toast
-    toast({
-      title: "Sign in successful",
-      description: "Redirecting to your dashboard...",
-    });
-    
-    // Redirect to dashboard
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1500);
-  };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {step === 1 && (
-          <>
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="john.doe@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="Enter your password" 
-                        className="pr-10"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email Address</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="john.doe@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
-        {step === 2 && (
-          <div className="space-y-4">
-            <div className="bg-slate-50 p-3 rounded-md border border-slate-200 flex items-start space-x-2">
-              <Shield className="h-5 w-5 text-willtank-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium">Two-factor authentication required</p>
-                <p className="text-sm text-muted-foreground">
-                  Enter the 6-digit code from your authenticator app
-                </p>
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <div className="relative">
+                <FormControl>
+                  <Input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Enter your password" 
+                    className="pr-10"
+                    {...field} 
+                  />
+                </FormControl>
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="otpCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Authentication Code</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Enter 6-digit code" 
-                      maxLength={6} 
-                      className="font-mono text-center text-lg letter-spacing-wide"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Signing in..." : "Sign In"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+            </>
+          ) : (
+            <>
+              Sign In <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
         
         <div className="space-y-2 mt-6">
