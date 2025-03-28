@@ -236,8 +236,12 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
                   <Link to="/dashboard" className="flex items-center">
-                    <Store className="h-5 w-5 mr-2 text-gray-700" />
-                    <span className="font-semibold">WillTank</span>
+                    <img 
+                      src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
+                      alt="WillTank Logo" 
+                      className="h-8 w-auto mr-2" 
+                    />
+                    <span className="font-semibold text-lg">WillTank</span>
                   </Link>
                   
                   <form onSubmit={handleSearch} className="relative hidden md:block">
@@ -328,7 +332,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </button>
                 )}
                 <Link to="/">
-                  <Logo size="md" pixelated={false} />
+                  <Logo size="md" pixelated={false} showSlogan={false} />
                 </Link>
               </div>
               

@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { DotPatternText } from '@/components/ui/DotPatternText';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -11,7 +10,7 @@ interface LogoProps {
   pixelated?: boolean;
 }
 
-export function Logo({ size = 'md', color = 'primary', className, showSlogan = true, pixelated = false }: LogoProps) {
+export function Logo({ size = 'md', color = 'primary', className, showSlogan = false, pixelated = false }: LogoProps) {
   const getSizeClasses = () => {
     switch (size) {
       case 'sm': return 'h-9';
