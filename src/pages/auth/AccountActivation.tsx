@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -55,11 +56,14 @@ type BackgroundInfoInputs = z.infer<typeof backgroundInfoSchema>;
 const generateOTPSecret = (length: number = 20): string => {
   const VALID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let result = '';
-  const randomValues = new Uint8Array(length);
-  window.crypto.getRandomValues(randomValues);
   
+  // Use a cryptographically secure random number generator
+  const randomBytes = new Uint8Array(length);
+  window.crypto.getRandomValues(randomBytes);
+  
+  // Map each byte to a valid Base32 character
   for (let i = 0; i < length; i++) {
-    result += VALID_CHARS.charAt(randomValues[i] % VALID_CHARS.length);
+    result += VALID_CHARS.charAt(randomBytes[i] % VALID_CHARS.length);
   }
   
   return result;
@@ -856,4 +860,83 @@ export default function AccountActivation() {
                   } cursor-pointer hover:border-willtank-300`}
                   onClick={() => setSelectedPlan("premium")}
                 >
-                  <
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium">Premium Plan</h3>
+                    <div className="flex items-center">
+                      <span className="text-lg font-bold">$19.99</span>
+                      <span className="text-sm text-gray-500 ml-1">/mo</span>
+                    </div>
+                  </div>
+                  <ul className="text-sm space-y-2">
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Full will & estate planning</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Unlimited document storage</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Video & audio messages</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Priority phone support</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Legal document review</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={handleSubscriptionSubmit} 
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? "Processing..." : "Confirm Plan & Activate Account"}
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+              
+              <div className="text-center text-xs text-gray-500">
+                You can change your plan at any time in your account settings.
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {currentStep === STEPS.COMPLETE && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Successfully Activated!</CardTitle>
+              <CardDescription>
+                Your account is now fully activated and ready to use.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col items-center justify-center p-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-xl font-medium mb-2">Welcome to WillTank</h3>
+                <p className="text-gray-600 text-center mb-4">
+                  You've completed the activation process and can now use all features of your account.
+                </p>
+                
+                <Button 
+                  onClick={handleComplete} 
+                  className="mt-4"
+                >
+                  Go to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </Layout>
+  );
+}
