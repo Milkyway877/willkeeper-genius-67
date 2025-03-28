@@ -32,7 +32,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
     
-    return data;
+    return data as UserProfile;
   } catch (error) {
     console.error('Error in getUserProfile:', error);
     return null;
@@ -59,7 +59,7 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw error;
     }
     
-    return data;
+    return data as UserProfile;
   } catch (error) {
     console.error('Error in updateUserProfile:', error);
     return null;
