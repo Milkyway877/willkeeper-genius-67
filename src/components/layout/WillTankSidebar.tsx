@@ -22,7 +22,6 @@ import {
   Archive,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ModeToggle } from '@/components/ui/mode-toggle';
 
 interface SidebarLinkProps {
   to: string;
@@ -128,7 +127,7 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
           )}
         </AnimatePresence>
         
-        {!isCollapsed && <ModeToggle />}
+        {/* Mode toggle removed from here */}
       </div>
       
       <div className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
