@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Bell, User, Menu, X, Search, HelpCircle, Shield, Briefcase, Map, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,7 +43,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   };
   
   const handleLogout = () => {
-    // In a real app, this would call an API to log out
     toast({
       title: "Logged out",
       description: "You have been successfully logged out",
@@ -52,7 +50,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     navigate('/auth/signin');
   };
   
-  // Update the logic to consider more paths as dashboard pages
   const isDashboardPage = isAuthenticated || 
     location.pathname.includes('/help') || 
     location.pathname.includes('/security') || 
@@ -67,7 +64,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     location.pathname.includes('/notifications') ||
     location.pathname.includes('/settings');
   
-  // Don't show dashboard layout on explicit auth pages
   const isAuthPage = location.pathname.includes('/auth/');
   const shouldShowDashboardLayout = isDashboardPage && !isAuthPage;
   
@@ -95,7 +91,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
         
         {shouldShowDashboardLayout ? (
           <>
-            {/* Dashboard Navbar - with search, support, notifications and profile */}
             <div className="flex items-center space-x-4">
               <div className="relative hidden md:flex items-center">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
@@ -149,7 +144,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           </>
         ) : (
           <>
-            {/* Original Navigation for non-dashboard pages */}
             <div className="hidden md:flex items-center space-x-6">
               <Link to="/services" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
                 <Map size={18} />
@@ -184,7 +178,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           </>
         )}
         
-        {/* Mobile Navigation Toggle */}
         <button 
           className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
           onClick={toggleMobileMenu}
@@ -193,7 +186,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
         </button>
       </div>
       
-      {/* Mobile menu */}
       {showMobileMenu && (
         <motion.div 
           className="md:hidden py-4 px-6 space-y-4 border-t border-gray-100 bg-white animate-fade-in"
