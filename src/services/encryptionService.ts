@@ -136,8 +136,18 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
       throw new Error('No authenticated user found');
     }
 
-    // Generate a secure random string for the secret
-    const secret = generateSecureBase32(20); // 20 bytes = 160 bits (recommended for TOTP)
+    // Generate a secure random Base32 string for the secret
+    // Using only valid Base32 characters (A-Z, 2-7)
+    const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let secret = '';
+    
+    // Generate a 32-character secret (160 bits)
+    for (let i = 0; i < 32; i++) {
+      secret += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length));
+    }
+    
+    // Format the secret with spaces for readability (every 4 characters)
+    const formattedSecret = secret.match(/.{1,4}/g)?.join(' ') || secret;
     
     // Create a new TOTP object
     const totp = new OTPAuth.TOTP({
@@ -152,48 +162,16 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
     // Generate the QR code URL
     const qrCodeUrl = totp.toString();
     
-    console.log('Generated new TOTP secret:', secret);
+    console.log('Generated new TOTP secret');
     
     return {
-      secret,
+      secret: formattedSecret,
       qrCodeUrl
     };
   } catch (error) {
     console.error('Error generating TOTP secret:', error);
     throw error;
   }
-}
-
-/**
- * Generates a secure random Base32 string
- * @param byteLength Length in bytes of the random data
- * @returns Base32 encoded string
- */
-function generateSecureBase32(byteLength: number = 20): string {
-  const randomBytes = new Uint8Array(byteLength);
-  crypto.getRandomValues(randomBytes);
-  
-  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let result = '';
-  let bits = 0;
-  let value = 0;
-  
-  for (let i = 0; i < randomBytes.length; i++) {
-    value = (value << 8) | randomBytes[i];
-    bits += 8;
-    
-    while (bits >= 5) {
-      result += ALPHABET[(value >>> (bits - 5)) & 31];
-      bits -= 5;
-    }
-  }
-  
-  if (bits > 0) {
-    result += ALPHABET[(value << (5 - bits)) & 31];
-  }
-  
-  // Format the secret with spaces for readability (every 4 characters)
-  return result.match(/.{1,4}/g)?.join(' ') || result;
 }
 
 /**
