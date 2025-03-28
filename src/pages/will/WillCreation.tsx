@@ -521,38 +521,14 @@ Witnesses: [Witness information will be added upon signing]
                 <div className="w-2/3 p-6 border-r border-gray-100">
                   <h3 className="text-lg font-semibold mb-4">AI-Guided Questions</h3>
                   
-                  <div className="space-y-6">
-                    {getQuestionsByTemplate(selectedTemplate).map((question, index) => (
-                      <motion.div 
-                        key={question.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="space-y-2"
-                      >
-                        <label className="text-sm font-medium text-gray-700">
-                          {question.text}
-                        </label>
-                        <Textarea 
-                          placeholder="Type your answer here..."
-                          className="w-full min-h-[100px]"
-                        />
-                      </motion.div>
-                    ))}
-                    
-                    <div className="pt-4">
-                      <Button 
-                        onClick={() => {
-                          generateWillContent(selectedTemplate);
-                          nextStep();
-                        }}
-                        className="w-full"
-                      >
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Generate My Will
-                      </Button>
-                    </div>
-                  </div>
+                  <AIQuestionFlow 
+                    questions={getQuestionsByTemplate(selectedTemplate)}
+                    onComplete={(answers) => {
+                      console.log('Answers submitted:', answers);
+                      generateWillContent(selectedTemplate);
+                      nextStep();
+                    }}
+                  />
                 </div>
                 
                 <div className="w-1/3 bg-gray-50 p-6">
@@ -778,38 +754,12 @@ Witnesses: [Witness information will be added upon signing]
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                    <div className="flex items-center">
-                      <FileText className="text-willtank-700 mr-2" size={18} />
-                      <h3 className="font-medium">Last Will and Testament</h3>
-                    </div>
-                    <div className="text-xs text-gray-500 flex items-center">
-                      {lastSaved && (
-                        <>
-                          <Save size={14} className="mr-1" />
-                          Last saved at {lastSaved.toLocaleTimeString()}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="p-6">
-                    {isGenerating ? (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-willtank-700 mb-4"></div>
-                        <p className="text-willtank-700 font-medium">Generating your will...</p>
-                        <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
-                      </div>
-                    ) : (
-                      <Textarea 
-                        className="w-full h-[500px] p-4 border border-gray-200 rounded-md font-mono text-sm"
-                        value={willContent}
-                        onChange={(e) => handleContentChange(e.target.value)}
-                      />
-                    )}
-                  </div>
-                </div>
+                <WillEditor
+                  initialContent={willContent}
+                  onChange={handleContentChange}
+                  autoSave={true}
+                  autoSaveInterval={5000}
+                />
               </div>
               
               <div>
@@ -1266,6 +1216,27 @@ Witnesses: [Witness information will be added upon signing]
         <polyline points="6 9 6 2 18 2 18 9" />
         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
         <rect width="12" height="8" x="6" y="14" />
+      </svg>
+    );
+  };
+  
+  // Bell icon for notifications
+  const Bell = (props) => {
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+      >
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </svg>
     );
   };
