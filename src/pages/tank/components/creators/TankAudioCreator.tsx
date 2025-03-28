@@ -15,7 +15,7 @@ import {
   Volume2,
   Upload,
   Sliders,
-  Waveform,
+  AudioWaveform,
   MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -222,7 +222,7 @@ export function TankAudioCreator({ onComplete, isAiEnhanced }: TankAudioCreatorP
               <div className="flex flex-col items-center justify-center">
                 {isRecording ? (
                   <div className="mb-6">
-                    <Waveform className="h-24 w-24 text-willtank-600 animate-pulse" />
+                    <AudioWaveform className="h-24 w-24 text-willtank-600 animate-pulse" />
                   </div>
                 ) : audioUrl ? (
                   <div className="mb-6">
