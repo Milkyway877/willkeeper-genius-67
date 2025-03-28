@@ -541,6 +541,7 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          activation_complete: boolean | null
           avatar_url: string | null
           created_at: string
           full_name: string | null
@@ -548,6 +549,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activation_complete?: boolean | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
@@ -555,6 +557,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activation_complete?: boolean | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
