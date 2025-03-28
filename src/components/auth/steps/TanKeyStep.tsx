@@ -10,7 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { TanKeyInputs, tanKeySchema } from '../SignUpSchemas';
 import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
-import { tanKeyService } from '@/services/tanKeyService';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 
@@ -98,11 +97,36 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
         throw new Error("User not found. Please ensure you're logged in.");
       }
       
-      // Store the TanKey in the database
-      const success = await tanKeyService.storeTanKey(user.id, tanKey);
+      // Attempt to store the TanKey via edge function
+      const { data, error } = await supabase.functions.invoke('store-tankey', {
+        body: {
+          user_id: user.id,
+          tan_key: tanKey
+        }
+      });
       
-      if (!success) {
-        throw new Error("Failed to store TanKey");
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.message || "Failed to store TanKey");
+      }
+      
+      toast({
+        title: "TanKey saved",
+        description: "Your encryption key has been securely stored.",
+      });
+
+      // Update the users table with the TanKey
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ passkey: tanKey })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Error updating user passkey:", updateError);
+        toast({
+          title: "Warning",
+          description: "Your TanKey was stored but we couldn't update your user profile. You can continue anyway.",
+          variant: "warning"
+        });
       }
       
       // Proceed to the next step
@@ -112,7 +136,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       
       toast({
         title: "Error",
-        description: "Could not save your TanKey. Please try again.",
+        description: error.message || "Could not save your TanKey. Please try again.",
         variant: "destructive",
       });
     } finally {

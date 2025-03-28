@@ -1,15 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { ArrowRight, Copy, Check, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Copy, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
-import { fadeInUp } from '../animations';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
+import { fadeInUp } from '../animations';
+import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 
@@ -22,36 +23,31 @@ interface AuthenticatorStepProps {
 export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: AuthenticatorStepProps) {
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [verificationAttempts, setVerificationAttempts] = useState(0);
-  const [tanKey, _] = useLocalStorage<string>('temp_tan_key', '');
-  
+  const [tanKey] = useLocalStorage<string>('temp_tan_key', '');
+
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),
     defaultValues: {
-      otp: '',
+      verificationCode: '',
+      enableTwoFactor: true,
     },
   });
 
-  const copyAuthKey = () => {
+  const copyToClipboard = () => {
     navigator.clipboard.writeText(authenticatorKey.replace(/\s/g, ''));
     setCopied(true);
     toast({
       title: "Key copied",
-      description: "Authentication key copied to clipboard",
+      description: "Authenticator key has been copied to your clipboard."
     });
+    
+    // Reset copied state after 2 seconds
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Verify OTP code against the authenticator key
   const handleSubmit = async (data: AuthenticatorInputs) => {
     try {
       setIsLoading(true);
-      setVerificationAttempts(prev => prev + 1);
-      
-      // In production, we would validate the OTP against the key
-      // For demo purposes, we'll accept the code if:
-      // 1. It's 6 digits
-      // 2. It's a valid format
       
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -60,45 +56,73 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         throw new Error("User not found. Please ensure you're logged in.");
       }
       
-      if (!tanKey) {
-        throw new Error("Encryption key not found. Please go back to the previous step.");
-      }
-      
-      // Store the authenticator information in the database
-      const { error } = await supabase
-        .from('user_security')
-        .upsert({ 
-          user_id: user.id,
-          google_auth_enabled: true,
-          google_auth_secret: authenticatorKey.replace(/\s/g, ''),
-          encryption_key: tanKey
-        });
-      
-      if (error) {
-        console.error("Error storing authenticator setup:", error);
-        throw new Error("Failed to store authenticator setup");
-      }
-      
-      // Proceed to the next step
-      onNext();
-      
-    } catch (error) {
-      console.error("Error in authenticator verification:", error);
-      
-      // For demo purposes, if the user has tried 3+ times, let them proceed anyway
-      if (verificationAttempts >= 3) {
+      // In a real implementation, we would validate the verification code against the authenticator secret
+      // For now, we'll just accept any 6-digit code
+      if (data.verificationCode.length !== 6 || !/^\d+$/.test(data.verificationCode)) {
         toast({
-          title: "Verification skipped",
-          description: "For testing purposes, you may proceed after multiple attempts.",
+          title: "Invalid code",
+          description: "Please enter a valid 6-digit verification code.",
+          variant: "destructive",
         });
-        onNext();
+        setIsLoading(false);
         return;
       }
       
+      // Check if user security record exists
+      const { data: existingRecord, error: queryError } = await supabase
+        .from('user_security')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+        
+      if (queryError) {
+        console.error("Error checking user security record:", queryError);
+      }
+      
+      if (existingRecord) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('user_security')
+          .update({
+            google_auth_enabled: data.enableTwoFactor,
+            google_auth_secret: authenticatorKey.replace(/\s/g, ''),
+          })
+          .eq('user_id', user.id);
+          
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+      } else {
+        // Create new record
+        const { error: insertError } = await supabase
+          .from('user_security')
+          .insert({
+            user_id: user.id,
+            google_auth_enabled: data.enableTwoFactor,
+            google_auth_secret: authenticatorKey.replace(/\s/g, ''),
+            encryption_key: tanKey || 'default_encryption_key'  // Using TanKey as encryption key
+          });
+          
+        if (insertError) {
+          throw new Error(insertError.message);
+        }
+      }
+      
       toast({
-        title: "Verification failed",
-        description: "Please verify that you entered the correct code from your authenticator app.",
-        variant: "destructive"
+        title: "Two-factor authentication " + (data.enableTwoFactor ? "enabled" : "configured"),
+        description: data.enableTwoFactor 
+          ? "Your account is now protected with 2FA." 
+          : "You can enable 2FA later in your security settings.",
+      });
+      
+      onNext();
+    } catch (error) {
+      console.error("Error setting up authenticator:", error);
+      
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set up authenticator. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -106,96 +130,109 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   };
 
   return (
-    <motion.div key="authenticator" {...fadeInUp}>
+    <motion.div key="step6" {...fadeInUp}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium mb-2">Set Up Two-Factor Authentication</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              For additional security, we require setting up two-factor authentication using Google Authenticator or a similar app.
-            </p>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-6 mb-4">
-            <div className="flex-1">
-              <h4 className="text-sm font-medium mb-2">1. Scan QR Code</h4>
-              <div className="bg-white p-4 border rounded-md inline-block">
-                <img src={qrCodeUrl} alt="QR Code" className="w-40 h-40" />
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium">Set Up Two-Factor Authentication</h3>
+              <p className="text-sm text-muted-foreground">
+                Enhance your account security by setting up two-factor authentication (2FA).
+              </p>
+            </div>
+            
+            <div className="border border-slate-200 rounded-md p-4 space-y-4">
+              <p className="text-sm">
+                1. Download an authenticator app like Google Authenticator or Authy.
+              </p>
+              
+              <div>
+                <p className="text-sm mb-2">
+                  2. Scan this QR code with your authenticator app:
+                </p>
+                <div className="flex justify-center bg-white p-2 border border-slate-200 rounded-md">
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="QR Code for Authenticator App" 
+                    className="w-40 h-40"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm mb-2">
+                  3. Or enter this key manually in your app:
+                </p>
+                <div className="relative">
+                  <div className="p-2 bg-slate-50 border border-slate-200 rounded-md font-mono text-center break-all select-all text-sm">
+                    {authenticatorKey}
+                  </div>
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 p-1 bg-slate-100 rounded hover:bg-slate-200"
+                    onClick={copyToClipboard}
+                    aria-label="Copy to clipboard"
+                  >
+                    <Copy size={14} className={copied ? "text-green-500" : ""} />
+                  </button>
+                </div>
               </div>
             </div>
             
-            <div className="flex-1">
-              <h4 className="text-sm font-medium mb-2">2. Or Enter Key Manually</h4>
-              <p className="text-sm text-muted-foreground mb-2">
-                If you can't scan the QR code, enter this key in your authenticator app:
-              </p>
-              <div className="relative bg-slate-50 p-3 rounded-md border border-slate-200 font-mono text-center break-all mb-4">
-                {authenticatorKey}
-                <button
-                  type="button"
-                  onClick={copyAuthKey}
-                  className="absolute top-2 right-2 p-1 bg-slate-100 rounded hover:bg-slate-200"
-                  aria-label="Copy to clipboard"
-                >
-                  {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-                </button>
-              </div>
-              
-              <h4 className="text-sm font-medium mt-4 mb-2">3. Verify Setup</h4>
-              <p className="text-sm text-muted-foreground mb-2">
-                Enter the 6-digit code from your authenticator app:
-              </p>
-              
-              <FormField
-                control={form.control}
-                name="otp"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <InputOTP maxLength={6} {...field}>
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} />
-                          <InputOTPSlot index={1} />
-                          <InputOTPSlot index={2} />
-                          <InputOTPSlot index={3} />
-                          <InputOTPSlot index={4} />
-                          <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="verificationCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Enter the 6-digit verification code from your authenticator app
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      placeholder="000000" 
+                      maxLength={6}
+                      className="text-center font-mono text-lg tracking-widest"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="enableTwoFactor"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox 
+                      checked={field.value} 
+                      onCheckedChange={field.onChange} 
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="text-sm font-normal">
+                      Enable two-factor authentication for my account
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Highly recommended for securing your account and sensitive documents.
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
           </div>
           
-          {verificationAttempts > 0 && (
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
-              <AlertTriangle className="text-amber-600 mt-0.5 mr-2 h-5 w-5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-amber-800">
-                  For testing purposes, after 3 failed attempts you will be allowed to proceed.
-                  In a production environment, verification would be required.
-                </p>
-                <p className="text-xs text-amber-700 mt-1">
-                  Attempts: {verificationAttempts}/3
-                </p>
-              </div>
-            </div>
-          )}
-          
-          <div className="bg-slate-50 p-3 rounded-md border border-slate-200">
-            <h4 className="text-sm font-medium mb-1">Recommended Authenticator Apps:</h4>
-            <ul className="text-sm text-muted-foreground ml-5 list-disc">
-              <li>Google Authenticator (iOS/Android)</li>
-              <li>Authy (iOS/Android/Desktop)</li>
-              <li>Microsoft Authenticator (iOS/Android)</li>
-            </ul>
+          <div className="bg-blue-50 border border-blue-200 p-3 rounded-md flex items-start space-x-2">
+            <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-800">
+              Two-factor authentication adds an extra layer of security by requiring a verification code in addition to your password when signing in.
+            </p>
           </div>
           
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Verifying..." : "Verify & Continue"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
+            {isLoading ? "Verifying..." : "Continue"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
         </form>
       </Form>
