@@ -1,288 +1,161 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Message, MessageStatus, MessageType, LegacyVaultItem } from '@/pages/tank/types';
-import { useToast } from "@/hooks/use-toast";
 
-// Future Messages functions
-export const getFutureMessages = async (userId: string | undefined = undefined) => {
+export interface FutureMessage {
+  id: string;
+  title: string | null;
+  recipient_name: string;
+  recipient_email: string;
+  message_type: string | null;
+  preview: string | null;
+  message_url: string | null;
+  status: string;
+  delivery_date: string;
+  created_at: string;
+}
+
+export interface LegacyVaultItem {
+  id: string;
+  title: string;
+  document_url: string;
+  preview: string | null;
+  category: string | null;
+  created_at: string;
+}
+
+export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
-    // For development, allow fetching without a userId
-    const query = supabase
+    const { data, error } = await supabase
       .from('future_messages')
-      .select('*');
-    
-    if (userId) {
-      query.eq('user_id', userId);
-    }
-    
-    const { data, error } = await query;
-    
+      .select('*')
+      .order('created_at', { ascending: false });
+      
     if (error) {
       console.error('Error fetching future messages:', error);
       return [];
     }
     
-    // Map the database results to our Message type
-    return data.map(message => ({
-      id: message.id,
-      type: message.message_type?.toLowerCase() as MessageType,
-      title: message.title || 'Untitled Message',
-      recipient: message.recipient_name,
-      deliveryDate: message.delivery_date,
-      status: message.status?.toLowerCase() as MessageStatus,
-      preview: message.preview || 'No preview available',
-    }));
+    return data || [];
   } catch (error) {
-    console.error('Exception in getFutureMessages:', error);
+    console.error('Error in getFutureMessages:', error);
     return [];
   }
 };
 
-export const createFutureMessage = async (
-  message: {
-    title: string;
-    type: MessageType;
-    recipient: string;
-    recipientEmail: string;
-    deliveryDate: string;
-    preview: string;
-    userId?: string;
-  }
-) => {
+export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'created_at'>): Promise<FutureMessage | null> => {
   try {
     const { data, error } = await supabase
       .from('future_messages')
-      .insert({
-        title: message.title,
-        message_type: message.type.charAt(0).toUpperCase() + message.type.slice(1),
-        recipient_name: message.recipient,
-        recipient_email: message.recipientEmail,
-        delivery_date: message.deliveryDate,
-        preview: message.preview,
-        user_id: message.userId,
-        status: 'Scheduled'
-      })
-      .select();
-    
+      .insert(message)
+      .select()
+      .single();
+      
     if (error) {
       console.error('Error creating future message:', error);
-      throw error;
+      return null;
     }
     
-    return data[0];
+    return data;
   } catch (error) {
-    console.error('Exception in createFutureMessage:', error);
-    throw error;
+    console.error('Error in createFutureMessage:', error);
+    return null;
   }
 };
 
-export const updateFutureMessage = async (id: string, updates: Partial<Message>) => {
+export const updateFutureMessage = async (id: string, updates: Partial<FutureMessage>): Promise<FutureMessage | null> => {
   try {
-    // Convert our frontend Message type to database columns
-    const dbUpdates: any = {};
-    
-    if (updates.title) dbUpdates.title = updates.title;
-    if (updates.recipient) dbUpdates.recipient_name = updates.recipient;
-    if (updates.deliveryDate) dbUpdates.delivery_date = updates.deliveryDate;
-    if (updates.status) dbUpdates.status = updates.status.charAt(0).toUpperCase() + updates.status.slice(1);
-    if (updates.preview) dbUpdates.preview = updates.preview;
-    
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('future_messages')
-      .update(dbUpdates)
-      .eq('id', id);
-    
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
     if (error) {
       console.error('Error updating future message:', error);
-      throw error;
+      return null;
     }
     
-    return true;
+    return data;
   } catch (error) {
-    console.error('Exception in updateFutureMessage:', error);
-    throw error;
+    console.error('Error in updateFutureMessage:', error);
+    return null;
   }
 };
 
-export const deleteFutureMessage = async (id: string) => {
+export const deleteFutureMessage = async (id: string): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('future_messages')
       .delete()
       .eq('id', id);
-    
+      
     if (error) {
       console.error('Error deleting future message:', error);
-      throw error;
+      return false;
     }
     
     return true;
   } catch (error) {
-    console.error('Exception in deleteFutureMessage:', error);
-    throw error;
+    console.error('Error in deleteFutureMessage:', error);
+    return false;
   }
 };
 
-// Legacy Vault functions
-export const getLegacyVaultItems = async (userId: string | undefined = undefined) => {
+export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
   try {
-    const query = supabase
+    const { data, error } = await supabase
       .from('legacy_vault')
-      .select('*');
-    
-    if (userId) {
-      query.eq('user_id', userId);
-    }
-    
-    const { data, error } = await query;
-    
+      .select('*')
+      .order('created_at', { ascending: false });
+      
     if (error) {
       console.error('Error fetching legacy vault items:', error);
       return [];
     }
     
-    // Map the database results to our LegacyVaultItem type
-    return data.map(item => ({
-      id: item.id,
-      title: item.title,
-      type: mapCategoryToType(item.category),
-      preview: item.preview || 'No preview available',
-      createdAt: item.created_at,
-      encryptionStatus: true
-    }));
+    return data || [];
   } catch (error) {
-    console.error('Exception in getLegacyVaultItems:', error);
+    console.error('Error in getLegacyVaultItems:', error);
     return [];
   }
 };
 
-export const createLegacyVaultItem = async (
-  item: {
-    title: string;
-    category: string;
-    preview: string;
-    documentUrl?: string;
-    userId?: string;
-  }
-) => {
+export const createLegacyVaultItem = async (item: Omit<LegacyVaultItem, 'id' | 'created_at'>): Promise<LegacyVaultItem | null> => {
   try {
     const { data, error } = await supabase
       .from('legacy_vault')
-      .insert({
-        title: item.title,
-        category: item.category,
-        preview: item.preview,
-        document_url: item.documentUrl || '',
-        user_id: item.userId
-      })
-      .select();
-    
+      .insert(item)
+      .select()
+      .single();
+      
     if (error) {
       console.error('Error creating legacy vault item:', error);
-      throw error;
+      return null;
     }
     
-    return data[0];
+    return data;
   } catch (error) {
-    console.error('Exception in createLegacyVaultItem:', error);
-    throw error;
+    console.error('Error in createLegacyVaultItem:', error);
+    return null;
   }
 };
 
-export const deleteLegacyVaultItem = async (id: string) => {
+export const deleteLegacyVaultItem = async (id: string): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('legacy_vault')
       .delete()
       .eq('id', id);
-    
+      
     if (error) {
       console.error('Error deleting legacy vault item:', error);
-      throw error;
+      return false;
     }
     
     return true;
   } catch (error) {
-    console.error('Exception in deleteLegacyVaultItem:', error);
-    throw error;
-  }
-};
-
-// Helper function to map database category to frontend type
-const mapCategoryToType = (category: string | null): LegacyVaultItem['type'] => {
-  if (!category) return 'story';
-  
-  switch (category) {
-    case 'Personal Story':
-      return 'story';
-    case 'Family Secret':
-      return 'confession';
-    case 'Legal Document':
-      return 'advice';
-    default:
-      return 'story';
-  }
-};
-
-// Helper function to add missing columns if needed
-export const updateFutureMessagesSchema = async () => {
-  try {
-    // Check if title column exists
-    const { data, error } = await supabase
-      .rpc('check_column_exists', { 
-        p_table_name: 'future_messages',
-        p_column_name: 'title'
-      });
-    
-    if (error) {
-      console.error('Error checking column:', error);
-      return false;
-    }
-    
-    if (!data) {
-      // Column doesn't exist, add it
-      const { error: alterError } = await supabase
-        .rpc('add_column_if_not_exists', {
-          p_table_name: 'future_messages',
-          p_column_name: 'title',
-          p_column_type: 'text'
-        });
-      
-      if (alterError) {
-        console.error('Error adding column:', alterError);
-        return false;
-      }
-    }
-    
-    // Do the same for preview column
-    const { data: previewExists, error: previewError } = await supabase
-      .rpc('check_column_exists', { 
-        p_table_name: 'future_messages',
-        p_column_name: 'preview'
-      });
-    
-    if (previewError) {
-      console.error('Error checking column:', previewError);
-      return false;
-    }
-    
-    if (!previewExists) {
-      const { error: alterError } = await supabase
-        .rpc('add_column_if_not_exists', {
-          p_table_name: 'future_messages',
-          p_column_name: 'preview',
-          p_column_type: 'text'
-        });
-      
-      if (alterError) {
-        console.error('Error adding column:', alterError);
-        return false;
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Exception in updateFutureMessagesSchema:', error);
+    console.error('Error in deleteLegacyVaultItem:', error);
     return false;
   }
 };

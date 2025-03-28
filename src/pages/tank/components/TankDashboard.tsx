@@ -25,7 +25,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Message, MessageStatus, MessageType } from '../types';
-import { getFutureMessages, deleteFutureMessage, updateFutureMessage } from '@/services/tankService';
+import { getFutureMessages, deleteFutureMessage, updateFutureMessage, FutureMessage } from '@/services/tankService';
+
+const convertToMessage = (dbMessage: FutureMessage): Message => ({
+  id: dbMessage.id,
+  type: (dbMessage.message_type || 'letter') as MessageType,
+  title: dbMessage.title || 'Untitled Message',
+  recipient: dbMessage.recipient_name,
+  deliveryDate: dbMessage.delivery_date,
+  status: dbMessage.status.toLowerCase() as MessageStatus,
+  preview: dbMessage.preview || undefined
+});
 
 const getTypeIcon = (type: MessageType) => {
   switch (type) {
@@ -70,67 +80,12 @@ export const TankDashboard: React.FC = () => {
       try {
         setIsLoading(true);
         const data = await getFutureMessages();
-        setMessages(data);
+        const formattedMessages = data.map(convertToMessage);
+        setMessages(formattedMessages);
         setError(null);
       } catch (err) {
         console.error('Error loading messages:', err);
         setError('Failed to load messages. Please try again later.');
-        setMessages([
-          {
-            id: 1,
-            type: 'letter',
-            title: 'Birthday Wishes for Sarah',
-            recipient: 'Sarah Williams',
-            deliveryDate: '2025-06-15',
-            status: 'scheduled',
-            preview: 'A heartfelt letter with birthday wishes and life advice for when...'
-          },
-          {
-            id: 2,
-            type: 'video',
-            title: 'Wedding Day Message',
-            recipient: 'Michael Johnson',
-            deliveryDate: '2026-08-20',
-            status: 'draft',
-            preview: 'Video recording with special messages for Michael\'s wedding day...'
-          },
-          {
-            id: 3,
-            type: 'audio',
-            title: 'Life Advice Recording',
-            recipient: 'Emily Wilson',
-            deliveryDate: '2024-12-25',
-            status: 'scheduled',
-            preview: 'Audio recording with life advice and special memories shared...'
-          },
-          {
-            id: 4,
-            type: 'document',
-            title: 'Family History Documents',
-            recipient: 'James Anderson',
-            deliveryDate: '2027-03-10',
-            status: 'scheduled',
-            preview: 'Collection of important family history documents and photos...'
-          },
-          {
-            id: 5,
-            type: 'letter',
-            title: 'Graduation Congratulations',
-            recipient: 'Lisa Parker',
-            deliveryDate: '2025-05-30',
-            status: 'scheduled',
-            preview: 'Congratulatory letter for Lisa\'s college graduation with advice...'
-          },
-          {
-            id: 6,
-            type: 'video',
-            title: 'Anniversary Video',
-            recipient: 'Robert & Emma',
-            deliveryDate: '2023-11-05',
-            status: 'delivered',
-            preview: 'Special video message for Robert and Emma\'s 25th wedding anniversary...'
-          }
-        ]);
       } finally {
         setIsLoading(false);
       }
@@ -148,21 +103,26 @@ export const TankDashboard: React.FC = () => {
     message.recipient.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const handleEdit = (id: number | string) => {
+  const handleEdit = (id: string | number) => {
     toast({
       title: "Edit message",
       description: `Opening message #${id} for editing.`
     });
   };
   
-  const handleDelete = async (id: number | string) => {
+  const handleDelete = async (id: string | number) => {
     try {
-      await deleteFutureMessage(id.toString());
-      setMessages(messages.filter(message => message.id !== id));
-      toast({
-        title: "Message deleted",
-        description: "The message has been permanently deleted."
-      });
+      const success = await deleteFutureMessage(id.toString());
+      
+      if (success) {
+        setMessages(messages.filter(message => message.id !== id));
+        toast({
+          title: "Message deleted",
+          description: "The message has been permanently deleted."
+        });
+      } else {
+        throw new Error('Failed to delete message');
+      }
     } catch (err) {
       console.error('Error deleting message:', err);
       toast({
@@ -173,24 +133,29 @@ export const TankDashboard: React.FC = () => {
     }
   };
   
-  const handlePreview = (id: number | string) => {
+  const handlePreview = (id: string | number) => {
     toast({
       title: "Preview message",
       description: `Previewing message #${id}.`
     });
   };
   
-  const handleVerify = async (id: number | string) => {
+  const handleVerify = async (id: string | number) => {
     try {
-      await updateFutureMessage(id.toString(), { status: 'verified' });
-      setMessages(messages.map(message => 
-        message.id === id ? { ...message, status: 'verified' } : message
-      ));
+      const updatedMessage = await updateFutureMessage(id.toString(), { status: 'Verified' });
       
-      toast({
-        title: "Message verified",
-        description: "The message has been verified for delivery."
-      });
+      if (updatedMessage) {
+        setMessages(messages.map(message => 
+          message.id === id ? { ...message, status: 'verified' } : message
+        ));
+        
+        toast({
+          title: "Message verified",
+          description: "The message has been verified for delivery."
+        });
+      } else {
+        throw new Error('Failed to verify message');
+      }
     } catch (err) {
       console.error('Error verifying message:', err);
       toast({

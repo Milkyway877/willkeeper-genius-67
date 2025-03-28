@@ -162,6 +162,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          icon: string | null
           id: string
           read: boolean
           title: string
@@ -171,6 +172,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          icon?: string | null
           id?: string
           read?: boolean
           title: string
@@ -180,6 +182,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          icon?: string | null
           id?: string
           read?: boolean
           title?: string
@@ -288,6 +291,30 @@ export type Database = {
           },
         ]
       }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_security: {
         Row: {
           encryption_key: string
@@ -363,6 +390,7 @@ export type Database = {
           id: string
           percentage: number | null
           relationship: string
+          user_id: string | null
           will_id: string | null
         }
         Insert: {
@@ -371,6 +399,7 @@ export type Database = {
           id?: string
           percentage?: number | null
           relationship: string
+          user_id?: string | null
           will_id?: string | null
         }
         Update: {
@@ -379,6 +408,7 @@ export type Database = {
           id?: string
           percentage?: number | null
           relationship?: string
+          user_id?: string | null
           will_id?: string | null
         }
         Relationships: [

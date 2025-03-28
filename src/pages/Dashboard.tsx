@@ -7,10 +7,11 @@ import { Link } from 'react-router-dom';
 import { getDashboardSummary, getUserNotifications, getUserWills, getUserExecutors, getUserSubscription } from '@/services/dashboardService';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const { profile } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState({
     willCount: 0,
@@ -20,18 +21,11 @@ export default function Dashboard() {
   });
   const [activities, setActivities] = useState<any[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
-  const [userFirstName, setUserFirstName] = useState('User');
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setIsLoading(true);
-        
-        // Get user session to extract first name
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.user_metadata?.first_name) {
-          setUserFirstName(session.user.user_metadata.first_name);
-        }
         
         // Load dashboard summary
         const summaryData = await getDashboardSummary();
@@ -46,20 +40,20 @@ export default function Dashboard() {
         
         // Create activities from different data sources
         const recentActivities = [
-          ...(wills.slice(0, 1).map(will => ({
+          ...wills.slice(0, 1).map(will => ({
             id: `will-${will.id}`,
             title: 'Will Updated',
             description: `You updated your ${will.title || 'primary will'} document.`,
             date: new Date(will.updated_at).toLocaleDateString(),
             icon: <FileText size={18} className="text-willtank-700" />
-          }))),
-          ...(notifications.slice(0, 2).map(notification => ({
+          })),
+          ...notifications.slice(0, 2).map(notification => ({
             id: `notification-${notification.id}`,
             title: notification.title,
             description: notification.description,
-            date: new Date(notification.date).toLocaleDateString(),
+            date: new Date(notification.created_at).toLocaleDateString(),
             icon: <Bell size={18} className="text-willtank-700" />
-          })))
+          }))
         ];
         
         if (recentActivities.length === 0) {
@@ -100,7 +94,7 @@ export default function Dashboard() {
           transition={{ duration: 0.3 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold mb-2">Welcome back, {userFirstName}</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome back, {profile?.full_name?.split(' ')[0] || 'User'}</h1>
           <p className="text-gray-600">Here's an overview of your will management activity.</p>
         </motion.div>
         
