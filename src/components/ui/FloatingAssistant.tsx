@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Sparkles, Copy, ThumbsUp, ThumbsDown, Bot, User, Maximize2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -57,7 +56,6 @@ export function FloatingAssistant() {
     setIsLoading(true);
     
     try {
-      // Call the AI assistant edge function if available
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: { 
           query: input,
@@ -90,7 +88,6 @@ export function FloatingAssistant() {
     }
   };
   
-  // Fallback responses when the edge function is unavailable
   const fallbackResponse = (userInput: string) => {
     let response = '';
     const lowerInput = userInput.toLowerCase();
@@ -169,7 +166,22 @@ export function FloatingAssistant() {
     setMessages(prev => [...prev, aiMessage]);
     setIsLoading(false);
   };
-  
+
+  const quickAnswers = [
+    {
+      question: "How do I create a will?",
+      answer: "To create a will, navigate to the 'Wills' section and click on 'Create New Will'. You can then use our step-by-step wizard or AI-powered creator to draft your will."
+    },
+    {
+      question: "What is the death verification system?",
+      answer: "The Death Verification System ensures your will is only accessible after confirmed death. It includes regular check-ins, beneficiary verification, and a secure 10-way PIN unlock mechanism. You can configure it in Settings > Death Verification."
+    },
+    {
+      question: "How does the 10-way PIN system work?",
+      answer: "After verified death, each beneficiary and executor receives a unique 10-digit PIN. All PINs must be entered correctly to unlock your will, ensuring maximum security and preventing unauthorized access."
+    },
+  ];
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,6 +43,7 @@ import IDSecurity from "./pages/security/IDSecurity";
 import Billing from "./pages/billing/Billing";
 import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
+import DeathVerification from "./pages/settings/DeathVerification";
 import Tank from "./pages/tank/Tank";
 import TankCreation from "./pages/tank/TankCreation";
 import Search from "./pages/search/Search";
@@ -154,6 +156,7 @@ const App = () => {
               <Route path="/search" element={session ? <Search /> : <Navigate to="/auth/signin" replace />} />
               <Route path="/help" element={<Help />} />
               <Route path="/settings" element={session ? <Settings /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/settings/death-verification" element={session ? <DeathVerification /> : <Navigate to="/auth/signin" replace />} />
               
               <Route path="/tank" element={session ? <Tank /> : <Navigate to="/auth/signin" replace />} />
               <Route path="/tank/create" element={session ? <TankCreation /> : <Navigate to="/auth/signin" replace />} />

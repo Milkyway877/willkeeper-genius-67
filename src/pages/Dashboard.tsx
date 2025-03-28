@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { getDashboardSummary, getUserNotifications, getUserWills, getUserExecuto
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -208,6 +208,8 @@ export default function Dashboard() {
               </Link>
             </div>
           </div>
+          
+          <DeathVerificationWidget />
         </motion.div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

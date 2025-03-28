@@ -5,14 +5,17 @@ import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 import { AccountSettings } from './components/AccountSettings';
 import { SecuritySettings } from './components/SecuritySettings';
 import { NotificationSettings } from './components/NotificationSettings';
 import { PrivacySettings } from './components/PrivacySettings';
+import DeathVerification from './DeathVerification';
 
 export default function Settings() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('account');
   
   // Handle logout
@@ -37,6 +40,11 @@ export default function Settings() {
     }
   };
   
+  // Navigate to death verification settings
+  const navigateToDeathVerification = () => {
+    navigate('/settings/death-verification');
+  };
+  
   // Render the correct content based on active tab
   const renderContent = () => {
     switch (activeTab) {
@@ -48,6 +56,8 @@ export default function Settings() {
         return <NotificationSettings />;
       case 'privacy':
         return <PrivacySettings />;
+      case 'death-verification':
+        return <DeathVerification />;
       default:
         return <AccountSettings />;
     }
@@ -98,6 +108,13 @@ export default function Settings() {
                   >
                     <div className="h-4 w-4 mr-2">🔐</div>
                     Privacy
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('death-verification')} 
+                    className={`flex items-center justify-start mb-1 rounded-lg px-3 py-2 text-sm ${activeTab === 'death-verification' ? 'bg-willtank-50 text-willtank-700' : 'hover:bg-gray-100'}`}
+                  >
+                    <div className="h-4 w-4 mr-2">⚰️</div>
+                    Death Verification
                   </button>
                   
                   <div className="mt-4 pt-4 border-t border-gray-100">
