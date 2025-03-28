@@ -311,12 +311,19 @@ export default function AccountActivation() {
             return;
           }
           
+          // Generate a random encryption key for the user
+          const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+          
           supabase
             .from('user_security')
             .upsert({
               user_id: user.id,
               google_auth_enabled: enableTwoFactor,
               google_auth_secret: totpSecret.replace(/\s+/g, ''),
+              encryption_key: encryptionKey,
+              updated_at: new Date().toISOString()
             })
             .then(({ error }) => {
               if (error) {

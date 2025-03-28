@@ -21,13 +21,23 @@ export function TwoFactorInput({ onSubmit, loading = false, error }: TwoFactorIn
     }
   };
   
+  const handleChange = (value: string) => {
+    setOtp(value);
+    
+    // Auto-submit when code is complete
+    if (value.length === 6) {
+      console.log("Auto-submitting 2FA code:", value);
+      onSubmit(value);
+    }
+  };
+  
   return (
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
         <div className="flex justify-center">
           <InputOTP 
             value={otp} 
-            onChange={setOtp} 
+            onChange={handleChange}
             maxLength={6}
             disabled={loading}
           >

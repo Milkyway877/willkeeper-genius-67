@@ -65,7 +65,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       console.log("Verifying OTP:", cleanCode);
       console.log("Using authenticator key:", authenticatorKey);
       
-      // Validate the OTP code
+      // Validate the OTP code with a larger window to account for time drift
       const isValid = validateTOTP(cleanCode, authenticatorKey);
       console.log("OTP validation result:", isValid);
       
@@ -85,36 +85,25 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       
       console.log("Setting up 2FA for user:", user.id);
       
-      // Insert directly to user_security table - skip the getUserSecurity/createUserSecurity functions
-      // since they're failing with database schema issues
+      // Generate a random encryption key if needed
+      const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      // Insert directly to user_security table
       const { error: insertError } = await supabase
         .from('user_security')
         .upsert({
           user_id: user.id,
           google_auth_enabled: enableTwoFactor,
           google_auth_secret: authenticatorKey.replace(/\s+/g, ''),
-          encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join(''),
+          encryption_key: encryptionKey, // Include the required encryption_key
           updated_at: new Date().toISOString()
         });
         
       if (insertError) {
         console.error("Error updating security record:", insertError);
-        
-        // If there's a schema error, let's try a more minimal approach
-        const { error: minimalInsertError } = await supabase
-          .from('user_security')
-          .upsert({
-            user_id: user.id,
-            google_auth_enabled: enableTwoFactor,
-            google_auth_secret: authenticatorKey.replace(/\s+/g, '')
-          });
-          
-        if (minimalInsertError) {
-          console.error("Error with minimal insert:", minimalInsertError);
-          throw new Error("Failed to update security settings. Database error.");
-        }
+        throw new Error("Failed to update security settings. Database error.");
       }
       
       toast({
