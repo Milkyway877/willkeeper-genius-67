@@ -1,0 +1,25 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+  <script>
+    // Single Page Apps for GitHub Pages and other static hosts
+    // This script ensures proper routing even on direct page loading or refresh
+    (function(){
+      const path = window.location.pathname + window.location.search + window.location.hash;
+      
+      // If this is not the index page, redirect to the correct URL through the index
+      if (path !== '/') {
+        sessionStorage.setItem('redirect_path', path);
+        window.location.href = '/';
+      }
+    })();
+  </script>
+</head>
+<body>
+  <h1>Redirecting...</h1>
+  <p>If you are not redirected automatically, <a href="/">click here</a>.</p>
+</body>
+</html>

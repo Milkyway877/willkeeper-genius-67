@@ -1,3 +1,4 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -8,6 +9,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Add this to ensure all routes redirect to index.html for SPA routing
+    historyApiFallback: true,
   },
   plugins: [
     react(),
@@ -18,5 +21,10 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  // Add SPA-friendly build options
+  build: {
+    // Generate SPA fallback index.html for all routes
+    outDir: 'dist',
   },
 }));

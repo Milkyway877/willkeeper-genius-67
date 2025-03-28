@@ -18,6 +18,9 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@willtank" />
     <meta name="twitter:image" content="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" />
+    
+    <!-- Add base tag to help with SPA routing -->
+    <base href="/" />
   </head>
 
   <body>
@@ -25,5 +28,13 @@
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Add a no-script fallback for browsers without JavaScript -->
+    <noscript>
+      <div style="padding: 2rem; text-align: center;">
+        <h1>JavaScript Required</h1>
+        <p>WillTank requires JavaScript to function properly. Please enable JavaScript in your browser settings.</p>
+      </div>
+    </noscript>
   </body>
 </html>

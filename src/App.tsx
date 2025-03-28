@@ -1,12 +1,12 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import { NotificationsProvider } from "./contexts/NotificationsContext";
 
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -43,16 +43,29 @@ import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
 import Tank from "./pages/tank/Tank";
 import TankCreation from "./pages/tank/TankCreation";
-import { NotificationsProvider } from "./contexts/NotificationsContext";
 
 const queryClient = new QueryClient();
+
+const RouteHandler = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  useEffect(() => {
+    const handle404 = () => {
+      console.log('Handling potential 404 for route:', location.pathname);
+    };
+    
+    handle404();
+  }, [location.pathname, navigate]);
+  
+  return null;
+};
 
 const App = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state changed:", event, session ? "session exists" : "no session");
@@ -61,7 +74,6 @@ const App = () => {
       }
     );
 
-    // Then check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log("Initial session check:", session ? "session exists" : "no session");
       setSession(session);
@@ -74,7 +86,6 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <UserProfileProvider>
-        {/* Move NotificationsProvider here to wrap all routes instead of within Layout */}
         <NotificationsProvider>
           <TooltipProvider>
             <Toaster />
@@ -134,6 +145,8 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               )}
+              
+              <RouteHandler />
             </BrowserRouter>
           </TooltipProvider>
         </NotificationsProvider>
