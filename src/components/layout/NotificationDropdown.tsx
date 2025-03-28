@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 
 export function NotificationDropdown() {
-  const { notifications, markAsRead, hasUnread } = useNotifications();
+  const { notifications, markAsRead, unreadCount } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   
   const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
@@ -34,7 +34,7 @@ export function NotificationDropdown() {
           className="relative p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
         >
           <BellRing className="h-5 w-5" />
-          {hasUnread && (
+          {unreadCount > 0 && (
             <span className="absolute top-1 right-1 flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-willtank-600 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-willtank-600"></span>
@@ -82,9 +82,9 @@ export function NotificationDropdown() {
                         </button>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500">{notification.message}</p>
+                    <p className="text-xs text-gray-500">{notification.description}</p>
                     <span className="text-xs text-gray-400 mt-1">
-                      {new Date(notification.timestamp).toLocaleString()}
+                      {new Date(notification.created_at).toLocaleString()}
                     </span>
                   </DropdownMenuItem>
                 </motion.div>

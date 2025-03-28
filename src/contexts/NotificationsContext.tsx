@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface NotificationsContextType {
   notifications: Notification[];
   unreadCount: number;
+  hasUnread: boolean;
   loading: boolean;
   error: string | null;
   fetchNotifications: () => Promise<void>;
@@ -132,6 +133,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const hasUnread = unreadCount > 0;
 
   // Helper function to validate notification types
   function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
@@ -157,7 +159,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     <NotificationsContext.Provider 
       value={{ 
         notifications, 
-        unreadCount, 
+        unreadCount,
+        hasUnread, 
         loading, 
         error, 
         fetchNotifications, 

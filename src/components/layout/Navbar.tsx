@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Store, 
@@ -10,7 +11,14 @@ import {
   Monitor,
   ToggleRight,
   ChevronDown,
-  X
+  X,
+  Menu,
+  Phone,
+  Shield,
+  Briefcase,
+  MapPin,
+  Home,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
@@ -195,7 +203,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     <Briefcase size={18} className={iconStyles} />
                   </Link>
                   <Link to="/how-it-works" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Map size={18} className={iconStyles} />
+                    <MapPin size={18} className={iconStyles} />
                   </Link>
                 </motion.div>
               </div>
@@ -372,7 +380,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 <>
                   <div className="hidden md:flex items-center space-x-6">
                     <Link to="/services" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                      <Map size={18} className={iconStyles} />
+                      <MapPin size={18} className={iconStyles} />
                       <span>Our Services</span>
                     </Link>
                     <Link to="/security" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
@@ -384,7 +392,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       <span>For Businesses</span>
                     </Link>
                     <Link to="/how-it-works" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                      <Map size={18} className={iconStyles} />
+                      <MapPin size={18} className={iconStyles} />
                       <span>How It Works</span>
                     </Link>
                     <Link to="/contact" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
@@ -447,7 +455,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
               ) : (
                 <nav className="flex flex-col space-y-4">
                   <Link to="/services" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    <Map size={16} className={iconStyles} />
+                    <MapPin size={16} className={iconStyles} />
                     Our Services
                   </Link>
                   <Link to="/security" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
@@ -459,7 +467,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     For Business
                   </Link>
                   <Link to="/how-it-works" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    <Map size={16} className={iconStyles} />
+                    <MapPin size={16} className={iconStyles} />
                     How It Works
                   </Link>
                   <Link to="/contact" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">

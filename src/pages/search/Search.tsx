@@ -44,7 +44,7 @@ export default function Search() {
       const { data: messages, error: messagesError } = await supabase
         .from('future_messages')
         .select('*')
-        .textSearch('content', query, { type: 'websearch' })
+        .textSearch('title', query, { type: 'websearch' })
         .limit(5);
         
       if (messagesError) throw messagesError;
@@ -53,7 +53,7 @@ export default function Search() {
       const { data: vaultItems, error: vaultError } = await supabase
         .from('legacy_vault')
         .select('*')
-        .textSearch('description', query, { type: 'websearch' })
+        .textSearch('title', query, { type: 'websearch' })
         .limit(5);
         
       if (vaultError) throw vaultError;
@@ -64,7 +64,7 @@ export default function Search() {
           id: `will-${will.id}`,
           type: 'will',
           title: will.title || 'Untitled Will',
-          description: will.description || 'No description',
+          description: will.title || 'No description',
           date: new Date(will.updated_at).toLocaleDateString(),
           link: `/will/${will.id}`
         })),
@@ -72,15 +72,15 @@ export default function Search() {
           id: `message-${message.id}`,
           type: 'message',
           title: message.title || 'Untitled Message',
-          description: message.content?.substring(0, 100) || 'No content',
+          description: message.preview?.substring(0, 100) || 'No content',
           date: new Date(message.created_at).toLocaleDateString(),
           link: `/tank`
         })),
         ...(vaultItems || []).map(item => ({
           id: `vault-${item.id}`,
           type: 'vault',
-          title: item.name || 'Untitled Item',
-          description: item.description || 'No description',
+          title: item.title || 'Untitled Item',
+          description: item.preview || 'No description',
           date: new Date(item.created_at).toLocaleDateString(),
           link: `/tank#legacy`
         }))
