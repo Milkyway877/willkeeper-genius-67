@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Bell, User, Menu, X, Search, HelpCircle, Shield, Briefcase, Map, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -85,7 +86,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
             </button>
           )}
           <Link to="/">
-            <Logo />
+            <Logo size="md" />
           </Link>
         </div>
         

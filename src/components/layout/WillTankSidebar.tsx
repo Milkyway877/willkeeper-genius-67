@@ -17,7 +17,6 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
-  User,
   Clock,
   TimerReset,
   Archive,
@@ -120,7 +119,11 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
               transition={{ duration: 0.2 }}
               className="w-full flex justify-center"
             >
-              <Logo size="sm" className="!h-8 w-8 overflow-hidden" showSlogan={false} />
+              <img 
+                src="/lovable-uploads/9d0c258a-2579-4a48-bb0b-84faaa04e1e5.png" 
+                alt="WillTank Logo" 
+                className="h-6 w-auto" 
+              />
             </motion.div>
           )}
         </AnimatePresence>
