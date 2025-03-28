@@ -254,7 +254,7 @@ export default function AccountActivation() {
         const { error: profileError } = await supabase
           .from('user_profiles')
           .update({ 
-            is_activated: true,
+            activation_complete: true,
             subscription_plan: selectedPlan
           })
           .eq('id', user.id);

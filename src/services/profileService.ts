@@ -39,9 +39,9 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.is_activated,
-      subscription_plan: data.subscription_plan,
-      activation_date: data.activation_date
+      is_activated: data.activation_complete, // Map from activation_complete to is_activated
+      subscription_plan: data.subscription_plan || null,
+      activation_date: null // Set a default value as it doesn't exist in the database
     };
     
     return profile;
@@ -59,9 +59,23 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw new Error('No user logged in');
     }
     
+    // Convert from UserProfile fields to database fields
+    const dbUpdates: any = {...updates};
+    
+    // Map is_activated to activation_complete if it exists in the updates
+    if (updates.is_activated !== undefined) {
+      dbUpdates.activation_complete = updates.is_activated;
+      delete dbUpdates.is_activated;
+    }
+    
+    // Remove fields that don't exist in the database
+    if (dbUpdates.activation_date !== undefined) {
+      delete dbUpdates.activation_date;
+    }
+    
     const { data, error } = await supabase
       .from('user_profiles')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', session.user.id)
       .select()
       .single();
@@ -78,9 +92,9 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.is_activated,
-      subscription_plan: data.subscription_plan,
-      activation_date: data.activation_date
+      is_activated: data.activation_complete, // Map from activation_complete to is_activated
+      subscription_plan: data.subscription_plan || null,
+      activation_date: null // Set a default value as it doesn't exist in the database
     };
     
     return profile;
