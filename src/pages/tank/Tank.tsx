@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { TankLegacyVault } from './components/TankLegacyVault';
 import { TimerReset, Plus, LineChart, Archive, ShieldCheck, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getFutureMessages, getLegacyVaultItems } from '@/services/tankService';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Tank() {
@@ -26,7 +24,6 @@ export default function Tank() {
       try {
         setIsLoading(true);
         
-        // Get counts directly from the database
         const { count: totalCount, error: countError } = await supabase
           .from('future_messages')
           .select('*', { count: 'exact', head: true });
@@ -51,14 +48,12 @@ export default function Tank() {
         setVaultCount(vaultItemsCount || 0);
         
         if (totalCount === 0 && vaultItemsCount === 0) {
-          // Set fallback values if no data found
           setMessageCount(12);
           setScheduledCount(8);
           setVaultCount(4);
         }
       } catch (error) {
         console.error('Error loading counts:', error);
-        // Set fallback values
         setMessageCount(12);
         setScheduledCount(8);
         setVaultCount(4);

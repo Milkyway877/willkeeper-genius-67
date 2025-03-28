@@ -69,7 +69,18 @@ export const getUserExecutors = async (): Promise<ExecutorData[]> => {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    
+    if (data && data.length > 0) {
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        email: item.email,
+        status: item.status,
+        created_at: item.created_at
+      }));
+    }
+    
+    return [];
   } catch (error) {
     console.error('Error fetching executors:', error);
     // Return fallback data if needed
@@ -149,7 +160,19 @@ export const getUserNotifications = async (): Promise<NotificationData[]> => {
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    
+    if (data && data.length > 0) {
+      return data.map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        type: item.type as 'success' | 'warning' | 'info' | 'security',
+        date: new Date(item.created_at).toISOString(),
+        read: item.read
+      }));
+    }
+    
+    return [];
   } catch (error) {
     console.error('Error fetching notifications:', error);
     // Return empty array - we'll handle fallbacks in the UI
