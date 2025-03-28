@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,12 +46,10 @@ export function AIQuestionFlow({
   const [isGenerating, setIsGenerating] = useState(false);
   const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
   
-  // Define questions based on template type
   const [questions, setQuestions] = useState<Question[]>([]);
   
   useEffect(() => {
     if (selectedTemplate) {
-      // Different questions for different templates
       if (selectedTemplate.id === 'traditional') {
         setQuestions([
           { 
@@ -246,9 +243,7 @@ export function AIQuestionFlow({
           }
         ]);
       } else if (selectedTemplate.id === 'living-trust') {
-        // Similar questions for living trust
         setQuestions([
-          // Trust-specific questions
           { 
             id: 'fullName', 
             text: 'What is your full legal name?', 
@@ -291,7 +286,6 @@ export function AIQuestionFlow({
           }
         ]);
       } else {
-        // Default questions for other templates
         setQuestions([
           { 
             id: 'fullName', 
@@ -323,10 +317,8 @@ export function AIQuestionFlow({
     }
   }, [selectedTemplate]);
 
-  // Get current question
   const currentQuestion = questions[currentQuestionIndex];
   
-  // Check if question should be shown based on dependencies
   const shouldShowQuestion = (question: Question): boolean => {
     if (!question.dependsOn) return true;
     
@@ -334,7 +326,6 @@ export function AIQuestionFlow({
     return dependentValue === question.dependsOn.value;
   };
   
-  // Find next question index
   const findNextQuestionIndex = (currentIndex: number): number => {
     let nextIndex = currentIndex + 1;
     
@@ -348,7 +339,7 @@ export function AIQuestionFlow({
     return nextIndex;
   };
 
-  const handleAnswer = () => {
+  const handleAnswer = async () => {
     if (!currentAnswer.trim()) {
       toast({
         title: "Answer Required",
@@ -358,7 +349,6 @@ export function AIQuestionFlow({
       return;
     }
     
-    // Update responses
     let value: string | boolean = currentAnswer;
     if (currentQuestion.type === 'yesno') {
       value = currentAnswer.toLowerCase() === 'yes';
@@ -367,12 +357,26 @@ export function AIQuestionFlow({
     const updatedResponses = { ...responses, [currentQuestion.id]: value };
     setResponses(updatedResponses);
     
-    // Simulate AI typing
     setIsTyping(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        body: { 
+          query: `Based on the user's answer to the question "${currentQuestion.text}" which was "${currentAnswer}", provide any additional relevant context or guidance that might help them with the next steps of creating their will. Be brief and focused.`,
+          conversation_history: []
+        }
+      });
+      
+      if (!error && data?.response) {
+        localStorage.setItem('willAIEnhancement', data.response);
+      }
+    } catch (error) {
+      console.error('Error enhancing answers with AI:', error);
+    }
+    
     setTimeout(() => {
       setIsTyping(false);
       
-      // Find next question
       const nextIndex = findNextQuestionIndex(currentQuestionIndex);
       
       if (nextIndex < questions.length) {
@@ -394,7 +398,6 @@ export function AIQuestionFlow({
   const handleGenerateWill = () => {
     setIsGenerating(true);
     
-    // Simulate will generation
     setTimeout(() => {
       const generatedWill = generateWillContent(selectedTemplate, responses);
       setIsGenerating(false);
@@ -402,9 +405,7 @@ export function AIQuestionFlow({
     }, 3000);
   };
 
-  // Function to generate will content based on template and responses
   const generateWillContent = (template: any, responses: Record<string, any>): string => {
-    // Basic will generation for demonstration - in production, this would be more sophisticated
     if (template.id === 'traditional') {
       return `LAST WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
 
@@ -465,7 +466,6 @@ Signed: ${responses.fullName || '[NAME]'}
 Date: [Current Date]
 Witnesses: [Witness 1], [Witness 2]`;
     } else {
-      // Default will template
       return `LAST WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
 
 I, ${responses.fullName || '[NAME]'}, residing at ${responses.address || '[ADDRESS]'}, being of sound mind, declare this to be my Last Will and Testament.
