@@ -71,6 +71,11 @@ export function UserDetailsStep({ onNext, isLoading = false }: UserDetailsStepPr
         return;
       }
 
+      console.log("Auth user created:", authData.user.id);
+
+      // Wait a moment to ensure the auth is processed
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Store user profile in our custom table
       const { data: profileData, error: profileError } = await supabase.functions.invoke(
         'store-user-profile',
@@ -89,7 +94,7 @@ export function UserDetailsStep({ onNext, isLoading = false }: UserDetailsStepPr
         toast({
           title: "Profile creation warning",
           description: "Your account was created but we had issues setting up your profile. You can continue anyway.",
-          variant: "destructive" // Changed from "warning" to "destructive"
+          variant: "destructive"
         });
         // Continue anyway as the auth user was created
       } else {

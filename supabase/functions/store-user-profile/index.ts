@@ -19,6 +19,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("store-user-profile function called");
+    
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -29,16 +31,29 @@ serve(async (req) => {
     const { user_id, email, first_name, last_name } = await req.json();
 
     // Validate input
-    if (!user_id || !email) {
+    if (!user_id) {
+      console.error("Missing required field: user_id");
       return new Response(
         JSON.stringify({ 
-          error: "Missing required fields: user_id and email are required" 
+          error: "Missing required field: user_id is required" 
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400 
         }
       );
+    }
+
+    // If email is not provided, try to get it from auth
+    let userEmail = email;
+    if (!userEmail) {
+      const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(user_id);
+      if (userError || !userData?.user?.email) {
+        console.error("Could not retrieve user email from auth", userError);
+        userEmail = "unknown@example.com"; // Fallback
+      } else {
+        userEmail = userData.user.email;
+      }
     }
 
     // Check if user already exists in the users table
@@ -65,6 +80,7 @@ serve(async (req) => {
 
     // If user already exists, return success
     if (existingUser) {
+      console.log("User already exists:", existingUser);
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -82,12 +98,14 @@ serve(async (req) => {
     const placeholderPasskey = crypto.randomUUID();
     const placeholderRecoveryPhrase = "temporary_recovery_phrase";
     
+    console.log("Creating new user profile for:", user_id);
+    
     // Create user profile in the users table
     const { data: newUser, error: insertError } = await supabaseClient
       .from("users")
       .insert({
         id: user_id,
-        email: email,
+        email: userEmail,
         full_name: first_name || "New",
         surname: last_name || "User",
         passkey: placeholderPasskey,

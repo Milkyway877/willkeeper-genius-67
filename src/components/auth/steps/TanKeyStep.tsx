@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from '@/hooks/use-local-storage';
+import { tanKeyService } from '@/services/tanKeyService';
 
 // Function to generate a cryptographically secure random TanKey
 function generateSecureTanKey(length = 24): string {
@@ -44,6 +45,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
   const [tanKey, setTanKey] = useLocalStorage<string>('temp_tan_key', '');
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   
   // Generate a secure TanKey if one doesn't exist yet
   useEffect(() => {
@@ -51,6 +53,36 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       setTanKey(generateSecureTanKey());
     }
   }, [tanKey, setTanKey]);
+
+  // Check for authenticated user on component mount
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUserId(data.user.id);
+        console.log("User authenticated:", data.user.id);
+      } else {
+        console.log("No authenticated user found");
+      }
+    };
+    
+    checkUser();
+    
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed:", event);
+      if (session?.user) {
+        setUserId(session.user.id);
+        console.log("User set from auth state change:", session.user.id);
+      } else {
+        setUserId(null);
+      }
+    });
+    
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const form = useForm<TanKeyInputs>({
     resolver: zodResolver(tanKeySchema),
@@ -90,23 +122,24 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
     try {
       setIsLoading(true);
       
-      // Get the current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("User not found. Please ensure you're logged in.");
+      // First check if we have a userId, if not, try to get it again
+      let currentUserId = userId;
+      if (!currentUserId) {
+        const { data } = await supabase.auth.getUser();
+        if (!data?.user) {
+          throw new Error("User not found. Please ensure you're logged in and refresh the page.");
+        }
+        currentUserId = data.user.id;
+        setUserId(currentUserId);
       }
       
-      // Attempt to store the TanKey via edge function
-      const { data, error } = await supabase.functions.invoke('store-tankey', {
-        body: {
-          user_id: user.id,
-          tan_key: tanKey
-        }
-      });
+      console.log("Storing TanKey for user:", currentUserId);
       
-      if (error || !data?.success) {
-        throw new Error(error?.message || data?.message || "Failed to store TanKey");
+      // Attempt to store the TanKey using the service
+      const success = await tanKeyService.storeTanKey(currentUserId, tanKey);
+      
+      if (!success) {
+        throw new Error("Failed to store TanKey securely");
       }
       
       toast({
@@ -118,20 +151,20 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       const { error: updateError } = await supabase
         .from("users")
         .update({ passkey: tanKey })
-        .eq("id", user.id);
+        .eq("id", currentUserId);
 
       if (updateError) {
         console.error("Error updating user passkey:", updateError);
         toast({
           title: "Warning",
           description: "Your TanKey was stored but we couldn't update your user profile. You can continue anyway.",
-          variant: "destructive" // Changed from "warning" to "destructive"
+          variant: "destructive"
         });
       }
       
       // Proceed to the next step
       onNext(tanKey);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error storing TanKey:", error);
       
       toast({
