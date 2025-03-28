@@ -2,13 +2,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 import { Beneficiary, Executor, getBeneficiaries, getExecutors } from "./executorService";
+import { Database } from "@/integrations/supabase/types";
+import type { Json } from "@/integrations/supabase/types";
 
 // Types
 export type UnlockMode = 'pin' | 'executor' | 'trusted';
+export type CheckinStatus = 'alive' | 'pending' | 'verification_triggered';
+export type VerificationRequestStatus = 'pending' | 'verified' | 'canceled';
+export type VerificationResponse = 'alive' | 'dead';
 
 export interface DeathVerificationSettings {
   id?: string;
-  user_id?: string;
+  user_id: string;
   check_in_enabled: boolean;
   check_in_frequency: number; // in days (7, 14, 30)
   beneficiary_verification_interval: number; // in hours (48, 72)
@@ -26,8 +31,8 @@ export interface DeathVerificationSettings {
 
 export interface DeathVerificationCheckin {
   id?: string;
-  user_id?: string;
-  status: 'alive' | 'pending' | 'verification_triggered';
+  user_id: string;
+  status: CheckinStatus;
   next_check_in: string; // ISO date string
   checked_in_at: string; // ISO date string
   created_at?: string;
@@ -45,22 +50,23 @@ export interface DeathVerificationPin {
 
 export interface VerificationRequest {
   id?: string;
-  user_id?: string;
+  user_id: string;
   initiated_at: string;
   expires_at: string;
-  status: 'pending' | 'verified' | 'canceled';
+  status: VerificationRequestStatus;
 }
 
-export interface VerificationResponse {
+export interface VerificationResponseRecord {
   id?: string;
   request_id: string;
   responder_id: string;
-  response: 'alive' | 'dead';
+  response: VerificationResponse;
   responded_at: string;
 }
 
 // Default settings
 export const DEFAULT_SETTINGS: DeathVerificationSettings = {
+  user_id: '', // Will be set at runtime
   check_in_enabled: true,
   check_in_frequency: 7, // 7 days
   beneficiary_verification_interval: 48, // 48 hours
@@ -83,18 +89,21 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
     }
     
     const { data, error } = await supabase
-      .rpc('get_death_verification_settings', { user_id_input: user.id });
+      .from('death_verification_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
     
     if (error) {
       console.error('Error getting death verification settings:', error);
       return null;
     }
     
-    if (!data || data.length === 0) {
+    if (!data) {
       return null;
     }
     
-    return data[0] as DeathVerificationSettings;
+    return data as DeathVerificationSettings;
   } catch (error) {
     console.error('Error in getDeathVerificationSettings:', error);
     return null;
@@ -161,7 +170,7 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
       description: 'Your death verification settings have been updated successfully.'
     });
     
-    return result;
+    return result as DeathVerificationSettings;
   } catch (error) {
     console.error('Error in saveDeathVerificationSettings:', error);
     return null;
@@ -178,18 +187,23 @@ export const getLatestCheckin = async (): Promise<DeathVerificationCheckin | nul
     }
     
     const { data, error } = await supabase
-      .rpc('get_latest_checkin', { user_id_input: user.id });
+      .from('death_verification_checkins')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     
     if (error) {
       console.error('Error getting latest check-in:', error);
       return null;
     }
     
-    if (!data || data.length === 0) {
+    if (!data) {
       return null;
     }
     
-    return data[0] as DeathVerificationCheckin;
+    return data as DeathVerificationCheckin;
   } catch (error) {
     console.error('Error in getLatestCheckin:', error);
     return null;
@@ -212,16 +226,16 @@ export const createInitialCheckin = async (): Promise<DeathVerificationCheckin |
     const nextCheckIn = new Date(now);
     nextCheckIn.setDate(nextCheckIn.getDate() + checkInFrequency);
     
-    const checkin: DeathVerificationCheckin = {
+    const checkinData = {
       user_id: user.id,
-      status: 'alive',
+      status: 'alive' as CheckinStatus,
       checked_in_at: now.toISOString(),
       next_check_in: nextCheckIn.toISOString()
     };
     
     const { data, error } = await supabase
       .from('death_verification_checkins')
-      .insert(checkin)
+      .insert(checkinData)
       .select()
       .single();
     
@@ -234,7 +248,7 @@ export const createInitialCheckin = async (): Promise<DeathVerificationCheckin |
       next_check_in: data.next_check_in 
     });
     
-    return data;
+    return data as DeathVerificationCheckin;
   } catch (error) {
     console.error('Error in createInitialCheckin:', error);
     return null;
@@ -257,16 +271,16 @@ export const processCheckin = async (status: 'alive'): Promise<DeathVerification
     const nextCheckIn = new Date(now);
     nextCheckIn.setDate(nextCheckIn.getDate() + checkInFrequency);
     
-    const checkin: DeathVerificationCheckin = {
+    const checkinData = {
       user_id: user.id,
-      status: 'alive',
+      status: 'alive' as CheckinStatus,
       checked_in_at: now.toISOString(),
       next_check_in: nextCheckIn.toISOString()
     };
     
     const { data, error } = await supabase
       .from('death_verification_checkins')
-      .insert(checkin)
+      .insert(checkinData)
       .select()
       .single();
     
@@ -285,7 +299,7 @@ export const processCheckin = async (status: 'alive'): Promise<DeathVerification
       description: 'You have successfully checked in. Your next check-in is scheduled.'
     });
     
-    return data;
+    return data as DeathVerificationCheckin;
   } catch (error) {
     console.error('Error in processCheckin:', error);
     return null;
@@ -466,16 +480,16 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
     const expiresAt = new Date(now);
     expiresAt.setHours(expiresAt.getHours() + interval);
     
-    const request: VerificationRequest = {
+    const requestData = {
       user_id: userId,
       initiated_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
-      status: 'pending'
+      status: 'pending' as VerificationRequestStatus
     };
     
     const { data, error } = await supabase
       .from('death_verification_requests')
-      .insert(request)
+      .insert(requestData)
       .select()
       .single();
     
@@ -486,7 +500,7 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
     // Update check-in status
     const { error: updateError } = await supabase
       .from('death_verification_checkins')
-      .update({ status: 'verification_triggered' })
+      .update({ status: 'verification_triggered' as CheckinStatus })
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -517,7 +531,7 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
 export const processVerificationResponse = async (
   requestId: string, 
   responderId: string, 
-  response: 'alive' | 'dead'
+  response: VerificationResponse
 ): Promise<boolean> => {
   try {
     // Record the response
@@ -538,7 +552,7 @@ export const processVerificationResponse = async (
     if (response === 'alive') {
       const { error: updateError } = await supabase
         .from('death_verification_requests')
-        .update({ status: 'canceled' })
+        .update({ status: 'canceled' as VerificationRequestStatus })
         .eq('id', requestId);
       
       if (updateError) {
@@ -564,7 +578,7 @@ export const processVerificationResponse = async (
           .from('death_verification_checkins')
           .insert({
             user_id: requestData.user_id,
-            status: 'alive',
+            status: 'alive' as CheckinStatus,
             checked_in_at: now.toISOString(),
             next_check_in: nextCheckIn.toISOString()
           });
@@ -611,7 +625,7 @@ export const processVerificationResponse = async (
       if (deadResponses === totalPeople) {
         const { error: updateError } = await supabase
           .from('death_verification_requests')
-          .update({ status: 'verified' })
+          .update({ status: 'verified' as VerificationRequestStatus })
           .eq('id', requestId);
         
         if (updateError) {
@@ -647,7 +661,7 @@ export const logVerificationEvent = async (action: string, details: Record<strin
       .insert({
         user_id: user.id,
         action,
-        details: details as any, // Cast to any to avoid TypeScript issues with JSON type
+        details: details as Json,
         timestamp: new Date().toISOString()
       });
     
