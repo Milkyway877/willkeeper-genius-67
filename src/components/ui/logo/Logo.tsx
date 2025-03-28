@@ -34,7 +34,7 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
         <div className="relative">
           <div className="absolute inset-0 animate-pulse-soft blur-sm bg-blue-500 rounded-full"></div>
           <img 
-            src="/lovable-uploads/40787a62-67ee-4226-b6e2-7025c8b84bcc.png" 
+            src="/lovable-uploads/4407fa53-0e4f-4d0e-a20f-2c4bb9896191.png" 
             alt="WillTank Logo" 
             className="relative h-full w-auto"
           />

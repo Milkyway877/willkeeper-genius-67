@@ -120,11 +120,7 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
               transition={{ duration: 0.2 }}
               className="w-full flex justify-center"
             >
-              <img 
-                src="/lovable-uploads/40787a62-67ee-4226-b6e2-7025c8b84bcc.png" 
-                alt="WillTank Logo"
-                className="h-8 w-auto" 
-              />
+              <Logo size="sm" className="!h-8 w-8 overflow-hidden" showSlogan={false} />
             </motion.div>
           )}
         </AnimatePresence>
