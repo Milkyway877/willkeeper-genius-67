@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,73 +11,68 @@ import {
   Eye, EyeOff, Info, Lock, Unlock, Check, X, FileText
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
-
-interface EncryptionKey {
-  id: string;
-  name: string;
-  type: 'primary' | 'backup' | 'document' | 'access';
-  algorithm: string;
-  strength: string;
-  created: Date;
-  lastUsed: Date | null;
-  status: 'active' | 'inactive' | 'revoked';
-}
+import { toast } from '@/hooks/use-toast';
+import {
+  generateEncryptionKey,
+  getUserEncryptionKeys,
+  updateEncryptionKeyStatus,
+  EncryptionKey
+} from '@/services/encryptionService';
 
 export default function Encryption() {
-  const { toast } = useToast();
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyType, setNewKeyType] = useState<'primary' | 'backup' | 'document' | 'access'>('document');
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedTab, setSelectedTab] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [keys, setKeys] = useState<EncryptionKey[]>([]);
   
-  // Sample encryption keys data
-  const [keys, setKeys] = useState<EncryptionKey[]>([
-    {
-      id: 'key-1',
-      name: 'Primary Account Key',
-      type: 'primary',
-      algorithm: 'AES-256',
-      strength: 'Very Strong',
-      created: new Date(2023, 5, 15),
-      lastUsed: new Date(2023, 11, 3),
-      status: 'active',
-    },
-    {
-      id: 'key-2',
-      name: 'Backup Recovery Key',
-      type: 'backup',
-      algorithm: 'RSA-2048',
-      strength: 'Very Strong',
-      created: new Date(2023, 5, 15),
-      lastUsed: null,
-      status: 'active',
-    },
-    {
-      id: 'key-3',
-      name: 'Will Document Key',
-      type: 'document',
-      algorithm: 'AES-256',
-      strength: 'Very Strong',
-      created: new Date(2023, 8, 22),
-      lastUsed: new Date(2023, 10, 14),
-      status: 'active',
-    },
-    {
-      id: 'key-4',
-      name: 'Executor Access Key',
-      type: 'access',
-      algorithm: 'RSA-2048',
-      strength: 'Very Strong',
-      created: new Date(2023, 9, 7),
-      lastUsed: null,
-      status: 'inactive',
-    },
-  ]);
+  useEffect(() => {
+    fetchEncryptionKeys();
+  }, []);
+  
+  const fetchEncryptionKeys = async () => {
+    try {
+      setLoading(true);
+      const userKeys = await getUserEncryptionKeys();
+      
+      if (userKeys.length > 0) {
+        setKeys(userKeys);
+      } else {
+        // Generate default keys if none exist
+        await generateDefaultKeys();
+      }
+    } catch (error) {
+      console.error('Error fetching encryption keys:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load encryption keys. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const generateDefaultKeys = async () => {
+    try {
+      // Generate primary key
+      const primaryKey = await generateEncryptionKey('Primary Account Key', 'primary');
+      
+      // Generate backup key
+      const backupKey = await generateEncryptionKey('Backup Recovery Key', 'backup');
+      
+      if (primaryKey && backupKey) {
+        setKeys([primaryKey, backupKey]);
+      }
+    } catch (error) {
+      console.error('Error generating default keys:', error);
+    }
+  };
   
   // Key generation function
-  const generateNewKey = () => {
+  const generateNewKey = async () => {
     if (!newKeyName.trim()) {
       toast({
         title: "Name Required",
@@ -89,28 +84,30 @@ export default function Encryption() {
     
     setIsGenerating(true);
     
-    // Simulate key generation (would be an actual cryptographic process in production)
-    setTimeout(() => {
-      const newKey: EncryptionKey = {
-        id: `key-${keys.length + 1}`,
-        name: newKeyName,
-        type: newKeyType,
-        algorithm: newKeyType === 'primary' || newKeyType === 'document' ? 'AES-256' : 'RSA-2048',
-        strength: 'Very Strong',
-        created: new Date(),
-        lastUsed: null,
-        status: 'active',
-      };
+    try {
+      const newKey = await generateEncryptionKey(newKeyName, newKeyType);
       
-      setKeys([...keys, newKey]);
-      setNewKeyName('');
-      setIsGenerating(false);
-      
+      if (newKey) {
+        setKeys([...keys, newKey]);
+        setNewKeyName('');
+        
+        toast({
+          title: "Key Generated",
+          description: `Your new ${newKeyType} key has been generated successfully.`,
+        });
+      } else {
+        throw new Error('Failed to generate key');
+      }
+    } catch (error) {
+      console.error('Error generating key:', error);
       toast({
-        title: "Key Generated",
-        description: `Your new ${newKeyType} key has been generated successfully.`,
+        title: "Generation Failed",
+        description: "Failed to generate encryption key. Please try again.",
+        variant: "destructive"
       });
-    }, 2000);
+    } finally {
+      setIsGenerating(false);
+    }
   };
   
   // Filter keys based on the selected tab
@@ -129,66 +126,122 @@ export default function Encryption() {
   
   // Copy key to clipboard
   const copyKeyToClipboard = (id: string) => {
-    // In a real app, this would be the actual key value
-    navigator.clipboard.writeText(`${id}-sample-key-value-${Math.random().toString(36).substring(2, 15)}`);
-    toast({
-      title: "Key Copied",
-      description: "The encryption key has been copied to your clipboard."
-    });
+    const key = keys.find(k => k.id === id);
+    if (key) {
+      navigator.clipboard.writeText(key.value);
+      toast({
+        title: "Key Copied",
+        description: "The encryption key has been copied to your clipboard."
+      });
+    }
   };
   
   // Download key
   const downloadKey = (id: string, name: string) => {
-    // In a real app, this would generate and download the actual key file
-    toast({
-      title: "Key Download Started",
-      description: "Your encryption key file is being prepared for download."
-    });
-    
-    // Simulate download delay
-    setTimeout(() => {
+    const key = keys.find(k => k.id === id);
+    if (key) {
+      const keyData = `Key Name: ${key.name}\nKey Type: ${key.type}\nAlgorithm: ${key.algorithm}\nCreated: ${new Date(key.created_at).toLocaleDateString()}\n\nKey Value:\n${key.value}`;
+      const blob = new Blob([keyData], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name.replace(/\s+/g, '-').toLowerCase()}.key.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
       toast({
         title: "Key Downloaded",
         description: "Your encryption key has been downloaded successfully."
       });
-    }, 1500);
+    }
   };
   
   // Revoke key
-  const revokeKey = (id: string) => {
-    setKeys(keys.map(key => 
-      key.id === id ? { ...key, status: 'revoked' } : key
-    ));
-    
-    toast({
-      title: "Key Revoked",
-      description: "The encryption key has been revoked and can no longer be used.",
-      variant: "destructive"
-    });
+  const revokeKey = async (id: string) => {
+    try {
+      const success = await updateEncryptionKeyStatus(id, 'revoked');
+      
+      if (success) {
+        setKeys(keys.map(key => 
+          key.id === id ? { ...key, status: 'revoked' } : key
+        ));
+        
+        toast({
+          title: "Key Revoked",
+          description: "The encryption key has been revoked and can no longer be used.",
+          variant: "destructive"
+        });
+      } else {
+        throw new Error('Failed to revoke key');
+      }
+    } catch (error) {
+      console.error('Error revoking key:', error);
+      toast({
+        title: "Error",
+        description: "Failed to revoke encryption key. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   // Activate/Deactivate key
-  const toggleKeyStatus = (id: string) => {
-    setKeys(keys.map(key => {
-      if (key.id === id) {
-        const newStatus = key.status === 'active' ? 'inactive' : 'active';
-        return { ...key, status: newStatus };
+  const toggleKeyStatus = async (id: string) => {
+    try {
+      const key = keys.find(k => k.id === id);
+      if (!key) return;
+      
+      const newStatus = key.status === 'active' ? 'inactive' : 'active';
+      const success = await updateEncryptionKeyStatus(id, newStatus);
+      
+      if (success) {
+        setKeys(keys.map(key => {
+          if (key.id === id) {
+            return { ...key, status: newStatus };
+          }
+          return key;
+        }));
+        
+        toast({
+          title: `Key ${newStatus === 'active' ? 'Activated' : 'Deactivated'}`,
+          description: `The encryption key has been ${newStatus === 'active' ? 'activated' : 'deactivated'}.`
+        });
+      } else {
+        throw new Error(`Failed to ${newStatus === 'active' ? 'activate' : 'deactivate'} key`);
       }
-      return key;
-    }));
-    
-    const key = keys.find(k => k.id === id);
-    const newStatus = key?.status === 'active' ? 'inactive' : 'active';
-    
-    toast({
-      title: `Key ${newStatus === 'active' ? 'Activated' : 'Deactivated'}`,
-      description: `The encryption key has been ${newStatus === 'active' ? 'activated' : 'deactivated'}.`
-    });
+    } catch (error) {
+      console.error('Error toggling key status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update key status. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
+  
+  if (loading) {
+    return (
+      <Layout>
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Encryption Keys</h1>
+              <p className="text-gray-600">Manage the encryption keys that secure your documents and account.</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-center h-64">
+            <RefreshCw className="h-8 w-8 animate-spin text-willtank-500" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
   
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">Encryption Keys</h1>
@@ -309,8 +362,12 @@ export default function Encryption() {
                               <span className="mr-2">{key.algorithm}</span>
                               <span className="h-1 w-1 rounded-full bg-gray-300"></span>
                               <span className="mx-2">{key.type.charAt(0).toUpperCase() + key.type.slice(1)} Key</span>
-                              <span className="h-1 w-1 rounded-full bg-gray-300"></span>
-                              <span className="ml-2">{key.strength}</span>
+                              {key.strength && (
+                                <>
+                                  <span className="h-1 w-1 rounded-full bg-gray-300"></span>
+                                  <span className="ml-2">{key.strength}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -326,8 +383,10 @@ export default function Encryption() {
                       
                       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
                         <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 relative w-full md:w-3/4">
-                          <div className="font-mono text-sm">
-                            {showKeys[key.id] ? `${key.id}-XXXX-XXXX-XXXX-${Math.random().toString(36).substring(2, 10)}` : '••••••••••••••••••••••••••••••••••••••••••••••••••••'}
+                          <div className="font-mono text-sm truncate">
+                            {showKeys[key.id] ? 
+                              key.value : 
+                              '••••••••••••••••••••••••••••••••••••••••••••••••••••'}
                           </div>
                           <Button 
                             variant="ghost" 
@@ -340,11 +399,20 @@ export default function Encryption() {
                         </div>
                         
                         <div className="flex mt-4 md:mt-0 space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => copyKeyToClipboard(key.id)}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => copyKeyToClipboard(key.id)}
+                            disabled={key.status === 'revoked'}
+                          >
                             <Copy className="mr-2 h-4 w-4" />
                             Copy
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => downloadKey(key.id, key.name)}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => downloadKey(key.id, key.name)}
+                          >
                             <Download className="mr-2 h-4 w-4" />
                             Download
                           </Button>
@@ -353,8 +421,8 @@ export default function Encryption() {
                       
                       <div className="flex flex-col sm:flex-row justify-between border-t border-gray-100 pt-4">
                         <div className="flex flex-col sm:flex-row text-sm text-gray-500 mb-4 sm:mb-0">
-                          <span className="mr-4">Created: {key.created.toLocaleDateString()}</span>
-                          <span>{key.lastUsed ? `Last used: ${key.lastUsed.toLocaleDateString()}` : 'Never used'}</span>
+                          <span className="mr-4">Created: {new Date(key.created_at).toLocaleDateString()}</span>
+                          <span>{key.last_used ? `Last used: ${new Date(key.last_used).toLocaleDateString()}` : 'Never used'}</span>
                         </div>
                         
                         <div className="flex space-x-2">
@@ -394,7 +462,7 @@ export default function Encryption() {
                                   </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter>
-                                  <Button variant="outline">Cancel</Button>
+                                  <Button variant="outline" onClick={(e) => e.preventDefault()}>Cancel</Button>
                                   <Button variant="destructive" onClick={() => revokeKey(key.id)}>
                                     <AlertTriangle className="mr-2 h-4 w-4" />
                                     Revoke Key
@@ -421,7 +489,7 @@ export default function Encryption() {
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
-                      {/* Key generation dialog content - same as above */}
+                      {/* Key generation dialog content same as above */}
                     </DialogContent>
                   </Dialog>
                 </div>

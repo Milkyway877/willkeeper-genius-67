@@ -12,6 +12,9 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { supabase } from '@/integrations/supabase/client';
+import { validateTOTP } from '@/services/encryptionService';
+import { QRCode } from '@/components/ui/QRCode';
+import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
 interface AuthenticatorStepProps {
   authenticatorKey: string;
@@ -23,6 +26,8 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [enableTwoFactor, setEnableTwoFactor] = useState(true);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState('');
 
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),
@@ -43,9 +48,19 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSubmit = async (data: AuthenticatorInputs) => {
+  const verifyOTP = async (code: string) => {
+    setVerificationError(null);
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
+      // Validate the OTP code using the validateTOTP function from encryptionService
+      const isValid = validateTOTP(code, authenticatorKey);
+      
+      if (!isValid) {
+        setVerificationError("Invalid verification code. Please try again.");
+        setIsLoading(false);
+        return;
+      }
       
       // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -54,19 +69,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         throw new Error("User not found. Please ensure you're logged in.");
       }
       
-      // In a real implementation, we would validate the verification code against the authenticator secret
-      // For now, we'll just accept any 6-digit code
-      if (data.otp.length !== 6 || !/^\d+$/.test(data.otp)) {
-        toast({
-          title: "Invalid code",
-          description: "Please enter a valid 6-digit verification code.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      // Check if user security record exists
+      // Update user security record
       const { data: existingRecord, error: queryError } = await supabase
         .from('user_security')
         .select('*')
@@ -83,7 +86,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           .from('user_security')
           .update({
             google_auth_enabled: enableTwoFactor,
-            google_auth_secret: authenticatorKey.replace(/\s/g, ''),
+            google_auth_secret: authenticatorKey,
           })
           .eq('user_id', user.id);
           
@@ -97,8 +100,10 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           .insert({
             user_id: user.id,
             google_auth_enabled: enableTwoFactor,
-            google_auth_secret: authenticatorKey.replace(/\s/g, ''),
-            encryption_key: 'default_encryption_key' // Default encryption key instead of TanKey
+            google_auth_secret: authenticatorKey,
+            encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
+              .map(b => b.toString(16).padStart(2, '0'))
+              .join('')
           });
           
         if (insertError) {
@@ -117,14 +122,14 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     } catch (error) {
       console.error("Error setting up authenticator:", error);
       
-      toast({
-        title: "Error",
-        description: error.message || "Failed to set up authenticator. Please try again.",
-        variant: "destructive",
-      });
+      setVerificationError(error.message || "Failed to set up authenticator. Please try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (data: AuthenticatorInputs) => {
+    verifyOTP(data.otp);
   };
 
   return (
@@ -149,10 +154,9 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
                   2. Scan this QR code with your authenticator app:
                 </p>
                 <div className="flex justify-center bg-white p-2 border border-slate-200 rounded-md">
-                  <img 
-                    src={qrCodeUrl} 
-                    alt="QR Code for Authenticator App" 
-                    className="w-40 h-40"
+                  <QRCode 
+                    value={qrCodeUrl} 
+                    size={200}
                   />
                 </div>
               </div>
@@ -177,28 +181,16 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
               </div>
             </div>
             
-            <FormField
-              control={form.control}
-              name="otp"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Enter the 6-digit verification code from your authenticator app
-                  </FormLabel>
-                  <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="000000" 
-                      maxLength={6}
-                      className="text-center font-mono text-lg tracking-widest"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="mt-4">
+              <p className="font-medium mb-2 text-sm">Enter the 6-digit verification code from your authenticator app:</p>
+              <TwoFactorInput 
+                onSubmit={verifyOTP} 
+                loading={isLoading}
+                error={verificationError}
+              />
+            </div>
             
-            <div className="flex flex-row items-start space-x-3 space-y-0">
+            <div className="flex flex-row items-start space-x-3 space-y-0 mt-4">
               <Checkbox 
                 id="enableTwoFactor"
                 checked={enableTwoFactor} 
@@ -221,10 +213,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
               Two-factor authentication adds an extra layer of security by requiring a verification code in addition to your password when signing in.
             </p>
           </div>
-          
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Verifying..." : "Continue"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
-          </Button>
         </form>
       </Form>
     </motion.div>

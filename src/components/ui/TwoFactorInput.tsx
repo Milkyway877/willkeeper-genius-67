@@ -1,16 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { Button } from './button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 
 interface TwoFactorInputProps {
   onSubmit: (code: string) => void;
   loading?: boolean;
+  error?: string;
 }
 
-export function TwoFactorInput({ onSubmit, loading = false }: TwoFactorInputProps) {
-  const [otp, setOtp] = React.useState('');
+export function TwoFactorInput({ onSubmit, loading = false, error }: TwoFactorInputProps) {
+  const [otp, setOtp] = useState('');
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +41,24 @@ export function TwoFactorInput({ onSubmit, loading = false }: TwoFactorInputProp
           </InputOTP>
         </div>
         
+        {error && (
+          <div className="text-sm text-red-500 text-center">{error}</div>
+        )}
+        
         <Button 
           type="submit" 
           className="w-full" 
           disabled={otp.length !== 6 || loading}
         >
-          {loading ? "Verifying..." : "Verify"} {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+            </>
+          ) : (
+            <>
+              Verify <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
     </form>
