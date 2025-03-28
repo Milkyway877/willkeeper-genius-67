@@ -2,6 +2,38 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
+// Define the type that matches what our Supabase table returns
+interface WillExecutorRow {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  relationship?: string;
+  address?: string;
+  notes?: string;
+  status: string;
+  will_id?: string;
+  created_at: string;
+  user_id?: string;
+}
+
+// Define the type that matches what our Supabase table returns
+interface WillBeneficiaryRow {
+  id: string;
+  beneficiary_name: string;
+  relationship: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  notes?: string;
+  percentage?: number;
+  status?: string;
+  will_id?: string;
+  created_at: string;
+  user_id?: string;
+}
+
+// These are our application models
 export interface Executor {
   id: string;
   name: string;
@@ -41,7 +73,7 @@ export const getExecutors = async (): Promise<Executor[]> => {
       return [];
     }
     
-    return (data || []).map(item => ({
+    return (data || []).map((item: WillExecutorRow) => ({
       id: item.id,
       name: item.name,
       email: item.email,
@@ -88,7 +120,7 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
       description: `${executor.name} has been added as an executor to your will.`
     });
     
-    return {
+    const result: Executor = {
       id: data.id,
       name: data.name,
       email: data.email,
@@ -100,6 +132,8 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
       will_id: data.will_id || undefined,
       created_at: data.created_at
     };
+    
+    return result;
   } catch (error) {
     console.error('Error in createExecutor:', error);
     return null;
@@ -131,7 +165,7 @@ export const updateExecutor = async (id: string, updates: Partial<Executor>): Pr
       return null;
     }
     
-    return {
+    const result: Executor = {
       id: data.id,
       name: data.name,
       email: data.email,
@@ -143,6 +177,8 @@ export const updateExecutor = async (id: string, updates: Partial<Executor>): Pr
       will_id: data.will_id || undefined,
       created_at: data.created_at
     };
+    
+    return result;
   } catch (error) {
     console.error('Error in updateExecutor:', error);
     return null;
@@ -180,7 +216,7 @@ export const getBeneficiaries = async (): Promise<Beneficiary[]> => {
       return [];
     }
     
-    return (data || []).map(item => ({
+    return (data || []).map((item: WillBeneficiaryRow) => ({
       id: item.id,
       name: item.beneficiary_name,
       relationship: item.relationship,
