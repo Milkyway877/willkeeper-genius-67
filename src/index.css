@@ -7,7 +7,7 @@
 
 @layer base {
   :root {
-    --background: 220 33% 98%;
+    --background: 0 0% 100%;
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
@@ -16,74 +16,74 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 222 92% 55%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 0%;  /* Black */
+    --primary-foreground: 0 0% 100%; /* White */
 
-    --secondary: 216 25% 95%;
+    --secondary: 30 33% 93%; /* Cream */
     --secondary-foreground: 222 47% 11%;
 
     --muted: 216 25% 95%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 224 88% 96%;
+    --accent: 30 33% 93%; /* Cream */
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 222 84% 55%;
+    --ring: 0 0% 0%; /* Black */
 
     --radius: 0.8rem;
 
-    --sidebar-background: 220 33% 98%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 222 92% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 88% 96%;
+    --sidebar-primary: 0 0% 0%; /* Black */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 30 33% 93%; /* Cream */
     --sidebar-accent-foreground: 222 47% 11%;
     --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 222 92% 55%;
+    --sidebar-ring: 0 0% 0%; /* Black */
   }
 
   .dark {
     --background: 222 47% 9%;
-    --foreground: 210 40% 98%;
+    --foreground: 0 0% 100%;
 
     --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card-foreground: 0 0% 100%;
 
     --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 222 92% 55%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 0%; /* Black */
+    --primary-foreground: 0 0% 100%; /* White */
 
-    --secondary: 222 30% 16%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 30 33% 93%; /* Cream */
+    --secondary-foreground: 0 0% 0%;
 
     --muted: 222 30% 16%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 223 30% 16%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 30 33% 93%; /* Cream */
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
     --border: 222 30% 16%;
     --input: 222 30% 16%;
-    --ring: 222 92% 55%;
+    --ring: 0 0% 0%; /* Black */
 
     --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 222 92% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 223 30% 16%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 0%; /* Black */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 30 33% 93%; /* Cream */
+    --sidebar-accent-foreground: 0 0% 0%;
     --sidebar-border: 222 30% 16%;
-    --sidebar-ring: 222 92% 55%;
+    --sidebar-ring: 0 0% 0%; /* Black */
   }
 }
 
@@ -197,7 +197,7 @@
 
 /* Custom background gradients */
 .bg-hero-gradient {
-  @apply bg-gradient-to-br from-orange-50 via-white to-orange-100;
+  @apply bg-gradient-to-br from-[#FFF5E6] via-white to-[#FAF0E2];
 }
 
 .bg-peach-gradient {

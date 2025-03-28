@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -107,6 +108,9 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const shouldShowDashboardLayout = isDashboardPage && !isAuthPage;
   const isHomePage = location.pathname === '/';
   
+  // Common styles for icons in both homepage and other pages
+  const iconStyles = "transition-all duration-200";
+  
   return (
     <>
       {isHomePage ? (
@@ -147,16 +151,16 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   transition={{ delay: 0.3 }}
                 >
                   <Link to="/" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Home size={18} />
+                    <Home size={18} className={iconStyles} />
                   </Link>
                   <Link to="/security" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Shield size={18} />
+                    <Shield size={18} className={iconStyles} />
                   </Link>
                   <Link to="/business" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Briefcase size={18} />
+                    <Briefcase size={18} className={iconStyles} />
                   </Link>
                   <Link to="/how-it-works" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Map size={18} />
+                    <Map size={18} className={iconStyles} />
                   </Link>
                 </motion.div>
               </div>
@@ -189,7 +193,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
               {shouldShowDashboardLayout && (
                 <button 
                   onClick={onMenuToggle}
-                  className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                  className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
                 >
                   <Menu size={20} />
                 </button>
@@ -206,8 +210,8 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     <Input placeholder="Search..." className="pl-10 w-[200px] lg:w-[300px] rounded-full" />
                   </div>
                   
-                  <Link to="/help" className="p-2 rounded-full text-gray-600 hover:text-willtank-500 transition-colors">
-                    <Phone size={20} />
+                  <Link to="/help" className="p-2 rounded-full text-gray-600 hover:text-black transition-colors">
+                    <Phone size={20} className={iconStyles} />
                   </Link>
                   
                   <div className="relative">
@@ -219,7 +223,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       <Button variant="ghost" className="p-0 hover:bg-transparent">
                         <Avatar>
                           <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
-                          <AvatarFallback className="bg-willtank-100 text-willtank-700">AM</AvatarFallback>
+                          <AvatarFallback className="bg-gray-100 text-gray-700">AM</AvatarFallback>
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
@@ -246,33 +250,33 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
             ) : (
               <>
                 <div className="hidden md:flex items-center space-x-6">
-                  <Link to="/services" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
-                    <Map size={18} />
+                  <Link to="/services" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                    <Map size={18} className={iconStyles} />
                     <span>Our Services</span>
                   </Link>
-                  <Link to="/security" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
-                    <Shield size={18} />
+                  <Link to="/security" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                    <Shield size={18} className={iconStyles} />
                     <span>Security</span>
                   </Link>
-                  <Link to="/business" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
-                    <Briefcase size={18} />
+                  <Link to="/business" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                    <Briefcase size={18} className={iconStyles} />
                     <span>For Businesses</span>
                   </Link>
-                  <Link to="/how-it-works" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
-                    <Map size={18} />
+                  <Link to="/how-it-works" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                    <Map size={18} className={iconStyles} />
                     <span>How It Works</span>
                   </Link>
-                  <Link to="/contact" className="text-gray-600 hover:text-willtank-500 transition-colors flex items-center gap-1">
-                    <Phone size={18} />
+                  <Link to="/contact" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+                    <Phone size={18} className={iconStyles} />
                     <span>Contact Us</span>
                   </Link>
                   
                   <div className="flex items-center gap-4 ml-4">
                     <Link to="/auth/signin">
-                      <Button variant="outline" className="rounded-xl">Sign In</Button>
+                      <Button variant="outline" className="rounded-xl border-black text-black hover:bg-black hover:text-white">Sign In</Button>
                     </Link>
                     <Link to="/auth/signup">
-                      <Button className="rounded-xl">Get Started</Button>
+                      <Button className="rounded-xl bg-black text-white hover:bg-gray-800">Get Started</Button>
                     </Link>
                   </div>
                 </div>
@@ -280,7 +284,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
             )}
             
             <button 
-              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
               onClick={toggleMobileMenu}
             >
               {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
@@ -299,53 +303,53 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   <div className="relative flex items-center mb-2">
                     <Input placeholder="Search..." className="pl-10 w-full rounded-full" />
                   </div>
-                  <Link to="/dashboard" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                  <Link to="/dashboard" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
                     Dashboard
                   </Link>
-                  <Link to="/will" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                  <Link to="/will" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
                     My Will
                   </Link>
-                  <Link to="/help" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                  <Link to="/help" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
                     Help & Support
                   </Link>
-                  <Link to="/settings" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                  <Link to="/settings" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
                     Settings
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2 w-full text-left"
+                    className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2 w-full text-left"
                   >
                     Log Out
                   </button>
                 </nav>
               ) : (
                 <nav className="flex flex-col space-y-4">
-                  <Link to="/services" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
-                    <Map size={16} />
+                  <Link to="/services" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
+                    <Map size={16} className={iconStyles} />
                     Our Services
                   </Link>
-                  <Link to="/security" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
-                    <Shield size={16} />
+                  <Link to="/security" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
+                    <Shield size={16} className={iconStyles} />
                     Security
                   </Link>
-                  <Link to="/business" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
-                    <Briefcase size={16} />
+                  <Link to="/business" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
+                    <Briefcase size={16} className={iconStyles} />
                     For Business
                   </Link>
-                  <Link to="/how-it-works" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
-                    <Map size={16} />
+                  <Link to="/how-it-works" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
+                    <Map size={16} className={iconStyles} />
                     How It Works
                   </Link>
-                  <Link to="/contact" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
-                    <Phone size={16} />
+                  <Link to="/contact" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
+                    <Phone size={16} className={iconStyles} />
                     Contact Us
                   </Link>
                   
-                  <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                  <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
                     Sign In
                   </Link>
                   <Link to="/auth/signup">
-                    <Button className="justify-center w-full rounded-xl">Get Started</Button>
+                    <Button className="justify-center w-full rounded-xl bg-black text-white hover:bg-gray-800">Get Started</Button>
                   </Link>
                 </nav>
               )}

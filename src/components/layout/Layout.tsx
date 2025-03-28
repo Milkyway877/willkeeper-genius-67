@@ -63,9 +63,20 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [selectedTopic, location.pathname]);
   
+  // Determine if we're on a page that should have the cream accent background
+  const shouldHaveCreamBackground = !isAuthPage && 
+    !location.pathname.includes('/dashboard') && 
+    !location.pathname.includes('/will') && 
+    !location.pathname.includes('/templates') && 
+    !location.pathname.includes('/tank') && 
+    !location.pathname.includes('/settings');
+  
   return (
     <NotificationsProvider>
-      <div className="flex h-screen w-full bg-gray-50">
+      <div className={cn(
+        "flex h-screen w-full",
+        shouldHaveCreamBackground ? "bg-[#FFF5E6]" : "bg-gray-50"
+      )}>
         {showAuthenticatedLayout && (
           <WillTankSidebar isCollapsed={!showSidebar} />
         )}
@@ -81,10 +92,23 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         >
           <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
           
-          <main className="flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8">
-            <PageTransition>
-              {children}
-            </PageTransition>
+          <main className={cn(
+            "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
+            shouldHaveCreamBackground && "relative"
+          )}>
+            {shouldHaveCreamBackground && (
+              <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                <div className="absolute top-1/4 -right-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-1/4 -left-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
+                <div className="absolute inset-0 dot-pattern opacity-[0.03] animate-dot-pattern"></div>
+              </div>
+            )}
+            
+            <div className="relative z-10">
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </div>
           </main>
           
           {showAuthenticatedLayout && (
