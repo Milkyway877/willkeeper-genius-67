@@ -1,67 +1,168 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles, Copy, ThumbsUp, ThumbsDown, Bot, User, Maximize2, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { Layout } from '@/components/layout/Layout';
+import { motion } from 'framer-motion';
+import { Bot, User, RefreshCw, Send, Sparkles, Copy, ThumbsUp, ThumbsDown, Clock, Search, MessageSquare, ArrowRight, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from "@/integrations/supabase/client";
 import { Input } from '@/components/ui/input';
-import { useNavigate } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
+import { useSystemNotifications } from '@/hooks/use-system-notifications';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 type Message = {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
 };
 
-export function FloatingAssistant() {
+type Conversation = {
+  id: string;
+  title: string;
+  lastUpdated: Date;
+  messages: Message[];
+};
+
+export default function AIAssistantPage() {
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
+  const { notifyUpdate } = useSystemNotifications();
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Hello! I'm your WillTank AI assistant powered by GPT-4o Mini. How can I help you with your estate planning today?",
-      timestamp: new Date()
-    }
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentConversation, setCurrentConversation] = useState<Conversation>({
+    id: 'new',
+    title: 'New Conversation',
+    lastUpdated: new Date(),
+    messages: [
+      {
+        id: '1',
+        role: 'assistant',
+        content: "Hello! I'm your WillTank AI assistant powered by GPT-4o Mini. How can I help you with your estate planning today?",
+        timestamp: new Date()
+      }
+    ]
+  });
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Suggested questions for quick responses
+  const suggestedQuestions = [
+    "How do I create a will for digital assets?",
+    "What should I include in my living trust?",
+    "How do I appoint an executor for my will?",
+    "What are the tax implications of my estate plan?",
+    "How can I include charitable giving in my will?"
+  ];
+
+  useEffect(() => {
+    // Simulated load of previous conversations - in a real app, fetch from API/DB
+    const savedConversations: Conversation[] = [
+      {
+        id: 'conv-1',
+        title: 'Digital Assets Will',
+        lastUpdated: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        messages: [
+          {
+            id: '1',
+            role: 'assistant',
+            content: "Hello! How can I help you with your estate planning?",
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
+          },
+          {
+            id: '2',
+            role: 'user',
+            content: "I need help with my digital assets will",
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000 + 60000)
+          }
+        ]
+      },
+      {
+        id: 'conv-2',
+        title: 'Executor Questions',
+        lastUpdated: new Date(Date.now() - 48 * 60 * 60 * 1000),
+        messages: [
+          {
+            id: '1',
+            role: 'assistant',
+            content: "Hello! How can I help you with your estate planning?",
+            timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000)
+          },
+          {
+            id: '2',
+            role: 'user',
+            content: "How do I select an executor for my will?",
+            timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000 + 60000)
+          }
+        ]
+      }
+    ];
+    
+    setConversations(savedConversations);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [currentConversation.messages]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-  
-  useEffect(() => {
-    if (isOpen) {
-      scrollToBottom();
-    }
-  }, [messages, isOpen]);
 
   const handleSendMessage = async () => {
     if (input.trim() === '') return;
-    
-    const userMessage = { 
+
+    const userMessage: Message = {
       id: Date.now().toString(),
-      role: 'user' as const, 
+      role: 'user',
       content: input,
       timestamp: new Date()
     };
-    
-    setMessages(prev => [...prev, userMessage]);
+
+    // Create a new conversation if needed
+    if (currentConversation.id === 'new' && currentConversation.messages.length === 1) {
+      const newConversation = {
+        ...currentConversation,
+        id: `conv-${Date.now()}`,
+        title: input.length > 30 ? `${input.substring(0, 30)}...` : input,
+        messages: [...currentConversation.messages, userMessage]
+      };
+      setCurrentConversation(newConversation);
+      setConversations([newConversation, ...conversations]);
+    } else {
+      // Add to existing conversation
+      const updatedMessages = [...currentConversation.messages, userMessage];
+      const updatedConversation = {
+        ...currentConversation,
+        lastUpdated: new Date(),
+        messages: updatedMessages
+      };
+      setCurrentConversation(updatedConversation);
+      
+      // Update in conversations list
+      const updatedConversations = conversations.map(conv => 
+        conv.id === currentConversation.id ? updatedConversation : conv
+      );
+      if (!updatedConversations.some(conv => conv.id === currentConversation.id)) {
+        updatedConversations.unshift(updatedConversation);
+      }
+      setConversations(updatedConversations);
+    }
+
     setInput('');
-    setIsLoading(true);
-    
+    setIsProcessing(true);
+
     try {
       // Call the AI assistant edge function if available
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: { 
           query: input,
-          conversation_history: messages.map(msg => ({
+          conversation_history: currentConversation.messages.map(msg => ({
             role: msg.role,
             content: msg.content
           }))
@@ -74,19 +175,43 @@ export function FloatingAssistant() {
         return;
       }
       
-      const aiMessage = { 
+      const aiMessage: Message = { 
         id: Date.now().toString(),
-        role: 'assistant' as const, 
+        role: 'assistant',
         content: data.response || "I'm sorry, I couldn't process your request. Please try again.",
         timestamp: new Date()
       };
       
-      setMessages(prev => [...prev, aiMessage]);
+      // Update current conversation with AI response
+      const finalMessages = [...currentConversation.messages, userMessage, aiMessage];
+      const finalConversation = {
+        ...currentConversation,
+        lastUpdated: new Date(),
+        messages: finalMessages
+      };
+      
+      setCurrentConversation(finalConversation);
+      
+      // Update in conversations list
+      const finalConversations = conversations.map(conv => 
+        conv.id === currentConversation.id ? finalConversation : conv
+      );
+      if (!finalConversations.some(conv => conv.id === finalConversation.id)) {
+        finalConversations.unshift(finalConversation);
+      }
+      setConversations(finalConversations);
+      
+      // Notification
+      notifyUpdate({
+        title: "AI Assistant",
+        description: "New response received from the assistant."
+      });
+      
     } catch (error) {
       console.error('Exception in handleSendMessage:', error);
       fallbackResponse(input);
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
   
@@ -159,140 +284,226 @@ export function FloatingAssistant() {
       response = "As your WillTank AI assistant, I'm specialized in all aspects of estate planning and will creation. I can help with:\n\n• Choosing the right will template for your situation\n• Understanding legal requirements for valid wills\n• Digital asset planning and cryptocurrency inheritance\n• Trust creation and benefits\n• Business succession planning\n• Charitable giving strategies\n• State-specific legal requirements\n• Executor selection and responsibilities\n\nWhat specific aspect of estate planning or will creation can I help you with today?";
     }
     
-    const aiMessage = { 
-      id: Date.now().toString(),
-      role: 'assistant' as const, 
+    const aiMessage: Message = { 
+      id: Date.now().toString(), 
+      role: 'assistant', 
       content: response,
       timestamp: new Date()
     };
     
-    setMessages(prev => [...prev, aiMessage]);
-    setIsLoading(false);
+    // Update conversation with fallback response
+    const updatedMessages = [...currentConversation.messages, aiMessage];
+    const updatedConversation = {
+      ...currentConversation,
+      lastUpdated: new Date(),
+      messages: updatedMessages
+    };
+    
+    setCurrentConversation(updatedConversation);
+    
+    // Update in conversations list
+    const updatedConversations = conversations.map(conv => 
+      conv.id === currentConversation.id ? updatedConversation : conv
+    );
+    if (!updatedConversations.some(conv => conv.id === updatedConversation.id)) {
+      updatedConversations.unshift(updatedConversation);
+    }
+    setConversations(updatedConversations);
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
-  
-  const expandToFullPage = () => {
-    setIsOpen(false);
-    navigate('/ai/assistant');
+
+  const handleSuggestedQuestion = (question: string) => {
+    setInput(question);
+    // Focus the input element
+    const inputElement = document.getElementById('message-input');
+    if (inputElement) {
+      inputElement.focus();
+    }
+  };
+
+  const startNewConversation = () => {
+    setCurrentConversation({
+      id: 'new',
+      title: 'New Conversation',
+      lastUpdated: new Date(),
+      messages: [
+        {
+          id: '1',
+          role: 'assistant',
+          content: "Hello! I'm your WillTank AI assistant powered by GPT-4o Mini. How can I help you with your estate planning today?",
+          timestamp: new Date()
+        }
+      ]
+    });
+    toast({
+      title: "New Conversation",
+      description: "Started a new AI assistant conversation."
+    });
+  };
+
+  const selectConversation = (conversationId: string) => {
+    const selected = conversations.find(conv => conv.id === conversationId);
+    if (selected) {
+      setCurrentConversation(selected);
+    }
   };
   
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
       title: "Copied to clipboard",
-      description: "The message has been copied to your clipboard"
+      description: "The message has been copied to your clipboard."
     });
   };
-  
+
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
   };
-  
-  const floatingButtonVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: { scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 500, damping: 30 } },
-    tap: { scale: 0.9 }
-  };
-
-  const chatContainerVariants = {
-    hidden: { opacity: 0, y: 20, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 500, damping: 30 } }
-  };
 
   return (
-    <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50">
-      <AnimatePresence mode="wait">
-        {isOpen ? (
+    <Layout>
+      <div className="container px-0 md:px-4 max-w-7xl">
+        <div className="flex flex-col lg:flex-row gap-0 lg:gap-4 h-[calc(100vh-12rem)]">
+          {/* Sidebar for conversation history on large screens, hidden on small */}
           <motion.div 
-            key="chat"
-            variants={chatContainerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            className="flex flex-col bg-white rounded-lg shadow-lg w-80 sm:w-96 h-96 sm:h-[32rem] overflow-hidden"
+            initial={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
+            animate={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
+            transition={{ duration: 0.3 }}
+            className={cn(
+              "bg-white rounded-l-xl shadow-sm border border-r-0 border-gray-200 flex-shrink-0 overflow-hidden",
+              isSidebarOpen ? "block" : "hidden lg:block"
+            )}
           >
-            <div className="flex items-center justify-between p-4 bg-willtank-500 text-white">
+            <div className="flex flex-col h-full">
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-medium text-lg flex items-center gap-2">
+                  <MessageSquare size={18} className="text-willtank-500" />
+                  Conversations
+                </h3>
+                <Button variant="ghost" size="sm" onClick={startNewConversation}>
+                  <span className="sr-only">New conversation</span>
+                  <span className="text-xs">+ New</span>
+                </Button>
+              </div>
+              
+              <ScrollArea className="flex-1">
+                <div className="p-2">
+                  {conversations.map((conv) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => selectConversation(conv.id)}
+                      className={cn(
+                        "w-full text-left p-3 rounded-lg mb-1 transition-colors hover:bg-gray-100",
+                        currentConversation.id === conv.id ? "bg-gray-100" : ""
+                      )}
+                    >
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-medium text-sm truncate w-48">
+                          {conv.title}
+                        </h4>
+                        <span className="text-xs text-gray-500">
+                          {formatDate(conv.lastUpdated)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate mt-1">
+                        {conv.messages[conv.messages.length - 1]?.content.substring(0, 60)}...
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </motion.div>
+          
+          {/* Main chat area */}
+          <div className="flex-1 flex flex-col bg-white rounded-xl lg:rounded-l-none shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-yellow-300" />
-                <h3 className="font-medium">AI Assistant</h3>
-              </div>
-              <div className="flex items-center gap-1">
                 <Button 
-                  onClick={expandToFullPage}
-                  className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                  variant="ghost"
-                  size="icon"
+                  variant="ghost" 
+                  size="icon" 
+                  className="lg:hidden" 
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 >
-                  <Maximize2 size={16} />
-                  <span className="sr-only">Expand</span>
+                  <PanelLeft size={18} />
                 </Button>
-                <Button 
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-full hover:bg-white/10 transition-colors"
-                  variant="ghost"
-                  size="icon"
-                >
-                  <X size={16} />
-                  <span className="sr-only">Close</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={18} className="text-yellow-500" />
+                  <h2 className="font-medium">AI Assistant (GPT-4o Mini)</h2>
+                </div>
               </div>
+              <Button 
+                variant="ghost"
+                size="sm"
+                className="hidden lg:flex"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              >
+                <PanelLeft size={16} className="mr-2" />
+                {isSidebarOpen ? "Hide history" : "Show history"}
+              </Button>
             </div>
             
-            <div className="flex-1 p-4 overflow-y-auto">
-              <div className="space-y-4">
-                {messages.map((message, index) => (
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4 pb-2">
+                {currentConversation.messages.map((message) => (
                   <div 
-                    key={index} 
+                    key={message.id} 
                     className={cn(
-                      "group flex gap-2",
-                      message.role === 'assistant' ? "items-start" : "items-start justify-end"
+                      "flex items-start gap-3 group animate-fade-in",
+                      message.role === 'user' ? "justify-end" : ""
                     )}
                   >
-                    {message.role === 'assistant' && (
-                      <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center flex-shrink-0">
+                    {message.role !== 'user' && (
+                      <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center flex-shrink-0 mt-1">
                         <Bot size={16} className="text-willtank-600" />
                       </div>
                     )}
                     
                     <div className={cn(
-                      "relative max-w-[80%] rounded-lg p-3 text-sm",
-                      message.role === 'assistant' 
-                        ? "bg-gray-100 text-gray-800" 
-                        : "bg-willtank-500 text-white"
+                      "max-w-[85%] rounded-lg p-4 relative group",
+                      message.role === 'user' 
+                        ? "bg-willtank-500 text-white" 
+                        : "bg-gray-50 text-gray-800"
                     )}>
-                      <p className="whitespace-pre-line">{message.content}</p>
+                      <div className="whitespace-pre-line text-sm">
+                        {message.content}
+                      </div>
                       
                       <div className={cn(
-                        "absolute -top-6 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1",
-                        message.role === 'assistant' ? "text-gray-600" : "text-white"
+                        "absolute -top-8 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
+                        message.role === 'user' ? "text-white" : "text-gray-500"
                       )}>
-                        <button 
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6"
                           onClick={() => copyToClipboard(message.content)}
-                          className="p-1 rounded-full hover:bg-gray-200/30"
                         >
                           <Copy size={12} />
                           <span className="sr-only">Copy</span>
-                        </button>
+                        </Button>
                         
                         {message.role === 'assistant' && (
                           <>
-                            <button className="p-1 rounded-full hover:bg-gray-200/30">
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
                               <ThumbsUp size={12} />
                               <span className="sr-only">Like</span>
-                            </button>
-                            <button className="p-1 rounded-full hover:bg-gray-200/30">
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
                               <ThumbsDown size={12} />
                               <span className="sr-only">Dislike</span>
-                            </button>
+                            </Button>
                           </>
                         )}
                       </div>
@@ -303,64 +514,76 @@ export function FloatingAssistant() {
                     </div>
                     
                     {message.role === 'user' && (
-                      <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-1">
                         <User size={16} className="text-gray-600" />
                       </div>
                     )}
                   </div>
                 ))}
                 
-                {isLoading && (
-                  <div className="flex items-start gap-2">
-                    <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center flex-shrink-0">
+                {isProcessing && (
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center flex-shrink-0 mt-1">
                       <Bot size={16} className="text-willtank-600" />
                     </div>
-                    <div className="bg-gray-100 p-3 rounded-lg mb-4 text-sm flex items-center gap-2">
-                      <RefreshCw size={14} className="animate-spin" />
-                      <span>Thinking...</span>
+                    <div className="max-w-[85%] rounded-lg p-4 bg-gray-50 text-gray-800">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw size={16} className="animate-spin" />
+                        <p className="text-sm">Thinking...</p>
+                      </div>
                     </div>
                   </div>
                 )}
                 
                 <div ref={messagesEndRef} />
               </div>
-            </div>
+            </ScrollArea>
             
+            {/* Quick questions suggestions */}
+            {currentConversation.messages.length < 3 && (
+              <div className="px-4 py-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-2">Suggested questions:</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedQuestions.map((question, index) => (
+                    <Badge 
+                      key={index} 
+                      variant="outline" 
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => handleSuggestedQuestion(question)}
+                    >
+                      {question}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Input area */}
             <div className="p-4 border-t border-gray-100">
               <div className="flex items-center gap-2">
                 <Input
+                  id="message-input"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about will creation..."
-                  className="flex-1 text-sm"
+                  placeholder="Ask about estate planning..."
+                  className="flex-1"
                 />
                 <Button 
-                  size="icon"
                   onClick={handleSendMessage} 
-                  disabled={isLoading || input.trim() === ''}
-                  className="shrink-0"
+                  disabled={isProcessing || input.trim() === ''}
                 >
-                  <Send size={16} />
+                  <Send size={16} className="mr-2" />
+                  Send
                 </Button>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Powered by GPT-4o Mini • Answers may not be accurate • Ask follow-up questions for clarification
+              </p>
             </div>
-          </motion.div>
-        ) : (
-          <motion.button 
-            key="button"
-            variants={floatingButtonVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            whileTap="tap"
-            onClick={() => setIsOpen(true)} 
-            className="p-3 rounded-full bg-willtank-500 text-white shadow-md hover:bg-willtank-600 transition-colors"
-          >
-            <MessageCircle size={24} />
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
   );
 }
