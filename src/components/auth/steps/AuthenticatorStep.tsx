@@ -53,6 +53,10 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     try {
       const cleanCode = code.replace(/\s+/g, '');
       
+      if (!authenticatorKey) {
+        throw new Error("Missing authenticator key. Please refresh the page and try again.");
+      }
+      
       // Validate the OTP code using the validateTOTP function from encryptionService
       const isValid = validateTOTP(cleanCode, authenticatorKey);
       
@@ -63,9 +67,9 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       }
       
       // Get the current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (!user) {
+      if (userError || !user) {
         throw new Error("User not found. Please ensure you're logged in.");
       }
       
@@ -106,7 +110,8 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
             google_auth_secret: authenticatorKey,
             encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
               .map(b => b.toString(16).padStart(2, '0'))
-              .join('')
+              .join(''),
+            updated_at: new Date().toISOString()
           });
           
         if (insertError) {

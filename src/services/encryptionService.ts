@@ -52,7 +52,10 @@ export interface RecoveryCode {
  * @returns True if valid, false otherwise
  */
 export function validateTOTP(token: string, secret: string): boolean {
-  if (!token || !secret) return false;
+  if (!token || !secret) {
+    console.error('TOTP validation failed: token or secret is missing');
+    return false;
+  }
   
   try {
     // Clean up the secret (remove spaces) and token
@@ -97,8 +100,7 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
       throw new Error('No authenticated user found');
     }
     
-    // Generate a new random secret
-    // Using OTPAuth.Secret.fromBase32 with a random string since fromRandom is not available
+    // Generate a new random string since fromRandom is not available
     const randomBytes = Array.from(crypto.getRandomValues(new Uint8Array(20)))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
@@ -176,6 +178,9 @@ export async function setup2FA(verificationCode: string): Promise<{ success: boo
     
     if (!security) {
       security = await createUserSecurity();
+      if (!security) {
+        throw new Error('Failed to create security record');
+      }
     }
     
     // Generate a new TOTP secret if one doesn't exist

@@ -1,25 +1,65 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from "@/components/ui/switch";
-import { Shield, Key, Save } from 'lucide-react';
+import { Shield, Key, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { getUserSecurity } from '@/services/encryptionService';
 
 export function SecuritySettings() {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   
   // Security settings state
   const [security, setSecurity] = useState({
-    twoFactorEnabled: true,
+    twoFactorEnabled: false,
     loginNotifications: true,
     documentEncryption: true,
     biometricLogin: false,
   });
   
+  useEffect(() => {
+    fetchSecuritySettings();
+  }, []);
+  
+  const fetchSecuritySettings = async () => {
+    try {
+      setLoading(true);
+      
+      // Get user security settings from the database
+      const userSecurity = await getUserSecurity();
+      
+      if (userSecurity) {
+        setSecurity(prev => ({
+          ...prev,
+          twoFactorEnabled: userSecurity.google_auth_enabled || false,
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching security settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load security settings. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Toggle security setting
-  const toggleSecurity = (setting: keyof typeof security) => {
+  const toggleSecurity = async (setting: keyof typeof security) => {
+    if (setting === 'twoFactorEnabled') {
+      toast({
+        title: "2FA Settings",
+        description: "Please visit the ID & Security page to manage two-factor authentication.",
+      });
+      return;
+    }
+    
     setSecurity({
       ...security,
       [setting]: !security[setting]
@@ -32,10 +72,26 @@ export function SecuritySettings() {
   };
   
   // Handle password change
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      'your@email.com',
+      {
+        redirectTo: `${window.location.origin}/reset-password`,
+      }
+    );
+    
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     toast({
-      title: "Password Update",
-      description: "This feature will be available soon.",
+      title: "Password Reset Email Sent",
+      description: "Check your email for the password reset link.",
     });
   };
   
@@ -47,9 +103,12 @@ export function SecuritySettings() {
         transition={{ duration: 0.3 }}
         className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
       >
-        <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center">
-          <Shield className="text-willtank-700 mr-2" size={18} />
-          <h3 className="font-medium">Security Settings</h3>
+        <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+          <div className="flex items-center">
+            <Shield className="text-willtank-700 mr-2" size={18} />
+            <h3 className="font-medium">Security Settings</h3>
+          </div>
+          {loading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
         </div>
         
         <div className="p-6">
@@ -64,6 +123,7 @@ export function SecuritySettings() {
               <Switch 
                 checked={security.twoFactorEnabled} 
                 onCheckedChange={() => toggleSecurity('twoFactorEnabled')}
+                disabled={loading}
               />
             </div>
             
@@ -77,6 +137,7 @@ export function SecuritySettings() {
               <Switch 
                 checked={security.loginNotifications} 
                 onCheckedChange={() => toggleSecurity('loginNotifications')}
+                disabled={loading}
               />
             </div>
             
@@ -90,6 +151,7 @@ export function SecuritySettings() {
               <Switch 
                 checked={security.documentEncryption} 
                 onCheckedChange={() => toggleSecurity('documentEncryption')}
+                disabled={loading}
               />
             </div>
             
@@ -103,6 +165,7 @@ export function SecuritySettings() {
               <Switch 
                 checked={security.biometricLogin} 
                 onCheckedChange={() => toggleSecurity('biometricLogin')}
+                disabled={loading}
               />
             </div>
           </div>
