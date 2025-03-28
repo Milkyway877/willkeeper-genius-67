@@ -1,210 +1,146 @@
-import React from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { Separator } from "@/components/ui/separator"
-import { ModeToggle } from "@/components/ui/mode-toggle"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils";
-import { Link, useLocation, useNavigate } from 'react-router-dom';
 
-// Import the Clock icon for the Tank feature
+import React, { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Logo } from '@/components/ui/logo/Logo';
+import { cn } from '@/lib/utils';
 import { 
-  Layers, 
-  FileText, 
-  UserCog, 
-  Bell, 
-  Search, 
-  Shield, 
   Home, 
-  Scroll,
-  Clock
+  FileText, 
+  Users, 
+  Key, 
+  Shield, 
+  CreditCard, 
+  Settings,
+  FileCode,
+  Bell,
+  HelpCircle,
+  MessageSquare,
+  ChevronLeft,
+  ChevronRight,
+  User,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface SidebarLinkProps {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  isCollapsed: boolean;
+}
+
+const SidebarLink = ({ to, icon, label, isCollapsed }: SidebarLinkProps) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <NavLink 
+      to={to} 
+      className={({isActive}) => cn(
+        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative',
+        isActive 
+          ? 'bg-willtank-100 text-willtank-800 font-medium' 
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+        isCollapsed && 'justify-center'
+      )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <span className="flex-shrink-0 w-5 h-5">{icon}</span>
+      
+      {!isCollapsed && <span className="transition-opacity duration-200">{label}</span>}
+      
+      {isCollapsed && isHovered && (
+        <motion.div 
+          className="absolute left-full ml-2 px-2 py-1 bg-white rounded-md shadow-md text-sm whitespace-nowrap z-50"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -10 }}
+          transition={{ duration: 0.15 }}
+        >
+          {label}
+        </motion.div>
+      )}
+    </NavLink>
+  );
+};
 
 interface WillTankSidebarProps {
   isCollapsed: boolean;
 }
 
 export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  
-  const isActive = (href: string) => {
-    return location.pathname === href;
-  };
-
-  const navigationItems = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: Home,
-    },
-    {
-      name: 'Will Management',
-      href: '/will',
-      icon: FileText,
-    },
-    {
-      name: 'The Tank',
-      href: '/tank',
-      icon: Clock,
-    },
-    {
-      name: 'Executors',
-      href: '/executors',
-      icon: UserCog,
-    },
-    {
-      name: 'Templates',
-      href: '/templates',
-      icon: Scroll,
-    },
-    {
-      name: 'ID Security',
-      href: '/security/id',
-      icon: Shield,
-    },
-    {
-      name: 'Notifications',
-      href: '/notifications',
-      icon: Bell,
-    }
+  const sidebarItems = [
+    { icon: <Home size={18} />, label: "Dashboard", href: "/dashboard" },
+    { icon: <FileText size={18} />, label: "My Will", href: "/will" },
+    { icon: <FileCode size={18} />, label: "Legal Templates", href: "/templates" },
+    { icon: <Key size={18} />, label: "Encryption Keys", href: "/encryption" },
+    { icon: <Users size={18} />, label: "Beneficiaries & Executors", href: "/executors" },
+    { icon: <MessageSquare size={18} />, label: "AI Assistance", href: "/ai-assistance" },
+    { icon: <Shield size={18} />, label: "Identity & Security", href: "/security" },
+    { icon: <CreditCard size={18} />, label: "Subscriptions & Billing", href: "/billing" },
+    { icon: <Bell size={18} />, label: "Notifications & Updates", href: "/notifications" },
+    { icon: <HelpCircle size={18} />, label: "Help & Support", href: "/help" },
   ];
 
   return (
-    <>
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-50 flex flex-col h-screen bg-white border-r border-gray-100 transition-all duration-300",
-          isCollapsed ? "w-16 lg:w-16" : "w-64",
-        )}
-      >
-        <div className="flex items-center justify-center h-16 shrink-0">
-          <Link to="/dashboard" className="flex items-center">
-            <img src="/logo.svg" alt="WillTank Logo" className={cn("transition-all duration-300", isCollapsed ? "w-8 h-8" : "w-auto h-6")} />
-            {!isCollapsed && <span className="ml-2 text-lg font-semibold">WillTank</span>}
-          </Link>
-        </div>
-        
-        <Separator />
-        
-        <nav className="flex-1 py-4">
-          <ul>
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <Link
-                  to={item.href}
-                  className={cn(
-                    "flex items-center px-4 py-2 transition-colors duration-200 hover:bg-gray-100",
-                    isActive(item.href) ? "bg-gray-100 font-semibold" : "text-gray-600",
-                    isCollapsed ? "justify-center" : "justify-start"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 mr-2" />
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        
-        <Separator />
-        
-        <div className="p-4">
-          <ModeToggle />
-        </div>
-      </aside>
+    <motion.div 
+      className={cn(
+        "h-screen flex flex-col border-r border-gray-200 bg-white fixed left-0 top-0 z-30 transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-16" : "w-64"
+      )}
+      initial={false}
+      animate={{ width: isCollapsed ? 64 : 256 }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+    >
+      <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <AnimatePresence mode="wait">
+          {!isCollapsed ? (
+            <motion.div
+              key="logo-full"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center"
+            >
+              <Logo size="sm" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="logo-icon"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full flex justify-center"
+            >
+              <Logo size="sm" className="!h-8 w-8 overflow-hidden" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden">
-            <Layers className="h-4 w-4" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="sm:max-w-xs p-0">
-          <SheetHeader className="pl-6 pr-8">
-            <SheetTitle>WillTank</SheetTitle>
-            <SheetDescription>
-              Manage your account preferences.
-            </SheetDescription>
-          </SheetHeader>
-          <Separator />
-          <nav className="pt-2">
-            <ul>
-              {navigationItems.map((item) => (
-                <li key={item.name}>
-                  <Link
-                    to={item.href}
-                    className={cn(
-                      "flex items-center px-4 py-2 transition-colors duration-200 hover:bg-gray-100",
-                      isActive(item.href) ? "bg-gray-100 font-semibold" : "text-gray-600"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 mr-2" />
-                    <span>{item.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <Separator />
-          <SheetHeader className="pl-6 pr-8">
-            <SheetTitle>Account</SheetTitle>
-          </SheetHeader>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start pl-6 pr-8 my-2">
-                <Avatar className="mr-2 h-6 w-6">
-                  <AvatarImage src="/avatars/01.png" alt="Me" />
-                  <AvatarFallback>OM</AvatarFallback>
-                </Avatar>
-                <span>Olivia Martin</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80" align="end" forceMount>
-              <DropdownMenuItem>
-                <UserCog className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell className="mr-2 h-4 w-4" />
-                <span>Notifications</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Search className="mr-2 h-4 w-4" />
-                <span>Search</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Shield className="mr-2 h-4 w-4" />
-                <span>Security</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Home className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Scroll className="mr-2 h-4 w-4" />
-                <span>Terms &amp; Conditions</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SheetContent>
-      </Sheet>
-    </>
+      <div className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
+        {sidebarItems.map((item, index) => (
+          <SidebarLink 
+            key={index}
+            to={item.href}
+            icon={item.icon}
+            label={item.label}
+            isCollapsed={isCollapsed}
+          />
+        ))}
+      </div>
+      
+      <div className="p-4 border-t border-gray-100">
+        <SidebarLink 
+          to="/settings"
+          icon={<Settings size={18} />}
+          label="Settings"
+          isCollapsed={isCollapsed}
+        />
+      </div>
+    </motion.div>
   );
 }
