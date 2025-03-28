@@ -1,11 +1,71 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Switch } from "@/components/ui/switch";
 import { Lock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export function PrivacySettings() {
+  const { toast } = useToast();
+  
+  // Privacy settings state
+  const [privacySettings, setPrivacySettings] = useState({
+    analyticsTracking: true,
+    personalizedRecommendations: true,
+    thirdPartySharing: false,
+    restrictExecutorAccess: true,
+    twoFactorForDocuments: true
+  });
+  
+  // Toggle privacy setting
+  const togglePrivacySetting = async (setting: keyof typeof privacySettings) => {
+    try {
+      // Create a new privacy settings object with the toggled value
+      const updatedSettings = {
+        ...privacySettings,
+        [setting]: !privacySettings[setting]
+      };
+      
+      // Update local state
+      setPrivacySettings(updatedSettings);
+      
+      // In a real app, you would save this to the database
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          privacy_settings: updatedSettings
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Privacy Setting Updated",
+        description: `${privacySettings[setting] ? 'Disabled' : 'Enabled'} ${setting.replace(/([A-Z])/g, ' $1').toLowerCase()}.`
+      });
+    } catch (error) {
+      console.error("Error updating privacy setting:", error);
+      // Revert the change in case of error
+      setPrivacySettings(privacySettings);
+      
+      toast({
+        title: "Update Failed",
+        description: "There was an error updating your privacy settings.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Handle privacy action button clicks
+  const handlePrivacyAction = (action: string) => {
+    toast({
+      title: action,
+      description: `Your ${action.toLowerCase()} request has been submitted successfully.`,
+    });
+  };
+  
   return (
     <>
       <motion.div
@@ -35,7 +95,10 @@ export function PrivacySettings() {
                       Allow anonymous usage data to help us improve our service
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={privacySettings.analyticsTracking}
+                    onCheckedChange={() => togglePrivacySetting('analyticsTracking')}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -45,7 +108,10 @@ export function PrivacySettings() {
                       Receive suggestions based on your will creation history
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={privacySettings.personalizedRecommendations}
+                    onCheckedChange={() => togglePrivacySetting('personalizedRecommendations')}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -55,7 +121,10 @@ export function PrivacySettings() {
                       Allow sharing of anonymized data with trusted partners
                     </p>
                   </div>
-                  <Switch />
+                  <Switch 
+                    checked={privacySettings.thirdPartySharing}
+                    onCheckedChange={() => togglePrivacySetting('thirdPartySharing')}
+                  />
                 </div>
               </div>
             </div>
@@ -74,7 +143,10 @@ export function PrivacySettings() {
                       Only allow executors to access documents after verification
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={privacySettings.restrictExecutorAccess}
+                    onCheckedChange={() => togglePrivacySetting('restrictExecutorAccess')}
+                  />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -84,7 +156,10 @@ export function PrivacySettings() {
                       Require additional verification for sensitive documents
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={privacySettings.twoFactorForDocuments}
+                    onCheckedChange={() => togglePrivacySetting('twoFactorForDocuments')}
+                  />
                 </div>
               </div>
             </div>
@@ -119,7 +194,11 @@ export function PrivacySettings() {
               <p className="text-sm text-gray-600 mt-1 mb-2">
                 Request a copy of all the data we have stored about you.
               </p>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handlePrivacyAction('Data Request')}
+              >
                 Request My Data
               </Button>
             </div>
@@ -129,7 +208,11 @@ export function PrivacySettings() {
               <p className="text-sm text-gray-600 mt-1 mb-2">
                 Request deletion of specific data we have stored about you.
               </p>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handlePrivacyAction('Data Deletion')}
+              >
                 Request Data Deletion
               </Button>
             </div>

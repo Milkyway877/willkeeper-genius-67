@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { AccountSettings } from './components/AccountSettings';
 import { SecuritySettings } from './components/SecuritySettings';
 import { NotificationSettings } from './components/NotificationSettings';
-import { BillingSettings } from './components/BillingSettings';
 import { PrivacySettings } from './components/PrivacySettings';
 
 export default function Settings() {
@@ -47,8 +46,6 @@ export default function Settings() {
         return <SecuritySettings />;
       case 'notifications':
         return <NotificationSettings />;
-      case 'billing':
-        return <BillingSettings />;
       case 'privacy':
         return <PrivacySettings />;
       default:
@@ -94,13 +91,6 @@ export default function Settings() {
                   >
                     <div className="h-4 w-4 mr-2">🔔</div>
                     Notifications
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('billing')} 
-                    className={`flex items-center justify-start mb-1 rounded-lg px-3 py-2 text-sm ${activeTab === 'billing' ? 'bg-willtank-50 text-willtank-700' : 'hover:bg-gray-100'}`}
-                  >
-                    <div className="h-4 w-4 mr-2">💳</div>
-                    Billing
                   </button>
                   <button 
                     onClick={() => setActiveTab('privacy')} 

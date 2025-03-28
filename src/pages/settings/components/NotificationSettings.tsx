@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Switch } from "@/components/ui/switch";
-import { Bell, Mail, Smartphone } from 'lucide-react';
+import { Bell, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export function NotificationSettings() {
   const { toast } = useToast();
@@ -11,7 +12,6 @@ export function NotificationSettings() {
   // Notification settings state
   const [notifications, setNotifications] = useState({
     email: true,
-    sms: false,
     documentUpdates: true,
     securityAlerts: true,
     marketingEmails: false,
@@ -20,16 +20,42 @@ export function NotificationSettings() {
   });
   
   // Toggle notification setting
-  const toggleNotification = (setting: keyof typeof notifications) => {
-    setNotifications({
-      ...notifications,
-      [setting]: !notifications[setting]
-    });
-    
-    toast({
-      title: "Notification Setting Updated",
-      description: `${notifications[setting] ? 'Disabled' : 'Enabled'} ${setting.replace(/([A-Z])/g, ' $1').toLowerCase()} notifications.`
-    });
+  const toggleNotification = async (setting: keyof typeof notifications) => {
+    try {
+      // Create a new notifications object with the toggled value
+      const updatedNotifications = {
+        ...notifications,
+        [setting]: !notifications[setting]
+      };
+      
+      // Update local state
+      setNotifications(updatedNotifications);
+      
+      // In a real app, you would save this to the database
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({ 
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          notification_settings: updatedNotifications 
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Notification Setting Updated",
+        description: `${notifications[setting] ? 'Disabled' : 'Enabled'} ${setting.replace(/([A-Z])/g, ' $1').toLowerCase()} notifications.`
+      });
+    } catch (error) {
+      console.error("Error updating notification setting:", error);
+      // Revert the change in case of error
+      setNotifications(notifications);
+      
+      toast({
+        title: "Update Failed",
+        description: "There was an error updating your notification settings.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -56,17 +82,6 @@ export function NotificationSettings() {
               <Switch 
                 checked={notifications.email} 
                 onCheckedChange={() => toggleNotification('email')}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Smartphone className="h-5 w-5 text-gray-400 mr-3" />
-                <span>SMS Notifications</span>
-              </div>
-              <Switch 
-                checked={notifications.sms} 
-                onCheckedChange={() => toggleNotification('sms')}
               />
             </div>
           </div>
