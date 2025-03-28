@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { createSystemNotification } from './notificationService';
 import { addDays, addHours } from 'date-fns';
@@ -497,12 +498,15 @@ export const logVerificationEvent = async (
   details?: Record<string, unknown>
 ): Promise<boolean> => {
   try {
+    // Convert details to a proper Json type if provided
+    const jsonDetails: Json | undefined = details ? details as Json : undefined;
+    
     const { error } = await supabase
       .from('death_verification_logs')
       .insert({
         user_id: userId,
         action,
-        details
+        details: jsonDetails
       });
       
     if (error) {
