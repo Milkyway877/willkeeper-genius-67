@@ -16,7 +16,7 @@ export interface UserSecurity {
 }
 
 /**
- * Interface for Encryption Key
+ * Interface representing the encryption key as used in the application
  */
 export interface EncryptionKey {
   id: string;
@@ -33,6 +33,23 @@ export interface EncryptionKey {
 }
 
 /**
+ * Interface representing the encryption key as stored in the database
+ */
+interface DBEncryptionKey {
+  id: string;
+  user_id: string;
+  name: string;
+  type: string;
+  algorithm: string;
+  strength: string;
+  value: string; // In DB it's called 'value' instead of 'key_material'
+  status: string;
+  created_at: string;
+  last_used: string | null;
+  // Note: DB doesn't have updated_at
+}
+
+/**
  * Interface for Recovery Code
  */
 export interface RecoveryCode {
@@ -42,6 +59,25 @@ export interface RecoveryCode {
   used: boolean;
   created_at: string;
   used_at: string | null;
+}
+
+/**
+ * Maps a database encryption key to the application encryption key format
+ */
+function mapDbKeyToEncryptionKey(dbKey: DBEncryptionKey): EncryptionKey {
+  return {
+    id: dbKey.id,
+    user_id: dbKey.user_id,
+    name: dbKey.name,
+    type: dbKey.type,
+    algorithm: dbKey.algorithm,
+    strength: dbKey.strength,
+    key_material: dbKey.value, // Map from 'value' to 'key_material'
+    status: dbKey.status,
+    created_at: dbKey.created_at,
+    updated_at: dbKey.created_at, // Use created_at as updated_at since it's missing
+    last_used: dbKey.last_used,
+  };
 }
 
 /**
@@ -505,7 +541,7 @@ export async function generateEncryptionKey(
       throw error;
     }
     
-    return data as EncryptionKey;
+    return mapDbKeyToEncryptionKey(data as DBEncryptionKey);
   } catch (error) {
     console.error('Error generating encryption key:', error);
     return null;
@@ -537,7 +573,7 @@ export async function getUserEncryptionKeys(): Promise<EncryptionKey[]> {
       throw error;
     }
     
-    return data as EncryptionKey[];
+    return (data as DBEncryptionKey[]).map(mapDbKeyToEncryptionKey);
   } catch (error) {
     console.error('Error getting encryption keys:', error);
     return [];
