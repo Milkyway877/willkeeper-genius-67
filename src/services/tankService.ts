@@ -1,5 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
+import { LegacyVaultItem as UILegacyVaultItem } from "../pages/tank/types";
 
 export interface FutureMessage {
   id: string;
@@ -14,7 +14,8 @@ export interface FutureMessage {
   created_at: string;
 }
 
-export interface LegacyVaultItem {
+// Database schema type
+export interface DBLegacyVaultItem {
   id: string;
   title: string;
   document_url: string;
@@ -102,7 +103,7 @@ export const deleteFutureMessage = async (id: string): Promise<boolean> => {
   }
 };
 
-export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
+export const getLegacyVaultItems = async (): Promise<UILegacyVaultItem[]> => {
   try {
     const { data, error } = await supabase
       .from('legacy_vault')
@@ -114,18 +115,51 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
       return [];
     }
     
-    return data || [];
+    return (data || []).map(item => ({
+      id: item.id,
+      title: item.title,
+      type: mapCategoryToType(item.category),
+      preview: item.preview || '',
+      document_url: item.document_url,
+      createdAt: item.created_at,
+      created_at: item.created_at,
+      encryptionStatus: true // Assuming all items in database are encrypted
+    }));
   } catch (error) {
     console.error('Error in getLegacyVaultItems:', error);
     return [];
   }
 };
 
-export const createLegacyVaultItem = async (item: Omit<LegacyVaultItem, 'id' | 'created_at'>): Promise<LegacyVaultItem | null> => {
+// Helper function to map database category to UI type
+const mapCategoryToType = (category: string | null): 'story' | 'confession' | 'wishes' | 'advice' => {
+  const map: Record<string, 'story' | 'confession' | 'wishes' | 'advice'> = {
+    'story': 'story',
+    'confession': 'confession',
+    'wishes': 'wishes',
+    'advice': 'advice',
+    'personal_story': 'story',
+    'family_secret': 'confession',
+    'special_wishes': 'wishes',
+    'life_advice': 'advice'
+  };
+  
+  return category && map[category] ? map[category] : 'story';
+};
+
+export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' | 'createdAt' | 'encryptionStatus'>): Promise<UILegacyVaultItem | null> => {
   try {
+    // Convert from UI schema to database schema
+    const dbItem = {
+      title: item.title,
+      category: item.type, // Map type to category
+      preview: item.preview,
+      document_url: item.document_url || '' // Default empty string if not provided
+    };
+    
     const { data, error } = await supabase
       .from('legacy_vault')
-      .insert(item)
+      .insert(dbItem)
       .select()
       .single();
       
@@ -134,7 +168,17 @@ export const createLegacyVaultItem = async (item: Omit<LegacyVaultItem, 'id' | '
       return null;
     }
     
-    return data;
+    // Convert back to UI schema
+    return {
+      id: data.id,
+      title: data.title,
+      type: mapCategoryToType(data.category),
+      preview: data.preview || '',
+      document_url: data.document_url,
+      createdAt: data.created_at,
+      created_at: data.created_at,
+      encryptionStatus: true
+    };
   } catch (error) {
     console.error('Error in createLegacyVaultItem:', error);
     return null;

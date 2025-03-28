@@ -24,12 +24,22 @@ export const getNotifications = async (): Promise<Notification[]> => {
       return [];
     }
     
-    return data || [];
+    // Convert database type string to our Notification type
+    return (data || []).map(item => ({
+      ...item,
+      type: validateNotificationType(item.type)
+    })) as Notification[];
   } catch (error) {
     console.error('Error in getNotifications:', error);
     return [];
   }
 };
+
+// Helper function to validate notification types
+function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
+  const validTypes = ['success', 'warning', 'info', 'security'];
+  return validTypes.includes(type) ? type as 'success' | 'warning' | 'info' | 'security' : 'info';
+}
 
 export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   try {
@@ -77,10 +87,14 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
       throw new Error('No user logged in');
     }
     
+    // Ensure the type is valid
+    const validatedType = validateNotificationType(notification.type);
+    
     const { data, error } = await supabase
       .from('notifications')
       .insert({
         ...notification,
+        type: validatedType,
         user_id: session.user.id
       })
       .select()
@@ -91,7 +105,10 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
       throw error;
     }
     
-    return data;
+    return {
+      ...data,
+      type: validateNotificationType(data.type)
+    } as Notification;
   } catch (error) {
     console.error('Error in createNotification:', error);
     return null;

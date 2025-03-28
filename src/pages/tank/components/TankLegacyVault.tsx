@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ export const TankLegacyVault: React.FC = () => {
       } catch (err) {
         console.error('Error loading vault items:', err);
         setError('Failed to load vault items. Please try again later.');
+        // Fallback to demo data if needed
         setVaultItems([
           {
             id: 1,

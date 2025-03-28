@@ -163,7 +163,15 @@ export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
       return [];
     }
     
-    return data || [];
+    // Map the database fields to our interface fields
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.beneficiary_name || item.name, // Support both field names
+      relationship: item.relationship,
+      percentage: item.percentage,
+      created_at: item.created_at,
+      will_id: item.will_id
+    }));
   } catch (error) {
     console.error('Error in getWillBeneficiaries:', error);
     return [];
@@ -172,9 +180,17 @@ export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
 
 export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, 'id' | 'created_at'>): Promise<WillBeneficiary | null> => {
   try {
+    // Map our interface fields to database fields
+    const dbBeneficiary = {
+      beneficiary_name: beneficiary.name,
+      relationship: beneficiary.relationship,
+      percentage: beneficiary.percentage,
+      will_id: beneficiary.will_id
+    };
+    
     const { data, error } = await supabase
       .from('will_beneficiaries')
-      .insert(beneficiary)
+      .insert(dbBeneficiary)
       .select()
       .single();
       
@@ -183,7 +199,15 @@ export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, '
       return null;
     }
     
-    return data;
+    // Map the response back to our interface
+    return {
+      id: data.id,
+      name: data.beneficiary_name,
+      relationship: data.relationship,
+      percentage: data.percentage,
+      created_at: data.created_at,
+      will_id: data.will_id
+    };
   } catch (error) {
     console.error('Error in createWillBeneficiary:', error);
     return null;
