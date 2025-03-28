@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
-import { WillTankSidebar } from './WillTankSidebar';
+import { Sidebar } from './Sidebar';
 import { PageTransition } from '@/components/animations/PageTransition';
 import { cn } from '@/lib/utils';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
@@ -72,17 +72,17 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   
   return (
     <div className={cn(
-      "flex h-screen w-full",
+      "flex h-screen w-full overflow-hidden",
       shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
     )}>
       {showAuthenticatedLayout && (
-        <WillTankSidebar isCollapsed={!showSidebar} />
+        <Sidebar />
       )}
       
       <motion.div 
         className={cn(
-          "flex flex-col w-full transition-all duration-300",
-          showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
+          "flex flex-col w-full transition-all duration-300 overflow-hidden",
+          showSidebar && showAuthenticatedLayout ? "lg:ml-60" : showAuthenticatedLayout ? "lg:ml-14" : ""
         )}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

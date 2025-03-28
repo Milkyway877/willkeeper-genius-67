@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight } from 'lucide-react';
+import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight, Bell, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { DotPatternText } from '@/components/ui/DotPatternText';
 import { NotificationDropdown } from './NotificationDropdown';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -183,64 +182,76 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
         </motion.div>
       ) : (
         <motion.header 
-          className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white/90 backdrop-blur-md"
+          className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white shadow-sm"
           initial={{ y: -100 }}
           animate={{ y: 0 }}
           transition={{ type: "spring", stiffness: 100, damping: 20 }}
         >
-          <div className="container py-4 px-4 md:px-6 flex items-center justify-between">
-            <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between h-16 px-4">
+            <div className="flex items-center gap-4">
               {shouldShowDashboardLayout && (
                 <button 
                   onClick={onMenuToggle}
-                  className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
+                  className="lg:hidden p-1.5 rounded-md text-gray-500 hover:text-black hover:bg-gray-100"
                 >
-                  <Menu size={20} />
+                  <Menu size={18} />
                 </button>
               )}
-              <Link to="/">
-                <Logo size="md" pixelated={false} />
-              </Link>
+              <div className="hidden lg:block">
+                <Logo size="sm" pixelated={false} showSlogan={false} />
+              </div>
             </div>
             
             {shouldShowDashboardLayout ? (
               <>
-                <div className="flex items-center space-x-4">
-                  <div className="relative hidden md:flex items-center">
-                    <Input placeholder="Search..." className="pl-10 w-[200px] lg:w-[300px] rounded-full" />
+                <div className="flex-1 px-2 mx-4">
+                  <div className="relative max-w-md">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <Search className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <Input 
+                      type="search" 
+                      placeholder="Search..." 
+                      className="pl-10 h-9 text-sm bg-gray-50 border-gray-200 rounded-md w-full max-w-md focus:ring-0"
+                    />
                   </div>
-                  
-                  <Link to="/help" className="p-2 rounded-full text-gray-600 hover:text-black transition-colors">
-                    <Phone size={20} className={iconStyles} />
-                  </Link>
-                  
-                  <div className="relative">
-                    <NotificationDropdown />
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-1">
+                    <Button variant="ghost" size="icon" className="rounded-md h-8 w-8">
+                      <Bell size={16} className="text-gray-500" />
+                    </Button>
+                    
+                    <Button variant="ghost" size="icon" className="rounded-md h-8 w-8">
+                      <Settings size={16} className="text-gray-500" />
+                    </Button>
                   </div>
                   
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="p-0 hover:bg-transparent">
-                        <Avatar>
+                      <Button variant="ghost" size="sm" className="rounded-md h-8 gap-2 text-xs font-normal" aria-label="User menu">
+                        <Avatar className="h-6 w-6">
                           <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
-                          <AvatarFallback className="bg-gray-100 text-gray-700">AM</AvatarFallback>
+                          <AvatarFallback className="text-xs">AM</AvatarFallback>
                         </Avatar>
+                        <span className="hidden md:inline-block text-gray-700">My Account</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 z-50 bg-white shadow-md border border-gray-200">
-                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuContent align="end" className="w-56 z-50">
+                      <DropdownMenuLabel className="text-xs font-medium text-gray-500">My Account</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="text-xs cursor-pointer">
                         Profile Settings
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="text-xs cursor-pointer">
                         Security
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="text-xs cursor-pointer">
                         Billing
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                      <DropdownMenuItem onClick={handleLogout} className="text-xs cursor-pointer">
                         Log out
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -284,10 +295,10 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
             )}
             
             <button 
-              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
+              className="md:hidden p-2 rounded-md text-gray-500 hover:text-black hover:bg-gray-100"
               onClick={toggleMobileMenu}
             >
-              {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+              {showMobileMenu ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
           
