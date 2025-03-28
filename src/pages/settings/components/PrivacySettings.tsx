@@ -39,11 +39,14 @@ export function PrivacySettings() {
         if (error) throw error;
         
         if (data?.privacy_settings) {
-          // Safely merge with default state, ensuring we're spreading an object
-          const savedSettings = data.privacy_settings || {};
+          // Safely cast the data to an object before spreading
+          const savedSettings = typeof data.privacy_settings === 'object' && data.privacy_settings !== null 
+            ? data.privacy_settings 
+            : {};
+            
           setPrivacySettings({
             ...privacySettings,
-            ...savedSettings
+            ...(savedSettings as Record<string, boolean>)
           });
         } else {
           // If no preferences exist, create default ones
