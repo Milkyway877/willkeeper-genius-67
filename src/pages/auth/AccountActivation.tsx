@@ -77,26 +77,20 @@ const PLANS = [
   }
 ];
 
-// Generate a secure OTP secret in valid Base32 format for TOTP
 const generateOTPSecret = (): string => {
-  // Valid Base32 characters (RFC 4648)
   const VALID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let result = '';
   
-  // Generate 32 characters (160 bits) of Base32 data
   const randomBytes = new Uint8Array(32);
   window.crypto.getRandomValues(randomBytes);
   
-  // Map each byte to a valid Base32 character
   for (let i = 0; i < 32; i++) {
     result += VALID_CHARS.charAt(randomBytes[i] % VALID_CHARS.length);
   }
   
-  // Format the secret with spaces for readability (every 4 characters)
   return result.match(/.{1,4}/g)?.join(' ') || result;
 };
 
-// Function to generate a recovery phrase
 const generateRecoveryPhrase = (): string => {
   const words = [
     'apple', 'banana', 'orange', 'grape', 'kiwi', 'melon', 'peach', 'plum', 'cherry', 'lemon',
@@ -110,7 +104,6 @@ const generateRecoveryPhrase = (): string => {
   
   const selectedWords: string[] = [];
   
-  // Select 12 random words
   for (let i = 0; i < 12; i++) {
     const randomIndex = Math.floor(Math.random() * words.length);
     selectedWords.push(words[randomIndex]);
@@ -119,7 +112,6 @@ const generateRecoveryPhrase = (): string => {
   return selectedWords.join(' ');
 };
 
-// Function to generate a random string
 const generateRandomString = (length: number): string => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
@@ -132,16 +124,53 @@ const generateRandomString = (length: number): string => {
   return result;
 };
 
-// Function to generate a PIN
 const generatePin = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Function to get a recovery key
 const getRecoveryKey = (): string => {
   const key = generateRandomString(16);
   return key.match(/.{1,4}/g)?.join('-') || key;
 };
+
+const SecurityInfoPanel = () => (
+  <div className="space-y-6 text-center">
+    <ShieldCheck className="h-16 w-16 mx-auto text-willtank-600" />
+    <h3 className="text-2xl font-bold">Secure Your Account</h3>
+    <p className="text-muted-foreground">
+      Complete your account activation to unlock all security features and protect your digital legacy.
+    </p>
+    <div className="space-y-4 text-left">
+      <div className="flex items-start">
+        <div className="flex-shrink-0 h-6 w-6 rounded-full bg-willtank-100 flex items-center justify-center mt-0.5">
+          <Check className="h-3.5 w-3.5 text-willtank-600" />
+        </div>
+        <div className="ml-3">
+          <h4 className="text-sm font-medium">Two-Factor Authentication</h4>
+          <p className="text-xs text-muted-foreground">Adds an extra layer of security to your account</p>
+        </div>
+      </div>
+      <div className="flex items-start">
+        <div className="flex-shrink-0 h-6 w-6 rounded-full bg-willtank-100 flex items-center justify-center mt-0.5">
+          <Check className="h-3.5 w-3.5 text-willtank-600" />
+        </div>
+        <div className="ml-3">
+          <h4 className="text-sm font-medium">Recovery Keys</h4>
+          <p className="text-xs text-muted-foreground">Keep access to your account even if you lose your device</p>
+        </div>
+      </div>
+      <div className="flex items-start">
+        <div className="flex-shrink-0 h-6 w-6 rounded-full bg-willtank-100 flex items-center justify-center mt-0.5">
+          <Check className="h-3.5 w-3.5 text-willtank-600" />
+        </div>
+        <div className="ml-3">
+          <h4 className="text-sm font-medium">Security Questions</h4>
+          <p className="text-xs text-muted-foreground">Additional verification for account recovery</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function AccountActivation() {
   const navigate = useNavigate();
@@ -150,59 +179,47 @@ export default function AccountActivation() {
   const [isLoading, setIsLoading] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   
-  // User profile state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [country, setCountry] = useState('');
   
-  // Security questions state
   const [securityQuestions, setSecurityQuestions] = useState([
     { question: 'What was the name of your first pet?', answer: '' },
     { question: 'In what city were you born?', answer: '' },
     { question: 'What was your childhood nickname?', answer: '' }
   ]);
   
-  // Authenticator state
   const [totpSecret, setTotpSecret] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [enableTwoFactor, setEnableTwoFactor] = useState(true);
   const [recoveryPhrase, setRecoveryPhrase] = useState('');
   const [recoveryKey, setRecoveryKey] = useState('');
   
-  // Subscription state
   const [selectedPlan, setSelectedPlan] = useState('free');
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   
-  // Email verification state
   const [verificationCode, setVerificationCode] = useState('');
   const [email, setEmail] = useState('');
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   
-  // Generate a properly formatted TOTP secret
   useEffect(() => {
-    // Generate a new, properly formatted secret for TOTP
     const secret = generateOTPSecret();
-    const cleanSecret = secret.replace(/\s+/g, ''); // Remove spaces for the URL
-    
-    // Create a new TOTP object with the generated secret
+    const cleanSecret = secret.replace(/\s+/g, '');
     const totp = new OTPAuth.TOTP({
       issuer: 'WillTank',
-      label: 'user@example.com', // Will be updated after we get user info
+      label: 'user@example.com',
       algorithm: 'SHA1',
       digits: 6,
       period: 30,
       secret: OTPAuth.Secret.fromBase32(cleanSecret)
     });
-    
-    // Generate the QR code URL from the TOTP object
     setQrCodeUrl(totp.toString());
     setTotpSecret(secret);
   }, []);
   
-  // Get user email and update TOTP label
   useEffect(() => {
     const getUserEmail = async () => {
       try {
@@ -216,7 +233,6 @@ export default function AccountActivation() {
         if (user && user.email) {
           setEmail(user.email);
           
-          // Update the TOTP with the user's email
           const cleanSecret = totpSecret.replace(/\s+/g, '');
           const totp = new OTPAuth.TOTP({
             issuer: 'WillTank',
@@ -237,7 +253,6 @@ export default function AccountActivation() {
     getUserEmail();
   }, [totpSecret]);
   
-  // Generate recovery phrase and key
   useEffect(() => {
     setRecoveryPhrase(generateRecoveryPhrase());
     setRecoveryKey(getRecoveryKey());
@@ -250,7 +265,6 @@ export default function AccountActivation() {
     }
     
     try {
-      // Clean up the secret (remove spaces) and token
       const cleanSecret = totpSecret.replace(/\s+/g, '');
       const cleanToken = code.replace(/\s+/g, '');
       
@@ -259,7 +273,6 @@ export default function AccountActivation() {
         return false;
       }
       
-      // Create a TOTP object with the same parameters as when generating
       const totp = new OTPAuth.TOTP({
         issuer: 'WillTank',
         algorithm: 'SHA1',
@@ -268,11 +281,9 @@ export default function AccountActivation() {
         secret: OTPAuth.Secret.fromBase32(cleanSecret)
       });
       
-      // Use a larger window to allow for time drift (±1 minute)
       const result = totp.validate({ token: cleanToken, window: 2 });
       console.log('TOTP validation result:', result !== null ? 'Valid' : 'Invalid', 'for secret:', cleanSecret);
       
-      // If result is null, the token is invalid
       if (result === null) {
         setVerificationError('Invalid verification code. Please try again.');
         return false;
@@ -295,14 +306,12 @@ export default function AccountActivation() {
         throw new Error('User not found');
       }
       
-      // Create or update user security record
       let security = await createUserSecurity();
       
       if (!security) {
         throw new Error('Failed to create security record');
       }
       
-      // Update the security record with TOTP settings
       const { error } = await supabase
         .from('user_security')
         .update({
@@ -327,7 +336,6 @@ export default function AccountActivation() {
     setIsLoading(true);
     
     if (verifyAuthenticatorCode(code)) {
-      // If verification is successful, save the TOTP secret and proceed
       saveAuthenticatorSettings()
         .then(() => {
           setCurrentStep(STEPS.SUBSCRIPTION);
@@ -346,7 +354,6 @@ export default function AccountActivation() {
   const handleVerifyEmail = () => {
     setIsLoading(true);
     
-    // Simulate email verification
     setTimeout(() => {
       setIsEmailVerified(true);
       setCurrentStep(STEPS.PROFILE);
@@ -363,7 +370,6 @@ export default function AccountActivation() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate profile update
     setTimeout(() => {
       setCurrentStep(STEPS.SECURITY_QUESTIONS);
       setIsLoading(false);
@@ -379,7 +385,6 @@ export default function AccountActivation() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Check if all questions are answered
     const allAnswered = securityQuestions.every(q => q.answer.trim() !== '');
     
     if (!allAnswered) {
@@ -392,7 +397,6 @@ export default function AccountActivation() {
       return;
     }
     
-    // Simulate saving security questions
     setTimeout(() => {
       setCurrentStep(STEPS.AUTHENTICATOR);
       setIsLoading(false);
@@ -406,7 +410,6 @@ export default function AccountActivation() {
   
   const handleAuthenticatorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // This is now handled by the TwoFactorInput component
   };
   
   const handleSubscriptionSubmit = (e: React.FormEvent) => {
@@ -423,7 +426,6 @@ export default function AccountActivation() {
       return;
     }
     
-    // Simulate subscription setup
     setTimeout(() => {
       setCurrentStep(STEPS.COMPLETE);
       setIsLoading(false);
@@ -451,7 +453,11 @@ export default function AccountActivation() {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout
+      title="Activate Your Account"
+      subtitle="Complete these steps to start using your WillTank account"
+      rightPanel={<SecurityInfoPanel />}
+    >
       <div className="max-w-md mx-auto p-4">
         <div className="mb-8 text-center">
           <img 
@@ -459,14 +465,8 @@ export default function AccountActivation() {
             alt="WillTank Logo" 
             className="h-12 w-auto mx-auto mb-4" 
           />
-          
-          <h1 className="text-2xl font-bold text-gray-900">Activate Your Account</h1>
-          <p className="text-gray-600 text-sm mt-2">
-            Complete these steps to start using your WillTank account
-          </p>
         </div>
         
-        {/* Account Activation Steps */}
         <div className="mb-8">
           <div className="flex justify-between items-center">
             {Object.values(STEPS).map((step, index) => (
@@ -503,7 +503,6 @@ export default function AccountActivation() {
           </div>
         </div>
         
-        {/* Content for current step */}
         {currentStep === STEPS.VERIFY_EMAIL && (
           <Card>
             <CardHeader>
