@@ -1,13 +1,23 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2, Toggle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+
+// Type definition for notification preferences
+interface NotificationPreferences {
+  securityAlerts: boolean;
+  documentUpdates: boolean;
+  legalChanges: boolean;
+  executorActivities: boolean;
+}
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -24,6 +34,17 @@ const getNotificationIcon = (type: string) => {
 };
 
 export default function Notifications() {
+  // Notification preferences state (with local storage persistence)
+  const [preferences, setPreferences] = useLocalStorage<NotificationPreferences>('notification-preferences', {
+    securityAlerts: true,
+    documentUpdates: true,
+    legalChanges: true,
+    executorActivities: true
+  });
+  
+  // Loading state for preferences
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
+  
   let notificationsContext;
   try {
     notificationsContext = useNotifications();
@@ -49,6 +70,51 @@ export default function Notifications() {
   }
   
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = notificationsContext;
+
+  // Function to update a specific preference
+  const updatePreference = async (key: keyof NotificationPreferences, value: boolean) => {
+    setIsLoadingPreferences(true);
+    
+    try {
+      // Create a new preferences object with the updated value
+      const updatedPreferences = { ...preferences, [key]: value };
+      
+      // Update local storage state
+      setPreferences(updatedPreferences);
+      
+      // Here you would typically update the user's preferences in the database
+      // For now, we're just using local storage, but in a real app you'd do:
+      /*
+      const { error } = await supabase
+        .from('user_notification_preferences')
+        .upsert({ 
+          user_id: auth.user().id, 
+          preferences: updatedPreferences 
+        });
+        
+      if (error) throw error;
+      */
+      
+      // Show success toast
+      toast({
+        title: "Preferences updated",
+        description: `Your notification preferences have been updated.`,
+      });
+    } catch (error) {
+      console.error('Error updating notification preferences:', error);
+      
+      // Revert the change in case of error
+      setPreferences(preferences);
+      
+      toast({
+        title: "Error updating preferences",
+        description: "An error occurred while updating your preferences. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingPreferences(false);
+    }
+  };
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -208,7 +274,11 @@ export default function Notifications() {
                   <p className="font-medium mb-1">Security Alerts</p>
                   <p className="text-sm text-gray-500">Get notified about login attempts and security issues</p>
                 </div>
-                <Switch checked={true} />
+                <Switch 
+                  checked={preferences.securityAlerts} 
+                  disabled={isLoadingPreferences}
+                  onCheckedChange={(checked) => updatePreference('securityAlerts', checked)}
+                />
               </div>
               
               <div className="flex items-center justify-between">
@@ -216,7 +286,11 @@ export default function Notifications() {
                   <p className="font-medium mb-1">Document Updates</p>
                   <p className="text-sm text-gray-500">Notifications when your will or documents are updated</p>
                 </div>
-                <Switch checked={true} />
+                <Switch 
+                  checked={preferences.documentUpdates} 
+                  disabled={isLoadingPreferences}
+                  onCheckedChange={(checked) => updatePreference('documentUpdates', checked)}
+                />
               </div>
               
               <div className="flex items-center justify-between">
@@ -224,7 +298,11 @@ export default function Notifications() {
                   <p className="font-medium mb-1">Legal Changes</p>
                   <p className="text-sm text-gray-500">Updates about legal changes that may affect your will</p>
                 </div>
-                <Switch checked={true} />
+                <Switch 
+                  checked={preferences.legalChanges} 
+                  disabled={isLoadingPreferences}
+                  onCheckedChange={(checked) => updatePreference('legalChanges', checked)}
+                />
               </div>
               
               <div className="flex items-center justify-between">
@@ -232,7 +310,11 @@ export default function Notifications() {
                   <p className="font-medium mb-1">Executor Activities</p>
                   <p className="text-sm text-gray-500">Notifications about executor verification and actions</p>
                 </div>
-                <Switch checked={true} />
+                <Switch 
+                  checked={preferences.executorActivities} 
+                  disabled={isLoadingPreferences}
+                  onCheckedChange={(checked) => updatePreference('executorActivities', checked)}
+                />
               </div>
             </div>
           </div>
