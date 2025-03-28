@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
@@ -31,7 +30,7 @@ type Conversation = {
 
 export default function AIAssistantPage() {
   const { toast } = useToast();
-  const { notifyUpdate } = useSystemNotifications();
+  const { notifyWillUpdated } = useSystemNotifications();
   const [input, setInput] = useState('');
   const [currentConversation, setCurrentConversation] = useState<Conversation>({
     id: 'new',
@@ -51,7 +50,6 @@ export default function AIAssistantPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Suggested questions for quick responses
   const suggestedQuestions = [
     "How do I create a will for digital assets?",
     "What should I include in my living trust?",
@@ -61,7 +59,6 @@ export default function AIAssistantPage() {
   ];
 
   useEffect(() => {
-    // Simulated load of previous conversations - in a real app, fetch from API/DB
     const savedConversations: Conversation[] = [
       {
         id: 'conv-1',
@@ -124,7 +121,6 @@ export default function AIAssistantPage() {
       timestamp: new Date()
     };
 
-    // Create a new conversation if needed
     if (currentConversation.id === 'new' && currentConversation.messages.length === 1) {
       const newConversation = {
         ...currentConversation,
@@ -135,7 +131,6 @@ export default function AIAssistantPage() {
       setCurrentConversation(newConversation);
       setConversations([newConversation, ...conversations]);
     } else {
-      // Add to existing conversation
       const updatedMessages = [...currentConversation.messages, userMessage];
       const updatedConversation = {
         ...currentConversation,
@@ -144,7 +139,6 @@ export default function AIAssistantPage() {
       };
       setCurrentConversation(updatedConversation);
       
-      // Update in conversations list
       const updatedConversations = conversations.map(conv => 
         conv.id === currentConversation.id ? updatedConversation : conv
       );
@@ -158,7 +152,6 @@ export default function AIAssistantPage() {
     setIsProcessing(true);
 
     try {
-      // Call the AI assistant edge function if available
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: { 
           query: input,
@@ -182,7 +175,6 @@ export default function AIAssistantPage() {
         timestamp: new Date()
       };
       
-      // Update current conversation with AI response
       const finalMessages = [...currentConversation.messages, userMessage, aiMessage];
       const finalConversation = {
         ...currentConversation,
@@ -192,7 +184,6 @@ export default function AIAssistantPage() {
       
       setCurrentConversation(finalConversation);
       
-      // Update in conversations list
       const finalConversations = conversations.map(conv => 
         conv.id === currentConversation.id ? finalConversation : conv
       );
@@ -201,8 +192,7 @@ export default function AIAssistantPage() {
       }
       setConversations(finalConversations);
       
-      // Notification
-      notifyUpdate({
+      notifyWillUpdated({
         title: "AI Assistant",
         description: "New response received from the assistant."
       });
@@ -214,8 +204,7 @@ export default function AIAssistantPage() {
       setIsProcessing(false);
     }
   };
-  
-  // Fallback responses when the edge function is unavailable
+
   const fallbackResponse = (userInput: string) => {
     let response = '';
     const lowerInput = userInput.toLowerCase();
@@ -291,7 +280,6 @@ export default function AIAssistantPage() {
       timestamp: new Date()
     };
     
-    // Update conversation with fallback response
     const updatedMessages = [...currentConversation.messages, aiMessage];
     const updatedConversation = {
       ...currentConversation,
@@ -301,7 +289,6 @@ export default function AIAssistantPage() {
     
     setCurrentConversation(updatedConversation);
     
-    // Update in conversations list
     const updatedConversations = conversations.map(conv => 
       conv.id === currentConversation.id ? updatedConversation : conv
     );
@@ -320,7 +307,6 @@ export default function AIAssistantPage() {
 
   const handleSuggestedQuestion = (question: string) => {
     setInput(question);
-    // Focus the input element
     const inputElement = document.getElementById('message-input');
     if (inputElement) {
       inputElement.focus();
@@ -375,7 +361,6 @@ export default function AIAssistantPage() {
     <Layout>
       <div className="container px-0 md:px-4 max-w-7xl">
         <div className="flex flex-col lg:flex-row gap-0 lg:gap-4 h-[calc(100vh-12rem)]">
-          {/* Sidebar for conversation history on large screens, hidden on small */}
           <motion.div 
             initial={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
             animate={{ width: isSidebarOpen ? '300px' : '0px', opacity: isSidebarOpen ? 1 : 0 }}
@@ -426,7 +411,6 @@ export default function AIAssistantPage() {
             </div>
           </motion.div>
           
-          {/* Main chat area */}
           <div className="flex-1 flex flex-col bg-white rounded-xl lg:rounded-l-none shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -539,7 +523,6 @@ export default function AIAssistantPage() {
               </div>
             </ScrollArea>
             
-            {/* Quick questions suggestions */}
             {currentConversation.messages.length < 3 && (
               <div className="px-4 py-2 border-t border-gray-100">
                 <p className="text-xs text-gray-500 mb-2">Suggested questions:</p>
@@ -558,7 +541,6 @@ export default function AIAssistantPage() {
               </div>
             )}
             
-            {/* Input area */}
             <div className="p-4 border-t border-gray-100">
               <div className="flex items-center gap-2">
                 <Input
