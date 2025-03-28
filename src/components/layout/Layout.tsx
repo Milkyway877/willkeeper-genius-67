@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
 import { PageTransition } from '@/components/animations/PageTransition';
@@ -17,6 +17,7 @@ interface LayoutProps {
 export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const location = useLocation();
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
@@ -25,6 +26,24 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   // Don't show sidebar on auth pages
   const isAuthPage = location.pathname.includes('/auth/');
   const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
+  
+  // Check for URL parameters on Help page
+  useEffect(() => {
+    if (location.pathname === '/help' && location.search) {
+      const params = new URLSearchParams(location.search);
+      const topic = params.get('topic');
+      if (topic) {
+        setSelectedTopic(topic);
+      }
+    }
+  }, [location]);
+
+  // Pass the selected topic to the Help page through the URL
+  useEffect(() => {
+    if (selectedTopic && location.pathname === '/help') {
+      // This is handled by the Help component
+    }
+  }, [selectedTopic, location.pathname]);
   
   return (
     <div className="flex h-screen w-full bg-gray-50">

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Search, HelpCircle, Book, MessageSquare, FileText, Mail, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export default function Help() {
   const { toast } = useToast();
@@ -171,7 +172,9 @@ export default function Help() {
                   <div>
                     <h3 className="font-medium text-gray-900 mb-1">{topic.title}</h3>
                     <p className="text-sm text-gray-600 mb-3">{topic.description}</p>
-                    <div className="text-sm text-willtank-600 hover:text-willtank-700 font-medium inline-flex items-center">
+                    <div 
+                      className="text-sm text-willtank-600 hover:text-willtank-700 font-medium inline-flex items-center"
+                    >
                       Learn more <ChevronRight className="h-4 w-4 ml-1" />
                     </div>
                   </div>

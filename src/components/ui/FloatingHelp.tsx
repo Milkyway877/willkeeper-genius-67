@@ -2,28 +2,40 @@
 import React, { useState } from 'react';
 import { HelpCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 export function FloatingHelp() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
   
   const helpItems = [
     { 
       title: 'Getting Started',
-      content: 'Learn how to create your first will and set up your account.'
+      content: 'Learn how to create your first will and set up your account.',
+      slug: 'getting-started'
     },
     { 
       title: 'Adding Executors', 
-      content: 'Find out how to add and manage the executors of your will.'
+      content: 'Find out how to add and manage the executors of your will.',
+      slug: 'executors-beneficiaries'
     },
     { 
       title: 'Security Features',
-      content: 'Learn about our bank-grade security features and how to use them.'
+      content: 'Learn about our bank-grade security features and how to use them.',
+      slug: 'security-privacy'
     },
     { 
       title: 'Contact Support',
-      content: 'Get in touch with our support team for personalized assistance.'
+      content: 'Get in touch with our support team for personalized assistance.',
+      slug: 'account-billing'
     }
   ];
+
+  const handleHelpItemClick = (slug: string) => {
+    setIsOpen(false);
+    // Navigate to the help page with the specific guide pre-selected
+    navigate(`/help?topic=${slug}`);
+  };
   
   return (
     <div className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-50">
@@ -45,6 +57,7 @@ export function FloatingHelp() {
                 <div 
                   key={index}
                   className="p-3 rounded-lg border border-gray-200 hover:border-willtank-200 hover:bg-willtank-50 cursor-pointer transition-all"
+                  onClick={() => handleHelpItemClick(item.slug)}
                 >
                   <h4 className="font-medium text-sm mb-1">{item.title}</h4>
                   <p className="text-xs text-gray-600">{item.content}</p>
