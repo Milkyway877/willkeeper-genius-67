@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { 
   Shield, Lock, Key, Fingerprint, Smartphone, Check, 
   AlertTriangle, RefreshCw, QrCode, Eye, EyeOff, Copy,
-  Scan, UserCheck, Globe, AlertCircle, Laptop
+  Scan, UserCheck, Globe, AlertCircle, Laptop, Download
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
@@ -644,7 +644,7 @@ export default function IDSecurity() {
                       </div>
                       
                       <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4 font-mono">
-                        {showRecoveryKey ? 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX' : '••••-••••-••••-••••-••••-••••'}
+                        {showRecoveryKey ? 'ABCD-EFGH-IJKL-MNOP-QRST-UVWX' : '••••-••••-••••-••••-••••'}
                       </div>
                       
                       <p className="text-sm text-gray-500 mt-2">
