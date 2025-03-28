@@ -1,114 +1,57 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Eye, ArrowRight, ThumbsUp } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { Check } from 'lucide-react';
 
-interface WillTemplate {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  sample: string;
-  tags: string[];
-}
-
-interface TemplateCardProps {
-  template: WillTemplate;
+type TemplateProps = {
+  template: {
+    id: string;
+    title: string;
+    description: string;
+    icon: React.ReactNode;
+    tags: string[];
+  };
   isSelected: boolean;
   onSelect: () => void;
-  onPreview?: () => void;
-}
+};
 
-export function TemplateCard({ 
-  template,
-  isSelected,
-  onSelect,
-  onPreview
-}: TemplateCardProps) {
-  
-  // Extract complexity from tags - assume first tag is complexity level
-  const complexity = template.tags[0]?.toLowerCase() || 'standard';
-  
-  const getComplexityColor = (complexity: string) => {
-    switch (complexity.toLowerCase()) {
-      case 'simple':
-      case 'basic':
-        return 'bg-green-100 text-green-800 hover:bg-green-200';
-      case 'standard':
-      case 'comprehensive':
-        return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-      case 'complex':
-      case 'advanced':
-        return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
-    }
-  };
-  
+export function TemplateCard({ template, isSelected, onSelect }: TemplateProps) {
   return (
-    <Card className={cn(
-      "h-full flex flex-col transition-all duration-200",
-      isSelected && "ring-2 ring-willtank-500 shadow-md"
-    )}>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            {template.icon && <div className="text-willtank-600">{template.icon}</div>}
-            <CardTitle className="text-lg font-semibold">{template.title}</CardTitle>
-          </div>
-          <Badge 
-            variant="outline" 
-            className={cn(
-              "ml-2 text-xs font-medium capitalize",
-              getComplexityColor(complexity)
-            )}
-          >
-            {complexity}
-          </Badge>
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className={`
+        cursor-pointer border rounded-xl p-6 transition-all duration-200
+        ${isSelected 
+          ? 'border-willtank-500 shadow-md bg-willtank-50' 
+          : 'border-gray-200 hover:border-willtank-300 bg-white'}
+      `}
+      onClick={onSelect}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="h-14 w-14 rounded-full bg-willtank-100 flex items-center justify-center">
+          {template.icon}
         </div>
-        <CardDescription>{template.description}</CardDescription>
-      </CardHeader>
-      
-      <CardContent className="flex-grow">
-        {template.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {template.tags.slice(1).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs bg-gray-50">
-                {tag}
-              </Badge>
-            ))}
+        {isSelected && (
+          <div className="bg-willtank-500 text-white h-8 w-8 rounded-full flex items-center justify-center">
+            <Check className="h-5 w-5" />
           </div>
         )}
-      </CardContent>
+      </div>
       
-      <CardFooter className="pt-4 flex justify-between gap-2 border-t">
-        {onPreview && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-            onClick={onPreview}
+      <h3 className="font-medium text-lg mb-2">{template.title}</h3>
+      <p className="text-gray-600 text-sm mb-4">{template.description}</p>
+      
+      <div className="flex flex-wrap gap-2">
+        {template.tags.map((tag, index) => (
+          <span 
+            key={index} 
+            className="px-2 py-1 bg-willtank-100 text-willtank-700 rounded-full text-xs font-medium"
           >
-            <Eye className="h-4 w-4 mr-1" />
-            Preview
-          </Button>
-        )}
-        <Button 
-          size="sm" 
-          className="flex-1"
-          onClick={onSelect}
-          variant={isSelected ? "default" : "outline"}
-        >
-          {isSelected ? (
-            <>Selected</>
-          ) : (
-            <>Use <ArrowRight className="h-4 w-4 ml-1" /></>
-          )}
-        </Button>
-      </CardFooter>
-    </Card>
+            {tag}
+          </span>
+        ))}
+      </div>
+    </motion.div>
   );
 }

@@ -1,61 +1,79 @@
 
 import React, { useState } from 'react';
-import { Bell, User, Menu, X, Search, LifeBuoy } from 'lucide-react';
+import { Bell, User, Menu, X, Home, Layers, Shield, Briefcase, Settings, Mail, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
   onMenuToggle?: () => void;
 }
 
+interface NavItem {
+  icon: React.ReactNode;
+  label: string;
+  href: string;
+}
+
+const NavItemComponent = ({ icon, label, href }: NavItem) => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  
+  const handleClick = () => {
+    navigate(href);
+  };
+  
+  return (
+    <motion.div
+      className="relative flex items-center cursor-pointer group"
+      whileHover={{ scale: 1.05 }}
+      onClick={handleClick}
+    >
+      <motion.div 
+        className="p-2 rounded-full text-gray-600 hover:text-willtank-500 transition-colors z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+        whileHover={{ y: 2 }}
+        transition={{ type: "spring", stiffness: 500, damping: 17 }}
+      >
+        {icon}
+      </motion.div>
+      
+      <motion.span
+        className={cn(
+          "absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm shadow-sm",
+          "whitespace-nowrap text-xs font-medium text-gray-700 border border-gray-100",
+          "opacity-0 group-hover:opacity-100 transition-all duration-200",
+          isMobile ? "pointer-events-none" : ""
+        )}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 0, y: 10 }}
+        whileHover={{ opacity: 1, y: 0 }}
+      >
+        {label}
+      </motion.span>
+    </motion.div>
+  );
+};
+
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
   const isMobile = useIsMobile();
-  const isDashboard = location.pathname.includes('/dashboard') || 
-                      location.pathname.includes('/will') ||
-                      location.pathname.includes('/encryption') ||
-                      location.pathname.includes('/executors') ||
-                      location.pathname.includes('/help') ||
-                      location.pathname.includes('/templates') ||
-                      location.pathname.includes('/security') ||
-                      location.pathname.includes('/ai-assistance') ||
-                      location.pathname.includes('/billing') ||
-                      location.pathname.includes('/notifications') ||
-                      location.pathname.includes('/settings');
   
   const toggleMobileMenu = () => {
     setShowMobileMenu(!showMobileMenu);
   };
-
-  const handleLogout = () => {
-    // In a real app, this would handle the logout process
-    navigate('/auth/signin');
-  };
   
-  // Landing page navigation items - only shown when not in dashboard
-  const navItems = [
-    { icon: <span className="sr-only">Home</span>, label: "Home", href: "/" },
-    { icon: <span className="sr-only">Services</span>, label: "Our Services", href: "/services" },
-    { icon: <span className="sr-only">Security</span>, label: "Security", href: "/security" },
-    { icon: <span className="sr-only">Business</span>, label: "For Businesses", href: "/business" },
-    { icon: <span className="sr-only">How It Works</span>, label: "How It Works", href: "/how-it-works" },
-    { icon: <span className="sr-only">Contact</span>, label: "Contact Us", href: "/contact" },
+  const navItems: NavItem[] = [
+    { icon: <Home size={20} />, label: "Home", href: "/" },
+    { icon: <Layers size={20} />, label: "Our Services", href: "/services" },
+    { icon: <Shield size={20} />, label: "Security", href: "/security" },
+    { icon: <Briefcase size={20} />, label: "For Businesses", href: "/business" },
+    { icon: <Settings size={20} />, label: "How It Works", href: "/how-it-works" },
+    { icon: <Mail size={20} />, label: "Contact Us", href: "/contact" },
   ];
   
   return (
@@ -80,132 +98,55 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           </Link>
         </div>
         
-        {/* Dashboard Navigation */}
-        {isDashboard ? (
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex relative w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <Input 
-                type="search" 
-                placeholder="Search..." 
-                className="pl-9 h-9 focus:ring-willtank-500"
+        {/* Desktop Navigation - Icon Based */}
+        <div className="hidden md:flex items-center space-x-6">
+          {navItems.map((item, index) => (
+            <NavItemComponent key={index} {...item} />
+          ))}
+          
+          {isAuthenticated ? (
+            <div className="flex items-center gap-4 ml-2">
+              <motion.button 
+                className="p-2 rounded-full text-gray-500 hover:text-gray-900 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md relative"
+                whileHover={{ y: 2 }}
+                transition={{ type: "spring", stiffness: 500, damping: 17 }}
+              >
+                <Bell size={20} />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
+              </motion.button>
+              <motion.button 
+                className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm hover:shadow-md"
+                whileHover={{ scale: 1.05, y: 2 }}
+                transition={{ type: "spring", stiffness: 500, damping: 17 }}
+              >
+                <User size={20} />
+              </motion.button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 ml-4">
+              <NavItemComponent 
+                icon={<LogIn size={20} />} 
+                label="Sign In / Sign Up" 
+                href="/auth/signin" 
               />
+              <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 500, damping: 17 }}>
+                <Button onClick={() => navigate('/auth/signup')}>Get Started</Button>
+              </motion.div>
             </div>
-            
-            {/* Support Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-gray-500 hover:text-gray-700"
-              onClick={() => navigate('/help')}
-            >
-              <LifeBuoy size={20} />
-              <span className="sr-only">Support</span>
-            </Button>
-            
-            {/* Notifications Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-gray-500 hover:text-gray-700 relative"
-              onClick={() => navigate('/notifications')}
-            >
-              <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
-              <span className="sr-only">Notifications</span>
-            </Button>
-            
-            {/* User Profile Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="relative h-8 w-8 rounded-full bg-willtank-100 text-willtank-700 font-medium"
-                >
-                  <span>AK</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                  Dashboard
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/will')}>
-                  My Will
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ) : (
-          <>
-            {/* Landing Page Navigation - Desktop */}
-            <div className="hidden md:flex items-center space-x-6">
-              {navItems.map((item, index) => (
-                <Link 
-                  key={index}
-                  to={item.href}
-                  className="text-sm font-medium text-gray-600 hover:text-willtank-500 transition"
-                >
-                  {item.label}
-                </Link>
-              ))}
-              
-              {isAuthenticated ? (
-                <div className="flex items-center gap-4 ml-2">
-                  <motion.button 
-                    className="p-2 rounded-full text-gray-500 hover:text-gray-900 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md relative"
-                    whileHover={{ y: 2 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 17 }}
-                    onClick={() => navigate('/notifications')}
-                  >
-                    <Bell size={20} />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
-                  </motion.button>
-                  <motion.button 
-                    className="p-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm hover:shadow-md"
-                    whileHover={{ scale: 1.05, y: 2 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 17 }}
-                    onClick={() => navigate('/dashboard')}
-                  >
-                    <User size={20} />
-                  </motion.button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-4 ml-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => navigate('/auth/signin')}
-                  >
-                    Sign In
-                  </Button>
-                  <Button onClick={() => navigate('/auth/signup')}>
-                    Get Started
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {/* Mobile Navigation Toggle */}
-            <button 
-              className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-              onClick={toggleMobileMenu}
-            >
-              {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </>
-        )}
+          )}
+        </div>
+        
+        {/* Mobile Navigation Toggle */}
+        <button 
+          className="md:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+          onClick={toggleMobileMenu}
+        >
+          {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </div>
       
-      {/* Mobile menu - only for landing page */}
-      {showMobileMenu && !isDashboard && (
+      {/* Mobile menu */}
+      {showMobileMenu && (
         <motion.div 
           className="md:hidden py-4 px-6 space-y-4 border-t border-gray-100 bg-white animate-fade-in"
           initial={{ opacity: 0, height: 0 }}
@@ -220,6 +161,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2"
                 onClick={toggleMobileMenu}
               >
+                <div className="p-1 rounded-full bg-gray-100">{item.icon}</div>
                 {item.label}
               </Link>
             ))}
@@ -227,6 +169,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
             {!isAuthenticated && (
               <>
                 <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                  <div className="p-1 rounded-full bg-gray-100"><LogIn size={20} /></div>
                   Sign In
                 </Link>
                 <Link to="/auth/signup">
