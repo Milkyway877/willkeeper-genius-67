@@ -15,8 +15,8 @@ export function Hero() {
         backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
         transition: { 
           repeat: Infinity, 
-          duration: 20, 
-          ease: "linear" 
+          duration: 25, // Slower animation
+          ease: "easeInOut" 
         }
       });
     };
@@ -29,24 +29,24 @@ export function Hero() {
       className="relative min-h-screen overflow-hidden flex items-center"
       animate={controls}
       style={{
-        background: 'linear-gradient(135deg, #000000, #2c3e50, #000000, #1a1a2e, #000000)',
-        backgroundSize: '300% 300%',
+        background: 'linear-gradient(135deg, #000000, #1c2e40, #000000, #162435, #000000)',
+        backgroundSize: '400% 400%',
       }}
     >
-      {/* Overlay pattern */}
-      <div className="absolute inset-0 dot-pattern opacity-[0.07] z-10"></div>
+      {/* Subtle overlay pattern for texture */}
+      <div className="absolute inset-0 dot-pattern opacity-[0.05] z-10"></div>
       
-      <div className="container max-w-7xl mx-auto px-4 md:px-6 relative z-20 pt-20 lg:pt-0">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* Left content */}
+      <div className="container max-w-7xl mx-auto px-6 md:px-8 relative z-20 pt-24 lg:pt-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+          {/* Left content - Text */}
           <motion.div 
-            className="text-white"
+            className="text-white max-w-2xl"
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
           >
             <motion.div 
-              className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white mb-8 border border-white/20 backdrop-blur-sm"
+              className="inline-flex items-center rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white mb-10 border border-white/20 backdrop-blur-sm"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
@@ -58,7 +58,7 @@ export function Hero() {
             </motion.div>
             
             <motion.h1 
-              className="text-5xl md:text-7xl font-bold leading-tight text-white mb-6"
+              className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-white mb-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.6 }}
@@ -79,7 +79,7 @@ export function Hero() {
             </motion.h1>
             
             <motion.p 
-              className="text-xl text-gray-200 mb-10"
+              className="text-xl md:text-2xl text-gray-300 mb-12 leading-relaxed max-w-xl"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6 }}
@@ -89,47 +89,47 @@ export function Hero() {
             </motion.p>
             
             <motion.div 
-              className="flex flex-col sm:flex-row gap-4 mb-8"
+              className="flex flex-col sm:flex-row gap-5 mb-10"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8, duration: 0.6 }}
             >
               <Link to="/auth/signup">
-                <Button size="lg" className="rounded-full bg-white text-black hover:bg-gray-100 px-8 py-6 text-lg">
-                  Get started <ArrowRight className="ml-2 h-4 w-4" />
+                <Button size="lg" className="rounded-full bg-white text-black hover:bg-gray-100 px-8 py-6 text-lg shadow-lg hover:shadow-xl transition-all">
+                  Get started <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
               <Link to="/how-it-works">
-                <Button size="lg" variant="outline" className="rounded-full border-white text-white bg-transparent hover:bg-white/10 px-8 py-6 text-lg">
+                <Button size="lg" variant="outline" className="rounded-full border-white text-white bg-transparent hover:bg-white/10 px-8 py-6 text-lg transition-all">
                   How it works
                 </Button>
               </Link>
             </motion.div>
             
             <motion.div 
-              className="flex items-center flex-wrap gap-6 text-sm text-gray-300"
+              className="flex items-center flex-wrap gap-7 text-sm text-gray-300"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1, duration: 0.8 }}
             >
-              <div className="flex items-center">
-                <span className="inline-block w-1 h-1 rounded-full bg-white mr-2"></span>
-                Bank-grade encryption
+              <div className="flex items-center group">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-white mr-2 group-hover:bg-blue-400 transition-colors"></span>
+                <span className="group-hover:text-white transition-colors">Bank-grade encryption</span>
               </div>
-              <div className="flex items-center">
-                <span className="inline-block w-1 h-1 rounded-full bg-white mr-2"></span>
-                24/7 global support
+              <div className="flex items-center group">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-white mr-2 group-hover:bg-blue-400 transition-colors"></span>
+                <span className="group-hover:text-white transition-colors">24/7 global support</span>
               </div>
-              <div className="flex items-center">
-                <span className="inline-block w-1 h-1 rounded-full bg-white mr-2"></span>
-                International legal compliance
+              <div className="flex items-center group">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-white mr-2 group-hover:bg-blue-400 transition-colors"></span>
+                <span className="group-hover:text-white transition-colors">International legal compliance</span>
               </div>
             </motion.div>
           </motion.div>
           
           {/* Right content - Globe */}
           <motion.div 
-            className="flex justify-center items-center"
+            className="flex justify-center items-center lg:justify-end"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
@@ -139,12 +139,12 @@ export function Hero() {
                 className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 blur-3xl"
                 animate={{ 
                   opacity: [0.5, 0.8, 0.5],
-                  scale: [0.8, 1, 0.8],
+                  scale: [0.8, 1.05, 0.8],
                   rotate: 360
                 }}
                 transition={{ 
                   repeat: Infinity, 
-                  duration: 15,
+                  duration: 20,
                   ease: "linear" 
                 }}
               ></motion.div>
