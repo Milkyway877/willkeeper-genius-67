@@ -1,5 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
+import { createSystemNotification } from "./notificationService";
 
 export interface Will {
   id: string;
@@ -82,6 +82,11 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       return null;
     }
     
+    await createSystemNotification('will_updated', {
+      title: 'Will Created',
+      description: `Your will "${will.title}" has been created successfully.`
+    });
+    
     return data;
   } catch (error) {
     console.error('Error in createWill:', error);
@@ -103,6 +108,11 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
       return null;
     }
     
+    await createSystemNotification('will_updated', {
+      title: 'Will Updated',
+      description: `Your will "${data.title}" has been updated successfully.`
+    });
+    
     return data;
   } catch (error) {
     console.error('Error in updateWill:', error);
@@ -110,7 +120,6 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
   }
 };
 
-// Executors
 export const getWillExecutors = async (): Promise<WillExecutor[]> => {
   try {
     const { data, error } = await supabase
@@ -143,6 +152,11 @@ export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'cr
       return null;
     }
     
+    await createSystemNotification('executor_added', {
+      title: 'Executor Added',
+      description: `${executor.name} has been added as an executor to your will.`
+    });
+    
     return data;
   } catch (error) {
     console.error('Error in createWillExecutor:', error);
@@ -150,7 +164,6 @@ export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'cr
   }
 };
 
-// Beneficiaries
 export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
   try {
     const { data, error } = await supabase
@@ -163,10 +176,9 @@ export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
       return [];
     }
     
-    // Map the database fields to our interface fields
     return (data || []).map(item => ({
       id: item.id,
-      name: item.beneficiary_name, // Map beneficiary_name to name
+      name: item.beneficiary_name,
       relationship: item.relationship,
       percentage: item.percentage,
       created_at: item.created_at,
@@ -180,7 +192,6 @@ export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
 
 export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, 'id' | 'created_at'>): Promise<WillBeneficiary | null> => {
   try {
-    // Map our interface fields to database fields
     const dbBeneficiary = {
       beneficiary_name: beneficiary.name,
       relationship: beneficiary.relationship,
@@ -199,7 +210,11 @@ export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, '
       return null;
     }
     
-    // Map the response back to our interface
+    await createSystemNotification('beneficiary_added', {
+      title: 'Beneficiary Added',
+      description: `${beneficiary.name} has been added as a beneficiary to your will.`
+    });
+    
     return {
       id: data.id,
       name: data.beneficiary_name,

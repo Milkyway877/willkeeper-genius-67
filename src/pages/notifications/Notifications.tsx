@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Bell, Eye, FileText, Shield, Users, AlertTriangle, CheckCircle, Clock, Loader2 } from 'lucide-react';
@@ -6,7 +7,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead, Notification } from '@/services/notificationService';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -23,43 +24,14 @@ const getNotificationIcon = (type: string) => {
 };
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getNotifications();
-        setNotifications(data);
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-        toast({
-          title: "Error loading notifications",
-          description: "Could not load your notifications. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchNotifications();
-  }, [toast]);
 
   const handleMarkAsRead = async (id: string) => {
     try {
-      const success = await markNotificationAsRead(id);
+      const success = await markAsRead(id);
       
       if (success) {
-        // Update local state
-        setNotifications(prev => 
-          prev.map(notification => 
-            notification.id === id ? { ...notification, read: true } : notification
-          )
-        );
-        
         toast({
           title: "Notification marked as read",
           description: "The notification has been marked as read."
@@ -79,14 +51,9 @@ export default function Notifications() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const success = await markAllNotificationsAsRead();
+      const success = await markAllAsRead();
       
       if (success) {
-        // Update local state
-        setNotifications(prev => 
-          prev.map(notification => ({ ...notification, read: true }))
-        );
-        
         toast({
           title: "All notifications marked as read",
           description: "All notifications have been marked as read."
@@ -114,9 +81,7 @@ export default function Notifications() {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  if (isLoading) {
+  if (loading) {
     return (
       <Layout>
         <div className="max-w-5xl mx-auto">
@@ -154,7 +119,7 @@ export default function Notifications() {
         </div>
         
         <div className="grid grid-cols-1 gap-4">
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center py-12">
               <Skeleton className="h-10 w-10" />
             </div>

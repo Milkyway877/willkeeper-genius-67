@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { LegacyVaultItem as UILegacyVaultItem } from "../pages/tank/types";
+import { createSystemNotification } from "./notificationService";
 
 export interface FutureMessage {
   id: string;
@@ -55,6 +56,11 @@ export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'c
       console.error('Error creating future message:', error);
       return null;
     }
+    
+    await createSystemNotification('item_saved', {
+      title: 'Future Message Created',
+      description: `Your message "${message.title || 'Untitled'}" has been scheduled for ${new Date(message.delivery_date).toLocaleDateString()}.`
+    });
     
     return data;
   } catch (error) {
@@ -167,6 +173,11 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
       console.error('Error creating legacy vault item:', error);
       return null;
     }
+    
+    await createSystemNotification('document_uploaded', {
+      title: 'Legacy Item Added',
+      description: `Your legacy item "${item.title}" has been added to your vault.`
+    });
     
     // Convert back to UI schema
     return {

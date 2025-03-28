@@ -114,3 +114,57 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
     return null;
   }
 };
+
+// Utility function to create notifications for common events
+export const createSystemNotification = async (
+  event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved',
+  details?: { title?: string, description?: string, itemId?: string }
+): Promise<Notification | null> => {
+  // Default notification templates based on event type
+  const notificationTemplates: Record<string, { title: string, description: string, type: 'success' | 'warning' | 'info' | 'security' }> = {
+    will_updated: {
+      title: 'Will Updated',
+      description: 'Your will has been successfully updated.',
+      type: 'success'
+    },
+    document_uploaded: {
+      title: 'Document Uploaded',
+      description: 'A new document has been uploaded to your account.',
+      type: 'info'
+    },
+    security_key_generated: {
+      title: 'Security Key Generated',
+      description: 'A new security key has been generated for your account.',
+      type: 'security'
+    },
+    beneficiary_added: {
+      title: 'Beneficiary Added',
+      description: 'A new beneficiary has been added to your will.',
+      type: 'info'
+    },
+    executor_added: {
+      title: 'Executor Added',
+      description: 'A new executor has been added to your will.',
+      type: 'info'
+    },
+    item_saved: {
+      title: 'Item Saved',
+      description: 'A new item has been saved to your account.',
+      type: 'success'
+    }
+  };
+
+  const template = notificationTemplates[event];
+  
+  if (!template) {
+    console.error('Invalid notification event type:', event);
+    return null;
+  }
+
+  return createNotification({
+    title: details?.title || template.title,
+    description: details?.description || template.description,
+    type: template.type,
+    read: false
+  });
+};

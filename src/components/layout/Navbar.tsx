@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight, Bell } from 'lucide-react';
+import { Home, Shield, Briefcase, Map, Phone, Menu, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { DotPatternText } from '@/components/ui/DotPatternText';
+import { NotificationDropdown } from './NotificationDropdown';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -187,15 +188,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </Link>
                   
                   <div className="relative">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="relative" 
-                      onClick={() => handleProfileAction('/notifications')}
-                    >
-                      <Bell size={20} />
-                      <span className="absolute top-1 right-1 w-2 h-2 bg-willtank-500 rounded-full"></span>
-                    </Button>
+                    <NotificationDropdown />
                   </div>
                   
                   <DropdownMenu>
