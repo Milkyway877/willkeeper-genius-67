@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -50,7 +49,7 @@ export default function DeathVerification() {
     checkInEnabled: true,
     checkInFrequency: '7', // 7, 14, or 30 days
     beneficiaryVerificationInterval: '48', // 48 or 72 hours
-    unlockMode: 'pin', // pin, executor, trusted
+    unlockMode: 'pin' as 'pin' | 'executor' | 'trusted', // Explicitly type as union type
     notificationPreferences: {
       email: true,
       sms: false,
@@ -287,7 +286,7 @@ export default function DeathVerification() {
                 <RadioGroup 
                   disabled={isLoading}
                   value={settings.unlockMode} 
-                  onValueChange={(value) => setSettings({...settings, unlockMode: value})}
+                  onValueChange={(value: 'pin' | 'executor' | 'trusted') => setSettings({...settings, unlockMode: value})}
                   className="space-y-4"
                 >
                   <div className="flex items-start space-x-2 border p-4 rounded-md hover:bg-gray-50">

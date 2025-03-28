@@ -1,7 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { createSystemNotification } from './notificationService';
 import { addDays, addHours } from 'date-fns';
+import { Json } from '@/integrations/supabase/types';
 
 export interface DeathVerificationSettings {
   id?: string;
@@ -55,16 +55,21 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
     }
     
     // Convert from database format to frontend format
+    const notificationPrefs = data.notification_preferences as Json;
+    
     return {
       id: data.id,
       checkInEnabled: data.check_in_enabled,
       checkInFrequency: data.check_in_frequency.toString(),
       beneficiaryVerificationInterval: data.beneficiary_verification_interval.toString(),
       unlockMode: data.unlock_mode as 'pin' | 'executor' | 'trusted',
-      notificationPreferences: data.notification_preferences as {
-        email: boolean;
-        sms: boolean;
-        push: boolean;
+      notificationPreferences: {
+        email: typeof notificationPrefs === 'object' && notificationPrefs !== null ? 
+          !!(notificationPrefs as any).email : true,
+        sms: typeof notificationPrefs === 'object' && notificationPrefs !== null ? 
+          !!(notificationPrefs as any).sms : false,
+        push: typeof notificationPrefs === 'object' && notificationPrefs !== null ? 
+          !!(notificationPrefs as any).push : false
       },
       trustedContactEmail: data.trusted_contact_email || '',
       failsafeEnabled: data.failsafe_enabled
@@ -110,16 +115,22 @@ const createDefaultVerificationSettings = async (userId: string): Promise<DeathV
       description: 'Death verification system has been enabled for your will.'
     });
     
+    // Safely parse the notification preferences
+    const notificationPrefs = data.notification_preferences as Json;
+    
     return {
       id: data.id,
       checkInEnabled: data.check_in_enabled,
       checkInFrequency: data.check_in_frequency.toString(),
       beneficiaryVerificationInterval: data.beneficiary_verification_interval.toString(),
       unlockMode: data.unlock_mode as 'pin' | 'executor' | 'trusted',
-      notificationPreferences: data.notification_preferences as {
-        email: boolean;
-        sms: boolean;
-        push: boolean;
+      notificationPreferences: {
+        email: typeof notificationPrefs === 'object' && notificationPrefs !== null ? 
+          !!(notificationPrefs as any).email : true,
+        sms: typeof notificationPrefs === 'object' && notificationPrefs !== null ? 
+          !!(notificationPrefs as any).sms : false,
+        push: typeof notificationPrefs === 'object' && notificationPrefs !== null ? 
+          !!(notificationPrefs as any).push : false
       },
       trustedContactEmail: data.trusted_contact_email || '',
       failsafeEnabled: data.failsafe_enabled
@@ -483,7 +494,7 @@ export const checkAllPinsUsed = async (userId: string): Promise<boolean> => {
 export const logVerificationEvent = async (
   userId: string,
   action: string,
-  details?: any
+  details?: Record<string, unknown>
 ): Promise<boolean> => {
   try {
     const { error } = await supabase

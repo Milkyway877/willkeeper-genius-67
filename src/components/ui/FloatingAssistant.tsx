@@ -40,25 +40,25 @@ export function FloatingAssistant() {
         .single();
         
       if (settingsError || !settings || !settings.check_in_enabled) {
+        setCheckInNeeded(false);
         return;
       }
       
       // Check last check-in
-      const { data: lastCheckIn, error: checkInError } = await supabase
+      const { data: checkIns, error: checkInError } = await supabase
         .from('death_verification_checkins')
         .select('*')
         .eq('user_id', user.id)
         .order('checked_in_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
         
-      if (checkInError && checkInError.code !== 'PGRST116') {
+      if (checkInError) {
         console.error('Error checking if check-in needed:', checkInError);
         return;
       }
       
       // If no check-in found or next_check_in has passed, show notification
-      if (!lastCheckIn || new Date(lastCheckIn.next_check_in) <= new Date()) {
+      if (!checkIns || checkIns.length === 0 || new Date(checkIns[0].next_check_in) <= new Date()) {
         setCheckInNeeded(true);
       } else {
         setCheckInNeeded(false);
