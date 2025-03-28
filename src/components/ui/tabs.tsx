@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
@@ -50,4 +51,9 @@ const TabsContent = React.forwardRef<
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
 
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+// Export the Tabs Provider to ensure proper context is available
+const TabsProvider = ({ children }: { children: React.ReactNode }) => {
+  return <Tabs>{children}</Tabs>
+}
+
+export { Tabs, TabsList, TabsTrigger, TabsContent, TabsProvider }

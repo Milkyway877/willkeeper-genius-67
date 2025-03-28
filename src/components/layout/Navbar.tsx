@@ -106,25 +106,26 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="p-0 hover:bg-transparent">
                     <Avatar>
-                      <AvatarImage src="/avatar.png" alt="User" />
+                      {/* Use relative path to public folder or data URI for avatar image */}
+                      <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
                       <AvatarFallback className="bg-willtank-100 text-willtank-700">AM</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-white">
+                <DropdownMenuContent align="end" className="w-56 z-50 bg-white shadow-md border border-gray-200">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleProfileAction('/settings')}>
+                  <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="cursor-pointer">
                     Profile Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleProfileAction('/security')}>
+                  <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="cursor-pointer">
                     Security
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleProfileAction('/billing')}>
+                  <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="cursor-pointer">
                     Billing
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

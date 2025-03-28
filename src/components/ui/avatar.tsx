@@ -27,7 +27,7 @@ const AvatarImage = React.forwardRef<
     ref={ref}
     className={cn("aspect-square h-full w-full", className)}
     onError={(e) => {
-      // If image fails to load, trigger fallback
+      // If image fails to load, clear the src to trigger fallback
       e.currentTarget.src = '';
     }}
     {...props}
