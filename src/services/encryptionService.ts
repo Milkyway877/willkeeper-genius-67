@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as OTPAuth from "otpauth";
 
@@ -103,6 +102,8 @@ export function validateTOTP(token: string, secret: string): boolean {
       return false;
     }
     
+    console.log('Validating TOTP with secret:', cleanSecret, 'token:', cleanToken);
+    
     // Create a TOTP object with the same parameters as when generating
     const totp = new OTPAuth.TOTP({
       issuer: 'WillTank',
@@ -137,21 +138,22 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
       throw new Error('No authenticated user found');
     }
 
-    // Generate a secure random Base32 string for the secret
-    // Using only valid Base32 characters (A-Z, 2-7)
-    const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    // Valid Base32 characters (RFC 4648)
+    const VALID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
     let secret = '';
     
-    // Generate a 32-character secret (160 bits)
-    const randomValues = new Uint8Array(32);
-    window.crypto.getRandomValues(randomValues);
+    // Generate 32 characters (160 bits) of Base32 data
+    const randomBytes = new Uint8Array(32);
+    window.crypto.getRandomValues(randomBytes);
     
+    // Map each byte to a valid Base32 character
     for (let i = 0; i < 32; i++) {
-      secret += ALPHABET.charAt(randomValues[i] % ALPHABET.length);
+      secret += VALID_CHARS.charAt(randomBytes[i] % VALID_CHARS.length);
     }
     
     // Format the secret with spaces for readability (every 4 characters)
     const formattedSecret = secret.match(/.{1,4}/g)?.join(' ') || secret;
+    const cleanSecret = secret; // without spaces for URI
     
     // Create a new TOTP object
     const totp = new OTPAuth.TOTP({
@@ -160,13 +162,13 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
       algorithm: 'SHA1',
       digits: 6,
       period: 30,
-      secret: OTPAuth.Secret.fromBase32(secret)
+      secret: OTPAuth.Secret.fromBase32(cleanSecret)
     });
     
     // Generate the QR code URL
     const qrCodeUrl = totp.toString();
     
-    console.log('Generated new TOTP secret');
+    console.log('Generated new TOTP secret:', cleanSecret);
     
     return {
       secret: formattedSecret,

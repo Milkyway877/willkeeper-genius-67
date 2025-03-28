@@ -24,7 +24,7 @@ export function QRCode({
   const ref = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current || !value) return;
     
     // Clear any previous QR codes
     while (ref.current.firstChild) {
@@ -75,5 +75,5 @@ export function QRCode({
     qrCode.append(ref.current);
   }, [value, size, color, backgroundColor, logoImage, logoWidth, logoHeight]);
   
-  return <div ref={ref} />;
+  return <div ref={ref} className="flex justify-center" />;
 }
