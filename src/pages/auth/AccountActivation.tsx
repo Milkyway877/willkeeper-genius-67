@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -18,7 +17,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import * as otpAuth from 'otpauth';
 
-// Define the steps for the activation process
 const STEPS = {
   PIN_SETUP: 0,
   BACKGROUND_INFO: 1,
@@ -28,7 +26,6 @@ const STEPS = {
   COMPLETE: 5
 };
 
-// PIN setup schema
 const pinSetupSchema = z.object({
   pin: z
     .string()
@@ -45,7 +42,6 @@ const pinSetupSchema = z.object({
 
 type PinSetupInputs = z.infer<typeof pinSetupSchema>;
 
-// Background info schema
 const backgroundInfoSchema = z.object({
   maritalStatus: z.string().min(1, { message: 'Please select your marital status' }),
   hasChildren: z.string().min(1, { message: 'Please select if you have children' }),
@@ -54,7 +50,6 @@ const backgroundInfoSchema = z.object({
 
 type BackgroundInfoInputs = z.infer<typeof backgroundInfoSchema>;
 
-// Generate a random string of specified length
 const generateRandomString = (length: number): string => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
@@ -64,7 +59,6 @@ const generateRandomString = (length: number): string => {
   return result;
 };
 
-// Generate a recovery phrase (12 random words)
 const generateRecoveryPhrase = (): string => {
   const words = [
     'apple', 'banana', 'orange', 'grape', 'kiwi', 'melon', 'pear', 'peach', 'plum', 'cherry',
@@ -97,17 +91,14 @@ export default function AccountActivation() {
   const [selectedPlan, setSelectedPlan] = useState("free");
 
   useEffect(() => {
-    // Generate encryption key and recovery phrase when component mounts
     const generatedKey = generateRandomString(32);
     const generatedPhrase = generateRecoveryPhrase();
     setEncryptionKey(generatedKey);
     setRecoveryPhrase(generatedPhrase);
 
-    // Generate OTP secret for 2FA
     const secret = generateRandomString(20);
     setOtpSecret(secret);
 
-    // Create OTP URI for QR code
     const totp = new otpAuth.TOTP({
       issuer: "WillTank",
       label: user?.email || "user",
@@ -119,7 +110,6 @@ export default function AccountActivation() {
     setOtpUri(totp.toString());
   }, [user?.email]);
 
-  // Form for PIN setup
   const pinSetupForm = useForm<PinSetupInputs>({
     resolver: zodResolver(pinSetupSchema),
     defaultValues: {
@@ -128,7 +118,6 @@ export default function AccountActivation() {
     },
   });
 
-  // Form for background info
   const backgroundInfoForm = useForm<BackgroundInfoInputs>({
     resolver: zodResolver(backgroundInfoSchema),
     defaultValues: {
@@ -138,12 +127,9 @@ export default function AccountActivation() {
     },
   });
 
-  // Handle PIN setup submission
   const handlePinSetupSubmit = async (data: PinSetupInputs) => {
     setIsLoading(true);
     try {
-      // In a real app, you would securely store the PIN
-      // For now, just store it in user metadata
       if (user) {
         const { error } = await supabase.auth.updateUser({
           data: { security_pin: data.pin }
@@ -162,11 +148,9 @@ export default function AccountActivation() {
     }
   };
 
-  // Handle background info submission
   const handleBackgroundInfoSubmit = async (data: BackgroundInfoInputs) => {
     setIsLoading(true);
     try {
-      // Store background info in user metadata
       if (user) {
         const { error } = await supabase.auth.updateUser({
           data: { 
@@ -189,11 +173,9 @@ export default function AccountActivation() {
     }
   };
 
-  // Handle encryption keys submission
   const handleEncryptionKeysSubmit = async () => {
     setIsLoading(true);
     try {
-      // Store encryption keys in user metadata
       if (user) {
         const { error } = await supabase.auth.updateUser({
           data: { 
@@ -215,12 +197,10 @@ export default function AccountActivation() {
     }
   };
 
-  // Handle OTP verification
   const handleVerifyOTP = async () => {
     setIsVerifying(true);
     
     try {
-      // Verify OTP code
       const totp = new otpAuth.TOTP({
         issuer: "WillTank",
         label: user?.email || "user",
@@ -237,7 +217,6 @@ export default function AccountActivation() {
         return;
       }
       
-      // Store 2FA settings in user metadata
       if (user) {
         const { error } = await supabase.auth.updateUser({
           data: { 
@@ -259,11 +238,9 @@ export default function AccountActivation() {
     }
   };
 
-  // Handle subscription selection
   const handleSubscriptionSubmit = async () => {
     setIsLoading(true);
     try {
-      // Store subscription selection in user metadata
       if (user) {
         const { error } = await supabase.auth.updateUser({
           data: { 
@@ -274,7 +251,6 @@ export default function AccountActivation() {
 
         if (error) throw error;
         
-        // Also update the user_profiles table
         const { error: profileError } = await supabase
           .from('user_profiles')
           .update({ 
@@ -285,7 +261,6 @@ export default function AccountActivation() {
 
         if (profileError) throw profileError;
         
-        // Refresh the user profile
         await refreshProfile();
         
         toast.success("Account successfully activated!");
@@ -299,7 +274,6 @@ export default function AccountActivation() {
     }
   };
 
-  // Handle download of encryption key
   const handleDownloadKey = () => {
     const element = document.createElement("a");
     const file = new Blob([encryptionKey], { type: 'text/plain' });
@@ -311,7 +285,6 @@ export default function AccountActivation() {
     toast.success("Encryption Key Downloaded");
   };
 
-  // Handle download of recovery phrase
   const handleDownloadPhrase = () => {
     const element = document.createElement("a");
     const file = new Blob([recoveryPhrase], { type: 'text/plain' });
@@ -323,13 +296,11 @@ export default function AccountActivation() {
     toast.success("Recovery Phrase Downloaded");
   };
 
-  // Handle copy to clipboard
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  // Handle completion
   const handleComplete = () => {
     navigate('/dashboard');
   };
