@@ -24,12 +24,12 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [tanKey] = useLocalStorage<string>('temp_tan_key', '');
+  const [enableTwoFactor, setEnableTwoFactor] = useState(true);
 
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),
     defaultValues: {
-      verificationCode: '',
-      enableTwoFactor: true,
+      otp: '',
     },
   });
 
@@ -58,7 +58,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       
       // In a real implementation, we would validate the verification code against the authenticator secret
       // For now, we'll just accept any 6-digit code
-      if (data.verificationCode.length !== 6 || !/^\d+$/.test(data.verificationCode)) {
+      if (data.otp.length !== 6 || !/^\d+$/.test(data.otp)) {
         toast({
           title: "Invalid code",
           description: "Please enter a valid 6-digit verification code.",
@@ -84,7 +84,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         const { error: updateError } = await supabase
           .from('user_security')
           .update({
-            google_auth_enabled: data.enableTwoFactor,
+            google_auth_enabled: enableTwoFactor,
             google_auth_secret: authenticatorKey.replace(/\s/g, ''),
           })
           .eq('user_id', user.id);
@@ -98,7 +98,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           .from('user_security')
           .insert({
             user_id: user.id,
-            google_auth_enabled: data.enableTwoFactor,
+            google_auth_enabled: enableTwoFactor,
             google_auth_secret: authenticatorKey.replace(/\s/g, ''),
             encryption_key: tanKey || 'default_encryption_key'  // Using TanKey as encryption key
           });
@@ -109,8 +109,8 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       }
       
       toast({
-        title: "Two-factor authentication " + (data.enableTwoFactor ? "enabled" : "configured"),
-        description: data.enableTwoFactor 
+        title: "Two-factor authentication " + (enableTwoFactor ? "enabled" : "configured"),
+        description: enableTwoFactor 
           ? "Your account is now protected with 2FA." 
           : "You can enable 2FA later in your security settings.",
       });
@@ -181,7 +181,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
             
             <FormField
               control={form.control}
-              name="verificationCode"
+              name="otp"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
@@ -200,28 +200,21 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="enableTwoFactor"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox 
-                      checked={field.value} 
-                      onCheckedChange={field.onChange} 
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel className="text-sm font-normal">
-                      Enable two-factor authentication for my account
-                    </FormLabel>
-                    <p className="text-xs text-muted-foreground">
-                      Highly recommended for securing your account and sensitive documents.
-                    </p>
-                  </div>
-                </FormItem>
-              )}
-            />
+            <div className="flex flex-row items-start space-x-3 space-y-0">
+              <Checkbox 
+                id="enableTwoFactor"
+                checked={enableTwoFactor} 
+                onCheckedChange={(checked) => setEnableTwoFactor(checked === true)}
+              />
+              <div className="space-y-1 leading-none">
+                <label htmlFor="enableTwoFactor" className="text-sm font-normal">
+                  Enable two-factor authentication for my account
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Highly recommended for securing your account and sensitive documents.
+                </p>
+              </div>
+            </div>
           </div>
           
           <div className="bg-blue-50 border border-blue-200 p-3 rounded-md flex items-start space-x-2">

@@ -89,7 +89,7 @@ export function UserDetailsStep({ onNext, isLoading = false }: UserDetailsStepPr
         toast({
           title: "Profile creation warning",
           description: "Your account was created but we had issues setting up your profile. You can continue anyway.",
-          variant: "warning",
+          variant: "destructive" // Changed from "warning" to "destructive"
         });
         // Continue anyway as the auth user was created
       } else {

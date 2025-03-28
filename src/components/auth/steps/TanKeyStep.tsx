@@ -125,7 +125,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
         toast({
           title: "Warning",
           description: "Your TanKey was stored but we couldn't update your user profile. You can continue anyway.",
-          variant: "warning"
+          variant: "destructive" // Changed from "warning" to "destructive"
         });
       }
       
