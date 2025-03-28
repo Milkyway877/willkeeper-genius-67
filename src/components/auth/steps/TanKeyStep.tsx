@@ -95,7 +95,7 @@ export function TanKeyStep({ onNext }: TanKeyStepProps) {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        throw new Error("User not found");
+        throw new Error("User not found. Please ensure you're logged in.");
       }
       
       // Store the TanKey in the database

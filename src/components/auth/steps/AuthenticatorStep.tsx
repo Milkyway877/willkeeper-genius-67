@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { ArrowRight, Copy, Check } from 'lucide-react';
+import { ArrowRight, Copy, Check, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -57,7 +57,11 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        throw new Error("User not found");
+        throw new Error("User not found. Please ensure you're logged in.");
+      }
+      
+      if (!tanKey) {
+        throw new Error("Encryption key not found. Please go back to the previous step.");
       }
       
       // Store the authenticator information in the database
@@ -67,7 +71,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           user_id: user.id,
           google_auth_enabled: true,
           google_auth_secret: authenticatorKey.replace(/\s/g, ''),
-          encryption_key: tanKey || 'default-encryption-key' // Providing the required encryption_key
+          encryption_key: tanKey
         });
       
       if (error) {
@@ -165,6 +169,21 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
               />
             </div>
           </div>
+          
+          {verificationAttempts > 0 && (
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start">
+              <AlertTriangle className="text-amber-600 mt-0.5 mr-2 h-5 w-5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-amber-800">
+                  For testing purposes, after 3 failed attempts you will be allowed to proceed.
+                  In a production environment, verification would be required.
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Attempts: {verificationAttempts}/3
+                </p>
+              </div>
+            </div>
+          )}
           
           <div className="bg-slate-50 p-3 rounded-md border border-slate-200">
             <h4 className="text-sm font-medium mb-1">Recommended Authenticator Apps:</h4>
