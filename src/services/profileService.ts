@@ -8,6 +8,9 @@ export interface UserProfile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  is_activated: boolean | null;
+  subscription_plan: string | null;
+  activation_date: string | null;
 }
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {

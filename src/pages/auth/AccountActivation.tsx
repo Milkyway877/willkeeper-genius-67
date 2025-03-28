@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import otpAuth from 'otpauth';
+import * as otpAuth from 'otpauth';
 
 // Define the steps for the activation process
 const STEPS = {
