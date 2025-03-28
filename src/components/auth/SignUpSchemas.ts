@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 // Basic user details schema for signup
@@ -15,7 +14,10 @@ export const userDetailsSchema = z.object({
 
 export type UserDetailsInputs = z.infer<typeof userDetailsSchema>;
 
-// Updated authenticator schema to include otp field
+// We need to keep these schemas as they're imported by step components
+// but they're not actually used in the new simplified sign-up process
+
+// Authenticator schema
 export const authenticatorSchema = z.object({
   authMethod: z.string().min(1, 'Please select an authentication method'),
   phoneNumber: z.string().optional(),
@@ -25,7 +27,7 @@ export const authenticatorSchema = z.object({
 
 export type AuthenticatorInputs = z.infer<typeof authenticatorSchema>;
 
-// Updated KYC schema to include idDocument and selfie fields
+// KYC schema
 export const kycSchema = z.object({
   idType: z.string().min(1, 'Please select an ID type'),
   idNumber: z.string().min(1, 'ID number is required'),
@@ -39,6 +41,7 @@ export const kycSchema = z.object({
 
 export type KycInputs = z.infer<typeof kycSchema>;
 
+// Location schema
 export const locationSchema = z.object({
   country: z.string().min(1, 'Country is required'),
   city: z.string().min(1, 'City is required'),
@@ -46,7 +49,7 @@ export const locationSchema = z.object({
 
 export type LocationInputs = z.infer<typeof locationSchema>;
 
-// Updated userBackground schema to include the fields actually used in the component
+// User background schema
 export const userBackgroundSchema = z.object({
   occupation: z.string().min(1, 'Occupation is required'),
   familyStatus: z.string().min(1, 'Family status is required'),
@@ -60,7 +63,7 @@ export const userBackgroundSchema = z.object({
 
 export type UserBackgroundInputs = z.infer<typeof userBackgroundSchema>;
 
-// Updated subscription schema to include agreeToTerms
+// Subscription schema
 export const subscriptionSchema = z.object({
   plan: z.string().min(1, 'Please select a plan'),
   billingCycle: z.string().optional(),
@@ -70,6 +73,7 @@ export const subscriptionSchema = z.object({
 
 export type SubscriptionInputs = z.infer<typeof subscriptionSchema>;
 
+// Template schema
 export const templateSchema = z.object({
   templateChoice: z.string().min(1, 'Please select a template'),
 });

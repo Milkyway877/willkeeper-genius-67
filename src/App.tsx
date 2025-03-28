@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -50,12 +51,14 @@ const App = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("Auth state changed:", event, session ? "session exists" : "no session");
         setSession(session);
         setLoading(false);
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Initial session check:", session ? "session exists" : "no session");
       setSession(session);
       setLoading(false);
     });
@@ -72,36 +75,39 @@ const App = () => {
           {!loading && (
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/auth/signup" element={<SignUp />} />
-              <Route path="/auth/signin" element={<SignIn />} />
-              <Route path="/auth/recover" element={<Recover />} />
+              <Route path="/auth/signup" element={session ? <Navigate to="/dashboard" replace /> : <SignUp />} />
+              <Route path="/auth/signin" element={session ? <Navigate to="/dashboard" replace /> : <SignIn />} />
+              <Route path="/auth/recover" element={session ? <Navigate to="/dashboard" replace /> : <Recover />} />
               
               <Route 
                 path="/dashboard" 
                 element={session ? <Dashboard /> : <Navigate to="/auth/signin" replace />} 
               />
               
+              {/* Public pages */}
               <Route path="/services" element={<Services />} />
               <Route path="/security" element={<Security />} />
               <Route path="/business" element={<Business />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/contact" element={<Contact />} />
               
-              <Route path="/will" element={<Will />} />
-              <Route path="/will/create" element={<WillCreation />} />
-              <Route path="/templates" element={<Templates />} />
-              <Route path="/encryption" element={<Encryption />} />
-              <Route path="/executors" element={<Executors />} />
-              <Route path="/ai-assistance" element={<AIAssistance />} />
-              <Route path="/id-security" element={<IDSecurity />} />
-              <Route path="/billing" element={<Billing />} />
-              <Route path="/notifications" element={<Notifications />} />
+              {/* Protected pages */}
+              <Route path="/will" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/will/create" element={session ? <WillCreation /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/templates" element={session ? <Templates /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/encryption" element={session ? <Encryption /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/executors" element={session ? <Executors /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/ai-assistance" element={session ? <AIAssistance /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/id-security" element={session ? <IDSecurity /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/billing" element={session ? <Billing /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/notifications" element={session ? <Notifications /> : <Navigate to="/auth/signin" replace />} />
               <Route path="/help" element={<Help />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings" element={session ? <Settings /> : <Navigate to="/auth/signin" replace />} />
               
-              <Route path="/tank" element={<Tank />} />
-              <Route path="/tank/create" element={<TankCreation />} />
+              <Route path="/tank" element={session ? <Tank /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/tank/create" element={session ? <TankCreation /> : <Navigate to="/auth/signin" replace />} />
               
+              {/* Public information pages */}
               <Route path="/about" element={<About />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/careers" element={<Careers />} />
@@ -115,6 +121,7 @@ const App = () => {
               <Route path="/cookies" element={<Cookies />} />
               <Route path="/gdpr" element={<GDPR />} />
               
+              {/* Redirects for convenience */}
               <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
               <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
               <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
