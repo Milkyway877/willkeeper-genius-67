@@ -114,10 +114,6 @@ serve(async (req) => {
         }
       );
     }
-
-    // Generate placeholder values for required fields
-    const placeholderPasskey = crypto.randomUUID();
-    const placeholderRecoveryPhrase = "temporary_recovery_phrase";
     
     console.log("Creating new user profile for:", user_id, {
       email: userEmail,
@@ -126,7 +122,7 @@ serve(async (req) => {
     });
     
     try {
-      // Create user profile in the users table
+      // Create user profile in the users table with password instead of passkey/recovery_phrase
       const { data: newUser, error: insertError } = await supabaseClient
         .from("users")
         .insert({
@@ -134,8 +130,8 @@ serve(async (req) => {
           email: userEmail,
           full_name: firstName,
           surname: lastName,
-          passkey: placeholderPasskey,
-          recovery_phrase: placeholderRecoveryPhrase
+          passkey: "email_auth", // Default value since we're now using email auth
+          recovery_phrase: "email_auth" // Default value since we're now using email auth
         })
         .select()
         .single();

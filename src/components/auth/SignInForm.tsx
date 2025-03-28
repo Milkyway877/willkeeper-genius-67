@@ -10,20 +10,19 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { tanKeyService } from '@/services/tanKeyService';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  tanKey: z.string().min(6, 'Please enter your TanKey'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
   otpCode: z.string().length(6, 'OTP code must be 6 digits').optional(),
 });
 
 type SignInFormInputs = z.infer<typeof signInSchema>;
 
 export function SignInForm() {
-  const [showTanKey, setShowTanKey] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Email/TanKey, 2: OTP
+  const [step, setStep] = useState(1); // 1: Email/Password, 2: OTP
   const [requiresOtp, setRequiresOtp] = useState(false);
   const navigate = useNavigate();
   
@@ -31,7 +30,7 @@ export function SignInForm() {
     resolver: zodResolver(signInSchema),
     defaultValues: {
       email: '',
-      tanKey: '',
+      password: '',
       otpCode: '',
     },
   });
@@ -41,10 +40,10 @@ export function SignInForm() {
       setIsLoading(true);
       
       if (step === 1) {
-        // First, sign in with email
+        // Sign in with email and password
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: data.email,
-          password: data.tanKey, // Using TanKey as password for now
+          password: data.password,
         });
         
         if (authError) {
@@ -61,25 +60,6 @@ export function SignInForm() {
           toast({
             title: "Authentication failed",
             description: "User not found",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        // Then verify the TanKey
-        const isTanKeyValid = await tanKeyService.verifyTanKey(
-          authData.user.id,
-          data.tanKey
-        );
-        
-        if (!isTanKeyValid) {
-          // Sign out if TanKey is invalid
-          await supabase.auth.signOut();
-          
-          toast({
-            title: "TanKey verification failed",
-            description: "The provided TanKey is invalid",
             variant: "destructive",
           });
           setIsLoading(false);
@@ -164,25 +144,25 @@ export function SignInForm() {
             
             <FormField
               control={form.control}
-              name="tanKey"
+              name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>TanKey</FormLabel>
+                  <FormLabel>Password</FormLabel>
                   <div className="relative">
                     <FormControl>
                       <Input 
-                        type={showTanKey ? "text" : "password"} 
-                        placeholder="Paste your TanKey" 
-                        className="pr-10 font-mono"
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Enter your password" 
+                        className="pr-10"
                         {...field} 
                       />
                     </FormControl>
                     <button
                       type="button"
                       className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
-                      onClick={() => setShowTanKey(!showTanKey)}
+                      onClick={() => setShowPassword(!showPassword)}
                     >
-                      {showTanKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                   <FormMessage />
@@ -235,12 +215,12 @@ export function SignInForm() {
               to="/auth/recover" 
               className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
             >
-              Forgot TanKey? Recover with PIN →
+              Forgot password? Reset it here →
             </Link>
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p>Your TanKey is required for login. If lost, recover using your PIN. Keep your credentials secure.</p>
+            <p>Make sure to use the email address you registered with. If you've forgotten your password, you can recover it using the link above.</p>
           </div>
         </div>
       </form>
