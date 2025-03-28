@@ -97,8 +97,13 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
       throw new Error('No authenticated user found');
     }
     
-    // Generate a new random secret using fromRandom instead of generate
-    const secret = OTPAuth.Secret.fromRandom();
+    // Generate a new random secret
+    // Using OTPAuth.Secret.fromBase32 with a random string since fromRandom is not available
+    const randomBytes = Array.from(crypto.getRandomValues(new Uint8Array(20)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    const base32Encoded = base32Encode(randomBytes);
+    const secret = OTPAuth.Secret.fromBase32(base32Encoded);
     
     // Create a new TOTP object
     const totp = new OTPAuth.TOTP({
@@ -121,6 +126,35 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
     console.error('Error generating TOTP secret:', error);
     throw error;
   }
+}
+
+// Helper function to encode strings as base32
+function base32Encode(str: string): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  let output = '';
+  
+  for (let i = 0; i < str.length; i++) {
+    value = (value << 8) | str.charCodeAt(i);
+    bits += 8;
+    
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  
+  if (bits > 0) {
+    output += alphabet[(value << (5 - bits)) & 31];
+  }
+  
+  // Pad with '=' as needed
+  while (output.length % 8 !== 0) {
+    output += '=';
+  }
+  
+  return output;
 }
 
 /**
