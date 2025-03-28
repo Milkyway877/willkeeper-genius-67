@@ -28,15 +28,7 @@ export type Database = {
           timestamp?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "activity_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       ai_interactions: {
         Row: {
@@ -60,15 +52,7 @@ export type Database = {
           response?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "ai_interactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       death_verification_checkins: {
         Row: {
@@ -328,15 +312,7 @@ export type Database = {
           title?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "future_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       legacy_vault: {
         Row: {
@@ -369,15 +345,7 @@ export type Database = {
           title?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "legacy_vault_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -440,15 +408,7 @@ export type Database = {
           status?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       tan_keys: {
         Row: {
@@ -502,15 +462,7 @@ export type Database = {
           user_id?: string | null
           verification_status?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_identity_verification_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_preferences: {
         Row: {
@@ -615,15 +567,7 @@ export type Database = {
           last_login?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_security_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       users: {
         Row: {
@@ -830,15 +774,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "wills_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {

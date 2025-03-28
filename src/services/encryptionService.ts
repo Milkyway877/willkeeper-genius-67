@@ -143,8 +143,11 @@ export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl:
     let secret = '';
     
     // Generate a 32-character secret (160 bits)
+    const randomValues = new Uint8Array(32);
+    window.crypto.getRandomValues(randomValues);
+    
     for (let i = 0; i < 32; i++) {
-      secret += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length));
+      secret += ALPHABET.charAt(randomValues[i] % ALPHABET.length);
     }
     
     // Format the secret with spaces for readability (every 4 characters)
@@ -326,7 +329,9 @@ export async function createUserSecurity(): Promise<UserSecurity | null> {
     console.log('Creating security record for user:', user.id);
     
     // Create encryption key for user
-    const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+    const randomValues = new Uint8Array(32);
+    window.crypto.getRandomValues(randomValues);
+    const encryptionKey = Array.from(randomValues)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
     
@@ -504,7 +509,9 @@ export async function generateEncryptionKey(
     
     // Generate a random key based on the strength
     const byteLength = parseInt(strength) / 8;
-    const keyValue = Array.from(crypto.getRandomValues(new Uint8Array(byteLength)))
+    const randomValues = new Uint8Array(byteLength);
+    window.crypto.getRandomValues(randomValues);
+    const keyValue = Array.from(randomValues)
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
       

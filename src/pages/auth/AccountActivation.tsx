@@ -50,11 +50,29 @@ const backgroundInfoSchema = z.object({
 
 type BackgroundInfoInputs = z.infer<typeof backgroundInfoSchema>;
 
+// Generate a cryptographically secure random string for OTP secret
+// Only using valid Base32 characters (A-Z, 2-7)
+const generateOTPSecret = (length: number = 20): string => {
+  const VALID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let result = '';
+  const randomValues = new Uint8Array(length);
+  window.crypto.getRandomValues(randomValues);
+  
+  for (let i = 0; i < length; i++) {
+    result += VALID_CHARS.charAt(randomValues[i] % VALID_CHARS.length);
+  }
+  
+  return result;
+};
+
 const generateRandomString = (length: number): string => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const randomValues = new Uint8Array(length);
+  window.crypto.getRandomValues(randomValues);
+  
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
+    result += characters.charAt(randomValues[i] % characters.length);
   }
   return result;
 };
@@ -69,8 +87,11 @@ const generateRecoveryPhrase = (): string => {
   ];
   
   const selectedWords = [];
+  const randomValues = new Uint8Array(12);
+  window.crypto.getRandomValues(randomValues);
+  
   for (let i = 0; i < 12; i++) {
-    const randomIndex = Math.floor(Math.random() * words.length);
+    const randomIndex = randomValues[i] % words.length;
     selectedWords.push(words[randomIndex]);
   }
   
@@ -96,18 +117,26 @@ export default function AccountActivation() {
     setEncryptionKey(generatedKey);
     setRecoveryPhrase(generatedPhrase);
 
-    const secret = generateRandomString(20);
+    // Generate a valid TOTP secret using only Base32 characters
+    const secret = generateOTPSecret(20);
     setOtpSecret(secret);
 
-    const totp = new otpAuth.TOTP({
-      issuer: "WillTank",
-      label: user?.email || "user",
-      algorithm: "SHA1",
-      digits: 6,
-      period: 30,
-      secret: otpAuth.Secret.fromBase32(secret),
-    });
-    setOtpUri(totp.toString());
+    try {
+      const totp = new otpAuth.TOTP({
+        issuer: "WillTank",
+        label: user?.email || "user",
+        algorithm: "SHA1",
+        digits: 6,
+        period: 30,
+        secret: otpAuth.Secret.fromBase32(secret)
+      });
+      setOtpUri(totp.toString());
+    } catch (error) {
+      console.error("Error creating TOTP URI:", error);
+      // Fallback to a basic URI if there's an error
+      const fallbackUri = `otpauth://totp/WillTank:${user?.email || "user"}?secret=${secret}&issuer=WillTank&algorithm=SHA1&digits=6&period=30`;
+      setOtpUri(fallbackUri);
+    }
   }, [user?.email]);
 
   const pinSetupForm = useForm<PinSetupInputs>({
@@ -201,15 +230,17 @@ export default function AccountActivation() {
     setIsVerifying(true);
     
     try {
+      // Create TOTP object with the same parameters
       const totp = new otpAuth.TOTP({
         issuer: "WillTank",
         label: user?.email || "user",
         algorithm: "SHA1",
         digits: 6,
         period: 30,
-        secret: otpAuth.Secret.fromBase32(otpSecret),
+        secret: otpAuth.Secret.fromBase32(otpSecret)
       });
       
+      // Validate the token with a window of ±1 time step
       const isValid = totp.validate({ token: verificationCode, window: 1 });
       
       if (!isValid) {
@@ -825,96 +856,4 @@ export default function AccountActivation() {
                   } cursor-pointer hover:border-willtank-300`}
                   onClick={() => setSelectedPlan("premium")}
                 >
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-medium">Premium Plan</h3>
-                    <div className="flex items-center">
-                      <span className="text-lg font-bold">$19.99</span>
-                      <span className="text-sm text-gray-500 ml-1">/mo</span>
-                    </div>
-                  </div>
-                  <ul className="text-sm space-y-2">
-                    <li className="flex items-center">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>Comprehensive will & trust creation</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>Unlimited document storage</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>24/7 priority support</span>
-                    </li>
-                    <li className="flex items-center">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>Legal document review</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              
-              <Button 
-                onClick={handleSubscriptionSubmit} 
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Processing..." : `Continue with ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan`}
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-              
-              <div className="text-center">
-                <p className="text-sm text-gray-500">
-                  You can change your plan anytime from the billing settings.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === STEPS.COMPLETE && (
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </div>
-              <CardTitle>Account Activated!</CardTitle>
-              <CardDescription>
-                Your account has been successfully activated and is ready to use.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 text-center">
-              <p>
-                Thank you for completing the activation process. You now have access to all features of your plan.
-              </p>
-              
-              <div className="bg-slate-50 p-4 rounded-md border border-slate-200">
-                <h3 className="font-medium mb-2">Next Steps</h3>
-                <ul className="text-sm space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    <span>Create your first will document</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    <span>Add executors to your estate</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 text-green-500 mr-2" />
-                    <span>Explore other features in your dashboard</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <Button 
-                onClick={handleComplete} 
-                className="w-full"
-              >
-                Go to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </Layout>
-  );
-}
+                  <
