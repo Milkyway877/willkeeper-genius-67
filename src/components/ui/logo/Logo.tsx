@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -12,10 +11,10 @@ interface LogoProps {
 export function Logo({ size = 'md', color = 'primary', className, showSlogan = true }: LogoProps) {
   const getSizeClasses = () => {
     switch (size) {
-      case 'sm': return 'h-6';
-      case 'lg': return 'h-10';
+      case 'sm': return 'h-7';
+      case 'lg': return 'h-12';
       case 'md':
-      default: return 'h-8';
+      default: return 'h-9';
     }
   };
 
@@ -36,7 +35,7 @@ export function Logo({ size = 'md', color = 'primary', className, showSlogan = t
           alt="WillTank Logo" 
           className={cn('h-full w-auto object-contain')}
         />
-        <span className="tracking-tight font-semibold">WillTank</span>
+        <span className="tracking-tight font-bold">WillTank</span>
       </div>
       {showSlogan && (
         <span className="text-xs text-gray-500 italic ml-2">Your Trusted Legacy Keeper</span>
