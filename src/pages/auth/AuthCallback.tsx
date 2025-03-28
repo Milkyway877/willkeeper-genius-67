@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { createWelcomeNotification } from '@/services/notificationService';
@@ -9,7 +9,30 @@ import { createWelcomeNotification } from '@/services/notificationService';
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(true);
+  const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(3);
+
+  useEffect(() => {
+    let countdownTimer: NodeJS.Timeout;
+    
+    if (isVerified) {
+      countdownTimer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownTimer);
+            navigate('/dashboard');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (countdownTimer) clearInterval(countdownTimer);
+    };
+  }, [isVerified, navigate]);
 
   useEffect(() => {
     const handleEmailVerification = async () => {
@@ -35,14 +58,13 @@ export default function AuthCallback() {
           }
           
           toast({
-            title: "Email Verified!",
-            description: "Your email has been verified successfully.",
+            title: "Email Verified Successfully!",
+            description: "Welcome to WillTank. Your secure will management journey begins now.",
           });
           
-          // Redirect to dashboard
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 1000);
+          // Set verified state and let countdown handle redirect
+          setIsVerified(true);
+          setIsProcessing(false);
         } else {
           // Handle any params from the URL
           const params = new URLSearchParams(window.location.hash.substring(1));
@@ -72,14 +94,13 @@ export default function AuthCallback() {
             }
             
             toast({
-              title: "Email Verified!",
-              description: "Your email has been verified successfully.",
+              title: "Email Verified Successfully!",
+              description: "Welcome to WillTank. Your secure will management journey begins now.",
             });
             
-            // Redirect to dashboard
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 1000);
+            // Set verified state and let countdown handle redirect
+            setIsVerified(true);
+            setIsProcessing(false);
           } else {
             // No session, no tokens - something went wrong
             setError("Authentication failed. Please try signing in again.");
@@ -114,6 +135,25 @@ export default function AuthCallback() {
             <Loader2 className="mx-auto h-12 w-12 text-willtank-600 animate-spin" />
             <h1 className="mt-4 text-xl font-semibold text-gray-900">Verifying your email...</h1>
             <p className="mt-2 text-gray-600">Please wait while we complete the process.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isVerified) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+        <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-md">
+          <div className="text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-gray-900">Email Verified!</h1>
+            <p className="mt-2 text-gray-600">Welcome to WillTank. Your secure will management journey begins now.</p>
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <p className="text-gray-700">Redirecting you to your dashboard in <span className="font-bold text-black">{countdown}</span> seconds...</p>
+            </div>
           </div>
         </div>
       </div>
