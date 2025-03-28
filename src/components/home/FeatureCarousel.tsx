@@ -24,28 +24,28 @@ const featureCards: FeatureCardProps[] = [
     title: "Preserve Your Legacy",
     description: "Create lasting memories with your loved ones that span generations. Our secure platform ensures your wisdom, stories, and advice live on.",
     icon: <Heart className="h-5 w-5 text-blue-500" />,
-    image: "public/lovable-uploads/6275a0df-cf03-49d4-8363-ec78fe85bb5d.png",
+    image: "/lovable-uploads/6275a0df-cf03-49d4-8363-ec78fe85bb5d.png",
     altText: "Senior couple laughing together at the beach"
   },
   {
     title: "Future Family Moments",
     description: "Record special messages for milestones you might miss. Be present for graduations, weddings, and births with scheduled video and audio messages.",
     icon: <Clock className="h-5 w-5 text-blue-500" />,
-    image: "public/lovable-uploads/182bc687-5086-431e-9013-bbdb17d4a31e.png",
+    image: "/lovable-uploads/182bc687-5086-431e-9013-bbdb17d4a31e.png",
     altText: "Family taking selfie together"
   },
   {
     title: "Professional Estate Planning",
     description: "Work with certified professionals to ensure your legacy is properly managed and your final wishes are respected according to legal standards.",
     icon: <FileText className="h-5 w-5 text-blue-500" />,
-    image: "public/lovable-uploads/b9cfd3bc-eebb-4e46-a3ef-2272fa3debc9.png",
+    image: "/lovable-uploads/b9cfd3bc-eebb-4e46-a3ef-2272fa3debc9.png",
     altText: "Professional reading document with clients"
   },
   {
     title: "Family Trust Management",
     description: "Establish clear communication about your estate. Prevent misunderstandings and conflicts with properly documented intentions and wishes.",
     icon: <Shield className="h-5 w-5 text-blue-500" />,
-    image: "public/lovable-uploads/79ec7735-f999-43b3-9a55-bd5b3c90edda.png",
+    image: "/lovable-uploads/79ec7735-f999-43b3-9a55-bd5b3c90edda.png",
     altText: "Meeting with estate planner"
   }
 ];
