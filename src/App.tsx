@@ -43,6 +43,8 @@ import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
 import Tank from "./pages/tank/Tank";
 import TankCreation from "./pages/tank/TankCreation";
+import Wills from "./pages/wills/Wills";
+import WillDetail from "./pages/wills/WillDetail";
 
 const queryClient = new QueryClient();
 
@@ -141,6 +143,10 @@ const App = () => {
                   <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
                   <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
                   <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
+                  
+                  <Route path="/wills" element={<Wills />} />
+                  <Route path="/will/:id" element={<WillDetail />} />
+                  <Route path="/will/:id/edit" element={<Will />} />
                   
                   <Route path="*" element={<NotFound />} />
                 </Routes>
