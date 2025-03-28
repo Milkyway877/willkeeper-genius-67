@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import SignUp from "./pages/auth/SignUp";
 import SignIn from "./pages/auth/SignIn";
 import Recover from "./pages/auth/Recover";
+import AuthCallback from "./pages/auth/AuthCallback";
 import Services from "./pages/Services";
 import Security from "./pages/Security";
 import Business from "./pages/Business";
@@ -50,6 +52,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state changed:", event, session ? "session exists" : "no session");
@@ -58,6 +61,7 @@ const App = () => {
       }
     );
 
+    // Then check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log("Initial session check:", session ? "session exists" : "no session");
       setSession(session);
@@ -81,6 +85,7 @@ const App = () => {
                   <Route path="/auth/signup" element={session ? <Navigate to="/dashboard" replace /> : <SignUp />} />
                   <Route path="/auth/signin" element={session ? <Navigate to="/dashboard" replace /> : <SignIn />} />
                   <Route path="/auth/recover" element={session ? <Navigate to="/dashboard" replace /> : <Recover />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   
                   <Route 
                     path="/dashboard" 

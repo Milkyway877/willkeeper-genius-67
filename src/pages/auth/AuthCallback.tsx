@@ -1,0 +1,126 @@
+
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+
+export default function AuthCallback() {
+  const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEmailVerification = async () => {
+      try {
+        // Check if this is coming from an email verification link
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          setError("Failed to verify authentication state.");
+          setIsProcessing(false);
+          return;
+        }
+
+        // If session exists, the email has been verified
+        if (data?.session) {
+          toast({
+            title: "Email Verified!",
+            description: "Your email has been verified successfully.",
+          });
+          
+          // Redirect to dashboard
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1000);
+        } else {
+          // Handle any params from the URL
+          const params = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          
+          if (accessToken) {
+            // If we have tokens in the URL, try to exchange them for a session
+            const { error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            
+            if (setSessionError) {
+              console.error("Set session error:", setSessionError);
+              setError("Failed to verify your email. Please try signing in again.");
+              setIsProcessing(false);
+              return;
+            }
+            
+            toast({
+              title: "Email Verified!",
+              description: "Your email has been verified successfully.",
+            });
+            
+            // Redirect to dashboard
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 1000);
+          } else {
+            // No session, no tokens - something went wrong
+            setError("Authentication failed. Please try signing in again.");
+            setIsProcessing(false);
+            
+            // Redirect to sign in after a delay
+            setTimeout(() => {
+              navigate('/auth/signin');
+            }, 3000);
+          }
+        }
+      } catch (e) {
+        console.error("Authentication callback error:", e);
+        setError("An unexpected error occurred. Please try signing in again.");
+        setIsProcessing(false);
+        
+        // Redirect to sign in after a delay
+        setTimeout(() => {
+          navigate('/auth/signin');
+        }, 3000);
+      }
+    };
+
+    handleEmailVerification();
+  }, [navigate]);
+
+  if (isProcessing) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+        <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-md">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-12 w-12 text-willtank-600 animate-spin" />
+            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verifying your email...</h1>
+            <p className="mt-2 text-gray-600">Please wait while we complete the process.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+        <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-md">
+          <div className="text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verification Failed</h1>
+            <p className="mt-2 text-gray-600">{error}</p>
+            <p className="mt-4 text-gray-600">Redirecting you to the sign in page...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}

@@ -7,7 +7,7 @@ import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -22,24 +22,37 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // Check for redirects from email verification
+  // Check for redirects from email verification or query params
   useEffect(() => {
     const handleAuthRedirect = async () => {
+      // Check if we have a verified parameter from email verification redirect
+      const searchParams = new URLSearchParams(location.search);
+      const verified = searchParams.get('verified');
+      
+      // Check for an existing session
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session && !error) {
         // User is already logged in
-        toast({
-          title: "Welcome back!",
-          description: "You are now signed in.",
-        });
+        if (verified === 'true') {
+          toast({
+            title: "Email verified!",
+            description: "Your email has been verified and you are now signed in.",
+          });
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You are now signed in.",
+          });
+        }
         navigate('/dashboard');
       }
     };
     
     handleAuthRedirect();
-  }, [navigate]);
+  }, [navigate, location]);
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
@@ -60,6 +73,17 @@ export function SignInForm() {
       });
       
       if (authError) {
+        // Special handling for unverified emails
+        if (authError.message.toLowerCase().includes('email not confirmed')) {
+          toast({
+            title: "Email not verified",
+            description: "Please check your inbox and click the verification link before signing in.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
         toast({
           title: "Authentication failed",
           description: authError.message,
@@ -95,6 +119,54 @@ export function SignInForm() {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const email = form.getValues().email;
+    if (!email) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address to resend verification.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: "Failed to resend verification",
+          description: error.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      toast({
+        title: "Verification email sent",
+        description: "Please check your inbox for the verification link.",
+      });
+    } catch (error) {
+      console.error("Error resending verification:", error);
+      toast({
+        title: "Failed to resend verification",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -157,17 +229,26 @@ export function SignInForm() {
         </Button>
         
         <div className="space-y-2 mt-6">
-          <div className="text-center">
+          <div className="flex justify-between items-center">
             <Link 
               to="/auth/recover" 
               className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
             >
-              Forgot password? Reset it here →
+              Forgot password?
             </Link>
+            
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
+              disabled={isLoading}
+            >
+              Resend verification email
+            </button>
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">Make sure to use the email address you registered with. If you've forgotten your password, you can recover it using the link above.</p>
+            <p className="font-medium">Make sure to use the email address you registered with and verify your email before signing in.</p>
           </div>
         </div>
       </form>
