@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getNotifications, Notification, markNotificationAsRead, markAllNotificationsAsRead } from '@/services/notificationService';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationsContextType {
@@ -20,7 +20,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const fetchNotifications = async () => {
     try {
@@ -130,7 +129,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 

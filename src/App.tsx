@@ -34,7 +34,7 @@ import Cookies from "./pages/Cookies";
 import GDPR from "./pages/GDPR";
 import Will from "./pages/will/Will";
 import WillCreation from "./pages/will/WillCreation";
-import Wills from "./pages/wills/Wills";  // Import the new Wills page
+import Wills from "./pages/wills/Wills";  
 import Templates from "./pages/templates/Templates";
 import Encryption from "./pages/encryption/Encryption";
 import Executors from "./pages/executors/Executors";
@@ -63,6 +63,19 @@ const RouteHandler = () => {
   return null;
 };
 
+// Wrap the app in the necessary providers
+const AppWithProviders = ({ children }: { children: React.ReactNode }) => (
+  <QueryClientProvider client={queryClient}>
+    <UserProfileProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        {children}
+      </TooltipProvider>
+    </UserProfileProvider>
+  </QueryClientProvider>
+);
+
 const App = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,77 +99,71 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <UserProfileProvider>
+    <AppWithProviders>
+      <BrowserRouter>
         <NotificationsProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              {!loading && (
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth/signup" element={session ? <Navigate to="/dashboard" replace /> : <SignUp />} />
-                  <Route path="/auth/signin" element={session ? <Navigate to="/dashboard" replace /> : <SignIn />} />
-                  <Route path="/auth/recover" element={session ? <Navigate to="/dashboard" replace /> : <Recover />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  
-                  <Route 
-                    path="/dashboard" 
-                    element={session ? <Dashboard /> : <Navigate to="/auth/signin" replace />} 
-                  />
-                  
-                  <Route path="/services" element={<Services />} />
-                  <Route path="/security" element={<Security />} />
-                  <Route path="/business" element={<Business />} />
-                  <Route path="/how-it-works" element={<HowItWorks />} />
-                  <Route path="/contact" element={<Contact />} />
-                  
-                  <Route path="/will" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/will/:id" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/will/edit/:id" element={session ? <WillCreation /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/will/create" element={session ? <WillCreation /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/wills" element={session ? <Wills /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/templates" element={session ? <Templates /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/encryption" element={session ? <Encryption /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/executors" element={session ? <Executors /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/ai-assistance" element={session ? <AIAssistance /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/id-security" element={session ? <IDSecurity /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/billing" element={session ? <Billing /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/notifications" element={session ? <Notifications /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/help" element={<Help />} />
-                  <Route path="/settings" element={session ? <Settings /> : <Navigate to="/auth/signin" replace />} />
-                  
-                  <Route path="/tank" element={session ? <Tank /> : <Navigate to="/auth/signin" replace />} />
-                  <Route path="/tank/create" element={session ? <TankCreation /> : <Navigate to="/auth/signin" replace />} />
-                  
-                  <Route path="/about" element={<About />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/careers" element={<Careers />} />
-                  
-                  <Route path="/documentation" element={<Documentation />} />
-                  <Route path="/api" element={<API />} />
-                  <Route path="/community" element={<Community />} />
-                  
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/cookies" element={<Cookies />} />
-                  <Route path="/gdpr" element={<GDPR />} />
-                  
-                  <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
-                  <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
-                  <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              )}
+          {!loading && (
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth/signup" element={session ? <Navigate to="/dashboard" replace /> : <SignUp />} />
+              <Route path="/auth/signin" element={session ? <Navigate to="/dashboard" replace /> : <SignIn />} />
+              <Route path="/auth/recover" element={session ? <Navigate to="/dashboard" replace /> : <Recover />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               
-              <RouteHandler />
-            </BrowserRouter>
-          </TooltipProvider>
+              <Route 
+                path="/dashboard" 
+                element={session ? <Dashboard /> : <Navigate to="/auth/signin" replace />} 
+              />
+              
+              <Route path="/services" element={<Services />} />
+              <Route path="/security" element={<Security />} />
+              <Route path="/business" element={<Business />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/contact" element={<Contact />} />
+              
+              <Route path="/will" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/will/:id" element={session ? <Will /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/will/edit/:id" element={session ? <WillCreation /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/will/create" element={session ? <WillCreation /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/wills" element={session ? <Wills /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/templates" element={session ? <Templates /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/encryption" element={session ? <Encryption /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/executors" element={session ? <Executors /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/ai-assistance" element={session ? <AIAssistance /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/id-security" element={session ? <IDSecurity /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/billing" element={session ? <Billing /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/notifications" element={session ? <Notifications /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/settings" element={session ? <Settings /> : <Navigate to="/auth/signin" replace />} />
+              
+              <Route path="/tank" element={session ? <Tank /> : <Navigate to="/auth/signin" replace />} />
+              <Route path="/tank/create" element={session ? <TankCreation /> : <Navigate to="/auth/signin" replace />} />
+              
+              <Route path="/about" element={<About />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/careers" element={<Careers />} />
+              
+              <Route path="/documentation" element={<Documentation />} />
+              <Route path="/api" element={<API />} />
+              <Route path="/community" element={<Community />} />
+              
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/gdpr" element={<GDPR />} />
+              
+              <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
+              <Route path="/signin" element={<Navigate to="/auth/signin" replace />} />
+              <Route path="/recover" element={<Navigate to="/auth/recover" replace />} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          )}
+          
+          <RouteHandler />
         </NotificationsProvider>
-      </UserProfileProvider>
-    </QueryClientProvider>
+      </BrowserRouter>
+    </AppWithProviders>
   );
 };
 

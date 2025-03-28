@@ -8,7 +8,6 @@ import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { FloatingHelp } from '@/components/ui/FloatingHelp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LayoutProps {
@@ -72,53 +71,51 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/settings');
   
   return (
-    <NotificationsProvider>
-      <div className={cn(
-        "flex h-screen w-full",
-        shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
-      )}>
-        {showAuthenticatedLayout && (
-          <WillTankSidebar isCollapsed={!showSidebar} />
+    <div className={cn(
+      "flex h-screen w-full",
+      shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
+    )}>
+      {showAuthenticatedLayout && (
+        <WillTankSidebar isCollapsed={!showSidebar} />
+      )}
+      
+      <motion.div 
+        className={cn(
+          "flex flex-col w-full transition-all duration-300",
+          showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
         )}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
         
-        <motion.div 
-          className={cn(
-            "flex flex-col w-full transition-all duration-300",
-            showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
-          )}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
-          
-          <main className={cn(
-            "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
-            shouldHaveCreamBackground && "relative"
-          )}>
-            {shouldHaveCreamBackground && (
-              <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute top-1/4 -right-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-1/4 -left-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
-                <div className="absolute inset-0 dot-pattern opacity-[0.03] animate-dot-pattern"></div>
-              </div>
-            )}
-            
-            <div className="relative z-10">
-              <PageTransition>
-                {children}
-              </PageTransition>
+        <main className={cn(
+          "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
+          shouldHaveCreamBackground && "relative"
+        )}>
+          {shouldHaveCreamBackground && (
+            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+              <div className="absolute top-1/4 -right-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-1/4 -left-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
+              <div className="absolute inset-0 dot-pattern opacity-[0.03] animate-dot-pattern"></div>
             </div>
-          </main>
-          
-          {showAuthenticatedLayout && (
-            <>
-              <FloatingAssistant />
-              <FloatingHelp />
-            </>
           )}
-        </motion.div>
-      </div>
-    </NotificationsProvider>
+          
+          <div className="relative z-10">
+            <PageTransition>
+              {children}
+            </PageTransition>
+          </div>
+        </main>
+        
+        {showAuthenticatedLayout && (
+          <>
+            <FloatingAssistant />
+            <FloatingHelp />
+          </>
+        )}
+      </motion.div>
+    </div>
   );
 }

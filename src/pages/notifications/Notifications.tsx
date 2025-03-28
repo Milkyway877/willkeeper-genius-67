@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -49,7 +48,6 @@ export default function Notifications() {
   }
   
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = notificationsContext;
-  const { toast } = useToast();
 
   const handleMarkAsRead = async (id: string) => {
     try {

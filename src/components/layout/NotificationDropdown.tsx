@@ -169,4 +169,27 @@ export function NotificationDropdown() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
+  
+  function getNotificationIcon(type: string) {
+    switch (type) {
+      case 'success':
+        return <CheckCircle className="text-green-600" size={16} />;
+      case 'warning':
+        return <AlertTriangle className="text-amber-600" size={16} />;
+      case 'security':
+        return <Shield className="text-red-600" size={16} />;
+      case 'info':
+      default:
+        return <Info className="text-blue-600" size={16} />;
+    }
+  }
+
+  function handleViewNotification(id: string) {
+    markAsRead(id);
+    navigate('/notifications');
+  }
+
+  function handleViewAllNotifications() {
+    navigate('/notifications');
+  }
 }
