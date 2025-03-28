@@ -126,12 +126,50 @@
   }
   
   .glassmorphism {
-    @apply bg-white/80 dark:bg-navy/80 backdrop-blur-md border border-white/20 dark:border-white/10;
+    @apply bg-white/80 dark:bg-black/80 backdrop-blur-md border border-white/20 dark:border-white/10;
   }
   
   .clip-triangle {
     clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
   }
+
+  .dot-pattern {
+    background-image: radial-gradient(circle, #000 1px, transparent 1px);
+    background-size: 12px 12px;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-willtank-600 to-willtank-400 bg-clip-text text-transparent;
+  }
+
+  .pill-button {
+    @apply rounded-full px-6 py-2 transition-all duration-300 ease-in-out;
+  }
+
+  .floating-nav {
+    @apply fixed top-4 left-1/2 transform -translate-x-1/2 z-50 rounded-full glassmorphism border border-gray-200 px-4 py-2 shadow-lg;
+  }
+
+  .gradient-card {
+    @apply bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 rounded-2xl shadow-lg transition-all duration-300;
+  }
+
+  .highlight-text {
+    @apply inline-block rounded-md bg-black text-white dark:bg-white dark:text-black px-1.5 py-0.5 mx-0.5;
+  }
+}
+
+/* Custom background gradients */
+.bg-hero-gradient {
+  @apply bg-gradient-to-br from-orange-50 via-white to-orange-100;
+}
+
+.bg-peach-gradient {
+  background: linear-gradient(135deg, rgba(255,236,210,1) 0%, rgba(252,182,159,0.6) 100%);
+}
+
+.bg-dark-gradient {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
 }
 
 /* Custom transitions and animations */
@@ -183,4 +221,23 @@ html {
     0 4px 8px rgba(0, 0, 0, 0.03),
     0 8px 16px rgba(0, 0, 0, 0.03),
     0 16px 32px rgba(0, 0, 0, 0.03);
+}
+
+/* Dot pattern animation */
+.animate-dot-pattern {
+  background-size: 20px 20px;
+  animation: dotPatternMove 20s linear infinite;
+}
+
+@keyframes dotPatternMove {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 400px 400px;
+  }
+}
+
+.blob-shape {
+  border-radius: 71% 29% 65% 35% / 34% 56% 44% 66%;
 }
