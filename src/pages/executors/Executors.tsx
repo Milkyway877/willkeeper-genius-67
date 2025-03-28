@@ -50,6 +50,18 @@ import {
   sendVerificationRequest 
 } from '@/services/executorService';
 
+// Define a separate type for form data to handle both executor and beneficiary fields
+type FormData = {
+  name: string;
+  email: string;
+  phone: string;
+  relationship: string;
+  address?: string;
+  notes?: string;
+  percentage?: number;
+  will_id?: string;
+};
+
 export default function Executors() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("executors");
@@ -65,7 +77,7 @@ export default function Executors() {
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
 
-  const [formData, setFormData] = useState<Partial<Executor | Beneficiary>>({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     phone: '',

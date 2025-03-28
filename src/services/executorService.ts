@@ -47,10 +47,10 @@ export const getExecutors = async (): Promise<Executor[]> => {
       email: item.email,
       phone: item.phone || '',
       relationship: item.relationship || '',
-      address: item.address,
-      notes: item.notes,
+      address: item.address || '',
+      notes: item.notes || '',
       isVerified: item.status === 'verified',
-      will_id: item.will_id,
+      will_id: item.will_id || undefined,
       created_at: item.created_at
     }));
   } catch (error) {
@@ -94,10 +94,10 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
       email: data.email,
       phone: data.phone || '',
       relationship: data.relationship || '',
-      address: data.address,
-      notes: data.notes,
+      address: data.address || '',
+      notes: data.notes || '',
       isVerified: data.status === 'verified',
-      will_id: data.will_id,
+      will_id: data.will_id || undefined,
       created_at: data.created_at
     };
   } catch (error) {
@@ -137,10 +137,10 @@ export const updateExecutor = async (id: string, updates: Partial<Executor>): Pr
       email: data.email,
       phone: data.phone || '',
       relationship: data.relationship || '',
-      address: data.address,
-      notes: data.notes,
+      address: data.address || '',
+      notes: data.notes || '',
       isVerified: data.status === 'verified',
-      will_id: data.will_id,
+      will_id: data.will_id || undefined,
       created_at: data.created_at
     };
   } catch (error) {
@@ -186,8 +186,8 @@ export const getBeneficiaries = async (): Promise<Beneficiary[]> => {
       relationship: item.relationship,
       email: item.email || '',
       phone: item.phone || '',
-      address: item.address,
-      notes: item.notes,
+      address: item.address || '',
+      notes: item.notes || '',
       percentage: item.percentage,
       isVerified: item.status === 'verified',
       will_id: item.will_id,
@@ -235,8 +235,8 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'c
       relationship: data.relationship,
       email: data.email || '',
       phone: data.phone || '',
-      address: data.address,
-      notes: data.notes,
+      address: data.address || '',
+      notes: data.notes || '',
       percentage: data.percentage,
       isVerified: data.status === 'verified',
       will_id: data.will_id,
@@ -280,8 +280,8 @@ export const updateBeneficiary = async (id: string, updates: Partial<Beneficiary
       relationship: data.relationship,
       email: data.email || '',
       phone: data.phone || '',
-      address: data.address,
-      notes: data.notes,
+      address: data.address || '',
+      notes: data.notes || '',
       percentage: data.percentage,
       isVerified: data.status === 'verified',
       will_id: data.will_id,
@@ -318,7 +318,7 @@ export const sendVerificationRequest = async (email: string, name: string, type:
     // We'll simulate it by logging and creating a notification
     console.log(`Verification email sent to ${email} for ${type} ${name}`);
     
-    await createSystemNotification('verification_sent', {
+    await createSystemNotification('will_updated', {
       title: 'Verification Email Sent',
       description: `A verification request has been sent to ${email}.`
     });
