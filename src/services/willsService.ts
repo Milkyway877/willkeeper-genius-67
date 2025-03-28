@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 import { toast } from "@/hooks/use-toast";
 
-// Base interfaces without circular references
-export interface Will {
+// Define primitive interfaces with no circular references
+export interface WillBase {
   id: string;
   title: string;
   status: string;
@@ -15,6 +15,10 @@ export interface Will {
   ai_generated?: boolean;
   content?: string;
   user_id?: string;
+}
+
+export interface Will extends WillBase {
+  // No circular references - we don't include collections of related entities here
 }
 
 export interface WillExecutor {
@@ -43,7 +47,7 @@ export interface WillSignature {
   will_id?: string;
 }
 
-// Simple standalone interface with no references to Will
+// Completely standalone interface with primitive types only
 export interface WillVersion {
   id: string;
   will_id: string;
