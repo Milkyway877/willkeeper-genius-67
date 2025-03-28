@@ -36,6 +36,8 @@ import IDSecurity from "./pages/security/IDSecurity";
 import Billing from "./pages/billing/Billing";
 import Notifications from "./pages/notifications/Notifications";
 import Settings from "./pages/settings/Settings";
+import Tank from "./pages/tank/Tank";
+import TankCreation from "./pages/tank/TankCreation";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +68,10 @@ const App = () => (
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/help" element={<Help />} />
           <Route path="/settings" element={<Settings />} />
+          
+          {/* Tank Pages */}
+          <Route path="/tank" element={<Tank />} />
+          <Route path="/tank/create" element={<TankCreation />} />
           
           {/* Footer Pages - Company Section */}
           <Route path="/about" element={<About />} />

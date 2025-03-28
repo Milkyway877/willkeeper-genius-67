@@ -18,8 +18,12 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Clock,
+  TimerReset,
+  Archive,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ModeToggle } from '@/components/ui/mode-toggle';
 
 interface SidebarLinkProps {
   to: string;
@@ -73,6 +77,7 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
   const sidebarItems = [
     { icon: <Home size={18} />, label: "Dashboard", href: "/dashboard" },
     { icon: <FileText size={18} />, label: "My Will", href: "/will" },
+    { icon: <TimerReset size={18} />, label: "The Tank", href: "/tank" },
     { icon: <FileCode size={18} />, label: "Legal Templates", href: "/templates" },
     { icon: <Key size={18} />, label: "Encryption Keys", href: "/encryption" },
     { icon: <Users size={18} />, label: "Beneficiaries & Executors", href: "/executors" },
@@ -119,6 +124,8 @@ export function WillTankSidebar({ isCollapsed }: WillTankSidebarProps) {
             </motion.div>
           )}
         </AnimatePresence>
+        
+        {!isCollapsed && <ModeToggle />}
       </div>
       
       <div className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
