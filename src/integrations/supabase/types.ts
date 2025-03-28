@@ -165,6 +165,7 @@ export type Database = {
           created_at: string | null
           document_url: string
           id: string
+          is_encrypted: boolean | null
           preview: string | null
           title: string
           user_id: string | null
@@ -174,6 +175,7 @@ export type Database = {
           created_at?: string | null
           document_url: string
           id?: string
+          is_encrypted?: boolean | null
           preview?: string | null
           title: string
           user_id?: string | null
@@ -183,6 +185,7 @@ export type Database = {
           created_at?: string | null
           document_url?: string
           id?: string
+          is_encrypted?: boolean | null
           preview?: string | null
           title?: string
           user_id?: string | null
