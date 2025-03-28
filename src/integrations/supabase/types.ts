@@ -451,29 +451,44 @@ export type Database = {
       }
       will_beneficiaries: {
         Row: {
+          address: string | null
           beneficiary_name: string
           created_at: string | null
+          email: string | null
           id: string
+          notes: string | null
           percentage: number | null
+          phone: string | null
           relationship: string
+          status: string | null
           user_id: string | null
           will_id: string | null
         }
         Insert: {
+          address?: string | null
           beneficiary_name: string
           created_at?: string | null
+          email?: string | null
           id?: string
+          notes?: string | null
           percentage?: number | null
+          phone?: string | null
           relationship: string
+          status?: string | null
           user_id?: string | null
           will_id?: string | null
         }
         Update: {
+          address?: string | null
           beneficiary_name?: string
           created_at?: string | null
+          email?: string | null
           id?: string
+          notes?: string | null
           percentage?: number | null
+          phone?: string | null
           relationship?: string
+          status?: string | null
           user_id?: string | null
           will_id?: string | null
         }
@@ -489,30 +504,53 @@ export type Database = {
       }
       will_executors: {
         Row: {
+          address: string | null
           created_at: string
           email: string
           id: string
           name: string
+          notes: string | null
+          phone: string | null
+          relationship: string | null
           status: string
           user_id: string | null
+          will_id: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string
           email: string
           id?: string
           name: string
+          notes?: string | null
+          phone?: string | null
+          relationship?: string | null
           status?: string
           user_id?: string | null
+          will_id?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string
           email?: string
           id?: string
           name?: string
+          notes?: string | null
+          phone?: string | null
+          relationship?: string | null
           status?: string
           user_id?: string | null
+          will_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "will_executors_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       will_signatures: {
         Row: {

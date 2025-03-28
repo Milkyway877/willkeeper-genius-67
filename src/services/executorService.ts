@@ -7,14 +7,14 @@ interface WillExecutorRow {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  relationship?: string;
-  address?: string;
-  notes?: string;
+  phone?: string | null;
+  relationship?: string | null;
+  address?: string | null;
+  notes?: string | null;
   status: string;
-  will_id?: string;
+  will_id?: string | null;
   created_at: string;
-  user_id?: string;
+  user_id?: string | null;
 }
 
 // Define the type that matches what our Supabase table returns
@@ -22,15 +22,15 @@ interface WillBeneficiaryRow {
   id: string;
   beneficiary_name: string;
   relationship: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  notes?: string;
-  percentage?: number;
-  status?: string;
-  will_id?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  percentage?: number | null;
+  status?: string | null;
+  will_id?: string | null;
   created_at: string;
-  user_id?: string;
+  user_id?: string | null;
 }
 
 // These are our application models
