@@ -3,3 +3,7 @@ project_id = "vllfjcdtsnvnzrbceyss"
 
 [global.env]
 SUPABASE_URL = "https://vllfjcdtsnvnzrbceyss.supabase.co"
+GOOGLE_MAPS_API = "{{env.GOOGLE_MAPS_API}}"
+OPENAI_API_KEY = "{{env.OPENAI_API_KEY}}"
+STRIPE_SECRET_KEY = "{{env.STRIPE_SECRET_KEY}}"
+STRIPE_PUBLISHABLE_KEY = "{{env.STRIPE_PUBLISHABLE_KEY}}"

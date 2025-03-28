@@ -49,41 +49,24 @@ serve(async (req) => {
       );
     }
 
-    // Get the stored TanKey
+    // Hash the provided TanKey
+    const hashedTanKey = await hashTanKey(tan_key);
+    
+    // Verify against stored TanKey
     const { data, error } = await supabaseClient
       .from("tan_keys")
-      .select("tan_key")
+      .select("*")
       .eq("user_id", user_id)
-      .maybeSingle();
+      .eq("tan_key", hashedTanKey)
+      .single();
 
-    if (error) {
-      console.error("Error retrieving TanKey:", error);
+    if (error || !data) {
+      console.error("Error verifying TanKey:", error);
       return new Response(
-        JSON.stringify({ error: "Failed to retrieve TanKey" }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500 
-        }
-      );
-    }
-
-    if (!data) {
-      return new Response(
-        JSON.stringify({ error: "No TanKey found for this user" }),
-        { 
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 404 
-        }
-      );
-    }
-
-    // Hash the provided TanKey for comparison
-    const hashedTanKey = await hashTanKey(tan_key);
-
-    // Compare the hashed TanKey with the stored one
-    if (hashedTanKey !== data.tan_key) {
-      return new Response(
-        JSON.stringify({ error: "Invalid TanKey" }),
+        JSON.stringify({ 
+          success: false, 
+          message: "TanKey verification failed" 
+        }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 401 
@@ -91,11 +74,10 @@ serve(async (req) => {
       );
     }
 
-    // Update the last_used timestamp
-    // (The trigger we created will automatically update the last_used timestamp)
+    // Update last_used timestamp
     await supabaseClient
       .from("tan_keys")
-      .update({})
+      .update({ last_used: new Date().toISOString() })
       .eq("user_id", user_id);
 
     // Success response
