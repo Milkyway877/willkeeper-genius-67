@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, Video, X, Check, RefreshCw, Play, Pause, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 
 type VideoRecorderProps = {
   onRecordingComplete: (blob: Blob) => void;
@@ -19,6 +20,8 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const [isPreparing, setIsPreparing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -30,26 +33,36 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     const initCamera = async () => {
       try {
         setIsPreparing(true);
+        
+        // Request camera and microphone permissions
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: true, 
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          }, 
           audio: true 
         });
+        
         setStream(mediaStream);
         
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
+          videoRef.current.onloadedmetadata = () => {
+            setIsCameraReady(true);
+            setIsPreparing(false);
+          };
         }
-        
-        setIsCameraReady(true);
-        setIsPreparing(false);
       } catch (err) {
         console.error('Error accessing camera:', err);
+        setPermissionDenied(true);
+        setIsPreparing(false);
+        
         toast({
           title: "Camera Access Error",
-          description: "Unable to access your camera. Please check permissions.",
+          description: "Unable to access your camera or microphone. Please check permissions.",
           variant: "destructive"
         });
-        setIsPreparing(false);
       }
     };
     
@@ -70,35 +83,75 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     if (!stream) return;
     
     recordedChunksRef.current = [];
-    const mediaRecorder = new MediaRecorder(stream);
     
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunksRef.current.push(event.data);
+    try {
+      // Create media recorder with specific MIME type and bitrate
+      const options = { 
+        mimeType: 'video/webm;codecs=vp9,opus',
+        videoBitsPerSecond: 2500000 // 2.5 Mbps
+      };
+      
+      let mediaRecorder: MediaRecorder;
+      
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        // Fallback if the specified options aren't supported
+        mediaRecorder = new MediaRecorder(stream);
       }
-    };
-    
-    mediaRecorder.onstop = () => {
-      const recordedBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-      const videoURL = URL.createObjectURL(recordedBlob);
-      setVideoUrl(videoURL);
-      onRecordingComplete(recordedBlob);
-    };
-    
-    mediaRecorderRef.current = mediaRecorder;
-    mediaRecorder.start();
-    setIsRecording(true);
-    
-    // Start timer
-    setRecordingTime(0);
-    timerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1);
-    }, 1000);
-    
-    toast({
-      title: "Recording Started",
-      description: "You are now recording your video testament."
-    });
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        // Process the recorded chunks
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        
+        setVideoUrl(url);
+        
+        // Simulate processing (in a real app, this might involve compression or uploading)
+        setIsProcessing(true);
+        const processInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(processInterval);
+              setTimeout(() => {
+                setIsProcessing(false);
+                onRecordingComplete(blob);
+              }, 500);
+              return 100;
+            }
+            return prev + 5;
+          });
+        }, 100);
+      };
+      
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(1000); // Collect data every second
+      setIsRecording(true);
+      
+      // Start timer
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+      toast({
+        title: "Recording Started",
+        description: "You are now recording your video testament."
+      });
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      toast({
+        title: "Recording Error",
+        description: "There was a problem starting the recording. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const stopRecording = () => {
@@ -110,16 +163,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      
-      // Simulate processing
-      setIsProcessing(true);
-      setTimeout(() => {
-        setIsProcessing(false);
-        toast({
-          title: "Recording Complete",
-          description: "Your video testament has been recorded successfully."
-        });
-      }, 2000);
     }
   };
   
@@ -137,20 +180,66 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   
   const resetRecording = () => {
     setVideoUrl(null);
+    setUploadProgress(0);
+    
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(err => console.error('Error playing video:', err));
       setIsCameraReady(true);
     }
+    
     toast({
       title: "Recording Reset",
       description: "You can now record a new video testament."
     });
   };
   
+  const retryCamera = async () => {
+    setPermissionDenied(false);
+    setIsPreparing(true);
+    
+    try {
+      // Try to get camera and microphone permissions again
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      
+      setIsCameraReady(true);
+      setIsPreparing(false);
+      
+      toast({
+        title: "Camera Connected",
+        description: "Camera and microphone access granted."
+      });
+    } catch (err) {
+      console.error('Error accessing camera on retry:', err);
+      setPermissionDenied(true);
+      setIsPreparing(false);
+      
+      toast({
+        title: "Camera Access Error",
+        description: "Still unable to access your camera. Please check browser settings.",
+        variant: "destructive"
+      });
+    }
+  };
+  
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  // Handle video end event
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
   };
 
   return (
@@ -178,18 +267,32 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                 <p className="text-white ml-3">Preparing camera...</p>
               </div>
             ) : isProcessing ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                <RefreshCw className="h-10 w-10 text-white animate-spin" />
-                <p className="text-white ml-3">Processing video...</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                <RefreshCw className="h-10 w-10 text-white animate-spin mb-3" />
+                <p className="text-white mb-4">Processing video...</p>
+                <div className="w-64">
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              </div>
+            ) : permissionDenied ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-center p-6">
+                <Video className="h-12 w-12 text-red-400 mb-3" />
+                <p className="text-white mb-4">Camera or microphone access denied</p>
+                <Button size="sm" onClick={retryCamera}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Camera Access
+                </Button>
               </div>
             ) : (
               <video 
                 ref={videoRef} 
                 className="w-full h-full object-cover"
-                autoPlay={isCameraReady} 
+                autoPlay={isCameraReady && !videoUrl} 
                 muted={!videoUrl} 
                 playsInline
-                onEnded={() => setIsPlaying(false)}
+                loop={false}
+                controls={!!videoUrl}
+                onEnded={handleVideoEnded}
               />
             )}
             
@@ -204,7 +307,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           <div className="flex justify-center gap-4 mt-4">
             {videoUrl ? (
               <>
-                <Button variant="outline" onClick={handlePlayPause}>
+                <Button variant="outline" onClick={handlePlayPause} disabled={isProcessing}>
                   {isPlaying ? (
                     <>
                       <Pause className="h-4 w-4 mr-2" />
@@ -217,11 +320,11 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                     </>
                   )}
                 </Button>
-                <Button variant="outline" onClick={resetRecording}>
+                <Button variant="outline" onClick={resetRecording} disabled={isProcessing}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Record Again
                 </Button>
-                <Button>
+                <Button disabled={isProcessing}>
                   <Save className="h-4 w-4 mr-2" />
                   Use This Recording
                 </Button>
@@ -232,7 +335,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                   <Button 
                     variant="destructive" 
                     onClick={stopRecording}
-                    disabled={isPreparing || isProcessing}
+                    disabled={isPreparing || isProcessing || permissionDenied}
                   >
                     <X className="h-4 w-4 mr-2" />
                     Stop Recording
@@ -240,7 +343,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                 ) : (
                   <Button 
                     onClick={startRecording}
-                    disabled={!isCameraReady || isPreparing || isProcessing}
+                    disabled={!isCameraReady || isPreparing || isProcessing || permissionDenied}
                   >
                     <Camera className="h-4 w-4 mr-2" />
                     Start Recording

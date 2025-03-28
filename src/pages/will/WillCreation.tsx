@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
+import { useSystemNotifications } from '@/hooks/use-system-notifications';
 import { 
   FileText, 
   Book, 
@@ -42,6 +43,7 @@ import { VideoRecorder } from './components/VideoRecorder';
 import { FileUploader } from './components/FileUploader';
 import { DigitalSignature } from './components/DigitalSignature';
 import { Progress } from "@/components/ui/progress";
+import { createWill } from '@/services/willService';
 
 type WillTemplate = {
   id: string;
@@ -62,6 +64,7 @@ type Step = {
 export default function WillCreation() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { notifyWillUpdated, notifyDocumentUploaded } = useSystemNotifications();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<WillTemplate | null>(null);
   const [willContent, setWillContent] = useState("");
@@ -74,12 +77,12 @@ export default function WillCreation() {
   const [analyzeComplete, setAnalyzeComplete] = useState(false);
   const [legalIssues, setLegalIssues] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
-  const [isPaying, setIsPaying] = useState(false);
-  const [paymentComplete, setPaymentComplete] = useState(false);
+  const [willTitle, setWillTitle] = useState('My Will');
 
   const handleSelectTemplate = (template: WillTemplate) => {
     setSelectedTemplate(template);
     setWillContent(template.sample);
+    setWillTitle(`My ${template.title}`);
     toast({
       title: "Template Selected",
       description: `You've selected the ${template.title} template.`
@@ -89,6 +92,9 @@ export default function WillCreation() {
   const handleQuestionsComplete = (responses: Record<string, any>, generatedWill: string) => {
     setUserResponses(responses);
     setWillContent(generatedWill);
+    if (responses.willTitle) {
+      setWillTitle(responses.willTitle);
+    }
     setCurrentStep(currentStep + 1);
     toast({
       title: "Questionnaire Completed",
@@ -136,50 +142,105 @@ export default function WillCreation() {
     setCurrentStep(currentStep + 1);
   };
 
-  const handleSelectPlan = (plan: string) => {
-    setIsPaying(true);
-    setProgress(0);
-    
-    // Simulating payment processing
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 5;
-      });
-    }, 250);
-    
-    // Simulate payment completion
-    setTimeout(() => {
-      clearInterval(progressInterval);
-      setProgress(100);
-      setIsPaying(false);
-      setPaymentComplete(true);
-      
-      toast({
-        title: "Payment Successful",
-        description: `Your ${plan} plan has been activated successfully.`,
-        variant: "default"
-      });
-    }, 5000);
-  };
-
   const handleDownloadWill = () => {
-    // In a real implementation, this would generate and download a PDF
+    if (!willContent) {
+      toast({
+        title: "Cannot Download",
+        description: "There is no content to download.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Create a PDF-like blob from the will content
+    const willHtml = `
+      <html>
+        <head>
+          <title>${willTitle}</title>
+          <style>
+            body { font-family: 'Times New Roman', Times, serif; margin: 3cm; }
+            h1 { text-align: center; font-size: 24pt; margin-bottom: 24pt; }
+            .content { line-height: 1.5; font-size: 12pt; }
+            .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; text-align: center; }
+            .date { margin-top: 30pt; }
+            .header { text-align: center; margin-bottom: 30pt; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${willTitle}</h1>
+            <p>Created on ${new Date().toLocaleDateString()}</p>
+          </div>
+          <div class="content">
+            ${willContent.replace(/\n/g, '<br>')}
+          </div>
+          ${signatureData ? `
+            <div class="date">
+              <p>Dated: ${new Date().toLocaleDateString()}</p>
+            </div>
+            <div class="signature">
+              <img src="${signatureData}" width="250" />
+              <p>Signature</p>
+            </div>
+          ` : ''}
+        </body>
+      </html>
+    `;
+    
+    const blob = new Blob([willHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${willTitle.replace(/\s+/g, '_')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
     toast({
       title: "Download Started",
-      description: "Your will document is being prepared for download."
+      description: "Your will document is being downloaded."
     });
-    
-    // Simulate download delay
-    setTimeout(() => {
-      toast({
-        title: "Download Complete",
-        description: "Your will has been downloaded successfully."
+  };
+  
+  const handleCompleteWill = async () => {
+    try {
+      // Save the will to the database
+      const newWill = await createWill({
+        title: willTitle,
+        status: 'active',
+        document_url: '', // In a real app, you'd upload to storage and get URL
+        template_type: selectedTemplate?.id || 'custom',
+        ai_generated: userResponses && Object.keys(userResponses).length > 0
       });
-    }, 2000);
+      
+      if (newWill) {
+        await notifyWillUpdated({
+          title: 'Will Created',
+          description: `Your will "${willTitle}" has been created successfully.`
+        });
+        
+        toast({
+          title: "Will Created Successfully",
+          description: "Your will has been saved and is now available in your dashboard.",
+          variant: "default"
+        });
+        
+        // Navigate to the will dashboard
+        navigate("/will");
+      }
+    } catch (error) {
+      console.error('Error saving will:', error);
+      toast({
+        title: "Error Creating Will",
+        description: "There was a problem saving your will. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const templates: WillTemplate[] = [
@@ -269,7 +330,7 @@ export default function WillCreation() {
       component: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <WillEditor content={willContent} onChange={setWillContent} />
-          <WillPreview content={willContent} />
+          <WillPreview content={willContent} onDownload={handleDownloadWill} />
         </div>
       )
     },
@@ -295,6 +356,15 @@ export default function WillCreation() {
       component: <FileUploader 
                   onFilesUploaded={(files) => {
                     setUploadedFiles(prev => [...prev, ...files]);
+                    
+                    // Notify about uploads
+                    if (files.length > 0) {
+                      notifyDocumentUploaded({
+                        title: "Documents Uploaded",
+                        description: `${files.length} supporting document${files.length > 1 ? 's' : ''} uploaded successfully.`
+                      });
+                    }
+                    
                     toast({
                       title: "Files Uploaded",
                       description: `${files.length} files have been uploaded successfully.`
@@ -375,7 +445,7 @@ export default function WillCreation() {
                   <p className="text-gray-500 mb-6">Your will appears to be legally sound and consistent.</p>
                   <Button onClick={() => setCurrentStep(currentStep + 1)}>
                     <MoveRight className="h-4 w-4 mr-2" />
-                    Continue to Payment
+                    Continue to Finalize
                   </Button>
                 </div>
               )}
@@ -391,128 +461,64 @@ export default function WillCreation() {
       )
     },
     {
-      id: "payment",
-      title: "Payment",
-      description: "Complete payment to finalize your will",
+      id: "finalize",
+      title: "Finalize",
+      description: "Complete your will and save it",
       component: (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center mb-6">
             <div className="h-12 w-12 rounded-full bg-willtank-100 flex items-center justify-center mr-4">
-              <Lock className="h-6 w-6 text-willtank-600" />
+              <Check className="h-6 w-6 text-willtank-600" />
             </div>
             <div>
               <h3 className="text-lg font-medium">Finalize Your Will</h3>
-              <p className="text-gray-500">Select a plan to access your complete will</p>
+              <p className="text-gray-500">Your will is ready to be completed</p>
             </div>
           </div>
-
-          {paymentComplete ? (
-            <div className="text-center py-6">
-              <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <Check className="h-8 w-8 text-green-600" />
-              </div>
-              <p className="text-green-700 font-medium mb-2">Payment Complete</p>
-              <p className="text-gray-500 mb-6">Your will has been finalized and is ready for download.</p>
-              <div className="flex justify-center gap-4">
-                <Button onClick={handleDownloadWill} variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Will
-                </Button>
-                <Button onClick={() => navigate("/will")}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Go to Dashboard
-                </Button>
-              </div>
+          
+          <div className="space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h4 className="font-medium mb-3">Will Summary</h4>
+              <ul className="space-y-2">
+                <li className="flex justify-between">
+                  <span className="text-gray-600">Document Type:</span>
+                  <span className="font-medium">{selectedTemplate?.title || 'Custom Will'}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-600">Title:</span>
+                  <span className="font-medium">{willTitle}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-600">Video Testament:</span>
+                  <span className="font-medium">{videoRecorded ? 'Included' : 'Not Included'}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-600">Supporting Documents:</span>
+                  <span className="font-medium">{uploadedFiles.length} Files</span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-600">Digital Signature:</span>
+                  <span className="font-medium">{signatureData ? 'Signed' : 'Not Signed'}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-600">Created On:</span>
+                  <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                </li>
+              </ul>
             </div>
-          ) : isPaying ? (
-            <div className="text-center py-6">
-              <RefreshCw className="h-8 w-8 text-willtank-600 animate-spin mx-auto mb-4" />
-              <p className="text-willtank-700 font-medium mb-2">Processing Payment</p>
-              <p className="text-gray-500 mb-4">Please wait...</p>
-              <Progress value={progress} className="w-2/3 mx-auto" />
+            
+            <div className="flex justify-center gap-4">
+              <Button onClick={handleDownloadWill} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Download Will
+              </Button>
+              
+              <Button onClick={handleCompleteWill}>
+                <Save className="h-4 w-4 mr-2" />
+                Save & Finish
+              </Button>
             </div>
-          ) : (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="border border-gray-200 rounded-lg p-6 hover:border-willtank-300 hover:shadow-md transition-all cursor-pointer">
-                  <h4 className="font-medium mb-2">Basic Plan</h4>
-                  <p className="text-2xl font-bold mb-4">$99<span className="text-sm font-normal text-gray-500">/one-time</span></p>
-                  <ul className="space-y-2 mb-6">
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Will document download
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      One year of storage
-                    </li>
-                    <li className="flex items-center text-sm text-gray-400">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Video testament
-                    </li>
-                  </ul>
-                  <Button onClick={() => handleSelectPlan("basic")} variant="outline" className="w-full">
-                    Select
-                  </Button>
-                </div>
-
-                <div className="border-2 border-willtank-300 rounded-lg p-6 shadow-md relative">
-                  <div className="absolute -top-3 -right-3 bg-willtank-500 text-white px-3 py-1 rounded-full text-xs font-medium">
-                    Popular
-                  </div>
-                  <h4 className="font-medium mb-2">Premium Plan</h4>
-                  <p className="text-2xl font-bold mb-4">$199<span className="text-sm font-normal text-gray-500">/one-time</span></p>
-                  <ul className="space-y-2 mb-6">
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Will document download
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Five years of storage
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Video testament
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Legal advisory service
-                    </li>
-                  </ul>
-                  <Button onClick={() => handleSelectPlan("premium")} className="w-full">
-                    Select
-                  </Button>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-6 hover:border-willtank-300 hover:shadow-md transition-all cursor-pointer">
-                  <h4 className="font-medium mb-2">Lifetime Plan</h4>
-                  <p className="text-2xl font-bold mb-4">$499<span className="text-sm font-normal text-gray-500">/one-time</span></p>
-                  <ul className="space-y-2 mb-6">
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      All Premium features
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Lifetime storage
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Unlimited updates
-                    </li>
-                    <li className="flex items-center text-sm">
-                      <Check className="h-4 w-4 text-green-500 mr-2" />
-                      Priority support
-                    </li>
-                  </ul>
-                  <Button onClick={() => handleSelectPlan("lifetime")} variant="outline" className="w-full">
-                    Select
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       )
     }

@@ -7,19 +7,60 @@ import { motion } from 'framer-motion';
 
 type WillPreviewProps = {
   content: string;
+  onDownload?: () => void;
 };
 
-export function WillPreview({ content }: WillPreviewProps) {
+export function WillPreview({ content, onDownload }: WillPreviewProps) {
   const { toast } = useToast();
   
   const handleDownload = () => {
-    toast({
-      title: "Download Started",
-      description: "Your document is being prepared for download"
-    });
+    if (onDownload) {
+      onDownload();
+    } else {
+      toast({
+        title: "Download Started",
+        description: "Your document is being prepared for download"
+      });
+    }
   };
   
   const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        title: "Print Error",
+        description: "Unable to open print window. Please check your popup settings.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const willHtml = `
+      <html>
+        <head>
+          <title>Will Document</title>
+          <style>
+            body { font-family: 'Times New Roman', Times, serif; margin: 2cm; }
+            h1 { text-align: center; font-size: 18pt; margin-bottom: 24pt; }
+            .content { line-height: 1.5; font-size: 12pt; white-space: pre-line; }
+          </style>
+        </head>
+        <body>
+          <h1>LAST WILL AND TESTAMENT</h1>
+          <div class="content">${content}</div>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(willHtml);
+    printWindow.document.close();
+    
+    // Give time for styles to load
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+    
     toast({
       title: "Print Initialized",
       description: "Opening print dialog"
@@ -27,10 +68,30 @@ export function WillPreview({ content }: WillPreviewProps) {
   };
   
   const handleShare = () => {
-    toast({
-      title: "Share Options",
-      description: "Document sharing options displayed"
-    });
+    if (navigator.share) {
+      navigator.share({
+        title: 'My Will Document',
+        text: 'I\'ve created a will document',
+      })
+      .then(() => {
+        toast({
+          title: "Document Shared",
+          description: "Share completed successfully"
+        });
+      })
+      .catch((error) => {
+        toast({
+          title: "Share Failed",
+          description: error.message,
+          variant: "destructive"
+        });
+      });
+    } else {
+      toast({
+        title: "Share Options",
+        description: "Sharing not supported on this device or browser"
+      });
+    }
   };
 
   return (
