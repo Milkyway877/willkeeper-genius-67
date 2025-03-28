@@ -135,7 +135,7 @@ export default function Corporate() {
             <Button size="lg" className="rounded-full">
               Schedule a Demo
             </Button>
-            <Button size="lg" variant="outline" className="rounded-full">
+            <Button size="lg" variant="outline" className="rounded-full" as={Link} to="/corporate/documentation">
               View Documentation
             </Button>
           </div>
@@ -324,7 +324,7 @@ export default function Corporate() {
                 </div>
                 
                 <div className="mt-6">
-                  <Link to="/api" className="text-blue-600 hover:underline flex items-center gap-1">
+                  <Link to="/corporate/documentation" className="text-blue-600 hover:underline flex items-center gap-1">
                     View complete API documentation
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="m9 18 6-6-6-6"/>
