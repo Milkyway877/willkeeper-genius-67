@@ -7,7 +7,7 @@ import { Logo } from '@/components/ui/logo/Logo';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { 
   LayoutDashboard, FileText, PackageOpen, Lock, Users, Brain, 
-  ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, Menu, Tank
+  ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, Menu, Archive
 } from 'lucide-react';
 
 interface WillTankSidebarProps {
@@ -56,7 +56,7 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
     },
     {
       title: 'Tank',
-      icon: Tank,
+      icon: Archive, // Changed from Tank to Archive as Tank isn't available in lucide-react
       href: '/tank',
     },
     {
