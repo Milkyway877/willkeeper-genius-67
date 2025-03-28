@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,13 @@ interface Invoice {
   amount: string;
   status: string;
 }
+
+// Sample invoice data since there's no invoices table in the database
+const sampleInvoices: Invoice[] = [
+  { id: "#INV-001", date: "Jun 1, 2023", amount: "$79.99", status: "Paid" },
+  { id: "#INV-002", date: "May 1, 2023", amount: "$79.99", status: "Paid" },
+  { id: "#INV-003", date: "Apr 1, 2023", amount: "$79.99", status: "Paid" },
+];
 
 // Stripe publishable key
 const STRIPE_PUBLISHABLE_KEY = "pk_live_51QwmQwHTKA0osvsHaNzJayB8teIy7ekkJJWaeL62QeadZAstp44qErSoXVlgh3kN4pQDEsXoN8mbrRPPLu6Lrddm00o4NmnaGI";
@@ -125,22 +131,8 @@ export default function Billing() {
           setSubscription(subscriptionData);
         }
         
-        // Fetch invoices
-        const { data: invoiceData, error: invoiceError } = await supabase
-          .from('invoices')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (invoiceError) {
-          console.error('Error fetching invoices:', invoiceError);
-          setInvoices([
-            { id: "#INV-001", date: "Jun 1, 2023", amount: "$79.99", status: "Paid" },
-            { id: "#INV-002", date: "May 1, 2023", amount: "$79.99", status: "Paid" },
-            { id: "#INV-003", date: "Apr 1, 2023", amount: "$79.99", status: "Paid" },
-          ]);
-        } else {
-          setInvoices(invoiceData || []);
-        }
+        // Use sample invoices since there's no invoices table
+        setInvoices(sampleInvoices);
         
       } catch (error) {
         console.error('Error fetching billing data:', error);
@@ -151,11 +143,7 @@ export default function Billing() {
         });
         
         // Set sample data for invoices
-        setInvoices([
-          { id: "#INV-001", date: "Jun 1, 2023", amount: "$79.99", status: "Paid" },
-          { id: "#INV-002", date: "May 1, 2023", amount: "$79.99", status: "Paid" },
-          { id: "#INV-003", date: "Apr 1, 2023", amount: "$79.99", status: "Paid" },
-        ]);
+        setInvoices(sampleInvoices);
       } finally {
         setIsLoading(false);
       }
