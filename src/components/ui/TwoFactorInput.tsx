@@ -16,6 +16,7 @@ export function TwoFactorInput({ onSubmit, loading = false, error }: TwoFactorIn
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length === 6) {
+      console.log("Submitting 2FA code:", otp);
       onSubmit(otp);
     }
   };

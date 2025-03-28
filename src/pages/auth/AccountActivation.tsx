@@ -281,7 +281,8 @@ export default function AccountActivation() {
         secret: OTPAuth.Secret.fromBase32(cleanSecret)
       });
       
-      const result = totp.validate({ token: cleanToken, window: 2 });
+      // Use a larger window to allow for time drift (±2 minutes)
+      const result = totp.validate({ token: cleanToken, window: 4 });
       console.log('TOTP validation result:', result !== null ? 'Valid' : 'Invalid', 'for secret:', cleanSecret);
       
       if (result === null) {
@@ -297,7 +298,55 @@ export default function AccountActivation() {
       return false;
     }
   };
-  
+
+  const handleTotpVerification = (code: string) => {
+    setIsLoading(true);
+    
+    try {
+      if (verifyAuthenticatorCode(code)) {
+        supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
+          if (userError || !user) {
+            setVerificationError('User not found. Please ensure you are logged in.');
+            setIsLoading(false);
+            return;
+          }
+          
+          supabase
+            .from('user_security')
+            .upsert({
+              user_id: user.id,
+              google_auth_enabled: enableTwoFactor,
+              google_auth_secret: totpSecret.replace(/\s+/g, ''),
+            })
+            .then(({ error }) => {
+              if (error) {
+                console.error('Error saving authenticator settings:', error);
+                setVerificationError('Failed to save authenticator settings. Please try again.');
+                setIsLoading(false);
+                return;
+              }
+              
+              setCurrentStep(STEPS.SUBSCRIPTION);
+              setIsLoading(false);
+              
+              toast({
+                title: "2FA " + (enableTwoFactor ? "Enabled" : "Configured"),
+                description: enableTwoFactor 
+                  ? "Your account is now protected with two-factor authentication." 
+                  : "You can enable 2FA later in your security settings."
+              });
+            });
+        });
+      } else {
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error in TOTP verification:', error);
+      setVerificationError('An unexpected error occurred. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
   const saveAuthenticatorSettings = async () => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -332,25 +381,6 @@ export default function AccountActivation() {
     }
   };
 
-  const handleTotpVerification = (code: string) => {
-    setIsLoading(true);
-    
-    if (verifyAuthenticatorCode(code)) {
-      saveAuthenticatorSettings()
-        .then(() => {
-          setCurrentStep(STEPS.SUBSCRIPTION);
-          setIsLoading(false);
-        })
-        .catch(error => {
-          console.error('Error saving authenticator settings:', error);
-          setVerificationError('Failed to save authenticator settings');
-          setIsLoading(false);
-        });
-    } else {
-      setIsLoading(false);
-    }
-  };
-  
   const handleVerifyEmail = () => {
     setIsLoading(true);
     

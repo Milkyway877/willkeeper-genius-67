@@ -113,8 +113,8 @@ export function validateTOTP(token: string, secret: string): boolean {
       secret: OTPAuth.Secret.fromBase32(cleanSecret)
     });
     
-    // Use a larger window to allow for time drift (±1 minute)
-    const result = totp.validate({ token: cleanToken, window: 2 });
+    // Use a larger window to allow for time drift (±2 minutes = 4 periods of 30 seconds)
+    const result = totp.validate({ token: cleanToken, window: 4 });
     console.log('TOTP validation result:', result !== null ? 'Valid' : 'Invalid');
     
     // If result is null, the token is invalid
