@@ -166,7 +166,7 @@ export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
     // Map the database fields to our interface fields
     return (data || []).map(item => ({
       id: item.id,
-      name: item.beneficiary_name || item.name, // Support both field names
+      name: item.beneficiary_name, // Map beneficiary_name to name
       relationship: item.relationship,
       percentage: item.percentage,
       created_at: item.created_at,
