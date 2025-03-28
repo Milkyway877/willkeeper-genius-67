@@ -202,6 +202,7 @@ export async function setup2FA(verificationCode: string): Promise<{ success: boo
       .eq('user_id', user.id);
       
     if (error) {
+      console.error('Error updating user security record:', error);
       throw error;
     }
     
@@ -241,6 +242,7 @@ export async function disable2FA(): Promise<boolean> {
       .eq('user_id', user.id);
       
     if (error) {
+      console.error('Error disabling 2FA:', error);
       throw error;
     }
     
@@ -269,14 +271,15 @@ export async function getUserSecurity(): Promise<UserSecurity | null> {
       .from('user_security')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
       
     if (error) {
-      // If no record is found, this is expected for new users
-      if (error.code === 'PGRST116') {
-        return null;
+      // Don't throw for PGRST116 - this just means no record was found
+      if (error.code !== 'PGRST116') {
+        console.error('Error getting user security:', error);
+        throw error;
       }
-      throw error;
+      return null;
     }
     
     return data as UserSecurity;
@@ -310,12 +313,14 @@ export async function createUserSecurity(): Promise<UserSecurity | null> {
       .insert({
         user_id: user.id,
         encryption_key: encryptionKey,
-        google_auth_enabled: false
+        google_auth_enabled: false,
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
       
     if (error) {
+      console.error('Error creating user security:', error);
       throw error;
     }
     
@@ -364,6 +369,7 @@ export async function generateRecoveryCodes(userId: string, count: number = 10):
       .insert(recoveryCodesData);
       
     if (error) {
+      console.error('Error storing recovery codes:', error);
       throw error;
     }
     
@@ -389,6 +395,7 @@ export async function getUserRecoveryCodes(userId: string): Promise<RecoveryCode
       .order('created_at', { ascending: false });
       
     if (error) {
+      console.error('Error getting recovery codes:', error);
       throw error;
     }
     
@@ -430,6 +437,7 @@ export async function validateRecoveryCode(userId: string, code: string): Promis
       .eq('id', data.id);
       
     if (updateError) {
+      console.error('Error marking recovery code as used:', updateError);
       throw updateError;
     }
     
@@ -484,6 +492,7 @@ export async function generateEncryptionKey(
       .single();
       
     if (error) {
+      console.error('Error generating encryption key:', error);
       throw error;
     }
     
@@ -515,6 +524,7 @@ export async function getUserEncryptionKeys(): Promise<EncryptionKey[]> {
       .order('created_at', { ascending: false });
       
     if (error) {
+      console.error('Error getting encryption keys:', error);
       throw error;
     }
     
@@ -542,6 +552,7 @@ export async function updateEncryptionKeyStatus(keyId: string, status: string): 
       .eq('id', keyId);
       
     if (error) {
+      console.error('Error updating encryption key status:', error);
       throw error;
     }
     

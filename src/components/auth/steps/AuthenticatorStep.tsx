@@ -76,8 +76,9 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         .eq('user_id', user.id)
         .maybeSingle();
         
-      if (queryError) {
+      if (queryError && queryError.code !== 'PGRST116') {
         console.error("Error checking user security record:", queryError);
+        throw new Error("Error checking security records");
       }
       
       if (existingRecord) {
@@ -87,10 +88,12 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           .update({
             google_auth_enabled: enableTwoFactor,
             google_auth_secret: authenticatorKey,
+            updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id);
           
         if (updateError) {
+          console.error("Error updating security record:", updateError);
           throw new Error(updateError.message);
         }
       } else {
@@ -107,6 +110,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           });
           
         if (insertError) {
+          console.error("Error creating security record:", insertError);
           throw new Error(insertError.message);
         }
       }
@@ -121,7 +125,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       onNext();
     } catch (error) {
       console.error("Error setting up authenticator:", error);
-      
       setVerificationError(error.message || "Failed to set up authenticator. Please try again.");
     } finally {
       setIsLoading(false);
