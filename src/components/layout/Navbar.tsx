@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { DotPatternText } from '@/components/ui/DotPatternText';
 import { NotificationDropdown } from './NotificationDropdown';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -58,12 +59,34 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     });
   };
   
-  const handleLogout = () => {
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    });
-    navigate('/auth/signin');
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Error signing out:", error);
+        toast({
+          title: "Error logging out",
+          description: "There was an issue logging out. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+      
+      navigate('/auth/signin', { replace: true });
+    } catch (error) {
+      console.error("Unexpected error during logout:", error);
+      toast({
+        title: "Error logging out",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const isDashboardPage = isAuthenticated || 
@@ -288,9 +311,12 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   <Link to="/settings" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
                     Settings
                   </Link>
-                  <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-willtank-500 transition py-2 w-full text-left"
+                  >
                     Log Out
-                  </Link>
+                  </button>
                 </nav>
               ) : (
                 <nav className="flex flex-col space-y-4">

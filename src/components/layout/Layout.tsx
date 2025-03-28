@@ -6,9 +6,10 @@ import { PageTransition } from '@/components/animations/PageTransition';
 import { cn } from '@/lib/utils';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { FloatingHelp } from '@/components/ui/FloatingHelp';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,7 +19,23 @@ interface LayoutProps {
 export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  
+  // Check authentication status if required
+  useEffect(() => {
+    if (forceAuthenticated && !location.pathname.includes('/auth/')) {
+      const checkAuthStatus = async () => {
+        const { data } = await supabase.auth.getSession();
+        
+        if (!data.session) {
+          navigate('/auth/signin', { replace: true });
+        }
+      };
+      
+      checkAuthStatus();
+    }
+  }, [forceAuthenticated, location.pathname, navigate]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
