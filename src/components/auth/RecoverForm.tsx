@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const recoverSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -19,6 +20,7 @@ const recoverSchema = z.object({
 type RecoverFormInputs = z.infer<typeof recoverSchema>;
 
 export function RecoverForm() {
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   
   const form = useForm<RecoverFormInputs>({
@@ -29,19 +31,49 @@ export function RecoverForm() {
     },
   });
 
-  const onSubmit = (data: RecoverFormInputs) => {
-    console.log('Recovery data submitted:', data);
-    
-    // Show success toast
-    toast({
-      title: "Recovery successful",
-      description: "Your new TanKey has been sent to your email.",
-    });
-    
-    // Redirect to signin
-    setTimeout(() => {
-      navigate('/auth/signin');
-    }, 1500);
+  const onSubmit = async (data: RecoverFormInputs) => {
+    try {
+      setIsLoading(true);
+      
+      // In a real implementation, this would verify the PIN and generate a new TanKey
+      // For now, we'll simulate a successful recovery
+      
+      // Generate a new TanKey
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+      let newTanKey = '';
+      for (let i = 0; i < 24; i++) {
+        newTanKey += characters.charAt(Math.floor(Math.random() * characters.length));
+        if (i % 6 === 5 && i < 23) newTanKey += '-';
+      }
+      
+      // In a real implementation, this would be sent securely to the user's email
+      // For now, we'll show it in a toast
+      toast({
+        title: "New TanKey Generated",
+        description: `Your new TanKey is: ${newTanKey}`,
+        duration: 10000, // Show for 10 seconds
+      });
+      
+      toast({
+        title: "Recovery successful",
+        description: "Your new TanKey has been generated. Make sure to store it securely.",
+      });
+      
+      // Wait a bit before redirecting
+      setTimeout(() => {
+        navigate('/auth/signin');
+      }, 10000);
+    } catch (error) {
+      console.error("Recovery error:", error);
+      
+      toast({
+        title: "Recovery failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -87,8 +119,8 @@ export function RecoverForm() {
           )}
         />
         
-        <Button type="submit" className="w-full">
-          Recover TanKey <ArrowRight className="ml-2 h-4 w-4" />
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Recovering..." : "Recover TanKey"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
         </Button>
       </form>
     </Form>

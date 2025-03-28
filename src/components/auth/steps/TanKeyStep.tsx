@@ -10,6 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { TanKeyInputs, tanKeySchema } from '../SignUpSchemas';
 import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
+import { tanKeyService } from '@/services/tanKeyService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TanKeyStepProps {
   tanKey: string;
@@ -39,10 +41,33 @@ export function TanKeyStep({ tanKey, onNext }: TanKeyStepProps) {
     });
   };
 
+  const handleNext = async () => {
+    try {
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Store the TanKey in the database
+        await tanKeyService.storeTanKey(user.id, tanKey);
+      }
+      
+      // Proceed to the next step
+      onNext();
+    } catch (error) {
+      console.error("Error storing TanKey:", error);
+      
+      toast({
+        title: "Error",
+        description: "Could not save your TanKey. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <motion.div key="step3" {...fadeInUp}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onNext)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handleNext)} className="space-y-6">
           <div className="space-y-2">
             <FormLabel>Your Encryption/Decryption Key</FormLabel>
             <div className="relative">

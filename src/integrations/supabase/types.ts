@@ -196,6 +196,30 @@ export type Database = {
           },
         ]
       }
+      tan_keys: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_used: string | null
+          tan_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          tan_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_used?: string | null
+          tan_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_identity_verification: {
         Row: {
           created_at: string | null

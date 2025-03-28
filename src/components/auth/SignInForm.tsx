@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { tanKeyService } from '@/services/tanKeyService';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -19,6 +21,7 @@ type SignInFormInputs = z.infer<typeof signInSchema>;
 
 export function SignInForm() {
   const [showTanKey, setShowTanKey] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   
   const form = useForm<SignInFormInputs>({
@@ -29,19 +32,76 @@ export function SignInForm() {
     },
   });
 
-  const onSubmit = (data: SignInFormInputs) => {
-    console.log('Sign in data submitted:', data);
-    
-    // Show success toast
-    toast({
-      title: "Sign in successful",
-      description: "Redirecting to your dashboard...",
-    });
-    
-    // Redirect to dashboard (would normally check auth first)
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1500);
+  const onSubmit = async (data: SignInFormInputs) => {
+    try {
+      setIsLoading(true);
+      
+      // First, sign in with email
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.tanKey, // Using TanKey as password for now
+      });
+      
+      if (authError) {
+        toast({
+          title: "Authentication failed",
+          description: authError.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!authData.user) {
+        toast({
+          title: "Authentication failed",
+          description: "User not found",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Then verify the TanKey
+      const isTanKeyValid = await tanKeyService.verifyTanKey(
+        authData.user.id,
+        data.tanKey
+      );
+      
+      if (!isTanKeyValid) {
+        // Sign out if TanKey is invalid
+        await supabase.auth.signOut();
+        
+        toast({
+          title: "TanKey verification failed",
+          description: "The provided TanKey is invalid",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Show success toast
+      toast({
+        title: "Sign in successful",
+        description: "Redirecting to your dashboard...",
+      });
+      
+      // Redirect to dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+    } catch (error) {
+      console.error("Sign in error:", error);
+      
+      toast({
+        title: "Sign in failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -89,8 +149,8 @@ export function SignInForm() {
           )}
         />
         
-        <Button type="submit" className="w-full">
-          Sign In <ArrowRight className="ml-2 h-4 w-4" />
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Signing in..." : "Sign In"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
         </Button>
         
         <div className="space-y-2 mt-6">
