@@ -1,5 +1,6 @@
 
-import { OTPAuth } from 'otpauth';
+// Fix the OTPAuth import
+import * as OTPAuth from 'otpauth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -27,6 +28,15 @@ export interface EncryptionKey {
   last_used: string | null;
 }
 
+// User security interface
+export interface UserSecurity {
+  user_id: string;
+  google_auth_enabled: boolean;
+  google_auth_secret: string | null;
+  encryption_key: string;
+  last_login: string | null;
+}
+
 /**
  * Generates a TOTP URI for use with authenticator apps
  * @param secret The secret key for TOTP generation
@@ -51,13 +61,25 @@ export function generateTOTPUri(secret: string, account: string, issuer: string 
  * Generates a random TOTP secret key
  * @returns A formatted TOTP secret key
  */
-export function generateTOTPSecret(): string {
+export function generateTOTPSecret(): { secret: string; qrCodeUrl: string } {
   // Generate a random secret key of 20 bytes (160 bits)
   const secret = OTPAuth.Secret.random(20);
   const base32Secret = secret.base32;
   
   // Format the secret in groups of 4 characters for better readability
-  return base32Secret.match(/.{1,4}/g)?.join(' ') || base32Secret;
+  const formattedSecret = base32Secret.match(/.{1,4}/g)?.join(' ') || base32Secret;
+  
+  // Get the current user for the QR code
+  const user = supabase.auth.getUser();
+  const account = 'user@example.com'; // Default fallback
+  
+  // Generate the QR code URL
+  const qrCodeUrl = generateTOTPUri(formattedSecret, account);
+  
+  return { 
+    secret: formattedSecret,
+    qrCodeUrl
+  };
 }
 
 /**
@@ -169,7 +191,7 @@ export async function validateRecoveryCode(userId: string, code: string): Promis
       .eq('user_id', userId)
       .eq('code', code)
       .eq('used', false)
-      .single();
+      .maybeSingle();
       
     if (error || !data) return false;
     
@@ -190,6 +212,178 @@ export async function validateRecoveryCode(userId: string, code: string): Promis
     return true;
   } catch (error) {
     console.error('Error validating recovery code:', error);
+    return false;
+  }
+}
+
+/**
+ * Creates new user security settings
+ * @returns New user security settings
+ */
+export async function createUserSecurity(): Promise<UserSecurity | null> {
+  try {
+    // Get current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Authentication error",
+        description: "You must be logged in to create security settings",
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    // Generate an encryption key
+    const keyBytes = new Uint8Array(32); // 256 bits
+    crypto.getRandomValues(keyBytes);
+    
+    // Convert to a hex string for storage
+    const encryptionKey = Array.from(keyBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    // Store in user_security table
+    const { data, error } = await supabase
+      .from('user_security')
+      .insert({
+        user_id: user.id,
+        encryption_key: encryptionKey,
+        google_auth_enabled: false
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error creating user security:', error);
+      toast({
+        title: "Error creating security settings",
+        description: error.message,
+        variant: "destructive"
+      });
+      return null;
+    }
+    
+    return data as UserSecurity;
+  } catch (error) {
+    console.error('Error creating user security:', error);
+    return null;
+  }
+}
+
+/**
+ * Gets the security settings for the current user
+ * @returns User security settings
+ */
+export async function getUserSecurity(): Promise<UserSecurity | null> {
+  try {
+    // Get current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    
+    // Retrieve user security settings
+    const { data, error } = await supabase
+      .from('user_security')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+      
+    if (error) {
+      console.error('Error getting user security:', error);
+      return null;
+    }
+    
+    return data as UserSecurity | null;
+  } catch (error) {
+    console.error('Error getting user security:', error);
+    return null;
+  }
+}
+
+/**
+ * Sets up 2FA for a user
+ * @param verificationCode The verification code from the authenticator app
+ * @returns Success result and recovery codes
+ */
+export async function setup2FA(verificationCode: string): Promise<{ success: boolean, recoveryCodes?: string[] }> {
+  try {
+    // Get current user security settings
+    const security = await getUserSecurity();
+    if (!security) {
+      throw new Error("User security settings not found");
+    }
+    
+    // Get current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+    
+    // Generate a new secret if one doesn't exist
+    let secret = security.google_auth_secret;
+    if (!secret) {
+      const { secret: newSecret } = generateTOTPSecret();
+      secret = newSecret;
+    }
+    
+    // Validate the verification code
+    const isValid = validateTOTP(verificationCode, secret);
+    if (!isValid) {
+      return { success: false };
+    }
+    
+    // Update user security settings
+    const { error } = await supabase
+      .from('user_security')
+      .update({
+        google_auth_enabled: true,
+        google_auth_secret: secret
+      })
+      .eq('user_id', user.id);
+      
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    // Generate recovery codes
+    const recoveryCodes = await generateRecoveryCodes(user.id);
+    
+    return { 
+      success: true,
+      recoveryCodes
+    };
+  } catch (error) {
+    console.error('Error setting up 2FA:', error);
+    return { success: false };
+  }
+}
+
+/**
+ * Disables 2FA for a user
+ * @returns Success boolean
+ */
+export async function disable2FA(): Promise<boolean> {
+  try {
+    // Get current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+    
+    // Update user security settings
+    const { error } = await supabase
+      .from('user_security')
+      .update({
+        google_auth_enabled: false
+      })
+      .eq('user_id', user.id);
+      
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error disabling 2FA:', error);
     return false;
   }
 }

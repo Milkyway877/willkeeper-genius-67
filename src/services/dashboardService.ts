@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createUserSecurity, getUserSecurity } from "@/services/encryptionService";
 import { Notification } from "@/services/notificationService";
