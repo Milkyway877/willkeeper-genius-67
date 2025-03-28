@@ -89,13 +89,13 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
       animate={{ width: isCollapsed ? 64 : 256 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-gray-200 bg-white",
+        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800",
         isCollapsed ? "items-center" : ""
       )}
     >
       <div 
         className={cn(
-          "flex h-16 items-center border-b border-gray-200 px-4",
+          "flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-4",
           isCollapsed ? "justify-center" : "justify-between"
         )}
       >
@@ -122,8 +122,8 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
               className={cn(
                 "flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
                 isActive(item.href) 
-                  ? "bg-black text-white" 
-                  : "text-gray-600 hover:bg-gray-100 hover:text-black",
+                  ? "bg-black text-white dark:bg-white dark:text-black" 
+                  : "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
                 isCollapsed ? "justify-center" : "justify-between"
               )}
             >
@@ -141,14 +141,14 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
       
       {!isCollapsed && (
         <div className="mt-auto p-4">
-          <div className="rounded-lg bg-gray-50 p-3">
+          <div className="rounded-lg bg-[#FFF5E6] dark:bg-gray-800 p-3">
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-black flex items-center justify-center">
                 <Menu className="h-4 w-4 text-white" />
               </div>
               <div className="ml-3">
-                <p className="text-xs font-medium text-gray-900">Need help?</p>
-                <p className="text-xs text-gray-500">Check our docs</p>
+                <p className="text-xs font-medium text-gray-900 dark:text-gray-200">Need help?</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Check our docs</p>
               </div>
             </div>
           </div>

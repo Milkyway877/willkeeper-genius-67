@@ -15,19 +15,19 @@ export default function Business() {
     {
       title: "Law Firms",
       description: "Streamline your client's estate planning process with our white-labeled platform. Reduce paperwork, improve client satisfaction, and increase efficiency.",
-      icon: <Scale className="text-willtank-500" size={24} />,
+      icon: <Scale className="text-black" size={24} />,
       features: ["Client management dashboard", "Document automation", "Integration with legal CRMs", "Custom branded portal"]
     },
     {
       title: "Financial Advisors",
       description: "Incorporate comprehensive estate planning into your wealth management services. Provide added value to clients and ensure holistic financial planning.",
-      icon: <BarChart className="text-willtank-500" size={24} />,
+      icon: <BarChart className="text-black" size={24} />,
       features: ["Wealth management integration", "Financial planning tools", "Inheritance tax planning", "Client collaboration features"]
     },
     {
       title: "Banks & Financial Institutions",
       description: "Offer WillTank as a premium service to your high-net-worth clients. Strengthen relationships and increase customer loyalty with comprehensive estate services.",
-      icon: <Landmark className="text-willtank-500" size={24} />,
+      icon: <Landmark className="text-black" size={24} />,
       features: ["White-label solution", "API integration", "Multi-user access control", "Compliance monitoring"]
     }
   ];
@@ -64,7 +64,7 @@ export default function Business() {
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 <div className="p-6">
-                  <div className="bg-willtank-50 p-3 rounded-full w-fit mb-4">
+                  <div className="bg-[#FFF5E6] p-3 rounded-full w-fit mb-4">
                     {solution.icon}
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">{solution.title}</h3>
@@ -72,7 +72,7 @@ export default function Business() {
                   <ul className="space-y-2">
                     {solution.features.map((feature, i) => (
                       <li key={i} className="flex items-center text-sm">
-                        <div className="w-1.5 h-1.5 rounded-full bg-willtank-500 mr-2"></div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-black mr-2"></div>
                         {feature}
                       </li>
                     ))}
@@ -86,7 +86,7 @@ export default function Business() {
           </motion.div>
 
           <motion.div 
-            className="bg-willtank-50 rounded-2xl p-8 md:p-12"
+            className="bg-[#FFF5E6] rounded-2xl p-8 md:p-12"
             initial="hidden"
             animate="visible"
             variants={fadeIn}
@@ -104,23 +104,23 @@ export default function Business() {
                 <h3 className="text-lg font-medium text-gray-800 mb-4">Enterprise Features</h3>
                 <ul className="space-y-3">
                   <li className="flex items-start">
-                    <div className="text-willtank-500 mr-2">✓</div>
+                    <div className="text-black mr-2">✓</div>
                     <p>Advanced user permission system</p>
                   </li>
                   <li className="flex items-start">
-                    <div className="text-willtank-500 mr-2">✓</div>
+                    <div className="text-black mr-2">✓</div>
                     <p>Custom branding and white labeling</p>
                   </li>
                   <li className="flex items-start">
-                    <div className="text-willtank-500 mr-2">✓</div>
+                    <div className="text-black mr-2">✓</div>
                     <p>Dedicated account management</p>
                   </li>
                   <li className="flex items-start">
-                    <div className="text-willtank-500 mr-2">✓</div>
+                    <div className="text-black mr-2">✓</div>
                     <p>GDPR and CCPA compliant</p>
                   </li>
                   <li className="flex items-start">
-                    <div className="text-willtank-500 mr-2">✓</div>
+                    <div className="text-black mr-2">✓</div>
                     <p>API access for seamless integration</p>
                   </li>
                 </ul>

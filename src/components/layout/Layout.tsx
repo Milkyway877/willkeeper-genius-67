@@ -75,7 +75,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     <NotificationsProvider>
       <div className={cn(
         "flex h-screen w-full",
-        shouldHaveCreamBackground ? "bg-[#FFF5E6]" : "bg-gray-50"
+        shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
       )}>
         {showAuthenticatedLayout && (
           <WillTankSidebar isCollapsed={!showSidebar} />

@@ -16,7 +16,7 @@ export default function HowItWorks() {
     {
       title: "Create Your Account",
       description: "Sign up in minutes with your email address. We'll verify your identity and set up your secure account with multi-factor authentication.",
-      icon: <UserPlus className="text-willtank-500" size={24} />,
+      icon: <UserPlus className="text-black" size={24} />,
       image: "/placeholder.svg",
       benefits: [
         "Secure verification process",
@@ -28,7 +28,7 @@ export default function HowItWorks() {
     {
       title: "Draft Your Will",
       description: "Use our intuitive interface to create a legally binding will. Our AI-powered assistant helps you make informed decisions based on your jurisdiction.",
-      icon: <FileText className="text-willtank-500" size={24} />,
+      icon: <FileText className="text-black" size={24} />,
       image: "/placeholder.svg",
       benefits: [
         "Step-by-step guided process",
@@ -40,7 +40,7 @@ export default function HowItWorks() {
     {
       title: "Secure Your Documents",
       description: "Your will and related documents are protected with military-grade encryption. Only you control who can access your information and when.",
-      icon: <Shield className="text-willtank-500" size={24} />,
+      icon: <Shield className="text-black" size={24} />,
       image: "/placeholder.svg",
       benefits: [
         "AES-256 bit encryption",
@@ -52,7 +52,7 @@ export default function HowItWorks() {
     {
       title: "Share With Trusted Contacts",
       description: "Designate executors and trusted contacts who will receive access to your will when needed, with the level of permissions you specify.",
-      icon: <Share2 className="text-willtank-500" size={24} />,
+      icon: <Share2 className="text-black" size={24} />,
       image: "/placeholder.svg",
       benefits: [
         "Granular permission settings",
@@ -94,8 +94,8 @@ export default function HowItWorks() {
             variants={fadeIn}
             className="text-center mb-16"
           >
-            <div className="inline-flex items-center gap-2 rounded-full bg-willtank-50 px-3 py-1 text-sm font-medium text-willtank-700 mb-4">
-              <HelpCircle size={14} />
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#FFF5E6] px-3 py-1 text-sm font-medium text-gray-700 mb-4">
+              <HelpCircle size={14} className="text-black" />
               <span>Simple Process</span>
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-4">How WillTank Works</h1>
@@ -115,24 +115,24 @@ export default function HowItWorks() {
                 transition={{ duration: 0.6 }}
               >
                 <div className={index % 2 !== 0 ? 'md:col-start-2' : ''}>
-                  <div className="bg-willtank-50 w-12 h-12 rounded-lg flex items-center justify-center mb-6">
+                  <div className="bg-[#FFF5E6] w-12 h-12 rounded-lg flex items-center justify-center mb-6">
                     {step.icon}
                   </div>
-                  <span className="text-willtank-600 font-medium mb-2 block">Step {index + 1}</span>
+                  <span className="text-black font-medium mb-2 block">Step {index + 1}</span>
                   <h2 className="text-2xl font-bold mb-4 text-gray-900">{step.title}</h2>
                   <p className="text-gray-600 mb-6">{step.description}</p>
                   
                   <div className="space-y-3">
                     {step.benefits.map((benefit, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <CheckCircle size={18} className="text-willtank-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle size={18} className="text-black mt-0.5 flex-shrink-0" />
                         <span>{benefit}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 
-                <div className={`rounded-xl overflow-hidden shadow-md bg-gradient-to-br from-willtank-50 to-gray-100 aspect-[4/3] flex items-center justify-center ${index % 2 !== 0 ? 'md:col-start-1' : ''}`}>
+                <div className={`rounded-xl overflow-hidden shadow-md bg-gradient-to-br from-[#FFF5E6] to-gray-100 aspect-[4/3] flex items-center justify-center ${index % 2 !== 0 ? 'md:col-start-1' : ''}`}>
                   <img 
                     src={step.image} 
                     alt={`Step ${index + 1}: ${step.title}`} 
@@ -144,7 +144,7 @@ export default function HowItWorks() {
           </div>
 
           <motion.div 
-            className="bg-gradient-to-br from-willtank-50 to-gray-50 rounded-2xl p-8 md:p-12 mb-16"
+            className="bg-gradient-to-br from-[#FFF5E6] to-gray-50 rounded-2xl p-8 md:p-12 mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -186,7 +186,7 @@ export default function HowItWorks() {
               Start creating your will today and ensure your assets are protected for future generations.
             </p>
             <Link to="/auth/signup">
-              <Button className="bg-willtank-500 hover:bg-willtank-600">
+              <Button className="bg-black hover:bg-gray-800 text-white">
                 Get Started <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

@@ -26,7 +26,12 @@ export function ModeToggle() {
   }, [theme]);
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-black hover:text-gray-700 transition-colors">
+    <Button 
+      variant="ghost" 
+      size="icon" 
+      onClick={toggleTheme} 
+      className="text-black hover:text-gray-700 dark:text-white dark:hover:text-gray-200 transition-colors"
+    >
       {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
     </Button>
   );
