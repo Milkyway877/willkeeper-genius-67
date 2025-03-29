@@ -2,10 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Logo } from '@/components/ui/logo/Logo';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
+import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,10 +75,10 @@ export default function EmailVerification() {
           variant: "default",
         });
         
-        // Mark user as verified in the database
+        // Mark user as activation_complete in the database since we're using that instead of email_verified
         await supabase
           .from('user_profiles')
-          .update({ email_verified: true })
+          .update({ activation_complete: true })
           .eq('id', data.user.id);
         
         // Navigate to dashboard
@@ -136,77 +135,66 @@ export default function EmailVerification() {
   };
 
   return (
-    <AuthLayout>
-      <div className="flex flex-col items-center justify-center space-y-8 pt-12">
-        <Logo size="md" />
+    <AuthLayout
+      title="Verify Your Email"
+      subtitle={`We've sent a verification code to ${email}. Please enter the code below to verify your account.`}
+      rightPanel={<VerificationInfoPanel />}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full"
+      >
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+            <FormField
+              control={form.control}
+              name="code"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Verification Code</FormLabel>
+                  <FormControl>
+                    <InputOTP
+                      maxLength={6}
+                      {...field}
+                      render={({ slots }) => (
+                        <InputOTPGroup>
+                          {slots.map((slot, i) => (
+                            <InputOTPSlot key={i} {...slot} index={i} />
+                          ))}
+                        </InputOTPGroup>
+                      )}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-full max-w-md px-8 py-12 bg-white rounded-xl shadow-sm"
-        >
-          <div className="space-y-6">
-            <div className="text-center">
-              <h1 className="text-2xl font-semibold tracking-tight">Verify Your Email</h1>
-              <p className="text-sm text-gray-500 mt-2">
-                We've sent a verification code to {email}. Please enter the code below to verify your account.
-              </p>
-            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading || form.watch('code').length !== 6}
+            >
+              {isLoading ? "Verifying..." : "Verify Email"}
+            </Button>
+          </form>
+        </Form>
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="code"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Verification Code</FormLabel>
-                      <FormControl>
-                        <InputOTP
-                          maxLength={6}
-                          {...field}
-                          render={({ slots }) => (
-                            <InputOTPGroup>
-                              {slots.map((slot, index) => (
-                                <InputOTPSlot key={index} {...slot} />
-                              ))}
-                            </InputOTPGroup>
-                          )}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isLoading || form.watch('code').length !== 6}
-                >
-                  {isLoading ? "Verifying..." : "Verify Email"}
-                </Button>
-              </form>
-            </Form>
-
-            <div className="text-center">
-              <p className="text-sm text-gray-500">
-                Didn't receive a code?{" "}
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto" 
-                  onClick={handleResendCode}
-                  disabled={resendLoading}
-                >
-                  {resendLoading ? "Sending..." : "Resend Code"}
-                </Button>
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        <SecurityInfoPanel mode="verification" />
-      </div>
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-500">
+            Didn't receive a code?{" "}
+            <Button 
+              variant="link" 
+              className="p-0 h-auto" 
+              onClick={handleResendCode}
+              disabled={resendLoading}
+            >
+              {resendLoading ? "Sending..." : "Resend Code"}
+            </Button>
+          </p>
+        </div>
+      </motion.div>
     </AuthLayout>
   );
 }

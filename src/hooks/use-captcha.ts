@@ -12,16 +12,18 @@ export const useCaptcha = () => {
   };
 
   const validateCaptcha = (): boolean => {
+    // For debugging purposes, bypass captcha validation
+    return true;
+    
+    // In production, uncomment this code:
+    /*
     if (captchaRef.current) {
-      // For debugging purposes, bypass captcha validation
-      return true;
-      
-      // In production, uncomment this line:
-      // const isValid = captchaRef.current.validate();
-      // setIsCaptchaValid(isValid);
-      // return isValid;
+      const isValid = captchaRef.current.validate();
+      setIsCaptchaValid(isValid);
+      return isValid;
     }
-    return true; // Temporarily return true to unblock users
+    return false;
+    */
   };
 
   return {

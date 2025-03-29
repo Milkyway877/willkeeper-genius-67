@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -10,6 +11,8 @@ export interface UserProfile {
   is_activated: boolean | null;
   subscription_plan: string | null;
   activation_date: string | null;
+  email: string | null;
+  email_verified: boolean | null;
 }
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
@@ -40,7 +43,9 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       updated_at: data.updated_at,
       is_activated: data.activation_complete, // Map from activation_complete to is_activated
       subscription_plan: null, // Default to null since this column doesn't exist yet
-      activation_date: null // Set a default value as it doesn't exist in the database
+      activation_date: null, // Set a default value as it doesn't exist in the database
+      email: session.user.email, // Add email from the session
+      email_verified: session.user.email_confirmed_at !== null, // Add email verification status
     };
     
     return profile;
@@ -77,6 +82,15 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       delete dbUpdates.subscription_plan;
     }
     
+    // Remove email and email_verified fields as they don't exist in the database
+    if (dbUpdates.email !== undefined) {
+      delete dbUpdates.email;
+    }
+    
+    if (dbUpdates.email_verified !== undefined) {
+      delete dbUpdates.email_verified;
+    }
+    
     const { data, error } = await supabase
       .from('user_profiles')
       .update(dbUpdates)
@@ -98,7 +112,9 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       updated_at: data.updated_at,
       is_activated: data.activation_complete, // Map from activation_complete to is_activated
       subscription_plan: null, // Default to null since this column doesn't exist yet
-      activation_date: null // Set a default value as it doesn't exist in the database
+      activation_date: null, // Set a default value as it doesn't exist in the database
+      email: session.user.email, // Add email from the session
+      email_verified: session.user.email_confirmed_at !== null, // Add email verification status
     };
     
     return profile;

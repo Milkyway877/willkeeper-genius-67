@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
-  rightPanel: React.ReactNode;
-  title: string;
+  rightPanel?: React.ReactNode;
+  title?: string;
   subtitle?: string;
 }
 
@@ -25,10 +25,12 @@ export function AuthLayout({ children, rightPanel, title, subtitle }: AuthLayout
         
         <main className="flex-1 flex items-center justify-center px-6 py-10 md:px-12">
           <PageTransition className="w-full max-w-md mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold mb-2 text-black">{title}</h1>
-              {subtitle && <p className="text-gray-600 font-medium">{subtitle}</p>}
-            </div>
+            {title && (
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold mb-2 text-black">{title}</h1>
+                {subtitle && <p className="text-gray-600 font-medium">{subtitle}</p>}
+              </div>
+            )}
             
             {children}
           </PageTransition>
@@ -40,14 +42,16 @@ export function AuthLayout({ children, rightPanel, title, subtitle }: AuthLayout
       </div>
       
       {/* Right panel with security info */}
-      <div className={cn(
-        "hidden lg:flex lg:w-[450px] bg-willtank-50 flex-col items-center justify-center p-12 border-l border-border",
-        "dark:bg-slate-900"
-      )}>
-        <PageTransition>
-          {rightPanel}
-        </PageTransition>
-      </div>
+      {rightPanel && (
+        <div className={cn(
+          "hidden lg:flex lg:w-[450px] bg-willtank-50 flex-col items-center justify-center p-12 border-l border-border",
+          "dark:bg-slate-900"
+        )}>
+          <PageTransition>
+            {rightPanel}
+          </PageTransition>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,6 +25,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const { profile } = useUserProfile();
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -54,12 +56,20 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         
         if (!data.session) {
           navigate('/auth/signin', { replace: true });
+        } else if (profile && !profile.is_activated) {
+          // If the user is logged in but email is not verified and they're trying to access protected routes
+          const isEmailVerified = profile.email_verified;
+          
+          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
+            // Redirect to email verification with email as a parameter
+            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+          }
         }
       };
       
       checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate]);
+  }, [forceAuthenticated, location.pathname, navigate, profile]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);

@@ -2,17 +2,21 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { UserProfile } from '@/services/profileService';
 
 interface UserAvatarProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  user?: UserProfile | null;
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({ 
   className = "", 
-  size = "md" 
+  size = "md",
+  user
 }) => {
   const { profile, initials } = useUserProfile();
+  const displayProfile = user || profile;
   
   const getSizeClass = () => {
     switch (size) {
@@ -25,10 +29,10 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   
   return (
     <Avatar className={`${getSizeClass()} ${className}`}>
-      {profile?.avatar_url && (
+      {displayProfile?.avatar_url && (
         <AvatarImage 
-          src={profile.avatar_url} 
-          alt={profile.full_name || "User avatar"} 
+          src={displayProfile.avatar_url} 
+          alt={displayProfile.full_name || "User avatar"} 
         />
       )}
       <AvatarFallback className="bg-willtank-100 text-willtank-700 font-medium">
