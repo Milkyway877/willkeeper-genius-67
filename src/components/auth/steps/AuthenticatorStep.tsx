@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -74,7 +75,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         return;
       }
 
-      // If the code is valid, we'll manually update the database
+      // If the code is valid, we'll update the database
       // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
