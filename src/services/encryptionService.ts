@@ -356,7 +356,20 @@ export const getUserEncryptionKeys = async (): Promise<EncryptionKey[]> => {
       return [];
     }
     
-    return data || [];
+    // Map database records to EncryptionKey interface
+    return (data || []).map(item => ({
+      id: item.id,
+      user_id: item.user_id,
+      name: item.name,
+      type: item.type,
+      algorithm: item.algorithm,
+      strength: item.strength,
+      key_material: item.value, // Map 'value' from DB to 'key_material' in interface
+      status: item.status,
+      created_at: item.created_at,
+      updated_at: item.created_at, // Use created_at as updated_at if not available
+      last_used: item.last_used
+    }));
   } catch (error) {
     console.error('Error fetching encryption keys:', error);
     return [];
@@ -381,19 +394,18 @@ export const generateEncryptionKey = async (
     // Generate a random key material
     const keyMaterial = generateRandomString(Number(strength) / 8);
     
+    // Insert record using the database column names
     const { data, error } = await supabase
       .from('encryption_keys')
-      .insert([
-        {
-          user_id: user.id,
-          name,
-          type,
-          algorithm,
-          strength,
-          key_material: keyMaterial,
-          status: 'active'
-        }
-      ])
+      .insert({
+        user_id: user.id,
+        name,
+        type,
+        algorithm,
+        strength,
+        value: keyMaterial, // Use 'value' field for database
+        status: 'active'
+      })
       .select()
       .single();
     
@@ -402,7 +414,20 @@ export const generateEncryptionKey = async (
       return null;
     }
     
-    return data;
+    // Map database record to EncryptionKey interface
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      name: data.name,
+      type: data.type,
+      algorithm: data.algorithm,
+      strength: data.strength,
+      key_material: data.value, // Map 'value' from DB to 'key_material' in interface
+      status: data.status,
+      created_at: data.created_at,
+      updated_at: data.created_at, // Use created_at as updated_at
+      last_used: data.last_used
+    };
   } catch (error) {
     console.error('Error creating encryption key:', error);
     return null;
@@ -416,7 +441,7 @@ export const updateEncryptionKeyStatus = async (keyId: string, status: string): 
       .from('encryption_keys')
       .update({ 
         status,
-        updated_at: new Date().toISOString()
+        // No need to update updated_at as it's likely handled by the database
       })
       .eq('id', keyId);
     
