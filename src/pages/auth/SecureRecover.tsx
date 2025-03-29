@@ -1,0 +1,71 @@
+
+import React from 'react';
+import { RecoverForm } from '@/components/auth/RecoverForm';
+import Captcha from '@/components/auth/Captcha';
+import HoneypotField from '@/components/auth/HoneypotField';
+import NoPasteWarning from '@/components/auth/NoPasteWarning';
+import { useCaptcha } from '@/hooks/use-captcha';
+import { AuthLayout } from '@/components/auth/AuthLayout';
+import { toast } from '@/hooks/use-toast';
+
+const SecureRecover = () => {
+  const { isCaptchaValid, handleCaptchaValidation } = useCaptcha();
+
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    
+    // Check honeypot field
+    const formData = new FormData(event.currentTarget);
+    const honeypotValue = formData.get('user_email_confirmation');
+    
+    if (honeypotValue) {
+      // This is likely a bot - silently fail but appear to succeed
+      toast({
+        title: "Recovery email sent",
+        description: "If an account exists with this email, you'll receive instructions to reset your password.",
+        variant: "default",
+      });
+      
+      // Actually do nothing
+      return;
+    }
+    
+    // Check captcha
+    if (!isCaptchaValid) {
+      toast({
+        title: "Security check required",
+        description: "Please complete the captcha verification first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Let the original form submit handler take over
+    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+    if (submitButton) {
+      (submitButton as HTMLButtonElement).click();
+    }
+  };
+
+  return (
+    <AuthLayout>
+      <div className="relative">
+        <HoneypotField name="user_email_confirmation" />
+        
+        <form onSubmit={onSubmit}>
+          <RecoverForm />
+          
+          <div className="mt-6">
+            <NoPasteWarning />
+          </div>
+          
+          <div className="my-6">
+            <Captcha onValidated={handleCaptchaValidation} />
+          </div>
+        </form>
+      </div>
+    </AuthLayout>
+  );
+};
+
+export default SecureRecover;

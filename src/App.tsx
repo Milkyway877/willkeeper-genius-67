@@ -14,10 +14,12 @@ import Pricing from './pages/Pricing';
 import NotFound from './pages/NotFound';
 import Blog from './pages/Blog';
 import BlogArticle from './pages/BlogArticle';
-import AuthSignIn from './pages/auth/SignIn';
-import AuthSignUp from './pages/auth/SignUp';
-import AuthForgotPassword from './pages/auth/Recover';
+// Import secure auth components
+import SecureSignIn from './pages/auth/SecureSignIn';
+import SecureSignUp from './pages/auth/SecureSignUp';
+import SecureRecover from './pages/auth/SecureRecover';
 import AuthResetPassword from './pages/auth/ResetPassword';
+import AccountActivation from './pages/auth/AccountActivation';
 import Dashboard from './pages/Dashboard';
 import WillDashboard from './pages/will/Will';
 import WillEditor from './pages/will/WillCreation';
@@ -27,13 +29,15 @@ import Settings from './pages/settings/Settings';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
-import AccountActivation from './pages/auth/AccountActivation';
 
 // Import the Documentation pages
 import Documentation from './pages/corporate/Documentation';
 import GettingStarted from './pages/corporate/documentation/GettingStarted';
 import UserGuides from './pages/corporate/documentation/UserGuides';
 import API from './pages/corporate/documentation/API';
+
+// Initialize captcha styles
+import 'react-simple-captcha/dist/react-simple-captcha.css';
 
 const queryClient = new QueryClient();
 
@@ -54,10 +58,10 @@ function App() {
             <Route path="/help" element={<Help />} />
             <Route path="/search" element={<Search />} />
             
-            {/* Auth routes */}
-            <Route path="/auth/signin" element={<AuthSignIn />} />
-            <Route path="/auth/signup" element={<AuthSignUp />} />
-            <Route path="/auth/forgot-password" element={<AuthForgotPassword />} />
+            {/* Auth routes - using our new secure components */}
+            <Route path="/auth/signin" element={<SecureSignIn />} />
+            <Route path="/auth/signup" element={<SecureSignUp />} />
+            <Route path="/auth/forgot-password" element={<SecureRecover />} />
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
             <Route path="/auth/activate" element={<AccountActivation />} />
             
