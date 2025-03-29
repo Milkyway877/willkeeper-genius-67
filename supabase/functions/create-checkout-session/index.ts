@@ -17,10 +17,24 @@ serve(async (req) => {
   }
 
   try {
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    // Initialize Stripe with API key from environment variable
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeSecretKey) {
+      console.error("STRIPE_SECRET_KEY is not set in environment variables");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
     });
 
+    // Parse request data
     let reqData;
     try {
       reqData = await req.json();
@@ -45,10 +59,21 @@ serve(async (req) => {
     
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
-      const supabaseClient = createClient(
-        Deno.env.get("SUPABASE_URL") || "",
-        Deno.env.get("SUPABASE_ANON_KEY") || ""
-      );
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.error("Missing Supabase environment variables");
+        return new Response(
+          JSON.stringify({ error: "Server configuration error" }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+      
+      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
       
       try {
         const token = authHeader.replace("Bearer ", "");
@@ -61,11 +86,12 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Error getting user data:", error);
+        // Continue without customer info but don't fail
       }
     }
 
     // Look up existing customer or create a new one if email is available
-    let customerId = undefined;
+    let customerId;
     if (customerEmail) {
       try {
         const customers = await stripe.customers.list({
@@ -88,30 +114,30 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Error handling Stripe customer:", error);
-        // Continue without customer ID
+        // Continue without customer ID but don't fail
       }
     }
 
-    // Define real Stripe product price IDs
+    // Define Stripe product price IDs with fallbacks
     const PRICE_IDS = {
       starter: {
-        monthly: Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY") || "price_1SLzknHTKA0osvsHDZyNfQmV",
-        yearly: Deno.env.get("STRIPE_PRICE_STARTER_YEARLY") || "price_1SLzlZHTKA0osvsHayvlZEQB",
-        lifetime: Deno.env.get("STRIPE_PRICE_STARTER_LIFETIME") || "price_1SLzlyHTKA0osvsHWE6B6gTQ", 
+        monthly: Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY") || "price_1OvCj1HTKA0osvsHfGiEW2sX",
+        yearly: Deno.env.get("STRIPE_PRICE_STARTER_YEARLY") || "price_1OvCj1HTKA0osvsHpqQ5wVE3",
+        lifetime: Deno.env.get("STRIPE_PRICE_STARTER_LIFETIME") || "price_1OvCj1HTKA0osvsHLRbqKP8c",
       },
       gold: {
-        monthly: Deno.env.get("STRIPE_PRICE_GOLD_MONTHLY") || "price_1SLzmRHTKA0osvsHlccYFqyn",
-        yearly: Deno.env.get("STRIPE_PRICE_GOLD_YEARLY") || "price_1SLzmtHTKA0osvsHo5NdQg9W",
-        lifetime: Deno.env.get("STRIPE_PRICE_GOLD_LIFETIME") || "price_1SLznSHTKA0osvsHjU8w0fzK",
+        monthly: Deno.env.get("STRIPE_PRICE_GOLD_MONTHLY") || "price_1OvCj3HTKA0osvsHcgZJGnJP",
+        yearly: Deno.env.get("STRIPE_PRICE_GOLD_YEARLY") || "price_1OvCj3HTKA0osvsHdDpyc6NL",
+        lifetime: Deno.env.get("STRIPE_PRICE_GOLD_LIFETIME") || "price_1OvCj3HTKA0osvsH5lNZp2I3",
       },
       platinum: {
-        monthly: Deno.env.get("STRIPE_PRICE_PLATINUM_MONTHLY") || "price_1SLzo3HTKA0osvsHVx1OLMsf",
-        yearly: Deno.env.get("STRIPE_PRICE_PLATINUM_YEARLY") || "price_1SLzoeHTKA0osvsHDLkQJzDh",
-        lifetime: Deno.env.get("STRIPE_PRICE_PLATINUM_LIFETIME") || "price_1SLzp6HTKA0osvsH84fcdWAA",
+        monthly: Deno.env.get("STRIPE_PRICE_PLATINUM_MONTHLY") || "price_1OvCj5HTKA0osvsHaTcWXd5J",
+        yearly: Deno.env.get("STRIPE_PRICE_PLATINUM_YEARLY") || "price_1OvCj5HTKA0osvsHYTJKYkEj",
+        lifetime: Deno.env.get("STRIPE_PRICE_PLATINUM_LIFETIME") || "price_1OvCj5HTKA0osvsHw4B9CXNV",
       },
     };
 
-    // Get the price ID for the chosen plan and billing period
+    // Validate plan and billing period
     if (!PRICE_IDS[plan] || !PRICE_IDS[plan][billingPeriod]) {
       return new Response(
         JSON.stringify({ error: `Invalid plan (${plan}) or billing period (${billingPeriod})` }),
@@ -128,9 +154,9 @@ serve(async (req) => {
     // Determine checkout mode based on billing period
     const checkoutMode = billingPeriod === "lifetime" ? "payment" : "subscription";
 
-    // Create checkout session
+    // Create checkout session with proper error handling
     try {
-      const session = await stripe.checkout.sessions.create({
+      const sessionConfig = {
         customer: customerId,
         customer_email: !customerId ? customerEmail : undefined, // Only set if we don't have a customer ID
         payment_method_types: ["card"],
@@ -148,7 +174,10 @@ serve(async (req) => {
           plan: plan,
           billing_period: billingPeriod
         }
-      });
+      };
+
+      console.log("Creating checkout session with config:", JSON.stringify(sessionConfig));
+      const session = await stripe.checkout.sessions.create(sessionConfig);
 
       console.log("Checkout session created:", session.id);
       return new Response(
@@ -161,7 +190,10 @@ serve(async (req) => {
     } catch (stripeError) {
       console.error("Stripe error creating session:", stripeError);
       return new Response(
-        JSON.stringify({ error: stripeError.message || "Error creating checkout session" }),
+        JSON.stringify({ 
+          error: stripeError.message || "Error creating checkout session",
+          details: stripeError
+        }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
@@ -171,7 +203,10 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error creating checkout session:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ 
+        error: error.message || "Internal server error",
+        details: error 
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
