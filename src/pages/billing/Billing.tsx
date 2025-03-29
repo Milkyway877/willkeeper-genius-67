@@ -178,8 +178,6 @@ export default function Billing() {
     try {
       setIsProcessing(plan);
       
-      toast.loading("Preparing checkout...");
-      
       const sessionData = await createCheckoutSession(plan, billingPeriod);
       
       if (sessionData?.url) {
@@ -190,10 +188,6 @@ export default function Billing() {
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      toast.error("Payment Error", {
-        description: "Could not process your payment. Please try again later."
-      });
-    } finally {
       setIsProcessing(null);
     }
   };
