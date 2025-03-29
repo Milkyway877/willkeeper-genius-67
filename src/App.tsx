@@ -36,8 +36,13 @@ import GettingStarted from './pages/corporate/documentation/GettingStarted';
 import UserGuides from './pages/corporate/documentation/UserGuides';
 import API from './pages/corporate/documentation/API';
 
-// Note: We've removed the CSS import that was causing the error
-// as it's not required for the captcha component to function correctly
+// Import pages for sidebar links
+import Encryption from './pages/encryption/Encryption';
+import Executors from './pages/executors/Executors';
+import AIAssistance from './pages/ai/AIAssistance';
+import IDSecurity from './pages/security/IDSecurity';
+import Billing from './pages/billing/Billing';
+import Notifications from './pages/notifications/Notifications';
 
 const queryClient = new QueryClient();
 
@@ -72,6 +77,14 @@ function App() {
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />
             <Route path="/settings" element={<Settings />} />
+
+            {/* Routes for sidebar links */}
+            <Route path="/pages/encryption/Encryption" element={<Encryption />} />
+            <Route path="/pages/executors/Executors" element={<Executors />} />
+            <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
+            <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+            <Route path="/pages/billing/Billing" element={<Billing />} />
+            <Route path="/pages/notifications/Notifications" element={<Notifications />} />
 
             {/* Corporate routes */}
             <Route path="/corporate" element={<Corporate />} />

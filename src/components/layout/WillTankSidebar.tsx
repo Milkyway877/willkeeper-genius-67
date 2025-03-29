@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -28,7 +27,7 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
     {
       title: 'My Will',
       icon: FileText,
-      href: '/will',
+      href: '/dashboard/will',
     },
     {
       title: 'Will Templates',
@@ -38,22 +37,22 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
     {
       title: 'Encryption',
       icon: Lock,
-      href: '/encryption',
+      href: '/pages/encryption/Encryption',
     },
     {
       title: 'Executors',
       icon: Users,
-      href: '/executors',
+      href: '/pages/executors/Executors',
     },
     {
       title: 'AI Assistance',
       icon: Brain,
-      href: '/ai-assistance',
+      href: '/pages/ai/AIAssistance',
     },
     {
       title: 'ID Security',
       icon: ShieldCheck,
-      href: '/id-security',
+      href: '/pages/security/IDSecurity',
     },
     {
       title: 'Tank',
@@ -63,12 +62,12 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
     {
       title: 'Billing',
       icon: CreditCard,
-      href: '/billing',
+      href: '/pages/billing/Billing',
     },
     {
       title: 'Notifications',
       icon: Bell,
-      href: '/notifications',
+      href: '/pages/notifications/Notifications',
     },
     {
       title: 'Settings',
