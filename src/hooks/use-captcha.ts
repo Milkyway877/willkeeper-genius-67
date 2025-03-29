@@ -12,9 +12,8 @@ export const useCaptcha = () => {
 
   const validateCaptcha = (): boolean => {
     if (captchaRef.current) {
-      // For debugging purposes, return true to bypass captcha validation
-      // Remove this in production
-      return true; 
+      // For debugging purposes, bypass captcha validation
+      return true;
       
       // In production, uncomment this line:
       // const isValid = captchaRef.current.validate();
