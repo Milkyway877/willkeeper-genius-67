@@ -7,7 +7,7 @@ export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed right-4 bottom-4 z-40">
+    <div className="fixed right-4 bottom-4 z-30">
       <AnimatePresence>
         {isOpen && (
           <motion.div

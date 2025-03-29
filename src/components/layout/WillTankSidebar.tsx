@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -128,11 +129,11 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
   if (isMobile) {
     return (
       <>
-        {/* Mobile menu button - Now positioned at bottom left with higher z-index */}
+        {/* Mobile menu button - Now positioned at top left with higher z-index */}
         <button
           id="mobile-menu-button"
           onClick={toggleMobileMenu}
-          className="fixed z-50 bottom-4 left-4 bg-white text-willtank-600 p-3 rounded-full shadow-soft hover:shadow-medium transition-all"
+          className="fixed z-[100] top-4 left-4 bg-white dark:bg-gray-800 text-willtank-600 dark:text-gray-200 p-3 rounded-full shadow-soft hover:shadow-medium transition-all"
           aria-label="Toggle mobile menu"
         >
           {mobileMenuOpen ? (
@@ -148,7 +149,7 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black bg-opacity-50"
+            className="fixed inset-0 z-[90] bg-black bg-opacity-50"
             onClick={toggleMobileMenu}
           >
             {mobileMenuLoaded ? (
@@ -158,7 +159,7 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 overflow-y-auto z-50"
+                className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 overflow-y-auto z-[95]"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-4 justify-between">
@@ -213,7 +214,7 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
                 </div>
               </motion.div>
             ) : (
-              <div className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 z-50 flex items-center justify-center">
+              <div className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 z-[95] flex items-center justify-center">
                 <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
