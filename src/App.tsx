@@ -36,8 +36,8 @@ import GettingStarted from './pages/corporate/documentation/GettingStarted';
 import UserGuides from './pages/corporate/documentation/UserGuides';
 import API from './pages/corporate/documentation/API';
 
-// Initialize captcha styles
-import 'react-simple-captcha/dist/react-simple-captcha.css';
+// Note: We've removed the CSS import that was causing the error
+// as it's not required for the captcha component to function correctly
 
 const queryClient = new QueryClient();
 
