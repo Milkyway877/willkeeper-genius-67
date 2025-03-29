@@ -112,7 +112,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
     )}>
       {showAuthenticatedLayout && (
-        <WillTankSidebar isCollapsed={!showSidebar} />
+        <WillTankSidebar 
+          isCollapsed={!showSidebar} 
+          onToggle={toggleSidebar}
+        />
       )}
       
       <motion.div 
