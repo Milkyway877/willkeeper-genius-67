@@ -58,12 +58,14 @@ const SecureRecover = () => {
         <HoneypotField name="user_email_confirmation" />
         
         <form onSubmit={onSubmit}>
-          <RecoverForm />
-          
-          <div className="mt-6">
+          {/* Warning message moved to top of form */}
+          <div className="mb-6">
             <NoPasteWarning />
           </div>
           
+          <RecoverForm />
+          
+          {/* Captcha before submit button */}
           <div className="my-6">
             <Captcha onValidated={handleCaptchaValidation} />
           </div>

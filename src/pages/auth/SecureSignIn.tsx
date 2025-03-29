@@ -61,12 +61,14 @@ const SecureSignIn = () => {
         <HoneypotField name="user_email_confirmation" />
         
         <form onSubmit={onSubmit}>
-          <SignInForm />
-          
-          <div className="mt-6">
+          {/* Warning message moved to top of form */}
+          <div className="mb-6">
             <NoPasteWarning />
           </div>
           
+          <SignInForm />
+          
+          {/* Captcha before submit button */}
           <div className="my-6">
             <Captcha onValidated={handleCaptchaValidation} />
           </div>
