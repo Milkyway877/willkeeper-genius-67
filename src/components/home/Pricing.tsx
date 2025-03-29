@@ -1,15 +1,50 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Check, ArrowRight, Zap, Star, Shield, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod } from '@/pages/tank/types';
+import { createCheckoutSession } from '@/api/createCheckoutSession';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Pricing() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handlePlanSelection = async (planName: string) => {
+    try {
+      setIsLoading(planName);
+      
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // If not authenticated, redirect to sign up with plan details
+        toast.info('Please sign up or log in to continue');
+        navigate(`/auth/signup?plan=${planName}&billing=${billingPeriod}`);
+        return;
+      }
+      
+      // If authenticated, create checkout session
+      const sessionData = await createCheckoutSession(planName, billingPeriod);
+      
+      if (sessionData?.url) {
+        window.location.href = sessionData.url;
+      } else {
+        throw new Error('Could not create checkout session');
+      }
+    } catch (error) {
+      console.error('Error handling plan selection:', error);
+      toast.error('Could not process your request');
+    } finally {
+      setIsLoading(null);
+    }
+  };
 
   const plans = [
     {
@@ -206,31 +241,42 @@ export function Pricing() {
               
               <div className="px-8 pb-8 mt-auto">
                 {plan.isEnterprise ? (
-                  <Link to="/contact">
-                    <Button 
-                      className={cn(
-                        "rounded-full text-lg py-6 w-full",
-                        "bg-black text-white hover:bg-gray-800"
-                      )}
-                    >
-                      Contact Us
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <Button 
+                    onClick={() => navigate('/contact')}
+                    className={cn(
+                      "rounded-full text-lg py-6 w-full",
+                      "bg-black text-white hover:bg-gray-800"
+                    )}
+                  >
+                    Contact Us
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 ) : (
-                  <Link to="/auth/signup">
-                    <Button 
-                      className={cn(
-                        "rounded-full text-lg py-6 w-full",
-                        plan.highlighted 
-                          ? "bg-black text-white hover:bg-gray-800" 
-                          : "bg-white text-black hover:bg-gray-100"
-                      )}
-                    >
-                      {plan.cta}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <Button 
+                    onClick={() => handlePlanSelection(plan.name)}
+                    disabled={isLoading === plan.name}
+                    className={cn(
+                      "rounded-full text-lg py-6 w-full",
+                      plan.highlighted 
+                        ? "bg-black text-white hover:bg-gray-800" 
+                        : "bg-white text-black hover:bg-gray-100"
+                    )}
+                  >
+                    {isLoading === plan.name ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing
+                      </span>
+                    ) : (
+                      <>
+                        {plan.cta}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
                 )}
               </div>
             </motion.div>

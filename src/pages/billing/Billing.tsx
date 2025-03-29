@@ -5,6 +5,7 @@ import { Calendar, Download, CheckCircle, Shield, Loader2, Zap, Building, Star, 
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod, PlanDetails, SubscriptionPlan } from '../tank/types';
@@ -14,9 +15,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 export default function Billing() {
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -27,25 +28,21 @@ export default function Billing() {
 
   useEffect(() => {
     if (success === 'true') {
-      toast({
-        title: "Payment successful!",
+      toast.success("Payment successful!", {
         description: "Your subscription has been activated successfully.",
-        variant: "default",
       });
       
       navigate('/billing', { replace: true });
       
       fetchBillingData();
     } else if (canceled === 'true') {
-      toast({
-        title: "Payment canceled",
+      toast.error("Payment canceled", {
         description: "You have canceled the payment process.",
-        variant: "destructive",
       });
       
       navigate('/billing', { replace: true });
     }
-  }, [success, canceled, navigate, toast]);
+  }, [success, canceled, navigate]);
 
   const plans: Record<SubscriptionPlan, PlanDetails> = {
     starter: {
@@ -130,7 +127,7 @@ export default function Billing() {
       
       if (userError || !user) {
         console.error('Error fetching user:', userError);
-        toast({
+        uiToast({
           title: "Authentication error",
           description: "Please log in to view your subscription information.",
           variant: "destructive"
@@ -150,7 +147,7 @@ export default function Billing() {
       if (subscriptionError) {
         if (subscriptionError.code !== 'PGRST116') {
           console.error('Error fetching subscription:', subscriptionError);
-          toast({
+          uiToast({
             title: "Error loading billing data",
             description: "Could not load your subscription information. Please try again later.",
             variant: "destructive"
@@ -163,7 +160,7 @@ export default function Billing() {
       
     } catch (error) {
       console.error('Error fetching billing data:', error);
-      toast({
+      uiToast({
         title: "Error loading billing data",
         description: "Could not load your subscription information. Please try again later.",
         variant: "destructive"
@@ -175,16 +172,13 @@ export default function Billing() {
   
   useEffect(() => {
     fetchBillingData();
-  }, [toast]);
+  }, [uiToast]);
 
   const handleUpgrade = async (plan: SubscriptionPlan) => {
     try {
-      setIsProcessing(true);
+      setIsProcessing(plan);
       
-      toast({
-        title: "Processing payment",
-        description: "Redirecting to Stripe checkout...",
-      });
+      toast.loading("Preparing checkout...");
       
       const sessionData = await createCheckoutSession(plan, billingPeriod);
       
@@ -196,12 +190,11 @@ export default function Billing() {
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      toast({
-        title: "Payment Error",
-        description: "Could not process your payment. Please try again later.",
-        variant: "destructive"
+      toast.error("Payment Error", {
+        description: "Could not process your payment. Please try again later."
       });
-      setIsProcessing(false);
+    } finally {
+      setIsProcessing(null);
     }
   };
 
@@ -403,12 +396,12 @@ export default function Billing() {
                     <Button 
                       className="w-full"
                       onClick={() => handleUpgrade(planKey)}
-                      disabled={isProcessing || 
+                      disabled={isProcessing === planKey || 
                         (subscription?.plan?.toLowerCase() === planKey && 
                          ((subscription?.is_lifetime && billingPeriod === 'lifetime') || 
                           (!subscription?.is_lifetime && billingPeriod !== 'lifetime')))}
                     >
-                      {isProcessing ? (
+                      {isProcessing === planKey ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
                         </>

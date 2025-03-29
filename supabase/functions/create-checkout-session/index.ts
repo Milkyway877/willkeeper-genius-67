@@ -48,7 +48,6 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Error getting user data:", error);
-        // Continue without user data
       }
     }
 
@@ -75,27 +74,31 @@ serve(async (req) => {
       }
     }
 
-    // Define price IDs based on plan and billing period
-    // These should be actual Stripe price IDs created in your Stripe dashboard
+    // Define real Stripe product price IDs
+    // These are placeholder IDs that should be replaced with your actual Stripe price IDs
     const PRICE_IDS = {
       starter: {
-        monthly: "price_1OvCsRCMnxJqGjRjpRhE4k4X", // Replace with actual Stripe price IDs
-        yearly: "price_1OvCt2CMnxJqGjRjMnJFJHLb",
-        lifetime: "price_1OvCtnCMnxJqGjRjqr8EXwbK", 
+        monthly: "price_1SLzknHTKA0osvsHDZyNfQmV", 
+        yearly: "price_1SLzlZHTKA0osvsHayvlZEQB",
+        lifetime: "price_1SLzlyHTKA0osvsHWE6B6gTQ", 
       },
       gold: {
-        monthly: "price_1OvCuKCMnxJqGjRj6lUYVblJ",
-        yearly: "price_1OvCuKCMnxJqGjRj5z1TuuYJ",
-        lifetime: "price_1OvCuKCMnxJqGjRjeXSk52SE",
+        monthly: "price_1SLzmRHTKA0osvsHlccYFqyn",
+        yearly: "price_1SLzmtHTKA0osvsHo5NdQg9W",
+        lifetime: "price_1SLznSHTKA0osvsHjU8w0fzK",
       },
       platinum: {
-        monthly: "price_1OvCv3CMnxJqGjRjPOz1E2Po",
-        yearly: "price_1OvCv3CMnxJqGjRjYBJPVuqL",
-        lifetime: "price_1OvCv3CMnxJqGjRjuOm4QGHP",
+        monthly: "price_1SLzo3HTKA0osvsHVx1OLMsf",
+        yearly: "price_1SLzoeHTKA0osvsHDLkQJzDh",
+        lifetime: "price_1SLzp6HTKA0osvsH84fcdWAA",
       },
     };
 
     // Get the price ID for the chosen plan and billing period
+    if (!PRICE_IDS[plan] || !PRICE_IDS[plan][billingPeriod]) {
+      throw new Error(`Invalid plan (${plan}) or billing period (${billingPeriod})`);
+    }
+    
     const priceId = PRICE_IDS[plan][billingPeriod];
     console.log("Using price ID:", priceId);
 

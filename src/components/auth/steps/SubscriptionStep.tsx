@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, CreditCard as CreditCardIcon, Zap, Star, Shield, Gift } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -13,18 +12,26 @@ import { SubscriptionInputs, subscriptionSchema } from '../SignUpSchemas';
 import { fadeInUp } from '../animations';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod } from '@/pages/tank/types';
+import { useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface SubscriptionStepProps {
   onNext: (data: SubscriptionInputs) => void;
 }
 
 export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
-  const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>('monthly');
+  // Get URL params for preselected plan if any
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const preselectedPlan = queryParams.get('plan') || 'free';
+  const preselectedBilling = queryParams.get('billing') as BillingPeriod || 'monthly';
+  
+  const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>(preselectedBilling);
   
   const form = useForm<SubscriptionInputs>({
     resolver: zodResolver(subscriptionSchema),
     defaultValues: {
-      plan: 'free',
+      plan: preselectedPlan,
       agreeToTerms: false,
     },
   });
@@ -109,10 +116,17 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
     }
   };
 
+  // Handle form submission with plan selection
+  const handleSubmit = (data: SubscriptionInputs) => {
+    console.log('Selected plan:', data.plan, 'Billing period:', billingPeriod);
+    // Add billing period to data for onNext
+    onNext({ ...data, billingPeriod });
+  };
+
   return (
     <motion.div key="step10" {...fadeInUp}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onNext)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <div className="mb-4">
             <h3 className="text-lg font-medium mb-2">Select Your Plan</h3>
             <p className="text-sm text-muted-foreground">
@@ -184,28 +198,16 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
             )}
           />
           
-          {form.watch('plan') !== 'free' && (
-            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="flex items-center mb-3">
-                <CreditCardIcon className="h-5 w-5 mr-2 text-willtank-600" />
-                <h4 className="font-medium">Payment Information</h4>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Your payment will be securely processed by Stripe. We don't store your payment details.
-              </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Input type="text" placeholder="Card Number" className="w-full" />
-                </div>
-                <div className="col-span-1">
-                  <Input type="text" placeholder="MM/YY" className="w-full" />
-                </div>
-                <div className="col-span-1">
-                  <Input type="text" placeholder="CVC" className="w-full" />
-                </div>
-              </div>
+          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex items-center mb-3">
+              <CreditCardIcon className="h-5 w-5 mr-2 text-willtank-600" />
+              <h4 className="font-medium">Payment Information</h4>
             </div>
-          )}
+            <p className="text-sm text-muted-foreground mb-3">
+              You will be able to enter payment details after completing signup.
+              Your plan selection will be saved and you'll be directed to our secure checkout.
+            </p>
+          </div>
           
           <FormField
             control={form.control}
@@ -229,7 +231,7 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
           />
           
           <Button type="submit" className="w-full">
-            Complete Sign Up <ArrowRight className="ml-2 h-4 w-4" />
+            Continue <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </form>
       </Form>
