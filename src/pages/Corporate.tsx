@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
@@ -135,7 +136,8 @@ export default function Corporate() {
             <Button size="lg" className="rounded-full">
               Schedule a Demo
             </Button>
-            <Button size="lg" variant="outline" className="rounded-full" as={Link} to="/corporate/documentation">
+            {/* Fixed the Button usage here - replaced 'as' prop with component approach */}
+            <Button size="lg" variant="outline" className="rounded-full" onClick={() => window.location.href = '/corporate/documentation'}>
               View Documentation
             </Button>
           </div>

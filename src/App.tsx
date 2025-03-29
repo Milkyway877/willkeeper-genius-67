@@ -1,11 +1,12 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { ReactQueryDevtools } from 'react-query/devtools';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query/devtools';
 import { Toaster } from 'sonner';
 
 // Import pages
-import Home from './pages/Home';
+import Home from './pages/Index';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Pricing from './pages/Pricing';
@@ -14,19 +15,19 @@ import Blog from './pages/Blog';
 import BlogArticle from './pages/BlogArticle';
 import AuthSignIn from './pages/auth/SignIn';
 import AuthSignUp from './pages/auth/SignUp';
-import AuthForgotPassword from './pages/auth/ForgotPassword';
+import AuthForgotPassword from './pages/auth/Recover';
 import AuthResetPassword from './pages/auth/ResetPassword';
-import Dashboard from './pages/dashboard/Dashboard';
-import WillDashboard from './pages/dashboard/WillDashboard';
-import WillEditor from './pages/dashboard/WillEditor';
-import WillTemplates from './pages/dashboard/WillTemplates';
-import WillTank from './pages/dashboard/WillTank';
-import Settings from './pages/dashboard/Settings';
+import Dashboard from './pages/Dashboard';
+import WillDashboard from './pages/will/Will';
+import WillEditor from './pages/will/WillCreation';
+import WillTemplates from './pages/templates/Templates';
+import WillTank from './pages/tank/Tank';
+import Settings from './pages/settings/Settings';
 import Help from './pages/Help';
-import Search from './pages/Search';
+import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
 
-// Import the new Documentation page
+// Import the Documentation page
 import Documentation from './pages/corporate/Documentation';
 
 const queryClient = new QueryClient();
