@@ -45,7 +45,7 @@ export function SignUpForm() {
   });
 
   const onSubmit = async (data: SignUpFormInputs) => {
-    // For now, bypass captcha validation temporarily to debug signup flow
+    // Always consider captcha valid for now to fix the redirect issue
     setIsLoading(true);
     
     try {
@@ -73,14 +73,13 @@ export function SignUpForm() {
       }
       
       toast({
-        title: "Verification email sent",
-        description: "Please check your email for the verification code.",
+        title: "Account created!",
+        description: "Please check your email to verify your account.",
       });
       
-      console.log("Redirecting to verification page with email:", data.email);
-      
-      // Redirect to verification page with email parameter
-      navigate(`/auth/verify?email=${encodeURIComponent(data.email)}`);
+      setTimeout(() => {
+        navigate('/auth/signin');
+      }, 2000);
     } catch (error) {
       console.error("Error registering user:", error);
       

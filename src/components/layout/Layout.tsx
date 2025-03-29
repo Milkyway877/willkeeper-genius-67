@@ -9,7 +9,6 @@ import { FloatingHelp } from '@/components/ui/FloatingHelp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
-import { AccountActivationBar } from '@/components/auth/AccountActivationBar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,8 +20,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [isEmailVerified, setIsEmailVerified] = useState(true); // Default to true to avoid flash
-  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   
   // Check authentication status if required
   useEffect(() => {
@@ -32,21 +29,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         
         if (!data.session) {
           navigate('/auth/signin', { replace: true });
-          return;
-        }
-        
-        // Check if the user's email is verified
-        const { user } = data.session;
-        if (user && user.email) {
-          setCurrentUserEmail(user.email);
-        }
-        
-        if (!user.email_confirmed_at && !location.pathname.includes('/auth/verify')) {
-          setIsEmailVerified(false);
-          // Redirect to email verification page
-          navigate(`/auth/verify?email=${encodeURIComponent(user.email || '')}`, { replace: true });
-        } else {
-          setIsEmailVerified(true);
         }
       };
       
@@ -108,12 +90,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         transition={{ duration: 0.3 }}
       >
         <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
-        
-        {showAuthenticatedLayout && !isEmailVerified && (
-          <AccountActivationBar 
-            onActivateClick={() => navigate(`/auth/verify?email=${encodeURIComponent(currentUserEmail)}`)} 
-          />
-        )}
         
         <main className={cn(
           "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
