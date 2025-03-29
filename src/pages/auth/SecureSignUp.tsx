@@ -27,12 +27,14 @@ const SecureSignUp = () => {
       return;
     }
     
-    // Find the actual form inside the SignUpForm component
-    const signUpForm = event.currentTarget.querySelector('form');
-    if (signUpForm) {
-      // Trigger the form submission programmatically
-      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-      signUpForm.dispatchEvent(submitEvent);
+    // Find the inner form component and access its submit handler directly
+    const signUpFormElement = event.currentTarget.querySelector('form');
+    
+    if (signUpFormElement) {
+      signUpFormElement.dispatchEvent(new Event('submit', { 
+        bubbles: true, 
+        cancelable: true 
+      }));
     }
   };
 
@@ -45,7 +47,7 @@ const SecureSignUp = () => {
       <div className="relative">
         <HoneypotField name="user_email_confirmation" />
         
-        <form onSubmit={onSubmit}>
+        <form onSubmit={onSubmit} className="space-y-6">
           {/* Warning message at top of form */}
           <div className="mb-6">
             <NoPasteWarning />

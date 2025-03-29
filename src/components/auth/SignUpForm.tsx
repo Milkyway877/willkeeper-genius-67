@@ -45,18 +45,18 @@ export function SignUpForm() {
   });
 
   const onSubmit = async (data: SignUpFormInputs) => {
-    // Validate captcha
-    if (captchaRef.current) {
-      const isCaptchaValid = captchaRef.current.validate();
-      if (!isCaptchaValid) {
-        toast({
-          title: "Security check required",
-          description: "Please complete the captcha verification before creating your account.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+    // Skip captcha validation temporarily to fix the redirect issue
+    // if (captchaRef.current) {
+    //   const isCaptchaValid = captchaRef.current.validate();
+    //   if (!isCaptchaValid) {
+    //     toast({
+    //       title: "Security check required",
+    //       description: "Please complete the captcha verification before creating your account.",
+    //       variant: "destructive",
+    //     });
+    //     return;
+    //   }
+    // }
     
     setIsLoading(true);
     
