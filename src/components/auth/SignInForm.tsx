@@ -25,7 +25,7 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { captchaRef, handleCaptchaValidation } = useCaptcha();
+  const { captchaRef, handleCaptchaValidation, isCaptchaValid } = useCaptcha();
   
   useEffect(() => {
     const handleAuthRedirect = async () => {
@@ -190,7 +190,7 @@ export function SignInForm() {
             <FormItem>
               <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="john.doe@example.com" className="rounded-lg" {...field} />
+                <Input type="email" placeholder="john.doe@example.com" className="rounded-lg border-2 border-gray-300" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -208,7 +208,7 @@ export function SignInForm() {
                   <Input 
                     type={showPassword ? "text" : "password"} 
                     placeholder="Enter your password" 
-                    className="pr-10 rounded-lg"
+                    className="pr-10 rounded-lg border-2 border-gray-300"
                     {...field} 
                   />
                 </FormControl>

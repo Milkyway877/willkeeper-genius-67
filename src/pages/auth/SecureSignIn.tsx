@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { SignInForm } from '@/components/auth/SignInForm';
 import HoneypotField from '@/components/auth/HoneypotField';
 import NoPasteWarning from '@/components/auth/NoPasteWarning';
@@ -9,15 +8,10 @@ import { toast } from '@/hooks/use-toast';
 import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 
 const SecureSignIn = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    
-    // Check honeypot field
-    const formData = new FormData(event.currentTarget);
-    const honeypotValue = formData.get('user_email_confirmation');
+  // This function is now simplified to just check the honeypot and show a warning
+  // It no longer interferes with the form submission
+  const checkHoneypot = () => {
+    const honeypotValue = document.querySelector('input[name="user_email_confirmation"]')?.value;
     
     if (honeypotValue) {
       // This is likely a bot - silently fail but appear to succeed
@@ -28,14 +22,10 @@ const SecureSignIn = () => {
       });
       
       // Actually do nothing
-      return;
+      return false;
     }
     
-    // Let the original form submit handler take over
-    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
-    if (submitButton) {
-      (submitButton as HTMLButtonElement).click();
-    }
+    return true;
   };
 
   return (
@@ -47,14 +37,11 @@ const SecureSignIn = () => {
       <div className="relative">
         <HoneypotField name="user_email_confirmation" />
         
-        <form onSubmit={onSubmit}>
-          {/* Warning message at top of form */}
-          <div className="mb-6">
-            <NoPasteWarning />
-          </div>
-          
-          <SignInForm />
-        </form>
+        <div className="mb-6">
+          <NoPasteWarning />
+        </div>
+        
+        <SignInForm />
       </div>
     </AuthLayout>
   );
