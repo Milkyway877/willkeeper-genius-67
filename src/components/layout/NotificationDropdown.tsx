@@ -14,8 +14,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 
 export function NotificationDropdown() {
-  const { notifications, markAsRead, unreadCount } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Try to use the notifications context, but gracefully handle cases where it might not be available
+  let notificationsContext;
+  try {
+    notificationsContext = useNotifications();
+  } catch (error) {
+    // If NotificationsProvider is not available, use default values
+    notificationsContext = {
+      notifications: [],
+      markAsRead: () => Promise.resolve(false),
+      unreadCount: 0
+    };
+  }
+  
+  const { notifications, markAsRead, unreadCount } = notificationsContext;
   
   const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -50,7 +64,7 @@ export function NotificationDropdown() {
           </Link>
         </div>
         
-        {notifications.length > 0 ? (
+        {notifications && notifications.length > 0 ? (
           <div className="divide-y divide-gray-100">
             <AnimatePresence>
               {notifications.slice(0, 5).map((notification) => (

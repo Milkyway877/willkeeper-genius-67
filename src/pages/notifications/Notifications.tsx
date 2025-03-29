@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -45,6 +44,7 @@ export default function Notifications() {
   // Loading state for preferences
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
   
+  // Try to use the notifications context, but handle cases where it might not be available
   let notificationsContext;
   try {
     notificationsContext = useNotifications();
@@ -96,8 +96,7 @@ export default function Notifications() {
       */
       
       // Show success toast
-      toast({
-        title: "Preferences updated",
+      toast.success("Preferences updated", {
         description: `Your notification preferences have been updated.`,
       });
     } catch (error) {
@@ -106,10 +105,8 @@ export default function Notifications() {
       // Revert the change in case of error
       setPreferences(preferences);
       
-      toast({
-        title: "Error updating preferences",
+      toast.error("Error updating preferences", {
         description: "An error occurred while updating your preferences. Please try again.",
-        variant: "destructive"
       });
     } finally {
       setIsLoadingPreferences(false);
@@ -121,8 +118,7 @@ export default function Notifications() {
       const success = await markAsRead(id);
       
       if (success) {
-        toast({
-          title: "Notification marked as read",
+        toast.success("Notification marked as read", {
           description: "The notification has been marked as read."
         });
       } else {
@@ -130,10 +126,8 @@ export default function Notifications() {
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
-      toast({
-        title: "Error",
-        description: "Failed to mark notification as read. Please try again.",
-        variant: "destructive"
+      toast.error("Error", {
+        description: "Failed to mark notification as read. Please try again."
       });
     }
   };
@@ -143,8 +137,7 @@ export default function Notifications() {
       const success = await markAllAsRead();
       
       if (success) {
-        toast({
-          title: "All notifications marked as read",
+        toast.success("All notifications marked as read", {
           description: "All notifications have been marked as read."
         });
       } else {
@@ -152,10 +145,8 @@ export default function Notifications() {
       }
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
-      toast({
-        title: "Error",
-        description: "Failed to mark all notifications as read. Please try again.",
-        variant: "destructive"
+      toast.error("Error", {
+        description: "Failed to mark all notifications as read. Please try again."
       });
     }
   };
