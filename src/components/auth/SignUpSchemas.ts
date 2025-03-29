@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BillingPeriod } from '@/pages/tank/types';
 
 // Basic user details schema for signup
 export const userDetailsSchema = z.object({
@@ -67,6 +68,7 @@ export type UserBackgroundInputs = z.infer<typeof userBackgroundSchema>;
 export const subscriptionSchema = z.object({
   plan: z.string().min(1, 'Please select a plan'),
   billingCycle: z.string().optional(),
+  billingPeriod: z.string().optional(),
   paymentMethod: z.string().optional(),
   agreeToTerms: z.boolean().optional(),
 });
