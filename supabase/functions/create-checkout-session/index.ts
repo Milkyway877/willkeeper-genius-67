@@ -90,19 +90,69 @@ serve(async (req) => {
       console.log(`Created new Stripe customer: ${customer.id}`);
     }
     
-    // Create a function to map product data to price IDs
-    // ⚠️ This function uses dummy price IDs
-    // In production, these should be fetched from env variables or a database
-    const getDummyPriceId = () => {
-      // This is a dummy price ID that only works in test mode and is set to $0
-      return 'price_1OvbVQLtKc3zFCqczGFUPLbz';
+    // Lookup actual Stripe products and prices
+    console.log(`Looking up products for ${plan} plan...`);
+    const products = await stripe.products.list({
+      active: true,
+      limit: 100
+    });
+    
+    console.log(`Found ${products.data.length} active products`);
+    
+    // Find matching product by name or metadata
+    const matchProduct = products.data.find(product => {
+      // Match by either name (case insensitive) or metadata
+      const nameMatch = product.name.toLowerCase().includes(plan.toLowerCase());
+      const metadataMatch = product.metadata?.plan?.toLowerCase() === plan.toLowerCase();
+      return nameMatch || metadataMatch;
+    });
+    
+    if (!matchProduct) {
+      console.error(`No product found matching plan: ${plan}`);
+      throw new Error(`No product found for plan: ${plan}. Please create this product in your Stripe dashboard.`);
+    }
+    
+    console.log(`Found matching product: ${matchProduct.id} (${matchProduct.name})`);
+    
+    // Get all prices for the product
+    const prices = await stripe.prices.list({
+      product: matchProduct.id,
+      active: true
+    });
+    
+    console.log(`Found ${prices.data.length} active prices for product`);
+    
+    // Match price by billing period
+    const periodMapping = {
+      'monthly': 'month',
+      'yearly': 'year',
+      'lifetime': null // For one-time payments
     };
     
-    // For now, get a test price ID that doesn't fail with a 400 error
-    // In production, you should use real price IDs from your Stripe account
-    const priceId = getDummyPriceId();
+    let matchPrice;
     
-    console.log(`Using price ID for checkout: ${priceId}`);
+    if (billingPeriod === 'lifetime') {
+      // For lifetime, find a one-time payment price
+      matchPrice = prices.data.find(price => price.type === 'one_time');
+    } else {
+      // For subscription plans, match by interval
+      const interval = periodMapping[billingPeriod];
+      matchPrice = prices.data.find(price => 
+        price.type === 'recurring' && 
+        price.recurring?.interval === interval
+      );
+    }
+    
+    if (!matchPrice) {
+      console.error(`No price found for plan: ${plan} with billing period: ${billingPeriod}`);
+      throw new Error(`No price configuration found for ${plan} with ${billingPeriod} billing. Please configure this in your Stripe dashboard.`);
+    }
+    
+    console.log(`Using price ID for checkout: ${matchPrice.id}`);
+    
+    // Determine checkout mode based on price type
+    const mode = matchPrice.type === 'recurring' ? 'subscription' : 'payment';
+    console.log(`Checkout mode: ${mode}`);
     
     // Create checkout session configuration
     const sessionConfig = {
@@ -110,11 +160,11 @@ serve(async (req) => {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
+          price: matchPrice.id,
           quantity: 1,
         },
       ],
-      mode: 'subscription',
+      mode: mode,
       success_url: `${req.headers.get('origin') || 'http://localhost:5173'}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin') || 'http://localhost:5173'}/billing?canceled=true`,
       metadata: {
