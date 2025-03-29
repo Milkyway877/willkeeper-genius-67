@@ -1,12 +1,44 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Check, Globe } from 'lucide-react';
+import { CreditCard, Check, Globe, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
+import { createCheckoutSession } from '@/api/createCheckoutSession';
 
 export function BillingSettings() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { toast: uiToast } = useToast();
+
+  const handleUpgrade = async (plan: string) => {
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+      
+      // Default to monthly if not already on a plan
+      const billingPeriod = 'monthly';
+      
+      const sessionData = await createCheckoutSession(plan, billingPeriod);
+      
+      if (sessionData?.url) {
+        window.location.href = sessionData.url;
+      } else {
+        throw new Error('Could not create checkout session');
+      }
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      setErrorMessage(error.message || 'Failed to create checkout session');
+      toast.error('Payment setup failed', {
+        description: error.message || 'Failed to create checkout session. Please try again later.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   return (
     <>
@@ -51,6 +83,16 @@ export function BillingSettings() {
             </div>
           </div>
           
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start text-red-800">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Error processing payment</p>
+                <p className="text-sm">{errorMessage}</p>
+              </div>
+            </div>
+          )}
+          
           <div className="flex flex-col sm:flex-row gap-3">
             <Button variant="outline" onClick={() => navigate('/billing')}>Update Payment Method</Button>
             <Button variant="outline" onClick={() => navigate('/billing')}>Billing History</Button>
@@ -92,8 +134,14 @@ export function BillingSettings() {
                   1 year of secure storage
                 </li>
               </ul>
-              <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/billing')}>
-                Downgrade
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full" 
+                onClick={() => handleUpgrade('basic')}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Downgrade'}
               </Button>
             </div>
             
@@ -144,11 +192,25 @@ export function BillingSettings() {
                   Priority support
                 </li>
               </ul>
-              <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/billing')}>
-                Upgrade
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full" 
+                onClick={() => handleUpgrade('lifetime')}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Upgrade'}
               </Button>
             </div>
           </div>
+          
+          {errorMessage && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Make sure you have set up products in your Stripe dashboard with names that match the plan names (basic, premium, lifetime).
+              </p>
+            </div>
+          )}
         </div>
       </motion.div>
     </>

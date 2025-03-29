@@ -21,7 +21,7 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
     }
     
     if (!data || !data.url) {
-      throw new Error('Invalid response from checkout function');
+      throw new Error(data?.error || 'Invalid response from checkout function');
     }
     
     return data;

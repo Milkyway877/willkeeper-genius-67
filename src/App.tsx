@@ -89,6 +89,7 @@ function App() {
             <Route path="/pages/executors/Executors" element={<Executors />} />
             <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
             <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+            <Route path="/billing" element={<Billing />} />
             <Route path="/pages/billing/Billing" element={<Billing />} />
             <Route path="/pages/notifications/Notifications" element={<Notifications />} />
 

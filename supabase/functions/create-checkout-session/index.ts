@@ -120,7 +120,12 @@ serve(async (req) => {
     
     if (!matchProduct) {
       console.error(`No product found matching plan: ${plan}`);
-      throw new Error(`No product found for plan: ${plan}. Please create this product in your Stripe dashboard.`);
+      return new Response(
+        JSON.stringify({
+          error: `No product found for plan: ${plan}. Please create this product in your Stripe dashboard.`
+        }),
+        { status: 400, headers: corsHeaders }
+      );
     }
     
     console.log(`Found matching product: ${matchProduct.id} (${matchProduct.name})`);
@@ -156,7 +161,12 @@ serve(async (req) => {
     
     if (!matchPrice) {
       console.error(`No price found for plan: ${plan} with billing period: ${billingPeriod}`);
-      throw new Error(`No price configuration found for ${plan} with ${billingPeriod} billing. Please configure this in your Stripe dashboard.`);
+      return new Response(
+        JSON.stringify({
+          error: `No price configuration found for ${plan} with ${billingPeriod} billing. Please configure this in your Stripe dashboard.`
+        }),
+        { status: 400, headers: corsHeaders }
+      );
     }
     
     console.log(`Using price ID for checkout: ${matchPrice.id}`);
@@ -201,7 +211,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Stripe error creating session:', error);
+    console.error('Stripe error creating checkout session:', error);
     
     return new Response(
       JSON.stringify({
