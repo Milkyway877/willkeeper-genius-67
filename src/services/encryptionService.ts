@@ -1,276 +1,217 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import * as OTPAuth from "otpauth";
+import otpauth from 'otpauth';
 
-/**
- * Interface for User Security data
- */
-export interface UserSecurity {
-  id?: string;
-  user_id: string;
-  encryption_key: string;
-  google_auth_enabled: boolean;
-  google_auth_secret: string | null;
-  created_at?: string;
-  updated_at?: string;
-  last_login?: string | null;
-}
-
-/**
- * Interface representing the encryption key as used in the application
- */
-export interface EncryptionKey {
-  id: string;
-  user_id: string;
-  name: string;
-  type: string;
-  algorithm: string;
-  strength: string;
-  key_material: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  last_used: string | null;
-}
-
-/**
- * Interface representing the encryption key as stored in the database
- */
-interface DBEncryptionKey {
-  id: string;
-  user_id: string;
-  name: string;
-  type: string;
-  algorithm: string;
-  strength: string;
-  value: string; // In DB it's called 'value' instead of 'key_material'
-  status: string;
-  created_at: string;
-  last_used: string | null;
-  // Note: DB doesn't have updated_at
-}
-
-/**
- * Interface for Recovery Code
- */
-export interface RecoveryCode {
-  id: string;
-  user_id: string;
-  code: string;
-  used: boolean;
-  created_at: string;
-  used_at: string | null;
-}
-
-/**
- * Maps a database encryption key to the application encryption key format
- */
-function mapDbKeyToEncryptionKey(dbKey: DBEncryptionKey): EncryptionKey {
-  return {
-    id: dbKey.id,
-    user_id: dbKey.user_id,
-    name: dbKey.name,
-    type: dbKey.type,
-    algorithm: dbKey.algorithm,
-    strength: dbKey.strength,
-    key_material: dbKey.value, // Map from 'value' to 'key_material'
-    status: dbKey.status,
-    created_at: dbKey.created_at,
-    updated_at: dbKey.created_at, // Use created_at as updated_at since it's missing
-    last_used: dbKey.last_used,
-  };
-}
-
-/**
- * Validates a TOTP code against a secret
- * @param token The TOTP code to validate
- * @param secret The secret key
- * @returns True if valid, false otherwise
- */
-export function validateTOTP(token: string, secret: string): boolean {
-  if (!token || !secret) {
-    console.error('TOTP validation failed: token or secret is missing');
-    return false;
-  }
-  
+// Get user security settings
+export const getUserSecurity = async () => {
   try {
-    // Clean up the secret (remove spaces) and token
-    const cleanSecret = secret.replace(/\s+/g, '');
-    const cleanToken = token.replace(/\s+/g, '');
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (cleanToken.length !== 6) {
-      console.error('TOTP token must be 6 digits');
-      return false;
+    if (!user) {
+      console.error("No authenticated user found");
+      return null;
     }
     
-    console.log('Validating TOTP with secret:', cleanSecret, 'token:', cleanToken);
+    console.log("Getting security info for user:", user.id);
     
-    // Create a TOTP object with the same parameters as when generating
-    const totp = new OTPAuth.TOTP({
+    const { data, error } = await supabase
+      .from('user_security')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (error) {
+      // Handle 406 errors gracefully
+      if (error.code === '406') {
+        console.warn("Content negotiation issue with security data fetch, returning empty security record");
+        return null;
+      }
+      
+      console.error('Error fetching user security:', error);
+      return null;
+    }
+    
+    console.log("User security record:", data);
+    return data;
+  } catch (error) {
+    console.error('Error in getUserSecurity:', error);
+    return null;
+  }
+};
+
+// Create user security record if it doesn't exist
+export const createUserSecurity = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error("No authenticated user found");
+      return null;
+    }
+    
+    // Generate a random encryption key for the user
+    const encryptionKey = generateRandomString(32);
+    
+    const { data, error } = await supabase
+      .from('user_security')
+      .insert([
+        { 
+          user_id: user.id,
+          encryption_key: encryptionKey,
+          google_auth_enabled: false 
+        }
+      ])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating user security:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in createUserSecurity:', error);
+    return null;
+  }
+};
+
+// Generate a random TOTP secret for 2FA
+export const generateTOTPSecret = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error("No authenticated user found");
+      return { secret: '', qrCodeUrl: '' };
+    }
+    
+    // Generate a new TOTP secret
+    const secret = generateRandomString(20);
+    
+    // Create a new TOTP object
+    const totp = new otpauth.TOTP({
       issuer: 'WillTank',
-      algorithm: 'SHA1',
+      label: user.email || 'User',
+      secret: otpauth.Secret.fromBase32(secret),
       digits: 6,
-      period: 30,
-      secret: OTPAuth.Secret.fromBase32(cleanSecret)
+      period: 30
     });
     
-    // Use a larger window to allow for time drift (±4 minutes = 8 periods of 30 seconds)
-    // This helps with validation if the user's device time is slightly off
-    const result = totp.validate({ token: cleanToken, window: 8 });
-    console.log('TOTP validation result:', result !== null ? 'Valid' : 'Invalid');
+    // Generate the Auth URI to use in a QR code
+    const qrCodeUrl = totp.toString();
     
-    // If result is null, the token is invalid
-    return result !== null;
+    return { secret, qrCodeUrl };
+  } catch (error) {
+    console.error('Error generating TOTP secret:', error);
+    return { secret: '', qrCodeUrl: '' };
+  }
+};
+
+// Validate a TOTP code
+export const validateTOTP = (code: string, secret: string) => {
+  try {
+    const totp = new otpauth.TOTP({
+      issuer: 'WillTank',
+      label: 'User',
+      secret: otpauth.Secret.fromBase32(secret),
+      digits: 6,
+      period: 30
+    });
+    
+    // Verify the TOTP code
+    const delta = totp.validate({ token: code, window: 1 });
+    
+    // Return true if the code is valid
+    return delta !== null;
   } catch (error) {
     console.error('Error validating TOTP:', error);
     return false;
   }
-}
+};
 
-/**
- * Generates a new TOTP secret and QR code URL
- * @returns Object containing the secret and QR code URL
- */
-export async function generateTOTPSecret(): Promise<{ secret: string; qrCodeUrl: string }> {
+// Setup 2FA for the user
+export const setup2FA = async (code: string) => {
   try {
-    // Get the current user
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      throw new Error('No authenticated user found');
-    }
-
-    // Valid Base32 characters (RFC 4648)
-    const VALID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    let secret = '';
-    
-    // Generate 32 characters (160 bits) of Base32 data
-    const randomBytes = new Uint8Array(32);
-    window.crypto.getRandomValues(randomBytes);
-    
-    // Map each byte to a valid Base32 character
-    for (let i = 0; i < 32; i++) {
-      secret += VALID_CHARS.charAt(randomBytes[i] % VALID_CHARS.length);
+      console.error("No authenticated user found");
+      return { success: false };
     }
     
-    // Format the secret with spaces for readability (every 4 characters)
-    const formattedSecret = secret.match(/.{1,4}/g)?.join(' ') || secret;
-    const cleanSecret = secret; // without spaces for URI
+    // Get the TOTP secret
+    const { secret } = await generateTOTPSecret();
     
-    // Create a new TOTP object
-    const totp = new OTPAuth.TOTP({
-      issuer: 'WillTank',
-      label: user.email || 'user',
-      algorithm: 'SHA1',
-      digits: 6,
-      period: 30,
-      secret: OTPAuth.Secret.fromBase32(cleanSecret)
-    });
-    
-    // Generate the QR code URL
-    const qrCodeUrl = totp.toString();
-    
-    console.log('Generated new TOTP secret:', cleanSecret);
-    
-    return {
-      secret: formattedSecret,
-      qrCodeUrl
-    };
-  } catch (error) {
-    console.error('Error generating TOTP secret:', error);
-    throw error;
-  }
-}
-
-/**
- * Sets up two-factor authentication for the current user
- * @param verificationCode The verification code entered by the user
- * @returns Object with success status and recovery codes
- */
-export async function setup2FA(verificationCode: string): Promise<{ success: boolean; recoveryCodes?: string[] }> {
-  try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('No authenticated user found');
-    }
-    
-    // Get or create user security record
-    let security = await getUserSecurity();
-    
-    if (!security) {
-      security = await createUserSecurity();
-      if (!security) {
-        throw new Error('Failed to create security record');
-      }
-    }
-    
-    // Generate a new TOTP secret if one doesn't exist
-    if (!security.google_auth_secret) {
-      const { secret } = await generateTOTPSecret();
-      security.google_auth_secret = secret;
-    }
-    
-    // Validate the verification code
-    const isValid = validateTOTP(verificationCode, security.google_auth_secret);
+    // Validate the code against the secret
+    const isValid = validateTOTP(code, secret);
     
     if (!isValid) {
-      throw new Error('Invalid verification code');
+      console.error('Invalid TOTP code');
+      return { success: false };
     }
     
-    // Update the user's security record
-    const { error } = await supabase
+    // Update the user security record
+    const { data, error } = await supabase
       .from('user_security')
-      .update({
-        google_auth_enabled: true,
-        google_auth_secret: security.google_auth_secret,
-        updated_at: new Date().toISOString()
+      .update({ 
+        google_auth_secret: secret,
+        google_auth_enabled: true
       })
-      .eq('user_id', user.id);
-      
+      .eq('user_id', user.id)
+      .select();
+    
     if (error) {
-      console.error('Error updating user security record:', error);
-      throw error;
+      console.error('Error updating user security:', error);
+      return { success: false };
     }
     
     // Generate recovery codes
-    const recoveryCodes = await generateRecoveryCodes(user.id);
+    const recoveryCodes = Array.from({ length: 8 }, () => generateRecoveryCode());
     
-    return {
-      success: true,
-      recoveryCodes
-    };
+    // Insert recovery codes into the database
+    const { error: recoveryError } = await supabase
+      .from('user_recovery_codes')
+      .insert(recoveryCodes.map(code => ({
+        user_id: user.id,
+        code,
+        used: false
+      })));
+    
+    if (recoveryError) {
+      console.error('Error creating recovery codes:', recoveryError);
+      // Even if recovery codes fail, 2FA is enabled
+      return { success: true, recoveryCodes: [] };
+    }
+    
+    return { success: true, recoveryCodes };
   } catch (error) {
     console.error('Error setting up 2FA:', error);
     return { success: false };
   }
-}
+};
 
-/**
- * Disables two-factor authentication for the current user
- * @returns True if successful, false otherwise
- */
-export async function disable2FA(): Promise<boolean> {
+// Disable 2FA for the user
+export const disable2FA = async () => {
   try {
-    // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      throw new Error('No authenticated user found');
+      console.error("No authenticated user found");
+      return false;
     }
     
-    // Update the user's security record
+    // Update the user security record
     const { error } = await supabase
       .from('user_security')
-      .update({
-        google_auth_enabled: false,
-        updated_at: new Date().toISOString()
+      .update({ 
+        google_auth_enabled: false 
       })
       .eq('user_id', user.id);
-      
+    
     if (error) {
       console.error('Error disabling 2FA:', error);
-      throw error;
+      return false;
     }
     
     return true;
@@ -278,325 +219,28 @@ export async function disable2FA(): Promise<boolean> {
     console.error('Error disabling 2FA:', error);
     return false;
   }
-}
+};
 
-/**
- * Gets the security information for the current user
- * @returns UserSecurity object or null if not found
- */
-export async function getUserSecurity(): Promise<UserSecurity | null> {
-  try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      console.log('No authenticated user found');
-      return null;
-    }
-    
-    console.log('Getting security info for user:', user.id);
-    
-    // Get user's security record
-    const { data, error } = await supabase
-      .from('user_security')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-      
-    if (error) {
-      console.error('Error getting user security:', error);
-      return null;
-    }
-    
-    console.log('User security record:', data);
-    return data as UserSecurity;
-  } catch (error) {
-    console.error('Error getting user security:', error);
-    return null;
+// Helper function to generate a random string
+const generateRandomString = (length: number) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-}
+  return result;
+};
 
-/**
- * Creates a new security record for the current user
- * @returns UserSecurity object or null if creation failed
- */
-export async function createUserSecurity(): Promise<UserSecurity | null> {
-  try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('No authenticated user found');
+// Helper function to generate a recovery code
+const generateRecoveryCode = () => {
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const segments = Array.from({ length: 4 }, () => {
+    let segment = '';
+    for (let i = 0; i < 4; i++) {
+      segment += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    
-    console.log('Creating security record for user:', user.id);
-    
-    // Create encryption key for user
-    const randomValues = new Uint8Array(32);
-    window.crypto.getRandomValues(randomValues);
-    const encryptionKey = Array.from(randomValues)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    // Create new security record - include only the required fields
-    // (the others will be set by database defaults)
-    const securityData = {
-      user_id: user.id,
-      encryption_key: encryptionKey,
-      google_auth_enabled: false,
-      google_auth_secret: null
-    };
-    
-    // Insert the security record
-    const { data, error } = await supabase
-      .from('user_security')
-      .insert(securityData)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error creating user security:', error);
-      throw error;
-    }
-    
-    console.log('Successfully created security record:', data);
-    return data as UserSecurity;
-  } catch (error) {
-    console.error('Error creating user security:', error);
-    return null;
-  }
-}
-
-/**
- * Generates recovery codes for the current user
- * @param userId User ID to generate codes for
- * @param count Number of codes to generate (default: 10)
- * @returns Array of recovery codes
- */
-export async function generateRecoveryCodes(userId: string, count: number = 10): Promise<string[]> {
-  try {
-    // Delete any existing recovery codes
-    await supabase
-      .from('user_recovery_codes')
-      .delete()
-      .eq('user_id', userId);
-      
-    const codes: string[] = [];
-    
-    // Generate the specified number of unique recovery codes
-    for (let i = 0; i < count; i++) {
-      const code = Array.from(crypto.getRandomValues(new Uint8Array(4)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('')
-        .toUpperCase();
-        
-      codes.push(`${code.slice(0, 4)}-${code.slice(4)}`);
-    }
-    
-    // Store the codes in the database
-    const recoveryCodesData = codes.map(code => ({
-      user_id: userId,
-      code,
-      used: false
-    }));
-    
-    const { error } = await supabase
-      .from('user_recovery_codes')
-      .insert(recoveryCodesData);
-      
-    if (error) {
-      console.error('Error storing recovery codes:', error);
-      throw error;
-    }
-    
-    return codes;
-  } catch (error) {
-    console.error('Error generating recovery codes:', error);
-    throw error;
-  }
-}
-
-/**
- * Gets recovery codes for the current user
- * @param userId User ID to get codes for
- * @returns Array of recovery codes
- */
-export async function getUserRecoveryCodes(userId: string): Promise<RecoveryCode[]> {
-  try {
-    // Get recovery codes for the user
-    const { data, error } = await supabase
-      .from('user_recovery_codes')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error getting recovery codes:', error);
-      throw error;
-    }
-    
-    return data as RecoveryCode[];
-  } catch (error) {
-    console.error('Error getting recovery codes:', error);
-    return [];
-  }
-}
-
-/**
- * Validates a recovery code
- * @param userId User ID to validate code for
- * @param code Recovery code to validate
- * @returns True if valid, false otherwise
- */
-export async function validateRecoveryCode(userId: string, code: string): Promise<boolean> {
-  try {
-    // Get the recovery code
-    const { data, error } = await supabase
-      .from('user_recovery_codes')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('code', code)
-      .eq('used', false)
-      .single();
-      
-    if (error || !data) {
-      return false;
-    }
-    
-    // Mark the code as used
-    const { error: updateError } = await supabase
-      .from('user_recovery_codes')
-      .update({
-        used: true,
-        used_at: new Date().toISOString()
-      })
-      .eq('id', data.id);
-      
-    if (updateError) {
-      console.error('Error marking recovery code as used:', updateError);
-      throw updateError;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error validating recovery code:', error);
-    return false;
-  }
-}
-
-/**
- * Generates a new encryption key
- * @param name Key name
- * @param type Key type
- * @param algorithm Key algorithm
- * @param strength Key strength
- * @returns EncryptionKey object or null if creation failed
- */
-export async function generateEncryptionKey(
-  name: string,
-  type: string = 'symmetric',
-  algorithm: string = 'AES',
-  strength: string = '256'
-): Promise<EncryptionKey | null> {
-  try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('No authenticated user found');
-    }
-    
-    // Generate a random key based on the strength
-    const byteLength = parseInt(strength) / 8;
-    const randomValues = new Uint8Array(byteLength);
-    window.crypto.getRandomValues(randomValues);
-    const keyValue = Array.from(randomValues)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-      
-    // Create the encryption key record
-    const { data, error } = await supabase
-      .from('encryption_keys')
-      .insert({
-        user_id: user.id,
-        name,
-        type,
-        algorithm,
-        strength,
-        value: keyValue,
-        status: 'active'
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error generating encryption key:', error);
-      throw error;
-    }
-    
-    return mapDbKeyToEncryptionKey(data as DBEncryptionKey);
-  } catch (error) {
-    console.error('Error generating encryption key:', error);
-    return null;
-  }
-}
-
-/**
- * Gets encryption keys for the current user
- * @returns Array of EncryptionKey objects
- */
-export async function getUserEncryptionKeys(): Promise<EncryptionKey[]> {
-  try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('No authenticated user found');
-    }
-    
-    // Get encryption keys for the user
-    const { data, error } = await supabase
-      .from('encryption_keys')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error getting encryption keys:', error);
-      throw error;
-    }
-    
-    return (data as DBEncryptionKey[]).map(mapDbKeyToEncryptionKey);
-  } catch (error) {
-    console.error('Error getting encryption keys:', error);
-    return [];
-  }
-}
-
-/**
- * Updates the status of an encryption key
- * @param keyId Key ID to update
- * @param status New status
- * @returns True if successful, false otherwise
- */
-export async function updateEncryptionKeyStatus(keyId: string, status: string): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('encryption_keys')
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', keyId);
-      
-    if (error) {
-      console.error('Error updating encryption key status:', error);
-      throw error;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error updating encryption key status:', error);
-    return false;
-  }
-}
+    return segment;
+  });
+  
+  return segments.join('-');
+};

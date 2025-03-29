@@ -32,15 +32,51 @@ export default function Dashboard() {
       try {
         setIsLoading(true);
         
-        // Load dashboard summary
-        const summaryData = await getDashboardSummary();
+        // Load dashboard summary with error handling
+        let summaryData;
+        try {
+          summaryData = await getDashboardSummary();
+        } catch (error) {
+          console.error('Error loading dashboard summary:', error);
+          summaryData = {
+            willCount: 0,
+            executorCount: 0,
+            notificationCount: 0,
+            securityStatus: 'Unknown'
+          };
+        }
         setSummary(summaryData);
         
-        // Load recent activities
-        const notifications = await getUserNotifications();
-        const wills = await getUserWills();
-        const executors = await getUserExecutors();
-        const subscription = await getUserSubscription();
+        // Load all other data with individual error handling
+        let notifications = [], wills = [], executors = [], subscription = null;
+        
+        try {
+          notifications = await getUserNotifications();
+        } catch (error) {
+          console.error('Error loading notifications:', error);
+          notifications = [];
+        }
+        
+        try {
+          wills = await getUserWills();
+        } catch (error) {
+          console.error('Error loading wills:', error);
+          wills = [];
+        }
+        
+        try {
+          executors = await getUserExecutors();
+        } catch (error) {
+          console.error('Error loading executors:', error);
+          executors = [];
+        }
+        
+        try {
+          subscription = await getUserSubscription();
+        } catch (error) {
+          console.error('Error loading subscription:', error);
+          subscription = null;
+        }
         
         setSubscription(subscription);
         

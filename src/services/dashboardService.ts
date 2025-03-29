@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createUserSecurity, getUserSecurity } from "@/services/encryptionService";
 import { Notification } from "@/services/notificationService";
@@ -18,13 +19,34 @@ export const getDashboardSummary = async (): Promise<DashboardSummary> => {
       throw new Error('No authenticated user');
     }
     
-    // Run all queries in parallel
-    const [willsResult, executorsResult, notificationsResult, securityResult] = await Promise.all([
-      supabase.from('wills').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-      supabase.from('will_executors').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-      supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('read', false),
-      getUserSecurity()
-    ]);
+    // Initialize results with defaults in case any query fails
+    let willsCount = 0;
+    let executorsCount = 0;
+    let notificationsCount = 0;
+    let securityResult = null;
+    
+    try {
+      // Run all queries in parallel with individual error handling
+      const [willsResult, executorsResult, notificationsResult] = await Promise.all([
+        supabase.from('wills').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+        supabase.from('will_executors').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+        supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('read', false)
+      ]);
+      
+      // Extract counts, handling potential errors
+      willsCount = willsResult.error ? 0 : willsResult.count || 0;
+      executorsCount = executorsResult.error ? 0 : executorsResult.count || 0;
+      notificationsCount = notificationsResult.error ? 0 : notificationsResult.count || 0;
+    } catch (e) {
+      console.error('Error fetching dashboard counts:', e);
+    }
+    
+    // Get security info with separate error handling
+    try {
+      securityResult = await getUserSecurity();
+    } catch (e) {
+      console.error('Error getting user security:', e);
+    }
     
     // If security doesn't exist, try to create it
     if (!securityResult) {
@@ -47,9 +69,9 @@ export const getDashboardSummary = async (): Promise<DashboardSummary> => {
     }
     
     return {
-      willCount: willsResult.count || 0,
-      executorCount: executorsResult.count || 0,
-      notificationCount: notificationsResult.count || 0,
+      willCount: willsCount,
+      executorCount: executorsCount,
+      notificationCount: notificationsCount,
       securityStatus: securityStatus
     };
   } catch (error) {
