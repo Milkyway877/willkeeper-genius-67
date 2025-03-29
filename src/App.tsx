@@ -27,8 +27,11 @@ import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
 
-// Import the Documentation page
+// Import the Documentation pages
 import Documentation from './pages/corporate/Documentation';
+import GettingStarted from './pages/corporate/documentation/GettingStarted';
+import UserGuides from './pages/corporate/documentation/UserGuides';
+import API from './pages/corporate/documentation/API';
 
 const queryClient = new QueryClient();
 
@@ -65,6 +68,11 @@ function App() {
           {/* Corporate routes */}
           <Route path="/corporate" element={<Corporate />} />
           <Route path="/corporate/documentation" element={<Documentation />} />
+          
+          {/* Documentation sub-pages */}
+          <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
+          <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
+          <Route path="/corporate/documentation/api" element={<API />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
