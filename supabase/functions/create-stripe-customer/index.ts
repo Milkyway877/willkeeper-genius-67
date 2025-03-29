@@ -3,25 +3,22 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@12.9.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 
+// CORS headers for cross-origin requests
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json'
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, {
-      headers: corsHeaders,
       status: 204,
+      headers: corsHeaders
     });
   }
-
-  // Set up Supabase client with service role for admin privileges
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
     // Initialize Stripe
@@ -34,94 +31,87 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Get authorization header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("Authorization header is required");
-    }
-
-    // Get user information from token
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    // Parse request body
+    const { user_id, email, name } = await req.json();
     
-    if (userError || !user) {
-      throw new Error("Error getting user data: " + (userError?.message || "User not found"));
+    if (!user_id || !email) {
+      throw new Error('User ID and email are required');
     }
+    
+    console.log(`Creating Stripe customer for user: ${email}`);
 
-    // Check if user already has a Stripe customer ID in our database
-    const { data: userData, error: profileError } = await supabaseAdmin
-      .from("users")
-      .select("stripe_customer_id")
-      .eq("id", user.id)
-      .single();
-
-    let customerId;
-
-    if (userData?.stripe_customer_id) {
-      console.log("User already has a Stripe customer ID:", userData.stripe_customer_id);
-      customerId = userData.stripe_customer_id;
-      
-      // Verify the customer still exists in Stripe
-      try {
-        const existingCustomer = await stripe.customers.retrieve(customerId);
-        if (existingCustomer && !existingCustomer.deleted) {
-          // Return the existing customer
-          return new Response(
-            JSON.stringify({ customerId, isNew: false }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 200,
-            }
-          );
-        }
-      } catch (error) {
-        console.log("Error retrieving Stripe customer, will create a new one:", error.message);
-        // Continue to create a new customer if the existing one is invalid
-      }
-    }
-
-    // Parse the request body
-    const { name, email } = await req.json();
-
-    // Create a new Stripe customer
+    // Create a new customer in Stripe
     const customer = await stripe.customers.create({
-      email: email || user.email,
-      name: name || user.user_metadata?.full_name,
+      email: email,
+      name: name,
       metadata: {
-        supabaseUserId: user.id,
-      },
+        supabaseUserId: user_id
+      }
     });
-
-    customerId = customer.id;
-
-    // Store the Stripe customer ID in our database
-    const { error: updateError } = await supabaseAdmin
-      .from("users")
-      .update({ stripe_customer_id: customerId })
-      .eq("id", user.id);
-
-    if (updateError) {
-      console.error("Error storing Stripe customer ID:", updateError);
-      throw new Error("Error storing Stripe customer ID: " + updateError.message);
+    
+    console.log(`Successfully created Stripe customer: ${customer.id}`);
+    
+    // Set up Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Store the Stripe customer ID in the users table
+    console.log(`Updating user ${user_id} with Stripe customer ID ${customer.id}`);
+    
+    // First check if the stripe_customer_id column exists in the users table
+    const { data: columnExists, error: columnCheckError } = await supabase.rpc(
+      'check_column_exists',
+      { p_table_name: 'user_profiles', p_column_name: 'stripe_customer_id' }
+    );
+    
+    if (columnCheckError) {
+      console.error("Error checking if column exists:", columnCheckError);
+      // We'll try to add the column even if the check fails
     }
-
-    // Return the new customer
+    
+    // If the column doesn't exist, add it
+    if (!columnExists) {
+      console.log("Adding stripe_customer_id column to user_profiles table");
+      await supabase.rpc(
+        'add_column_if_not_exists',
+        { 
+          p_table_name: 'user_profiles', 
+          p_column_name: 'stripe_customer_id', 
+          p_column_type: 'text' 
+        }
+      );
+    }
+    
+    // Update the user with the Stripe customer ID
+    const { error: updateError } = await supabase
+      .from("user_profiles")
+      .update({ stripe_customer_id: customer.id })
+      .eq("id", user_id);
+    
+    if (updateError) {
+      console.error("Error updating user with Stripe customer ID:", updateError);
+      throw new Error(`Failed to update user with Stripe customer ID: ${updateError.message}`);
+    }
+    
     return new Response(
-      JSON.stringify({ customerId, isNew: true }),
+      JSON.stringify({ success: true, customer_id: customer.id }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        headers: corsHeaders,
+        status: 200
       }
     );
   } catch (error) {
-    console.error("Error in create-stripe-customer function:", error);
+    console.error("Error creating Stripe customer:", error);
     
-    // Return a user-friendly error message
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message || "An error occurred creating Stripe customer"
+      }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        headers: corsHeaders,
+        status: 400
       }
     );
   }

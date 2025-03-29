@@ -82,6 +82,8 @@ serve(async (req) => {
           break;
         }
 
+        console.log(`Processing checkout.session.completed for user ${userId}, plan ${plan}, billing ${billingPeriod}`);
+
         // For one-time payments
         if (session.mode === "payment") {
           // Record the payment
@@ -96,17 +98,37 @@ serve(async (req) => {
             });
 
           if (paymentError) {
-            console.error("Error recording payment:", paymentError);
+            // If the payments table doesn't exist, create it
+            if (paymentError.code === "42P01") { // relation does not exist
+              await supabaseAdmin.rpc(
+                'create_payments_table_if_not_exists'
+              ).catch(e => console.error("Error creating payments table:", e));
+              
+              // Try insert again
+              await supabaseAdmin
+                .from("payments")
+                .insert({
+                  user_id: userId,
+                  stripe_payment_id: session.payment_intent,
+                  amount: session.amount_total,
+                  currency: session.currency,
+                  status: "succeeded",
+                }).catch(e => console.error("Error inserting payment after creating table:", e));
+            } else {
+              console.error("Error recording payment:", paymentError);
+            }
           }
           
           // If this is a lifetime subscription, create a subscription record with no end date
           if (billingPeriod === "lifetime") {
+            console.log("Creating lifetime subscription record for user:", userId);
             const { error: subError } = await supabaseAdmin
               .from("subscriptions")
               .insert({
                 user_id: userId,
                 stripe_subscription_id: `lifetime_${session.id}`,
-                stripe_price_id: session.line_items?.data[0]?.price?.id,
+                stripe_price_id: plan,
+                plan: plan,
                 status: "active",
                 start_date: new Date().toISOString(),
               });
@@ -126,26 +148,42 @@ serve(async (req) => {
         // Get the customer ID
         const customerId = subscription.customer;
         
+        console.log(`Processing subscription event for customer ${customerId}`);
+        
         // Find the user associated with this customer
-        const { data: users, error: userError } = await supabaseAdmin
-          .from("users")
+        const { data: profiles, error: profileError } = await supabaseAdmin
+          .from("user_profiles")
           .select("id")
           .eq("stripe_customer_id", customerId);
 
-        if (userError || !users || users.length === 0) {
-          console.error("Error finding user for customer:", customerId, userError);
+        if (profileError || !profiles || profiles.length === 0) {
+          console.error("Error finding user for customer:", customerId, profileError);
           break;
         }
 
-        const userId = users[0].id;
+        const userId = profiles[0].id;
+        console.log(`Found user ${userId} for customer ${customerId}`);
 
+        // Get plan information from the price
+        const priceId = subscription.items.data[0]?.price.id;
+        let plan = "unknown";
+        
+        if (priceId.includes("starter")) {
+          plan = "starter";
+        } else if (priceId.includes("gold")) {
+          plan = "gold";
+        } else if (priceId.includes("platinum")) {
+          plan = "platinum";
+        }
+        
         // Update or insert the subscription
         const { error: upsertError } = await supabaseAdmin
           .from("subscriptions")
           .upsert({
             user_id: userId,
             stripe_subscription_id: subscription.id,
-            stripe_price_id: subscription.items.data[0]?.price.id,
+            stripe_price_id: priceId,
+            plan: plan,
             status: subscription.status,
             start_date: new Date(subscription.current_period_start * 1000).toISOString(),
             end_date: new Date(subscription.current_period_end * 1000).toISOString(),
@@ -153,12 +191,16 @@ serve(async (req) => {
 
         if (upsertError) {
           console.error("Error upserting subscription:", upsertError);
+        } else {
+          console.log(`Successfully updated subscription for user ${userId}`);
         }
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
+        
+        console.log(`Processing subscription deletion for subscription ${subscription.id}`);
         
         // Update the subscription status to canceled
         const { error: updateError } = await supabaseAdmin
@@ -168,12 +210,16 @@ serve(async (req) => {
 
         if (updateError) {
           console.error("Error updating deleted subscription:", updateError);
+        } else {
+          console.log(`Successfully marked subscription ${subscription.id} as canceled`);
         }
         break;
       }
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object;
+        
+        console.log(`Processing successful payment for invoice ${invoice.id}`);
         
         // If this is for a subscription, update the subscription end date
         if (invoice.subscription) {
@@ -187,6 +233,8 @@ serve(async (req) => {
 
           if (updateError) {
             console.error("Error updating subscription after payment:", updateError);
+          } else {
+            console.log(`Successfully updated subscription ${invoice.subscription} end date`);
           }
         }
 
@@ -210,6 +258,8 @@ serve(async (req) => {
 
           if (paymentError) {
             console.error("Error recording payment:", paymentError);
+          } else {
+            console.log(`Successfully recorded payment for user ${subscriptions[0].user_id}`);
           }
         }
         break;
@@ -217,6 +267,8 @@ serve(async (req) => {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object;
+        
+        console.log(`Processing failed payment for invoice ${invoice.id}`);
         
         // Update the subscription status
         if (invoice.subscription) {
@@ -227,6 +279,8 @@ serve(async (req) => {
 
           if (updateError) {
             console.error("Error updating subscription after failed payment:", updateError);
+          } else {
+            console.log(`Successfully marked subscription ${invoice.subscription} as past_due`);
           }
         }
 
@@ -250,6 +304,8 @@ serve(async (req) => {
 
           if (paymentError) {
             console.error("Error recording failed payment:", paymentError);
+          } else {
+            console.log(`Successfully recorded failed payment for user ${subscriptions[0].user_id}`);
           }
         }
         break;

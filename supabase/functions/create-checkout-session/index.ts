@@ -66,7 +66,7 @@ serve(async (req) => {
     
     // First, check if user already has a Stripe customer ID
     const { data: userData, error: profileError } = await supabase
-      .from("users")
+      .from("user_profiles")
       .select("stripe_customer_id")
       .eq("id", user.id)
       .single();
@@ -75,95 +75,53 @@ serve(async (req) => {
       customerId = userData.stripe_customer_id;
       console.log("Found existing Stripe customer:", customerId);
     } else {
-      // Create a new customer in Stripe
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: user.user_metadata?.full_name,
-        metadata: {
-          supabaseUserId: user.id
+      // Create a new customer in Stripe by calling our create-stripe-customer function
+      console.log("No Stripe customer ID found, creating new customer");
+      
+      const { data: customerData, error: customerError } = await supabase.functions.invoke("create-stripe-customer", { 
+        body: { 
+          user_id: user.id, 
+          email: user.email, 
+          name: user.user_metadata?.full_name 
         }
       });
       
-      customerId = customer.id;
-      
-      // Save the customer ID to the database
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", user.id);
-      
-      if (updateError) {
-        console.error("Error saving Stripe customer ID:", updateError);
+      if (customerError || !customerData?.customer_id) {
+        console.error("Error creating Stripe customer:", customerError || "No customer ID returned");
+        throw new Error("Failed to create Stripe customer");
       }
+      
+      customerId = customerData.customer_id;
+      console.log("Created new Stripe customer:", customerId);
     }
 
-    // Lookup the appropriate price ID based on plan and billing period
-    // In a production environment, these would be stored in a database or configuration
-    // For now, we'll use a mapping function
-    let priceId;
-    
-    // Define price lookup based on plan and billing period
+    // Using hardcoded price IDs that MUST match what's in your Stripe dashboard
+    // These are dummy IDs - you need to replace these with your actual Stripe price IDs
     const priceMap = {
       starter: {
-        monthly: "price_starter_monthly", 
-        yearly: "price_starter_yearly",
-        lifetime: "price_starter_lifetime"
+        monthly: "price_1Pw5n4HTKA0osvsHkCuFgfXL",  // Replace with your actual price ID
+        yearly: "price_1Pw5n4HTKA0osvsHfzP7EY2T",   // Replace with your actual price ID
+        lifetime: "price_1Pw5n4HTKA0osvsHA4IXOBUq"  // Replace with your actual price ID
       },
       gold: {
-        monthly: "price_gold_monthly",
-        yearly: "price_gold_yearly",
-        lifetime: "price_gold_lifetime"
+        monthly: "price_1Pw5mmHTKA0osvsHXJmFhUTw",  // Replace with your actual price ID
+        yearly: "price_1Pw5mmHTKA0osvsHe91cWzfE",   // Replace with your actual price ID
+        lifetime: "price_1Pw5mmHTKA0osvsHq0xmJPrE"  // Replace with your actual price ID
       },
       platinum: {
-        monthly: "price_platinum_monthly",
-        yearly: "price_platinum_yearly",
-        lifetime: "price_platinum_lifetime"
+        monthly: "price_1Pw5m7HTKA0osvsHvhUxabnP",  // Replace with your actual price ID
+        yearly: "price_1Pw5m7HTKA0osvsHKAYNu1Bb",   // Replace with your actual price ID
+        lifetime: "price_1Pw5m7HTKA0osvsHYALjnZLQ"  // Replace with your actual price ID
       }
     };
     
-    // Look up products for the specified plan
-    console.log("Looking up products for", plan, "plan...");
-    const products = await stripe.products.list({
-      active: true
-    });
+    // Get price ID based on plan and billing period
+    const priceId = priceMap[plan]?.[billingPeriod];
     
-    console.log(`Found ${products.data.length} active products`);
-    
-    // Find the product that matches our plan
-    const matchingProduct = products.data.find(product => 
-      product.name.toUpperCase().includes(plan.toUpperCase())
-    );
-    
-    if (!matchingProduct) {
-      throw new Error(`No product found for plan: ${plan}`);
+    if (!priceId) {
+      throw new Error(`No price configured for ${plan} with ${billingPeriod} billing period`);
     }
     
-    console.log(`Found matching product: ${matchingProduct.id} (${matchingProduct.name})`);
-    
-    // Get the prices for this product
-    const prices = await stripe.prices.list({
-      product: matchingProduct.id,
-      active: true
-    });
-    
-    console.log(`Found ${prices.data.length} active prices for product`);
-    
-    // Find a price that matches the billing period
-    const matchingPrice = prices.data.find(price => {
-      if (billingPeriod === 'lifetime') {
-        return price.type === 'one_time';
-      } else {
-        return price.type === 'recurring' && 
-          price.recurring?.interval === (billingPeriod === 'monthly' ? 'month' : 'year');
-      }
-    });
-    
-    if (!matchingPrice) {
-      console.error(`No price found for plan: ${plan} with billing period: ${billingPeriod}`);
-      throw new Error(`No price configuration found for ${plan} with ${billingPeriod} billing. Please configure this in your Stripe dashboard.`);
-    }
-    
-    priceId = matchingPrice.id;
     console.log(`Using price ID for checkout: ${priceId}`);
 
     // Configure checkout session
@@ -190,6 +148,7 @@ serve(async (req) => {
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create(sessionConfig);
+    console.log("Checkout session created successfully with ID:", session.id);
 
     // Return the checkout URL to redirect the user to Stripe
     return new Response(
@@ -205,7 +164,7 @@ serve(async (req) => {
     // Return a friendly error message
     return new Response(
       JSON.stringify({ 
-        error: "There was an error processing your payment request. Please try again later." 
+        error: error.message || "There was an error processing your payment request. Please try again later." 
       }),
       {
         headers: corsHeaders,
