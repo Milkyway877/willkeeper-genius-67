@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -45,7 +44,6 @@ export function SignUpForm() {
   });
 
   const onSubmit = async (data: SignUpFormInputs) => {
-    // Validate captcha before proceeding
     const isCaptchaValid = validateCaptcha();
     if (!isCaptchaValid) {
       toast({
@@ -59,7 +57,6 @@ export function SignUpForm() {
     setIsLoading(true);
     
     try {
-      // Register user with Supabase Auth
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -83,13 +80,11 @@ export function SignUpForm() {
         return;
       }
       
-      // Success message
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account.",
       });
       
-      // Redirect to sign in page after a delay
       setTimeout(() => {
         navigate('/auth/signin');
       }, 2000);
@@ -218,10 +213,9 @@ export function SignUpForm() {
             <p className="font-medium">After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
           </div>
           
-          {/* Captcha placed directly before the submit button - no separate verify button */}
           <div>
             <Captcha 
-              ref={captchaRef} 
+              ref={captchaRef}
               onValidated={handleCaptchaValidation} 
             />
           </div>

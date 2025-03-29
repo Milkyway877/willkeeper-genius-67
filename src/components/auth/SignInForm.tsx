@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -27,18 +26,14 @@ export function SignInForm() {
   const location = useLocation();
   const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
   
-  // Check for redirects from email verification or query params
   useEffect(() => {
     const handleAuthRedirect = async () => {
-      // Check if we have a verified parameter from email verification redirect
       const searchParams = new URLSearchParams(location.search);
       const verified = searchParams.get('verified');
       
-      // Check for an existing session
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session && !error) {
-        // User is already logged in
         if (verified === 'true') {
           toast({
             title: "Email verified!",
@@ -66,7 +61,6 @@ export function SignInForm() {
   });
 
   const onSubmit = async (data: SignInFormInputs) => {
-    // Validate captcha before proceeding
     const isCaptchaValid = validateCaptcha();
     if (!isCaptchaValid) {
       toast({
@@ -80,14 +74,12 @@ export function SignInForm() {
     try {
       setIsLoading(true);
       
-      // Sign in with email and password
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
       
       if (authError) {
-        // Special handling for unverified emails
         if (authError.message.toLowerCase().includes('email not confirmed')) {
           toast({
             title: "Email not verified",
@@ -117,13 +109,11 @@ export function SignInForm() {
         return;
       }
       
-      // Show success toast
       toast({
         title: "Sign in successful",
         description: "Redirecting to your dashboard...",
       });
       
-      // Redirect to dashboard
       navigate('/dashboard');
     } catch (error) {
       console.error("Sign in error:", error);
@@ -255,10 +245,9 @@ export function SignInForm() {
           </div>
         </div>
         
-        {/* Captcha placed directly before the submit button - no separate verify button */}
         <div>
           <Captcha 
-            ref={captchaRef} 
+            ref={captchaRef}
             onValidated={handleCaptchaValidation} 
           />
         </div>

@@ -1,9 +1,10 @@
 
 import { useRef, useState } from 'react';
+import { CaptchaRef } from '@/components/auth/Captcha';
 
 export function useCaptcha() {
   const [isCaptchaValid, setIsCaptchaValid] = useState(false);
-  const captchaRef = useRef<{ validate: () => boolean }>(null);
+  const captchaRef = useRef<CaptchaRef>(null);
   
   const handleCaptchaValidation = (isValid: boolean) => {
     setIsCaptchaValid(isValid);

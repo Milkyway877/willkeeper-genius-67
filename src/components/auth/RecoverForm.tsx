@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -128,7 +127,6 @@ export function RecoverForm() {
           <p className="font-medium">We'll send you an email with instructions to reset your password.</p>
         </div>
         
-        {/* Captcha placed directly before the submit button - no separate verify button */}
         <div>
           <Captcha 
             ref={captchaRef}

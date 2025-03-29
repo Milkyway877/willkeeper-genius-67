@@ -1,14 +1,18 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { loadCaptchaEnginge, LoadCanvasTemplate, validateCaptcha } from 'react-simple-captcha';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
-interface CaptchaProps {
+export interface CaptchaProps {
   onValidated: (isValid: boolean) => void;
 }
 
-const Captcha: React.FC<CaptchaProps> = ({ onValidated }) => {
+export interface CaptchaRef {
+  validate: () => boolean;
+}
+
+const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
   const [userCaptcha, setUserCaptcha] = useState('');
   const [isValid, setIsValid] = useState(false);
   const [attemptedValidation, setAttemptedValidation] = useState(false);
@@ -46,12 +50,9 @@ const Captcha: React.FC<CaptchaProps> = ({ onValidated }) => {
   };
 
   // Expose the validation method to the parent component
-  React.useImperativeHandle(
-    React.forwardRef((_, ref) => ref),
-    () => ({
-      validate: validateUserCaptcha
-    })
-  );
+  useImperativeHandle(ref, () => ({
+    validate: validateUserCaptcha
+  }));
 
   return (
     <div className="space-y-2">
@@ -95,6 +96,8 @@ const Captcha: React.FC<CaptchaProps> = ({ onValidated }) => {
       </div>
     </div>
   );
-};
+});
+
+Captcha.displayName = 'Captcha';
 
 export default Captcha;
