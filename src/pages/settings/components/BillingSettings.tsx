@@ -1,35 +1,90 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Check, Globe, AlertCircle } from 'lucide-react';
+import { CreditCard, Check, Globe, AlertCircle, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { toast } from 'sonner';
+import { createCheckoutSession } from '@/api/createCheckoutSession';
+import { supabase } from '@/integrations/supabase/client';
 
 export function BillingSettings() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const { toast: uiToast } = useToast();
+
+  useEffect(() => {
+    async function fetchSubscription() {
+      try {
+        setIsLoadingSubscription(true);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (!error && data) {
+          setSubscription(data);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+      } finally {
+        setIsLoadingSubscription(false);
+      }
+    }
+    
+    fetchSubscription();
+  }, []);
 
   const handleUpgrade = async (plan: string) => {
     try {
       setIsLoading(true);
       setErrorMessage(null);
       
-      // Stripe functionality removed
-      toast.info('Payment processing has been disabled');
+      const result = await createCheckoutSession(plan, 'monthly');
       
+      if (result.status === 'success' && result.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = result.url;
+      } else {
+        setErrorMessage(result.error || 'Could not create checkout session');
+        toast.error('Payment processing error', {
+          description: result.error || 'Could not create checkout session',
+        });
+      }
     } catch (error: any) {
       console.error('Error:', error);
       setErrorMessage(error.message || 'This feature is currently unavailable');
-      toast.error('Feature disabled', {
-        description: 'Payment processing has been disabled.',
+      toast.error('Feature error', {
+        description: error.message || 'This feature is currently unavailable',
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
   
   return (
@@ -46,26 +101,73 @@ export function BillingSettings() {
         </div>
         
         <div className="p-6">
-          <div className="mb-6">
-            <div className="inline-flex items-center gap-2 rounded-full bg-willtank-100 px-3 py-1 text-sm font-medium text-willtank-700">
-              <Check size={14} />
-              <span>Free Plan</span>
+          {isLoadingSubscription ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader className="h-8 w-8 animate-spin text-gray-400" />
             </div>
-            
-            <div className="mt-4">
-              <h4 className="font-medium">Subscription Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <div>
-                  <p className="text-sm text-gray-500">Plan</p>
-                  <p className="font-medium">Free</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Status</p>
-                  <p className="font-medium">Active</p>
+          ) : subscription ? (
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
+                <Check size={14} />
+                <span>
+                  {subscription.stripe_price_id?.includes('gold') ? 'Gold Plan' : 
+                   subscription.stripe_price_id?.includes('platinum') ? 'Platinum Plan' : 
+                   subscription.stripe_price_id?.includes('starter') ? 'Starter Plan' : 'Paid Plan'}
+                </span>
+              </div>
+              
+              <div className="mt-4">
+                <h4 className="font-medium">Subscription Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <p className="text-sm text-gray-500">Plan</p>
+                    <p className="font-medium">
+                      {subscription.stripe_price_id?.includes('gold') ? 'Gold' : 
+                       subscription.stripe_price_id?.includes('platinum') ? 'Platinum' : 
+                       subscription.stripe_price_id?.includes('starter') ? 'Starter' : 'Paid Plan'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <p className="font-medium capitalize">{subscription.status}</p>
+                  </div>
+                  {subscription.start_date && (
+                    <div>
+                      <p className="text-sm text-gray-500">Start Date</p>
+                      <p className="font-medium">{formatDate(subscription.start_date)}</p>
+                    </div>
+                  )}
+                  {subscription.end_date && (
+                    <div>
+                      <p className="text-sm text-gray-500">Renewal Date</p>
+                      <p className="font-medium">{formatDate(subscription.end_date)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-2 rounded-full bg-willtank-100 px-3 py-1 text-sm font-medium text-willtank-700">
+                <Check size={14} />
+                <span>Free Plan</span>
+              </div>
+              
+              <div className="mt-4">
+                <h4 className="font-medium">Subscription Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <p className="text-sm text-gray-500">Plan</p>
+                    <p className="font-medium">Free</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <p className="font-medium">Active</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           {errorMessage && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start text-red-800">
@@ -77,14 +179,8 @@ export function BillingSettings() {
             </div>
           )}
           
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Payment processing has been disabled.
-            </p>
-          </div>
-          
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" onClick={() => navigate('/billing')}>Billing Information</Button>
+            <Button variant="outline" onClick={() => navigate('/billing')}>Manage Subscription</Button>
           </div>
         </div>
       </motion.div>
@@ -124,7 +220,7 @@ export function BillingSettings() {
                 variant="outline" 
                 size="sm" 
                 className="w-full" 
-                onClick={() => handleUpgrade('basic')}
+                onClick={() => handleUpgrade('starter')}
                 disabled={isLoading}
               >
                 {isLoading ? 'Processing...' : 'Upgrade'}
@@ -156,7 +252,7 @@ export function BillingSettings() {
                 variant="outline" 
                 size="sm" 
                 className="w-full" 
-                onClick={() => handleUpgrade('premium')}
+                onClick={() => handleUpgrade('gold')}
                 disabled={isLoading}
               >
                 {isLoading ? 'Processing...' : 'Upgrade'}
@@ -188,18 +284,12 @@ export function BillingSettings() {
                 variant="outline" 
                 size="sm" 
                 className="w-full" 
-                onClick={() => handleUpgrade('lifetime')}
+                onClick={() => handleUpgrade('platinum')}
                 disabled={isLoading}
               >
                 {isLoading ? 'Processing...' : 'Upgrade'}
               </Button>
             </div>
-          </div>
-          
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Payment processing has been disabled in this version.
-            </p>
           </div>
         </div>
       </motion.div>

@@ -9,11 +9,15 @@ import { toast } from 'sonner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod, PlanDetails, SubscriptionPlan } from '../tank/types';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { createCheckoutSession } from '@/api/createCheckoutSession';
 
 export default function Billing() {
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [subscription, setSubscription] = useState<any>(null);
+  const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const { toast: uiToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,6 +27,41 @@ export default function Billing() {
   const canceled = queryParams.get('canceled');
   const sessionId = queryParams.get('session_id');
 
+  // Fetch subscription data on component mount
+  useEffect(() => {
+    async function fetchSubscription() {
+      try {
+        setIsLoadingSubscription(true);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (!error && data) {
+          setSubscription(data);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+      } finally {
+        setIsLoadingSubscription(false);
+      }
+    }
+    
+    fetchSubscription();
+  }, []);
+
+  // Handle redirect from Stripe
   useEffect(() => {
     if (success === 'true') {
       toast.success("Payment successful!", {
@@ -31,8 +70,34 @@ export default function Billing() {
       
       navigate('/billing', { replace: true });
       
-      // We've removed Stripe, so just update UI state instead of fetching data
-      setIsLoading(false);
+      // Refresh subscription data
+      setIsLoadingSubscription(true);
+      setTimeout(async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (!session) {
+            return;
+          }
+          
+          const { data, error } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+            
+          if (!error && data) {
+            setSubscription(data);
+          }
+        } catch (error) {
+          console.error('Error refreshing subscription data:', error);
+        } finally {
+          setIsLoadingSubscription(false);
+        }
+      }, 2000); // Delay to allow webhook processing
     } else if (canceled === 'true') {
       toast.error("Payment canceled", {
         description: "You have canceled the payment process.",
@@ -121,14 +186,23 @@ export default function Billing() {
     try {
       setIsProcessing(plan);
       
-      // Stripe functionality removed
-      toast.info('Payment processing has been disabled');
-      setTimeout(() => setIsProcessing(null), 1000);
+      const result = await createCheckoutSession(plan, billingPeriod);
       
+      if (result.status === 'success' && result.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = result.url;
+      } else {
+        toast.error('Payment processing error', {
+          description: result.error || 'There was an error processing your request. Please try again later.',
+        });
+        setIsProcessing(null);
+      }
     } catch (error) {
       console.error('Error:', error);
       setIsProcessing(null);
-      toast.error('This feature is currently unavailable');
+      toast.error('Payment processing error', {
+        description: 'There was an error processing your request. Please try again later.',
+      });
     }
   };
 
@@ -164,6 +238,16 @@ export default function Billing() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -185,30 +269,75 @@ export default function Billing() {
           </div>
           
           <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                  FREE PLAN
-                </span>
-                <h2 className="text-2xl font-bold mt-2">
-                  $0 <span className="text-sm font-normal text-gray-500">/month</span>
-                </h2>
+            {isLoadingSubscription ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader className="h-8 w-8 animate-spin text-gray-400" />
               </div>
-            </div>
+            ) : subscription ? (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      {subscription.stripe_price_id?.includes('gold') ? 'GOLD PLAN' : 
+                       subscription.stripe_price_id?.includes('platinum') ? 'PLATINUM PLAN' : 
+                       subscription.stripe_price_id?.includes('starter') ? 'STARTER PLAN' : 'PAID PLAN'}
+                    </span>
+                    <h2 className="text-2xl font-bold mt-2">
+                      Active Subscription
+                    </h2>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Status</p>
+                      <p className="font-medium capitalize">{subscription.status}</p>
+                    </div>
+                    
+                    {subscription.start_date && (
+                      <div>
+                        <p className="text-sm text-gray-500">Start Date</p>
+                        <p className="font-medium">{formatDate(subscription.start_date)}</p>
+                      </div>
+                    )}
+                    
+                    {subscription.end_date && (
+                      <div>
+                        <p className="text-sm text-gray-500">Renewal Date</p>
+                        <p className="font-medium">{formatDate(subscription.end_date)}</p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center">
+                      <Calendar className="text-gray-500 mr-2" size={18} />
+                      <span className="text-sm">
+                        Your subscription is active
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    FREE PLAN
+                  </span>
+                  <h2 className="text-2xl font-bold mt-2">
+                    $0 <span className="text-sm font-normal text-gray-500">/month</span>
+                  </h2>
+                </div>
+              </div>
+            )}
             
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 mt-4">
               <div className="flex items-center">
                 <Calendar className="text-gray-500 mr-2" size={18} />
                 <span className="text-sm">
-                  No active subscription
+                  {subscription ? 'Your subscription renews automatically' : 'No active subscription'}
                 </span>
               </div>
-            </div>
-            
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Payment processing has been disabled.
-              </p>
             </div>
           </div>
         </motion.div>
