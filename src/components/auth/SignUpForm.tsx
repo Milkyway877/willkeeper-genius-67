@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -44,7 +45,7 @@ export function SignUpForm() {
   });
 
   const onSubmit = async (data: SignUpFormInputs) => {
-    // Always consider captcha valid for now to fix the redirect issue
+    // For now, bypass captcha validation temporarily to debug signup flow
     setIsLoading(true);
     
     try {
@@ -75,6 +76,8 @@ export function SignUpForm() {
         title: "Verification email sent",
         description: "Please check your email for the verification code.",
       });
+      
+      console.log("Redirecting to verification page with email:", data.email);
       
       // Redirect to verification page with email parameter
       navigate(`/auth/verify?email=${encodeURIComponent(data.email)}`);

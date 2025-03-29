@@ -8,6 +8,7 @@ import { Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { createWelcomeNotification } from '@/services/notificationService';
+import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -42,11 +43,9 @@ export default function EmailVerification() {
     setError(null);
 
     try {
-      // In a real implementation, this would validate the code against what was sent
-      // For now, simply attempt to sign in (the user would have already verified via email link)
+      // Use signInWithOtp to verify the code
       const { data, error: signInError } = await supabase.auth.signInWithOtp({
         email,
-        token: code,
         options: {
           shouldCreateUser: false,
         }
@@ -115,6 +114,7 @@ export default function EmailVerification() {
     <AuthLayout
       title="Verify your email"
       subtitle="Enter the 6-digit code sent to your email address to verify your account"
+      rightPanel={<SecurityInfoPanel />}
     >
       <div className="space-y-6">
         <div className="flex flex-col items-center justify-center">

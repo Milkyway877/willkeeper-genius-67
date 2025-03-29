@@ -22,6 +22,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [isEmailVerified, setIsEmailVerified] = useState(true); // Default to true to avoid flash
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
   
   // Check authentication status if required
   useEffect(() => {
@@ -36,6 +37,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         
         // Check if the user's email is verified
         const { user } = data.session;
+        if (user && user.email) {
+          setCurrentUserEmail(user.email);
+        }
+        
         if (!user.email_confirmed_at && !location.pathname.includes('/auth/verify')) {
           setIsEmailVerified(false);
           // Redirect to email verification page
@@ -106,7 +111,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         
         {showAuthenticatedLayout && !isEmailVerified && (
           <AccountActivationBar 
-            onActivateClick={() => navigate(`/auth/verify?email=${encodeURIComponent(user.email || '')}`)} 
+            onActivateClick={() => navigate(`/auth/verify?email=${encodeURIComponent(currentUserEmail)}`)} 
           />
         )}
         

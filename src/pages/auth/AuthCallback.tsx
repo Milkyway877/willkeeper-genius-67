@@ -49,6 +49,8 @@ export default function AuthCallback() {
 
         // If session exists, the email has been verified
         if (data?.session) {
+          console.log("Session found, creating welcome notifications");
+          
           // Create a welcome notification for new users
           try {
             // Send welcome notification
@@ -84,7 +86,11 @@ export default function AuthCallback() {
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           
+          console.log("No session found, checking for tokens in URL");
+          
           if (accessToken) {
+            console.log("Access token found, setting session");
+            
             // If we have tokens in the URL, try to exchange them for a session
             const { error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
@@ -100,6 +106,8 @@ export default function AuthCallback() {
             
             // Create a welcome notification for new users
             try {
+              console.log("Creating welcome notifications after setting session");
+              
               // Send welcome notification
               await createWelcomeNotification();
               
@@ -128,6 +136,8 @@ export default function AuthCallback() {
             setIsVerified(true);
             setIsProcessing(false);
           } else {
+            console.log("No access token found, authentication failed");
+            
             // No session, no tokens - something went wrong
             setError("Authentication failed. Please try signing in again.");
             setIsProcessing(false);
