@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import Captcha from '@/components/auth/Captcha';
+import { useCaptcha } from '@/hooks/use-captcha';
 
 const recoverSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -20,8 +21,8 @@ type RecoverFormInputs = z.infer<typeof recoverSchema>;
 
 export function RecoverForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isCaptchaValid, setIsCaptchaValid] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
 
   const form = useForm<RecoverFormInputs>({
     resolver: zodResolver(recoverSchema),
@@ -30,11 +31,9 @@ export function RecoverForm() {
     },
   });
 
-  const handleCaptchaValidation = (isValid: boolean) => {
-    setIsCaptchaValid(isValid);
-  };
-
   const onSubmit = async (data: RecoverFormInputs) => {
+    // Validate captcha before proceeding
+    const isCaptchaValid = validateCaptcha();
     if (!isCaptchaValid) {
       toast({
         title: "Security check required",
@@ -129,9 +128,12 @@ export function RecoverForm() {
           <p className="font-medium">We'll send you an email with instructions to reset your password.</p>
         </div>
         
-        {/* Captcha placed directly before the submit button */}
+        {/* Captcha placed directly before the submit button - no separate verify button */}
         <div>
-          <Captcha onValidated={handleCaptchaValidation} />
+          <Captcha 
+            ref={captchaRef}
+            onValidated={handleCaptchaValidation} 
+          />
         </div>
         
         <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>

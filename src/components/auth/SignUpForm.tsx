@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { createSystemNotification } from '@/services/notificationService';
 import Captcha from '@/components/auth/Captcha';
+import { useCaptcha } from '@/hooks/use-captcha';
 
 const signUpSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -31,7 +31,7 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isCaptchaValid, setIsCaptchaValid] = useState(false);
+  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
 
   const form = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -44,11 +44,9 @@ export function SignUpForm() {
     },
   });
 
-  const handleCaptchaValidation = (isValid: boolean) => {
-    setIsCaptchaValid(isValid);
-  };
-
   const onSubmit = async (data: SignUpFormInputs) => {
+    // Validate captcha before proceeding
+    const isCaptchaValid = validateCaptcha();
     if (!isCaptchaValid) {
       toast({
         title: "Security check required",
@@ -84,9 +82,6 @@ export function SignUpForm() {
         setIsLoading(false);
         return;
       }
-      
-      // We don't create notifications here because the user isn't fully registered yet
-      // Notifications will be created in AuthCallback.tsx after email verification
       
       // Success message
       toast({
@@ -223,9 +218,12 @@ export function SignUpForm() {
             <p className="font-medium">After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
           </div>
           
-          {/* Captcha placed directly before the submit button */}
+          {/* Captcha placed directly before the submit button - no separate verify button */}
           <div>
-            <Captcha onValidated={handleCaptchaValidation} />
+            <Captcha 
+              ref={captchaRef} 
+              onValidated={handleCaptchaValidation} 
+            />
           </div>
           
           <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>

@@ -18,7 +18,8 @@ const Captcha: React.FC<CaptchaProps> = ({ onValidated }) => {
     loadCaptchaEnginge(6);
   }, []);
 
-  const handleValidate = () => {
+  // This function will be called by the parent component when submitting
+  const validateUserCaptcha = (): boolean => {
     setAttemptedValidation(true);
     const valid = validateCaptcha(userCaptcha);
     setIsValid(valid);
@@ -32,13 +33,25 @@ const Captcha: React.FC<CaptchaProps> = ({ onValidated }) => {
         inputRef.current.focus();
       }
     }
+    
+    return valid;
   };
 
   const refreshCaptcha = () => {
     loadCaptchaEnginge(6);
     setUserCaptcha('');
     setAttemptedValidation(false);
+    setIsValid(false);
+    onValidated(false);
   };
+
+  // Expose the validation method to the parent component
+  React.useImperativeHandle(
+    React.forwardRef((_, ref) => ref),
+    () => ({
+      validate: validateUserCaptcha
+    })
+  );
 
   return (
     <div className="space-y-2">
@@ -75,9 +88,6 @@ const Captcha: React.FC<CaptchaProps> = ({ onValidated }) => {
             <p className="text-sm text-red-500">Invalid captcha. Please try again.</p>
           )}
         </div>
-        <Button type="button" onClick={handleValidate} className="w-full">
-          Verify
-        </Button>
       </div>
       
       <div className="text-xs text-muted-foreground">

@@ -11,6 +11,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Captcha from '@/components/auth/Captcha';
+import { useCaptcha } from '@/hooks/use-captcha';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -22,9 +23,9 @@ type SignInFormInputs = z.infer<typeof signInSchema>;
 export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCaptchaValid, setIsCaptchaValid] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
   
   // Check for redirects from email verification or query params
   useEffect(() => {
@@ -64,11 +65,9 @@ export function SignInForm() {
     },
   });
 
-  const handleCaptchaValidation = (isValid: boolean) => {
-    setIsCaptchaValid(isValid);
-  };
-
   const onSubmit = async (data: SignInFormInputs) => {
+    // Validate captcha before proceeding
+    const isCaptchaValid = validateCaptcha();
     if (!isCaptchaValid) {
       toast({
         title: "Security check required",
@@ -226,20 +225,21 @@ export function SignInForm() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              <div className="flex justify-between items-center mt-1">
+                <Link 
+                  to="/auth/recover" 
+                  className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <FormMessage />
             </FormItem>
           )}
         />
         
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Link 
-              to="/auth/recover" 
-              className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
-            >
-              Forgot password?
-            </Link>
-            
+          <div className="flex justify-end items-center">
             <button
               type="button"
               onClick={handleResendVerification}
@@ -255,9 +255,12 @@ export function SignInForm() {
           </div>
         </div>
         
-        {/* Captcha placed directly before the submit button */}
+        {/* Captcha placed directly before the submit button - no separate verify button */}
         <div>
-          <Captcha onValidated={handleCaptchaValidation} />
+          <Captcha 
+            ref={captchaRef} 
+            onValidated={handleCaptchaValidation} 
+          />
         </div>
         
         <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
