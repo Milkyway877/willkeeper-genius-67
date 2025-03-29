@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -24,7 +25,7 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
+  const { captchaRef, handleCaptchaValidation } = useCaptcha();
   
   useEffect(() => {
     const handleAuthRedirect = async () => {
@@ -61,14 +62,17 @@ export function SignInForm() {
   });
 
   const onSubmit = async (data: SignInFormInputs) => {
-    const isCaptchaValid = validateCaptcha();
-    if (!isCaptchaValid) {
-      toast({
-        title: "Security check required",
-        description: "Please complete the captcha verification before signing in.",
-        variant: "destructive",
-      });
-      return;
+    // Validate captcha
+    if (captchaRef.current) {
+      const isCaptchaValid = captchaRef.current.validate();
+      if (!isCaptchaValid) {
+        toast({
+          title: "Security check required",
+          description: "Please complete the captcha verification before signing in.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     
     try {
@@ -114,6 +118,7 @@ export function SignInForm() {
         description: "Redirecting to your dashboard...",
       });
       
+      // After successful authentication, redirect to dashboard
       navigate('/dashboard');
     } catch (error) {
       console.error("Sign in error:", error);
@@ -215,35 +220,10 @@ export function SignInForm() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <div className="flex justify-between items-center mt-1">
-                <Link 
-                  to="/auth/recover" 
-                  className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
-                >
-                  Forgot password?
-                </Link>
-              </div>
               <FormMessage />
             </FormItem>
           )}
         />
-        
-        <div className="space-y-2">
-          <div className="flex justify-end items-center">
-            <button
-              type="button"
-              onClick={handleResendVerification}
-              className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
-              disabled={isLoading}
-            >
-              Resend verification email
-            </button>
-          </div>
-          
-          <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">Make sure to use the email address you registered with and verify your email before signing in.</p>
-          </div>
-        </div>
         
         <div>
           <Captcha 
@@ -263,6 +243,30 @@ export function SignInForm() {
             </>
           )}
         </Button>
+        
+        <div className="space-y-4 mt-4">
+          <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:justify-between">
+            <Link 
+              to="/auth/recover" 
+              className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
+            >
+              Forgot password?
+            </Link>
+            
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
+              disabled={isLoading}
+            >
+              Resend verification email
+            </button>
+          </div>
+          
+          <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
+            <p className="font-medium">Make sure to use the email address you registered with and verify your email before signing in.</p>
+          </div>
+        </div>
       </form>
     </Form>
   );

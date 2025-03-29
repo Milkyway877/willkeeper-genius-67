@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -21,7 +22,7 @@ type RecoverFormInputs = z.infer<typeof recoverSchema>;
 export function RecoverForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
+  const { captchaRef, handleCaptchaValidation } = useCaptcha();
 
   const form = useForm<RecoverFormInputs>({
     resolver: zodResolver(recoverSchema),
@@ -31,15 +32,17 @@ export function RecoverForm() {
   });
 
   const onSubmit = async (data: RecoverFormInputs) => {
-    // Validate captcha before proceeding
-    const isCaptchaValid = validateCaptcha();
-    if (!isCaptchaValid) {
-      toast({
-        title: "Security check required",
-        description: "Please complete the captcha verification first.",
-        variant: "destructive",
-      });
-      return;
+    // Validate captcha
+    if (captchaRef.current) {
+      const isCaptchaValid = captchaRef.current.validate();
+      if (!isCaptchaValid) {
+        toast({
+          title: "Security check required",
+          description: "Please complete the captcha verification first.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     
     setIsLoading(true);
@@ -116,17 +119,10 @@ export function RecoverForm() {
                 <Input type="email" placeholder="john.doe@example.com" className="rounded-lg" {...field} />
               </FormControl>
               <FormMessage />
-              <div className="text-sm text-muted-foreground mt-1">
-                Enter the email address you used to sign up.
-              </div>
             </FormItem>
           )}
         />
           
-        <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-          <p className="font-medium">We'll send you an email with instructions to reset your password.</p>
-        </div>
-        
         <div>
           <Captcha 
             ref={captchaRef}
@@ -145,6 +141,10 @@ export function RecoverForm() {
             </>
           )}
         </Button>
+        
+        <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
+          <p className="font-medium">We'll send you an email with instructions to reset your password.</p>
+        </div>
         
         <div className="text-center text-sm">
           <Link 

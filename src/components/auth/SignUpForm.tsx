@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -30,7 +31,7 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
+  const { captchaRef, handleCaptchaValidation } = useCaptcha();
 
   const form = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -44,14 +45,17 @@ export function SignUpForm() {
   });
 
   const onSubmit = async (data: SignUpFormInputs) => {
-    const isCaptchaValid = validateCaptcha();
-    if (!isCaptchaValid) {
-      toast({
-        title: "Security check required",
-        description: "Please complete the captcha verification before creating your account.",
-        variant: "destructive",
-      });
-      return;
+    // Validate captcha
+    if (captchaRef.current) {
+      const isCaptchaValid = captchaRef.current.validate();
+      if (!isCaptchaValid) {
+        toast({
+          title: "Security check required",
+          description: "Please complete the captcha verification before creating your account.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     
     setIsLoading(true);
@@ -209,10 +213,6 @@ export function SignUpForm() {
             )}
           />
           
-          <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
-          </div>
-          
           <div>
             <Captcha 
               ref={captchaRef}
@@ -231,6 +231,10 @@ export function SignUpForm() {
               </>
             )}
           </Button>
+          
+          <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
+            <p className="font-medium">After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
+          </div>
         </form>
       </Form>
     </div>
