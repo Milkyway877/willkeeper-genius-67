@@ -1,45 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Store, 
-  Search, 
-  Grid2x2 as Grid, 
-  BellRing, 
-  HelpCircle, 
-  Settings, 
-  Plus,
-  MonitorSmartphone as Monitor,
-  ToggleRight,
-  ChevronDown,
-  X,
-  Menu as MenuIcon,
-  PhoneCall as Phone,
-  ShieldCheck as Shield,
-  Briefcase,
-  MapPin,
-  HomeIcon as Home,
-  ArrowRight
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserAvatar } from '@/components/UserAvatar';
 import { Logo } from '@/components/ui/logo/Logo';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useUserProfile } from '@/contexts/UserProfileContext';
+import { NotificationDropdown } from './NotificationDropdown';
+import { ModeToggle } from '@/components/ui/mode-toggle';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
+import {
+  Menu,
+  Search,
+  Bell,
+  LogOut,
+  User,
+  Settings,
+  HelpCircle,
+  ChevronDown,
+  MessageSquare,
+  MenuIcon,
+} from 'lucide-react';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { DotPatternText } from '@/components/ui/DotPatternText';
-import { NotificationDropdown } from './NotificationDropdown';
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Switch } from '@/components/ui/switch';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -47,477 +37,205 @@ interface NavbarProps {
 }
 
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [testMode, setTestMode] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
+  const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
-  const location = useLocation();
-  const { toast } = useToast();
-  
-  const toggleMobileMenu = () => {
-    setShowMobileMenu(!showMobileMenu);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth/signin');
   };
 
-  const handleTestModeToggle = () => {
-    setTestMode(!testMode);
-    toast({
-      title: testMode ? "Test mode disabled" : "Test mode enabled",
-      description: testMode 
-        ? "Switched to production mode" 
-        : "You can now test features without affecting production data",
-    });
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
+  // Simple search handler
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (searchValue.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchValue)}`);
-      toast({
-        title: "Search initiated",
-        description: `Searching for "${searchValue}"`,
-      });
+    const formData = new FormData(e.currentTarget);
+    const query = formData.get('search') as string;
+    
+    if (query) {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+      setShowSearchInput(false);
     }
   };
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const handleProfileAction = (path: string) => {
-    navigate(path);
-    toast({
-      title: "Navigating",
-      description: `Going to ${path.split('/').pop() || 'dashboard'}`,
-    });
-  };
-  
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error("Error signing out:", error);
-        toast({
-          title: "Error logging out",
-          description: "There was an issue logging out. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out",
-      });
-      
-      navigate('/auth/signin', { replace: true });
-    } catch (error) {
-      console.error("Unexpected error during logout:", error);
-      toast({
-        title: "Error logging out",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const isDashboardPage = isAuthenticated || 
-    location.pathname.includes('/help') || 
-    location.pathname.includes('/security') || 
-    location.pathname.includes('/dashboard') ||
-    location.pathname.includes('/will') ||
-    location.pathname.includes('/templates') ||
-    location.pathname.includes('/encryption') ||
-    location.pathname.includes('/executors') ||
-    location.pathname.includes('/ai-assistance') ||
-    location.pathname.includes('/id-security') ||
-    location.pathname.includes('/billing') ||
-    location.pathname.includes('/notifications') ||
-    location.pathname.includes('/settings');
-  
-  const isAuthPage = location.pathname.includes('/auth/');
-  const shouldShowDashboardLayout = isDashboardPage && !isAuthPage;
-  const isHomePage = location.pathname === '/';
-  
-  const iconStyles = "transition-all duration-200";
-  
-  const dashboardIconWrapperStyles = "flex items-center justify-center h-10 w-10 rounded-md transition-all duration-200";
-  const dashboardIconStyles = "h-5 w-5 transition-colors duration-200";
-  
   return (
-    <>
-      {isHomePage ? (
-        <motion.div 
-          className={cn(
-            "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-            scrolled ? "py-2" : "py-4"
-          )}
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="container max-w-6xl mx-auto px-4">
-            <div className={cn(
-              "flex items-center justify-between transition-all duration-300",
-              scrolled ? "glassmorphism py-2 px-4 rounded-xl" : "py-2"
-            )}>
+    <div className="relative z-10">
+      <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
+        <div className="flex h-16 items-center justify-between px-4">
+          {/* Left section - Logo for mobile, Menu toggle for desktop */}
+          <div className="flex items-center">
+            {isAuthenticated && (
+              <Button 
+                variant="ghost"
+                size="icon"
+                onClick={onMenuToggle}
+                className="mr-2"
+                aria-label="Toggle sidebar menu"
+              >
+                <MenuIcon className="h-5 w-5" />
+              </Button>
+            )}
+            
+            {(!isAuthenticated || isMobile) && (
               <Link to="/" className="flex items-center">
-                <div className="flex items-center">
-                  <img 
-                    src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
-                    alt="WillTank Logo" 
-                    className="h-12 w-auto mr-3" 
-                  />
-                  <span className="text-2xl md:text-3xl font-bold text-black tracking-tight">
-                    WillTank
-                  </span>
-                </div>
+                <Logo size={isMobile ? 'sm' : 'md'} />
               </Link>
-              
-              <div className="hidden md:flex">
-                <motion.div 
-                  className={cn(
-                    "flex items-center gap-2 rounded-full bg-black/90 px-2 py-1.5 transition-all duration-300",
-                  )}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <Link to="/" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Home className={iconStyles} />
-                  </Link>
-                  <Link to="/security" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Shield className={iconStyles} />
-                  </Link>
-                  <Link to="/business" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <Briefcase className={iconStyles} />
-                  </Link>
-                  <Link to="/how-it-works" className="p-2 rounded-full text-white/80 hover:text-white transition-all duration-200">
-                    <MapPin className={iconStyles} />
-                  </Link>
-                </motion.div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <Link to="/auth/signin">
-                  <Button variant="outline" size="sm" className="rounded-xl border-black bg-transparent text-black hover:bg-black hover:text-white transition-all duration-200 px-4">
-                    login
-                  </Button>
-                </Link>
-                <Link to="/auth/signup">
-                  <Button size="sm" className="rounded-xl bg-black text-white hover:bg-gray-800 transition-all duration-200 px-6">
-                    <span className="font-mono tracking-wider">start</span>
-                    <ArrowRight size={14} className="ml-1" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
+            )}
           </div>
-        </motion.div>
-      ) : (
-        <motion.header 
-          className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white/90 backdrop-blur-md"
-          initial={{ y: -100 }}
-          animate={{ y: 0 }}
-          transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        >
-          {shouldShowDashboardLayout ? (
-            <div className="container py-3 px-4 md:px-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                  <Link to="/dashboard" className="flex items-center">
-                    <img 
-                      src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
-                      alt="WillTank Logo" 
-                      className="h-8 w-auto mr-2" 
+
+          {/* Center section - Navigation links */}
+          {!isAuthenticated && !isMobile && (
+            <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+              <Link to="/" className="text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                Home
+              </Link>
+              <Link to="/about" className="text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                About
+              </Link>
+              <Link to="/pricing" className="text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                Pricing
+              </Link>
+              <Link to="/contact" className="text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                Contact
+              </Link>
+              <Link to="/blog" className="text-gray-700 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors">
+                Blog
+              </Link>
+            </nav>
+          )}
+
+          {/* Right section - Action buttons */}
+          <div className="flex items-center space-x-2">
+            {isAuthenticated ? (
+              <>
+                {!showSearchInput ? (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setShowSearchInput(true)}
+                    className={isMobile ? "hidden sm:flex" : ""}
+                    aria-label="Search"
+                  >
+                    <Search className="h-5 w-5" />
+                  </Button>
+                ) : (
+                  <form onSubmit={handleSearch} className="flex items-center">
+                    <input
+                      type="text"
+                      name="search"
+                      placeholder="Search..."
+                      className="w-full border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-willtank-500 dark:bg-gray-800 dark:border-gray-700"
+                      autoFocus
+                      onBlur={() => setShowSearchInput(false)}
                     />
-                    <span className="font-semibold text-lg">WillTank</span>
-                  </Link>
-                  
-                  <form onSubmit={handleSearch} className="relative hidden md:block">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input 
-                        type="text"
-                        placeholder="Search..." 
-                        className="pl-10 w-[300px] bg-gray-100 border-gray-100 focus:bg-white"
-                        value={searchValue}
-                        onChange={(e) => setSearchValue(e.target.value)}
-                      />
-                    </div>
                   </form>
-                </div>
+                )}
+
+                <Link to="/pages/ai/AIAssistance" className={cn(
+                  "text-black dark:text-white",
+                  isMobile ? "hidden sm:flex" : ""
+                )}>
+                  <Button variant="ghost" size="icon" aria-label="AI Assistant">
+                    <MessageSquare className="h-5 w-5" />
+                  </Button>
+                </Link>
+
+                <NotificationDropdown />
+
+                <ModeToggle />
                 
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2 mr-2">
-                    <span className="text-sm text-gray-600">Test mode</span>
-                    <Switch
-                      checked={testMode}
-                      onCheckedChange={handleTestModeToggle}
-                    />
-                  </div>
-                  
-                  <Link 
-                    to="/dashboard" 
-                    className={cn(
-                      dashboardIconWrapperStyles,
-                      "hover:bg-gray-100"
-                    )}
-                    aria-label="Dashboard"
-                  >
-                    <Grid className={cn(dashboardIconStyles, "text-gray-600 hover:text-gray-900")} />
-                  </Link>
-                  
-                  <Link 
-                    to="/help" 
-                    className={cn(
-                      dashboardIconWrapperStyles,
-                      "hover:bg-gray-100"
-                    )}
-                    aria-label="Help"
-                  >
-                    <HelpCircle className={cn(dashboardIconStyles, "text-gray-600 hover:text-gray-900")} />
-                  </Link>
-                  
-                  <div className={cn(
-                    dashboardIconWrapperStyles,
-                    "hover:bg-gray-100 relative"
-                  )}>
-                    <NotificationDropdown />
-                  </div>
-                  
-                  <Link 
-                    to="/settings" 
-                    className={cn(
-                      dashboardIconWrapperStyles,
-                      "hover:bg-gray-100"
-                    )}
-                    aria-label="Settings"
-                  >
-                    <Settings className={cn(dashboardIconStyles, "text-gray-600 hover:text-gray-900")} />
-                  </Link>
-                  
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <UserAvatar user={profile} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="flex flex-col items-start">
+                      <span>{profile?.full_name || 'User'}</span>
+                      <span className="text-xs text-gray-500 font-normal truncate max-w-full">
+                        {profile?.email || ''}
+                      </span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings/account" className="w-full cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="w-full cursor-pointer">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/help" className="w-full cursor-pointer">
+                        <HelpCircle className="mr-2 h-4 w-4" />
+                        <span>Help & Support</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <div className="flex items-center">
+                <ModeToggle />
+                
+                {isMobile ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-9 w-9 p-0 rounded-full overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
-                          <AvatarFallback className="bg-gray-100 text-gray-700">WT</AvatarFallback>
-                        </Avatar>
+                      <Button variant="ghost" size="icon">
+                        <Menu className="h-5 w-5" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 z-50 bg-white shadow-md border border-gray-200">
-                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link to="/" className="w-full">Home</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/about" className="w-full">About</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/pricing" className="w-full">Pricing</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/contact" className="w-full">Contact</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/blog" className="w-full">Blog</Link>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="cursor-pointer hover:bg-gray-100">
-                        Profile Settings
+                      <DropdownMenuItem asChild>
+                        <Link to="/auth/signin" className="w-full">Sign in</Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="cursor-pointer hover:bg-gray-100">
-                        Security
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="cursor-pointer hover:bg-gray-100">
-                        Billing
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="cursor-pointer hover:bg-gray-100 text-red-600 hover:text-red-700">
-                        Log out
+                      <DropdownMenuItem asChild>
+                        <Link to="/auth/signup" className="w-full">Sign up</Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  
-                  <Button 
-                    onClick={() => navigate('/tank/create')}
-                    className="bg-black text-white hover:bg-gray-800 transition-colors rounded-full flex items-center gap-2"
-                    size="sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>New</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="container py-4 px-4 md:px-6 flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                {shouldShowDashboardLayout && (
-                  <button 
-                    onClick={onMenuToggle}
-                    className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
-                  >
-                    <MenuIcon size={20} />
-                  </button>
+                ) : (
+                  <>
+                    <Link to="/auth/signin" className="ml-4">
+                      <Button variant="ghost">Sign in</Button>
+                    </Link>
+                    <Link to="/auth/signup">
+                      <Button>Sign up</Button>
+                    </Link>
+                  </>
                 )}
-                <Link to="/">
-                  <Logo size="md" pixelated={false} showSlogan={false} />
-                </Link>
               </div>
-              
-              {shouldShowDashboardLayout ? (
-                <>
-                  <div className="flex items-center space-x-4">
-                    <div className="relative hidden md:flex items-center">
-                      <Input placeholder="Search..." className="pl-10 w-[200px] lg:w-[300px] rounded-full" />
-                    </div>
-                    
-                    <Link to="/help" className="p-2 rounded-full text-gray-600 hover:text-black transition-colors">
-                      <Phone size={20} className={iconStyles} />
-                    </Link>
-                    
-                    <div className="relative">
-                      <NotificationDropdown />
-                    </div>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="p-0 hover:bg-transparent">
-                          <Avatar>
-                            <AvatarImage src="/assets/avatar-placeholder.png" alt="User" />
-                            <AvatarFallback className="bg-gray-100 text-gray-700">AM</AvatarFallback>
-                          </Avatar>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56 z-50 bg-white shadow-md border border-gray-200">
-                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleProfileAction('/settings')} className="cursor-pointer">
-                          Profile Settings
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleProfileAction('/security')} className="cursor-pointer">
-                          Security
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleProfileAction('/billing')} className="cursor-pointer">
-                          Billing
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-                          Log out
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="hidden md:flex items-center space-x-6">
-                    <Link to="/services" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                      <MapPin size={18} className={iconStyles} />
-                      <span>Our Services</span>
-                    </Link>
-                    <Link to="/security" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                      <Shield size={18} className={iconStyles} />
-                      <span>Security</span>
-                    </Link>
-                    <Link to="/business" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                      <Briefcase size={18} className={iconStyles} />
-                      <span>For Businesses</span>
-                    </Link>
-                    <Link to="/how-it-works" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                      <MapPin size={18} className={iconStyles} />
-                      <span>How It Works</span>
-                    </Link>
-                    <Link to="/contact" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-                      <Phone size={18} className={iconStyles} />
-                      <span>Contact Us</span>
-                    </Link>
-                    
-                    <div className="flex items-center gap-4 ml-4">
-                      <Link to="/auth/signin">
-                        <Button variant="outline" className="rounded-xl border-black text-black hover:bg-black hover:text-white">Sign In</Button>
-                      </Link>
-                      <Link to="/auth/signup">
-                        <Button className="rounded-xl bg-black text-white hover:bg-gray-800">Get Started</Button>
-                      </Link>
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              <button 
-                className="md:hidden p-2 rounded-lg text-gray-500 hover:text-black hover:bg-gray-100"
-                onClick={toggleMobileMenu}
-              >
-                {showMobileMenu ? <X size={20} /> : <MenuIcon size={20} />}
-              </button>
-            </div>
-          )}
-          
-          {showMobileMenu && (
-            <motion.div 
-              className="md:hidden py-4 px-6 space-y-4 border-t border-gray-100 bg-white animate-fade-in"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              {shouldShowDashboardLayout ? (
-                <nav className="flex flex-col space-y-4">
-                  <div className="relative flex items-center mb-2">
-                    <Input placeholder="Search..." className="pl-10 w-full rounded-full" />
-                  </div>
-                  <Link to="/dashboard" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    Dashboard
-                  </Link>
-                  <Link to="/will" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    My Will
-                  </Link>
-                  <Link to="/help" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    Help & Support
-                  </Link>
-                  <Link to="/settings" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    Settings
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2 w-full text-left"
-                  >
-                    Log Out
-                  </button>
-                </nav>
-              ) : (
-                <nav className="flex flex-col space-y-4">
-                  <Link to="/services" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    <MapPin size={16} className={iconStyles} />
-                    Our Services
-                  </Link>
-                  <Link to="/security" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    <Shield size={16} className={iconStyles} />
-                    Security
-                  </Link>
-                  <Link to="/business" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    <Briefcase size={16} className={iconStyles} />
-                    For Business
-                  </Link>
-                  <Link to="/how-it-works" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    <MapPin size={16} className={iconStyles} />
-                    How It Works
-                  </Link>
-                  <Link to="/contact" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    <Phone size={16} className={iconStyles} />
-                    Contact Us
-                  </Link>
-                  
-                  <Link to="/auth/signin" className="flex items-center gap-3 text-sm font-medium text-gray-600 hover:text-black transition py-2">
-                    Sign In
-                  </Link>
-                  <Link to="/auth/signup">
-                    <Button className="justify-center w-full rounded-xl bg-black text-white hover:bg-gray-800">Get Started</Button>
-                  </Link>
-                </nav>
-              )}
-            </motion.div>
-          )}
-        </motion.header>
-      )}
-    </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

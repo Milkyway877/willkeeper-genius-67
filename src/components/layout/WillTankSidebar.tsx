@@ -1,13 +1,15 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Logo } from '@/components/ui/logo/Logo';
 import { ModeToggle } from '@/components/ui/mode-toggle';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, FileText, PackageOpen, Lock, Users, Brain, 
   ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, 
-  Archive, Briefcase
+  Archive, Briefcase, MenuIcon, XIcon
 } from 'lucide-react';
 
 interface WillTankSidebarProps {
@@ -17,6 +19,8 @@ interface WillTankSidebarProps {
 export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
   const location = useLocation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const navigationItems = [
     {
@@ -83,6 +87,102 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
   
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
   
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+  
+  // Mobile menu overlay
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile menu button */}
+        <button
+          onClick={toggleMobileMenu}
+          className="fixed z-50 bottom-4 right-4 bg-black text-white p-3 rounded-full shadow-lg"
+          aria-label="Toggle mobile menu"
+        >
+          {mobileMenuOpen ? (
+            <XIcon className="h-6 w-6" />
+          ) : (
+            <MenuIcon className="h-6 w-6" />
+          )}
+        </button>
+        
+        {/* Mobile menu overlay */}
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black bg-opacity-50"
+            onClick={toggleMobileMenu}
+          >
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-4 justify-between">
+                <Link to="/" className="flex items-center">
+                  <Logo size="md" pixelated={false} />
+                </Link>
+                <ModeToggle />
+              </div>
+              
+              <div className="py-6">
+                <nav className="space-y-1 px-2">
+                  {navigationItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={cn(
+                        "flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors justify-between",
+                        isActive(item.href) 
+                          ? "bg-black text-white dark:bg-white dark:text-black" 
+                          : "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                      )}
+                      onClick={toggleMobileMenu}
+                    >
+                      <div className="flex items-center">
+                        <item.icon className="h-5 w-5 mr-3" />
+                        <span>{item.title}</span>
+                      </div>
+                      {isActive(item.href) && (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+              
+              <div className="mt-auto p-4">
+                <Link 
+                  to="/corporate" 
+                  className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
+                  onClick={toggleMobileMenu}
+                >
+                  <div className="flex items-center">
+                    <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                      <Briefcase className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </>
+    );
+  }
+  
+  // Desktop sidebar
   return (
     <motion.aside
       initial={{ width: isCollapsed ? 64 : 256 }}

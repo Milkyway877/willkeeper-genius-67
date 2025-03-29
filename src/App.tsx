@@ -20,6 +20,7 @@ import SecureSignUp from './pages/auth/SecureSignUp';
 import SecureRecover from './pages/auth/SecureRecover';
 import AuthResetPassword from './pages/auth/ResetPassword';
 import AccountActivation from './pages/auth/AccountActivation';
+import EmailVerification from './pages/auth/EmailVerification';
 import Dashboard from './pages/Dashboard';
 import WillDashboard from './pages/will/Will';
 import WillEditor from './pages/will/WillCreation';
@@ -43,6 +44,9 @@ import AIAssistance from './pages/ai/AIAssistance';
 import IDSecurity from './pages/security/IDSecurity';
 import Billing from './pages/billing/Billing';
 import Notifications from './pages/notifications/Notifications';
+
+// Add global mobile responsive styles
+import './MobileStyles.css';
 
 const queryClient = new QueryClient();
 
@@ -69,6 +73,7 @@ function App() {
             <Route path="/auth/forgot-password" element={<SecureRecover />} />
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
             <Route path="/auth/activate" element={<AccountActivation />} />
+            <Route path="/auth/verify-email" element={<EmailVerification />} />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />

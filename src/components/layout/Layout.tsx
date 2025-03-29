@@ -9,6 +9,8 @@ import { FloatingHelp } from '@/components/ui/FloatingHelp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { MobileNotification } from '@/components/ui/MobileNotification';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,9 +19,32 @@ interface LayoutProps {
 
 export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showMobileNotification, setShowMobileNotification] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  
+  // Check if mobile notification has been dismissed before
+  useEffect(() => {
+    const dismissedNotification = localStorage.getItem('dismissedMobileNotification');
+    if (dismissedNotification === 'true') {
+      setShowMobileNotification(false);
+    }
+  }, []);
+  
+  // Handle notification dismissal
+  const handleDismissMobileNotification = () => {
+    setShowMobileNotification(false);
+    localStorage.setItem('dismissedMobileNotification', 'true');
+  };
+  
+  // Auto-collapse sidebar on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setShowSidebar(false);
+    }
+  }, [isMobile]);
   
   // Check authentication status if required
   useEffect(() => {
@@ -90,6 +115,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         transition={{ duration: 0.3 }}
       >
         <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
+        
+        {isMobile && showAuthenticatedLayout && showMobileNotification && (
+          <MobileNotification onDismiss={handleDismissMobileNotification} />
+        )}
         
         <main className={cn(
           "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",

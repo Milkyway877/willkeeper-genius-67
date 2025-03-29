@@ -1,0 +1,166 @@
+
+/* MobileStyles.css - Contains mobile-specific styles and responsive overrides */
+
+/* Base responsive typography adjustments */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  h2 {
+    font-size: 1.5rem !important;
+  }
+  
+  h3 {
+    font-size: 1.25rem !important;
+  }
+  
+  .text-xl {
+    font-size: 1.125rem !important;
+  }
+  
+  .text-lg {
+    font-size: 1rem !important;
+  }
+}
+
+/* Adjust padding and margins for mobile devices */
+@media (max-width: 640px) {
+  .p-6 {
+    padding: 1rem !important;
+  }
+  
+  .px-6 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .py-6 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+  
+  .m-6 {
+    margin: 1rem !important;
+  }
+  
+  .my-6 {
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .mx-6 {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+  }
+  
+  /* Add more spacing overrides as needed */
+}
+
+/* Improve button touch targets on mobile */
+@media (max-width: 640px) {
+  button, 
+  .btn,
+  [role="button"],
+  a.btn,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 2.75rem;
+  }
+}
+
+/* Optimize mobile forms */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Add more space between form fields on mobile */
+  .form-field + .form-field,
+  .space-y-4 > * {
+    margin-top: 1.25rem !important;
+  }
+}
+
+/* Better mobile table handling */
+@media (max-width: 768px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Improve image responsiveness */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Ensure proper viewport settings for mobile devices */
+@viewport {
+  width: device-width;
+  zoom: 1.0;
+}
+
+/* Fix for iOS input shadows */
+input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Custom scrollbars for mobile */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+}
+
+/* Dashboard cards responsive adjustments */
+@media (max-width: 640px) {
+  .grid.grid-cols-3,
+  .grid.grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .lg\:grid-cols-3,
+  .md\:grid-cols-3,
+  .md\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Improve floating button positioning on mobile */
+@media (max-width: 640px) {
+  .fixed.bottom-4.right-4 {
+    bottom: 1rem !important;
+    right: 1rem !important;
+  }
+}
+
+/* Fix modal positioning on mobile */
+@media (max-width: 640px) {
+  .modal-container,
+  [role="dialog"] {
+    width: calc(100% - 2rem) !important;
+    margin: 1rem !important;
+  }
+}
