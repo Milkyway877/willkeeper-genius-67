@@ -3,16 +3,15 @@ import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
+import Captcha from '@/components/auth/Captcha';
 
-// Recovery schema
 const recoverSchema = z.object({
   email: z.string().email('Please enter a valid email'),
 });
@@ -21,9 +20,9 @@ type RecoverFormInputs = z.infer<typeof recoverSchema>;
 
 export function RecoverForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isCaptchaValid, setIsCaptchaValid] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const navigate = useNavigate();
-  
+
   const form = useForm<RecoverFormInputs>({
     resolver: zodResolver(recoverSchema),
     defaultValues: {
@@ -31,87 +30,130 @@ export function RecoverForm() {
     },
   });
 
-  const handleResetPassword = async (data: RecoverFormInputs) => {
-    try {
-      setIsLoading(true);
-      
-      // Send password reset email
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: window.location.origin + '/auth/reset-password',
+  const handleCaptchaValidation = (isValid: boolean) => {
+    setIsCaptchaValid(isValid);
+  };
+
+  const onSubmit = async (data: RecoverFormInputs) => {
+    if (!isCaptchaValid) {
+      toast({
+        title: "Security check required",
+        description: "Please complete the captcha verification first.",
+        variant: "destructive",
       });
-      
+      return;
+    }
+    
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
       if (error) {
-        throw new Error(error.message);
+        throw error;
       }
-      
+
+      // Success state regardless of whether the email exists
       setEmailSent(true);
-      
       toast({
         title: "Recovery email sent",
-        description: "Check your inbox for a password reset link",
-        duration: 5000,
+        description: "If an account exists with this email, you'll receive instructions to reset your password.",
       });
     } catch (error) {
-      console.error("Recovery error:", error);
+      console.error("Error sending password reset:", error);
       
+      // Generic message to prevent user enumeration
       toast({
-        title: "Recovery failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+        title: "Recovery email sent",
+        description: "If an account exists with this email, you'll receive instructions to reset your password.",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (emailSent) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-green-800">
+          <h3 className="font-medium text-lg">Check your email</h3>
+          <p className="mt-1">
+            We've sent password reset instructions to the email address you provided.
+            Please check your inbox and follow the link to reset your password.
+          </p>
+        </div>
+        
+        <div className="text-sm text-muted-foreground">
+          <p>Didn't receive an email? Check your spam folder or <button
+            type="button"
+            className="font-medium text-willtank-600 hover:text-willtank-700"
+            onClick={() => setEmailSent(false)}
+          >try again</button>.</p>
+        </div>
+        
+        <div className="text-center">
+          <Link 
+            to="/auth/signin" 
+            className="font-medium text-willtank-600 hover:text-willtank-700"
+          >
+            Return to sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleResetPassword)} className="space-y-6">
-        {!emailSent ? (
-          <>
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="john.doe@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex items-start space-x-2">
-              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-amber-800">
-                We'll send you a password reset link to the email address associated with your account.
-              </p>
-            </div>
-            
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Sending..." : "Send Reset Link"} {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
-            </Button>
-          </>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-green-50 p-4 rounded-md border border-green-200">
-              <h3 className="text-lg font-medium text-green-800 mb-2">Recovery Email Sent</h3>
-              <p className="text-sm text-green-700">
-                We've sent a password reset link to your email address. Please check your inbox and follow the instructions to reset your password.
-              </p>
-            </div>
-            
-            <Button 
-              type="button" 
-              onClick={() => navigate('/auth/signin')} 
-              className="w-full"
-            >
-              Return to Sign In
-            </Button>
-          </div>
-        )}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="john.doe@example.com" className="rounded-lg" {...field} />
+              </FormControl>
+              <FormMessage />
+              <div className="text-sm text-muted-foreground mt-1">
+                Enter the email address you used to sign up.
+              </div>
+            </FormItem>
+          )}
+        />
+          
+        <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
+          <p className="font-medium">We'll send you an email with instructions to reset your password.</p>
+        </div>
+        
+        {/* Captcha placed directly before the submit button */}
+        <div>
+          <Captcha onValidated={handleCaptchaValidation} />
+        </div>
+        
+        <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending Reset Link...
+            </>
+          ) : (
+            <>
+              Reset Password <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
+        
+        <div className="text-center text-sm">
+          <Link 
+            to="/auth/signin" 
+            className="font-medium text-willtank-600 hover:text-willtank-700"
+          >
+            Back to sign in
+          </Link>
+        </div>
       </form>
     </Form>
   );

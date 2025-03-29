@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import Captcha from '@/components/auth/Captcha';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -21,6 +22,7 @@ type SignInFormInputs = z.infer<typeof signInSchema>;
 export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCaptchaValid, setIsCaptchaValid] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -62,7 +64,20 @@ export function SignInForm() {
     },
   });
 
+  const handleCaptchaValidation = (isValid: boolean) => {
+    setIsCaptchaValid(isValid);
+  };
+
   const onSubmit = async (data: SignInFormInputs) => {
+    if (!isCaptchaValid) {
+      toast({
+        title: "Security check required",
+        description: "Please complete the captcha verification before signing in.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsLoading(true);
       
@@ -216,19 +231,7 @@ export function SignInForm() {
           )}
         />
         
-        <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
-            </>
-          ) : (
-            <>
-              Sign In <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
-        
-        <div className="space-y-2 mt-6">
+        <div className="space-y-2">
           <div className="flex justify-between items-center">
             <Link 
               to="/auth/recover" 
@@ -251,6 +254,23 @@ export function SignInForm() {
             <p className="font-medium">Make sure to use the email address you registered with and verify your email before signing in.</p>
           </div>
         </div>
+        
+        {/* Captcha placed directly before the submit button */}
+        <div>
+          <Captcha onValidated={handleCaptchaValidation} />
+        </div>
+        
+        <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+            </>
+          ) : (
+            <>
+              Sign In <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
       </form>
     </Form>
   );

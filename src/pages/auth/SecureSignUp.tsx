@@ -1,17 +1,13 @@
 
 import React from 'react';
 import { SignUpForm } from '@/components/auth/SignUpForm';
-import Captcha from '@/components/auth/Captcha';
 import HoneypotField from '@/components/auth/HoneypotField';
 import NoPasteWarning from '@/components/auth/NoPasteWarning';
-import { useCaptcha } from '@/hooks/use-captcha';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { toast } from '@/hooks/use-toast';
 import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 
 const SecureSignUp = () => {
-  const { isCaptchaValid, handleCaptchaValidation } = useCaptcha();
-
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     
@@ -28,16 +24,6 @@ const SecureSignUp = () => {
       });
       
       // Actually do nothing
-      return;
-    }
-    
-    // Check captcha
-    if (!isCaptchaValid) {
-      toast({
-        title: "Security check required",
-        description: "Please complete the captcha verification before creating your account.",
-        variant: "destructive",
-      });
       return;
     }
     
@@ -64,11 +50,6 @@ const SecureSignUp = () => {
           </div>
           
           <SignUpForm />
-          
-          {/* Captcha before submit button */}
-          <div className="mt-6 mb-6">
-            <Captcha onValidated={handleCaptchaValidation} />
-          </div>
         </form>
       </div>
     </AuthLayout>

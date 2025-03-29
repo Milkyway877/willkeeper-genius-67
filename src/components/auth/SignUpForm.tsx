@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { createSystemNotification } from '@/services/notificationService';
+import Captcha from '@/components/auth/Captcha';
 
 const signUpSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -30,6 +31,7 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isCaptchaValid, setIsCaptchaValid] = useState(false);
 
   const form = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -42,7 +44,20 @@ export function SignUpForm() {
     },
   });
 
+  const handleCaptchaValidation = (isValid: boolean) => {
+    setIsCaptchaValid(isValid);
+  };
+
   const onSubmit = async (data: SignUpFormInputs) => {
+    if (!isCaptchaValid) {
+      toast({
+        title: "Security check required",
+        description: "Please complete the captcha verification before creating your account.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -206,6 +221,11 @@ export function SignUpForm() {
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
             <p className="font-medium">After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
+          </div>
+          
+          {/* Captcha placed directly before the submit button */}
+          <div>
+            <Captcha onValidated={handleCaptchaValidation} />
           </div>
           
           <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>

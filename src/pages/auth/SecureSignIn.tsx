@@ -2,16 +2,13 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SignInForm } from '@/components/auth/SignInForm';
-import Captcha from '@/components/auth/Captcha';
 import HoneypotField from '@/components/auth/HoneypotField';
 import NoPasteWarning from '@/components/auth/NoPasteWarning';
-import { useCaptcha } from '@/hooks/use-captcha';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { toast } from '@/hooks/use-toast';
 import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 
 const SecureSignIn = () => {
-  const { isCaptchaValid, handleCaptchaValidation } = useCaptcha();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,16 +28,6 @@ const SecureSignIn = () => {
       });
       
       // Actually do nothing
-      return;
-    }
-    
-    // Check captcha
-    if (!isCaptchaValid) {
-      toast({
-        title: "Security check required",
-        description: "Please complete the captcha verification before signing in.",
-        variant: "destructive",
-      });
       return;
     }
     
@@ -67,11 +54,6 @@ const SecureSignIn = () => {
           </div>
           
           <SignInForm />
-          
-          {/* Captcha before submit button */}
-          <div className="mt-6 mb-6">
-            <Captcha onValidated={handleCaptchaValidation} />
-          </div>
         </form>
       </div>
     </AuthLayout>
