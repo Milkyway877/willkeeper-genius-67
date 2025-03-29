@@ -11,9 +11,9 @@ const SecureSignIn = () => {
   // This function is now simplified to just check the honeypot and show a warning
   // It no longer interferes with the form submission
   const checkHoneypot = () => {
-    const honeypotValue = document.querySelector('input[name="user_email_confirmation"]')?.value;
+    const honeypotInput = document.querySelector('input[name="user_email_confirmation"]') as HTMLInputElement | null;
     
-    if (honeypotValue) {
+    if (honeypotInput && honeypotInput.value) {
       // This is likely a bot - silently fail but appear to succeed
       toast({
         title: "Sign in successful",
