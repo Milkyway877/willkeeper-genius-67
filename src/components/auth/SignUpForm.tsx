@@ -77,8 +77,9 @@ export function SignUpForm() {
         description: "Please check your email to verify your account.",
       });
       
+      // Redirect to the verification banner page instead
       setTimeout(() => {
-        navigate('/auth/signin');
+        navigate('/auth/verification-banner');
       }, 2000);
     } catch (error) {
       console.error("Error registering user:", error);

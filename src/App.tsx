@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -21,6 +20,7 @@ import SecureRecover from './pages/auth/SecureRecover';
 import AuthResetPassword from './pages/auth/ResetPassword';
 import AccountActivation from './pages/auth/AccountActivation';
 import EmailVerification from './pages/auth/EmailVerification';
+import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import Dashboard from './pages/Dashboard';
 import WillDashboard from './pages/will/Will';
 import WillEditor from './pages/will/WillCreation';
@@ -74,6 +74,7 @@ function App() {
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
             <Route path="/auth/activate" element={<AccountActivation />} />
             <Route path="/auth/verify-email" element={<EmailVerification />} />
+            <Route path="/auth/verification-banner" element={<VerifyEmailBanner />} />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />
