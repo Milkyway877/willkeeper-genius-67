@@ -3,8 +3,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Check, Globe } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function BillingSettings() {
+  const navigate = useNavigate();
+  
   return (
     <>
       <motion.div
@@ -49,8 +52,8 @@ export function BillingSettings() {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline">Update Payment Method</Button>
-            <Button variant="outline">Billing History</Button>
+            <Button variant="outline" onClick={() => navigate('/billing')}>Update Payment Method</Button>
+            <Button variant="outline" onClick={() => navigate('/billing')}>Billing History</Button>
             <Button variant="outline" className="text-red-500 hover:text-red-600 hover:bg-red-50">
               Cancel Subscription
             </Button>
@@ -89,7 +92,7 @@ export function BillingSettings() {
                   1 year of secure storage
                 </li>
               </ul>
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/billing')}>
                 Downgrade
               </Button>
             </div>
@@ -141,7 +144,7 @@ export function BillingSettings() {
                   Priority support
                 </li>
               </ul>
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => navigate('/billing')}>
                 Upgrade
               </Button>
             </div>

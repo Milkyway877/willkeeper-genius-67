@@ -7,6 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json'
 };
 
 serve(async (req) => {
@@ -33,7 +34,17 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Get request data
-    const requestData = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      console.error('Failed to parse request JSON:', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
     const { plan, billingPeriod } = requestData;
     
     console.log(`Received request for plan: ${plan} billing period: ${billingPeriod}`);
@@ -186,10 +197,7 @@ serve(async (req) => {
       JSON.stringify({ url: session.url }),
       {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+        headers: corsHeaders
       }
     );
   } catch (error) {
@@ -201,10 +209,7 @@ serve(async (req) => {
       }),
       {
         status: 400,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+        headers: corsHeaders
       }
     );
   }
