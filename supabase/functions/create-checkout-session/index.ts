@@ -129,23 +129,42 @@ serve(async (req) => {
       }
     }
 
-    // Define Stripe product price IDs with fixed values
-    // The fallback values are just examples and will be replaced by real values
-    const PRICE_IDS = {
+    // Define test Stripe product price IDs
+    // These will need to be created in the Stripe dashboard
+    const TEST_PRICE_IDS = {
       starter: {
-        monthly: Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY") || "price_example_starter_monthly",
-        yearly: Deno.env.get("STRIPE_PRICE_STARTER_YEARLY") || "price_example_starter_yearly",
-        lifetime: Deno.env.get("STRIPE_PRICE_STARTER_LIFETIME") || "price_example_starter_lifetime",
+        monthly: "price_1PiQ1UHTKA0osvsHFbYZtT02",
+        yearly: "price_1PiQ1VHTKA0osvsHLcHQrE0o",
+        lifetime: "price_1PiQ1WHTKA0osvsHyA38dKxH",
       },
       gold: {
-        monthly: Deno.env.get("STRIPE_PRICE_GOLD_MONTHLY") || "price_example_gold_monthly",
-        yearly: Deno.env.get("STRIPE_PRICE_GOLD_YEARLY") || "price_example_gold_yearly",
-        lifetime: Deno.env.get("STRIPE_PRICE_GOLD_LIFETIME") || "price_example_gold_lifetime",
+        monthly: "price_1PiQ1XHTKA0osvsH5oQLleMZ",
+        yearly: "price_1PiQ1YHTKA0osvsHQg6KeJW0",
+        lifetime: "price_1PiQ1ZHTKA0osvsHc7RlSiB9",
       },
       platinum: {
-        monthly: Deno.env.get("STRIPE_PRICE_PLATINUM_MONTHLY") || "price_example_platinum_monthly",
-        yearly: Deno.env.get("STRIPE_PRICE_PLATINUM_YEARLY") || "price_example_platinum_yearly",
-        lifetime: Deno.env.get("STRIPE_PRICE_PLATINUM_LIFETIME") || "price_example_platinum_lifetime",
+        monthly: "price_1PiQ1aHTKA0osvsHFLAhDdXf",
+        yearly: "price_1PiQ1bHTKA0osvsH1HQeODQR",
+        lifetime: "price_1PiQ1cHTKA0osvsHNzzYHI9A",
+      },
+    };
+
+    // Get price IDs from environment variables or use test IDs as fallback
+    const PRICE_IDS = {
+      starter: {
+        monthly: Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY") || TEST_PRICE_IDS.starter.monthly,
+        yearly: Deno.env.get("STRIPE_PRICE_STARTER_YEARLY") || TEST_PRICE_IDS.starter.yearly,
+        lifetime: Deno.env.get("STRIPE_PRICE_STARTER_LIFETIME") || TEST_PRICE_IDS.starter.lifetime,
+      },
+      gold: {
+        monthly: Deno.env.get("STRIPE_PRICE_GOLD_MONTHLY") || TEST_PRICE_IDS.gold.monthly,
+        yearly: Deno.env.get("STRIPE_PRICE_GOLD_YEARLY") || TEST_PRICE_IDS.gold.yearly,
+        lifetime: Deno.env.get("STRIPE_PRICE_GOLD_LIFETIME") || TEST_PRICE_IDS.gold.lifetime,
+      },
+      platinum: {
+        monthly: Deno.env.get("STRIPE_PRICE_PLATINUM_MONTHLY") || TEST_PRICE_IDS.platinum.monthly,
+        yearly: Deno.env.get("STRIPE_PRICE_PLATINUM_YEARLY") || TEST_PRICE_IDS.platinum.yearly,
+        lifetime: Deno.env.get("STRIPE_PRICE_PLATINUM_LIFETIME") || TEST_PRICE_IDS.platinum.lifetime,
       },
     };
 

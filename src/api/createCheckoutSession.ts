@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export async function createCheckoutSession(plan: string, billingPeriod: string) {
-  // Show loading toast with an ID so we can dismiss it later
+  // Create a unique ID for this loading toast
   const loadingToastId = toast.loading("Preparing checkout...");
   
   try {
@@ -16,10 +16,11 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
       })
     });
 
+    // Always dismiss the loading toast before showing any other toast
+    toast.dismiss(loadingToastId);
+
     if (error) {
       console.error('Error from checkout session function:', error);
-      // Dismiss the loading toast first
-      toast.dismiss(loadingToastId);
       toast.error('Failed to create checkout session', {
         description: error.message
       });
@@ -28,14 +29,10 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
 
     if (!data || !data.url) {
       console.error('Invalid response from checkout session function:', data);
-      // Dismiss the loading toast first
-      toast.dismiss(loadingToastId);
       toast.error('Invalid response from payment service');
       throw new Error('Invalid response from payment service');
     }
 
-    // Dismiss the loading toast on success before redirecting
-    toast.dismiss(loadingToastId);
     console.log('Successfully created checkout session, redirecting to:', data.url);
     return data;
   } catch (error) {

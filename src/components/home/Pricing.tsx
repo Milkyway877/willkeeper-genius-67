@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -20,17 +19,14 @@ export function Pricing() {
     try {
       setIsLoading(planName);
       
-      // Check if user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // If not authenticated, redirect to sign up with plan details
         toast.info('Please sign up or log in to continue');
         navigate(`/auth/signup?plan=${planName}&billing=${billingPeriod}`);
         return;
       }
       
-      // If authenticated, create checkout session
       const sessionData = await createCheckoutSession(planName, billingPeriod);
       
       if (sessionData?.url) {
@@ -40,7 +36,6 @@ export function Pricing() {
       }
     } catch (error) {
       console.error('Error handling plan selection:', error);
-      toast.error('Could not process your request');
     } finally {
       setIsLoading(null);
     }
@@ -149,7 +144,6 @@ export function Pricing() {
   
   return (
     <section id="pricing" className="py-24 bg-black text-white overflow-hidden relative">
-      {/* Background elements */}
       <div className="absolute inset-0 dot-pattern opacity-10"></div>
       
       <div className="container max-w-6xl px-4 md:px-6 relative z-10">
