@@ -7,6 +7,7 @@ import NoPasteWarning from '@/components/auth/NoPasteWarning';
 import { useCaptcha } from '@/hooks/use-captcha';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { toast } from '@/hooks/use-toast';
+import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 
 const SecureRecover = () => {
   const { isCaptchaValid, handleCaptchaValidation } = useCaptcha();
@@ -48,7 +49,11 @@ const SecureRecover = () => {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout 
+      title="Recover your account" 
+      subtitle="Enter your email to reset your password."
+      rightPanel={<SecurityInfoPanel mode="recover" />}
+    >
       <div className="relative">
         <HoneypotField name="user_email_confirmation" />
         

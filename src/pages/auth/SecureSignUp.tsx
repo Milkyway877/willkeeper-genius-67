@@ -7,6 +7,7 @@ import NoPasteWarning from '@/components/auth/NoPasteWarning';
 import { useCaptcha } from '@/hooks/use-captcha';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { toast } from '@/hooks/use-toast';
+import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 
 const SecureSignUp = () => {
   const { isCaptchaValid, handleCaptchaValidation } = useCaptcha();
@@ -48,7 +49,11 @@ const SecureSignUp = () => {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout 
+      title="Create your WillTank account" 
+      subtitle="Join our secure platform and start protecting your legacy with bank-grade encryption."
+      rightPanel={<SecurityInfoPanel mode="signup" />}
+    >
       <div className="relative">
         <HoneypotField name="user_email_confirmation" />
         

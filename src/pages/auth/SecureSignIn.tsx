@@ -8,6 +8,7 @@ import NoPasteWarning from '@/components/auth/NoPasteWarning';
 import { useCaptcha } from '@/hooks/use-captcha';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { toast } from '@/hooks/use-toast';
+import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 
 const SecureSignIn = () => {
   const { isCaptchaValid, handleCaptchaValidation } = useCaptcha();
@@ -51,7 +52,11 @@ const SecureSignIn = () => {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout 
+      title="Sign in to WillTank" 
+      subtitle="Access your secure will management platform."
+      rightPanel={<SecurityInfoPanel mode="signin" />}
+    >
       <div className="relative">
         <HoneypotField name="user_email_confirmation" />
         
