@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, Shield, Zap, Building, Star, Users } from 'lucide-react';
+import { Calendar, CheckCircle, Shield, Zap, Building, Star, Users, Loader } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { toast } from 'sonner';
@@ -30,7 +31,8 @@ export default function Billing() {
       
       navigate('/billing', { replace: true });
       
-      fetchBillingData();
+      // We've removed Stripe, so just update UI state instead of fetching data
+      setIsLoading(false);
     } else if (canceled === 'true') {
       toast.error("Payment canceled", {
         description: "You have canceled the payment process.",
@@ -273,7 +275,7 @@ export default function Billing() {
                     >
                       {isProcessing === planKey ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                          <Loader className="mr-2 h-4 w-4 animate-spin" /> Processing...
                         </>
                       ) : (
                         'Upgrade'
