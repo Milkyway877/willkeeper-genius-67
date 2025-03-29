@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -9,7 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, FileText, PackageOpen, Lock, Users, Brain, 
   ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, 
-  Archive, Briefcase, MenuIcon, XIcon
+  Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle
 } from 'lucide-react';
 
 interface WillTankSidebarProps {
@@ -91,12 +91,35 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
     setMobileMenuOpen(!mobileMenuOpen);
   };
   
+  // Handle mobile menu closing when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const sidebar = document.getElementById('mobile-sidebar');
+      const button = document.getElementById('mobile-menu-button');
+      
+      if (mobileMenuOpen && sidebar && button) {
+        if (!sidebar.contains(event.target as Node) && !button.contains(event.target as Node)) {
+          setMobileMenuOpen(false);
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [mobileMenuOpen]);
+  
   // Mobile menu overlay
   if (isMobile) {
     return (
       <>
         {/* Mobile menu button */}
         <button
+          id="mobile-menu-button"
           onClick={toggleMobileMenu}
           className="fixed z-50 bottom-4 right-4 bg-black text-white p-3 rounded-full shadow-lg"
           aria-label="Toggle mobile menu"
@@ -118,11 +141,12 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
             onClick={toggleMobileMenu}
           >
             <motion.div
+              id="mobile-sidebar"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 overflow-y-auto"
+              className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 overflow-y-auto z-50"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-4 justify-between">
@@ -132,8 +156,8 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
                 <ModeToggle />
               </div>
               
-              <div className="py-6">
-                <nav className="space-y-1 px-2">
+              <div className="py-6 flex flex-col h-[calc(100%-4rem)] justify-between">
+                <nav className="space-y-1 px-2 flex-1 overflow-y-auto">
                   {navigationItems.map((item) => (
                     <Link
                       key={item.href}
@@ -156,24 +180,24 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
                     </Link>
                   ))}
                 </nav>
-              </div>
-              
-              <div className="mt-auto p-4">
-                <Link 
-                  to="/corporate" 
-                  className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
-                  onClick={toggleMobileMenu}
-                >
-                  <div className="flex items-center">
-                    <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                      <Briefcase className="h-4 w-4 text-white" />
+                
+                <div className="p-4">
+                  <Link 
+                    to="/corporate" 
+                    className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
+                    onClick={toggleMobileMenu}
+                  >
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                        <Briefcase className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
+                      </div>
                     </div>
-                    <div className="ml-3">
-                      <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
-                    </div>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -239,24 +263,46 @@ export function WillTankSidebar({ isCollapsed = false }: WillTankSidebarProps) {
         </nav>
       </div>
       
-      {!isCollapsed && (
-        <div className="mt-auto p-4">
-          <Link 
-            to="/corporate" 
-            className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
-          >
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                <Briefcase className="h-4 w-4 text-white" />
+      {/* Container for bottom content including collapse button and corporate link */}
+      <div className="mt-auto">
+        {!isCollapsed && (
+          <div className="p-4">
+            <Link 
+              to="/corporate" 
+              className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
+            >
+              <div className="flex items-center">
+                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Briefcase className="h-4 w-4 text-white" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
+                </div>
               </div>
-              <div className="ml-3">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
-              </div>
+            </Link>
+          </div>
+        )}
+        
+        {/* Collapse button at the bottom */}
+        <button 
+          onClick={() => {}} // This is just a placeholder as the toggle is handled in the parent component
+          className={cn(
+            "w-full flex items-center justify-center py-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors",
+            "border-t border-gray-200 dark:border-gray-800",
+            isCollapsed ? "px-0" : "px-4"
+          )}
+        >
+          {isCollapsed ? (
+            <ArrowRightCircle className="h-5 w-5" />
+          ) : (
+            <div className="flex items-center w-full justify-between">
+              <span className="text-sm font-medium">Collapse Sidebar</span>
+              <ArrowLeftCircle className="h-5 w-5" />
             </div>
-          </Link>
-        </div>
-      )}
+          )}
+        </button>
+      </div>
     </motion.aside>
   );
 }
