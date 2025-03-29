@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +12,6 @@ import { fadeInUp } from '../animations';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod } from '@/pages/tank/types';
 import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
 
 interface SubscriptionStepProps {
   onNext: (data: SubscriptionInputs) => void;
@@ -204,8 +202,8 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
               <h4 className="font-medium">Payment Information</h4>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              You will be able to enter payment details after completing signup.
-              Your plan selection will be saved and you'll be directed to our secure checkout.
+              Payment processing has been disabled.
+              Your plan selection will be saved for future reference.
             </p>
           </div>
           

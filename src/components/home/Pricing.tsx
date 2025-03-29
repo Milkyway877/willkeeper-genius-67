@@ -6,7 +6,6 @@ import { Check, ArrowRight, Zap, Star, Shield, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod } from '@/pages/tank/types';
-import { createCheckoutSession } from '@/api/createCheckoutSession';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,17 +26,13 @@ export function Pricing() {
         return;
       }
       
-      const sessionData = await createCheckoutSession(planName, billingPeriod);
+      toast.info('Payment processing has been disabled');
+      setIsLoading(null);
       
-      if (sessionData?.url) {
-        window.location.href = sessionData.url;
-      } else {
-        throw new Error('Could not create checkout session');
-      }
     } catch (error) {
       console.error('Error handling plan selection:', error);
-    } finally {
       setIsLoading(null);
+      toast.error('This feature is currently unavailable');
     }
   };
 

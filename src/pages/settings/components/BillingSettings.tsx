@@ -6,7 +6,6 @@ import { CreditCard, Check, Globe, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { toast } from 'sonner';
-import { createCheckoutSession } from '@/api/createCheckoutSession';
 
 export function BillingSettings() {
   const navigate = useNavigate();
@@ -19,21 +18,14 @@ export function BillingSettings() {
       setIsLoading(true);
       setErrorMessage(null);
       
-      // Default to monthly if not already on a plan
-      const billingPeriod = 'monthly';
+      // Stripe functionality removed
+      toast.info('Payment processing has been disabled');
       
-      const sessionData = await createCheckoutSession(plan, billingPeriod);
-      
-      if (sessionData?.url) {
-        window.location.href = sessionData.url;
-      } else {
-        throw new Error('Could not create checkout session');
-      }
     } catch (error: any) {
-      console.error('Error creating checkout session:', error);
-      setErrorMessage(error.message || 'Failed to create checkout session');
-      toast.error('Payment setup failed', {
-        description: error.message || 'Failed to create checkout session. Please try again later.',
+      console.error('Error:', error);
+      setErrorMessage(error.message || 'This feature is currently unavailable');
+      toast.error('Feature disabled', {
+        description: 'Payment processing has been disabled.',
       });
     } finally {
       setIsLoading(false);
@@ -57,7 +49,7 @@ export function BillingSettings() {
           <div className="mb-6">
             <div className="inline-flex items-center gap-2 rounded-full bg-willtank-100 px-3 py-1 text-sm font-medium text-willtank-700">
               <Check size={14} />
-              <span>Premium Plan</span>
+              <span>Free Plan</span>
             </div>
             
             <div className="mt-4">
@@ -65,19 +57,11 @@ export function BillingSettings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                 <div>
                   <p className="text-sm text-gray-500">Plan</p>
-                  <p className="font-medium">Premium ($199.99/year)</p>
+                  <p className="font-medium">Free</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Next Billing Date</p>
-                  <p className="font-medium">July 15, 2024</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Payment Method</p>
-                  <p className="font-medium">•••• •••• •••• 4242</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Billing Address</p>
-                  <p className="font-medium">123 Main St, Anytown, USA</p>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="font-medium">Active</p>
                 </div>
               </div>
             </div>
@@ -87,18 +71,20 @@ export function BillingSettings() {
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start text-red-800">
               <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium">Error processing payment</p>
+                <p className="font-medium">Error</p>
                 <p className="text-sm">{errorMessage}</p>
               </div>
             </div>
           )}
           
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Payment processing has been disabled.
+            </p>
+          </div>
+          
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" onClick={() => navigate('/billing')}>Update Payment Method</Button>
-            <Button variant="outline" onClick={() => navigate('/billing')}>Billing History</Button>
-            <Button variant="outline" className="text-red-500 hover:text-red-600 hover:bg-red-50">
-              Cancel Subscription
-            </Button>
+            <Button variant="outline" onClick={() => navigate('/billing')}>Billing Information</Button>
           </div>
         </div>
       </motion.div>
@@ -141,14 +127,11 @@ export function BillingSettings() {
                 onClick={() => handleUpgrade('basic')}
                 disabled={isLoading}
               >
-                {isLoading ? 'Processing...' : 'Downgrade'}
+                {isLoading ? 'Processing...' : 'Upgrade'}
               </Button>
             </div>
             
-            <div className="border-2 border-willtank-300 rounded-lg p-4 shadow-sm relative">
-              <div className="absolute -top-3 -right-3 bg-willtank-500 text-white px-3 py-1 rounded-full text-xs font-medium">
-                Current
-              </div>
+            <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
               <h4 className="font-medium">Premium Plan</h4>
               <p className="text-2xl font-bold my-2">$199<span className="text-sm font-normal text-gray-500">/year</span></p>
               <ul className="space-y-2 mb-4">
@@ -169,6 +152,15 @@ export function BillingSettings() {
                   Advanced legal analysis
                 </li>
               </ul>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full" 
+                onClick={() => handleUpgrade('premium')}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Upgrade'}
+              </Button>
             </div>
             
             <div className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
@@ -204,13 +196,11 @@ export function BillingSettings() {
             </div>
           </div>
           
-          {errorMessage && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Make sure you have set up products in your Stripe dashboard with names that match the plan names (basic, premium, lifetime).
-              </p>
-            </div>
-          )}
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Payment processing has been disabled in this version.
+            </p>
+          </div>
         </div>
       </motion.div>
     </>
