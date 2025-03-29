@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
+import { NotificationsProvider } from '@/contexts/NotificationsContext';
 
 // Import pages
 import Home from './pages/Index';
@@ -39,44 +40,46 @@ function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <Toaster position="bottom-right" />
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:id" element={<BlogArticle />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/search" element={<Search />} />
-          
-          {/* Auth routes */}
-          <Route path="/auth/signin" element={<AuthSignIn />} />
-          <Route path="/auth/signup" element={<AuthSignUp />} />
-          <Route path="/auth/forgot-password" element={<AuthForgotPassword />} />
-          <Route path="/auth/reset-password" element={<AuthResetPassword />} />
-          
-          {/* Dashboard routes */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/will" element={<WillDashboard />} />
-          <Route path="/will/:id" element={<WillEditor />} />
-          <Route path="/templates" element={<WillTemplates />} />
-          <Route path="/tank" element={<WillTank />} />
-          <Route path="/settings" element={<Settings />} />
+        <NotificationsProvider>
+          <Toaster position="bottom-right" />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:id" element={<BlogArticle />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/search" element={<Search />} />
+            
+            {/* Auth routes */}
+            <Route path="/auth/signin" element={<AuthSignIn />} />
+            <Route path="/auth/signup" element={<AuthSignUp />} />
+            <Route path="/auth/forgot-password" element={<AuthForgotPassword />} />
+            <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+            
+            {/* Dashboard routes */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/will" element={<WillDashboard />} />
+            <Route path="/will/:id" element={<WillEditor />} />
+            <Route path="/templates" element={<WillTemplates />} />
+            <Route path="/tank" element={<WillTank />} />
+            <Route path="/settings" element={<Settings />} />
 
-          {/* Corporate routes */}
-          <Route path="/corporate" element={<Corporate />} />
-          <Route path="/corporate/documentation" element={<Documentation />} />
-          
-          {/* Documentation sub-pages */}
-          <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
-          <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
-          <Route path="/corporate/documentation/api" element={<API />} />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <ReactQueryDevtools initialIsOpen={false} />
+            {/* Corporate routes */}
+            <Route path="/corporate" element={<Corporate />} />
+            <Route path="/corporate/documentation" element={<Documentation />} />
+            
+            {/* Documentation sub-pages */}
+            <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
+            <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
+            <Route path="/corporate/documentation/api" element={<API />} />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </NotificationsProvider>
       </QueryClientProvider>
     </BrowserRouter>
   );
