@@ -3,7 +3,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, CreditCard as CreditCardIcon, Zap, Star, Shield } from 'lucide-react';
+import { ArrowRight, Check, CreditCard as CreditCardIcon, Zap, Star, Shield, Gift } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -24,13 +24,27 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
   const form = useForm<SubscriptionInputs>({
     resolver: zodResolver(subscriptionSchema),
     defaultValues: {
-      plan: 'starter',
+      plan: 'free',
       agreeToTerms: false,
     },
   });
 
   // Plan details with pricing
   const planDetails = {
+    free: {
+      icon: <Gift className="h-6 w-6 text-purple-600" />,
+      name: 'Free',
+      description: 'Basic features for testing',
+      monthly: 0,
+      yearly: 0,
+      lifetime: 0,
+      features: [
+        'Basic will template',
+        '1 future message',
+        'Email support',
+        'Limited storage'
+      ]
+    },
     starter: {
       icon: <Zap className="h-6 w-6 text-blue-600" />,
       name: 'Starter',
@@ -41,7 +55,8 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
       features: [
         'Basic will templates',
         'Up to 2 future messages',
-        'Standard encryption'
+        'Standard encryption',
+        'Email support'
       ]
     },
     gold: {
@@ -78,6 +93,10 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
   // Function to get price based on billing period
   const getPriceDisplay = (plan: keyof typeof planDetails) => {
     const prices = planDetails[plan];
+    if (plan === 'free') {
+      return 'Free';
+    }
+    
     switch (billingPeriod) {
       case 'monthly':
         return `$${prices.monthly}/month`;
@@ -129,7 +148,7 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
                   <RadioGroup
                     onValueChange={field.onChange}
                     defaultValue={field.value}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                    className="grid grid-cols-1 md:grid-cols-4 gap-4"
                   >
                     {(Object.entries(planDetails) as [keyof typeof planDetails, any][]).map(([planKey, plan]) => (
                       <FormItem className="col-span-1" key={planKey}>
@@ -165,26 +184,28 @@ export function SubscriptionStep({ onNext }: SubscriptionStepProps) {
             )}
           />
           
-          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <div className="flex items-center mb-3">
-              <CreditCardIcon className="h-5 w-5 mr-2 text-willtank-600" />
-              <h4 className="font-medium">Payment Information</h4>
+          {form.watch('plan') !== 'free' && (
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-center mb-3">
+                <CreditCardIcon className="h-5 w-5 mr-2 text-willtank-600" />
+                <h4 className="font-medium">Payment Information</h4>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Your payment will be securely processed by Stripe. We don't store your payment details.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Input type="text" placeholder="Card Number" className="w-full" />
+                </div>
+                <div className="col-span-1">
+                  <Input type="text" placeholder="MM/YY" className="w-full" />
+                </div>
+                <div className="col-span-1">
+                  <Input type="text" placeholder="CVC" className="w-full" />
+                </div>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground mb-3">
-              Your payment will be securely processed by Stripe. We don't store your payment details.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Input type="text" placeholder="Card Number" className="w-full" />
-              </div>
-              <div className="col-span-1">
-                <Input type="text" placeholder="MM/YY" className="w-full" />
-              </div>
-              <div className="col-span-1">
-                <Input type="text" placeholder="CVC" className="w-full" />
-              </div>
-            </div>
-          </div>
+          )}
           
           <FormField
             control={form.control}

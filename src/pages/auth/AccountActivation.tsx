@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout } from '@/components/auth/AuthLayout';
@@ -7,8 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { QRCode } from '@/components/ui/QRCode';
-import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -22,17 +21,14 @@ import {
   UserPlus
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import * as OTPAuth from 'otpauth';
 import { fadeInUp } from '@/components/auth/animations';
 import { toast } from '@/hooks/use-toast';
 import { useToast } from '@/hooks/use-toast';
-import { validateTOTP, createUserSecurity } from '@/services/encryptionService';
 
 enum STEPS {
   VERIFY_EMAIL = 'verify_email',
   PROFILE = 'profile',
   SECURITY_QUESTIONS = 'security_questions',
-  AUTHENTICATOR = 'authenticator',
   SUBSCRIPTION = 'subscription',
   COMPLETE = 'complete'
 }
@@ -77,41 +73,6 @@ const PLANS = [
   }
 ];
 
-const generateOTPSecret = (): string => {
-  const VALID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  let result = '';
-  
-  const randomBytes = new Uint8Array(32);
-  window.crypto.getRandomValues(randomBytes);
-  
-  for (let i = 0; i < 32; i++) {
-    result += VALID_CHARS.charAt(randomBytes[i] % VALID_CHARS.length);
-  }
-  
-  return result.match(/.{1,4}/g)?.join(' ') || result;
-};
-
-const generateRecoveryPhrase = (): string => {
-  const words = [
-    'apple', 'banana', 'orange', 'grape', 'kiwi', 'melon', 'peach', 'plum', 'cherry', 'lemon',
-    'lime', 'coconut', 'mango', 'pear', 'berry', 'apricot', 'fig', 'guava', 'papaya', 'avocado',
-    'water', 'ocean', 'river', 'lake', 'stream', 'rain', 'cloud', 'storm', 'snow', 'ice',
-    'mountain', 'valley', 'hill', 'cliff', 'peak', 'plateau', 'canyon', 'cave', 'desert', 'forest',
-    'tree', 'flower', 'grass', 'bush', 'vine', 'moss', 'leaf', 'root', 'stem', 'branch',
-    'dog', 'cat', 'bird', 'fish', 'lion', 'tiger', 'bear', 'wolf', 'fox', 'deer',
-    'book', 'page', 'story', 'tale', 'novel', 'poem', 'song', 'music', 'art', 'paint'
-  ];
-  
-  const selectedWords: string[] = [];
-  
-  for (let i = 0; i < 12; i++) {
-    const randomIndex = Math.floor(Math.random() * words.length);
-    selectedWords.push(words[randomIndex]);
-  }
-  
-  return selectedWords.join(' ');
-};
-
 const generateRandomString = (length: number): string => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
@@ -147,7 +108,7 @@ const SecurityInfoPanel = () => (
         </div>
         <div className="ml-3">
           <h4 className="text-sm font-medium">Two-Factor Authentication</h4>
-          <p className="text-xs text-muted-foreground">Adds an extra layer of security to your account</p>
+          <p className="text-xs text-muted-foreground">Available in your security settings after activation</p>
         </div>
       </div>
       <div className="flex items-start">
@@ -177,7 +138,6 @@ export default function AccountActivation() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<STEPS>(STEPS.VERIFY_EMAIL);
   const [isLoading, setIsLoading] = useState(false);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
   
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -191,10 +151,6 @@ export default function AccountActivation() {
     { question: 'What was your childhood nickname?', answer: '' }
   ]);
   
-  const [totpSecret, setTotpSecret] = useState('');
-  const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [enableTwoFactor, setEnableTwoFactor] = useState(true);
-  const [recoveryPhrase, setRecoveryPhrase] = useState('');
   const [recoveryKey, setRecoveryKey] = useState('');
   
   const [selectedPlan, setSelectedPlan] = useState('free');
@@ -206,18 +162,7 @@ export default function AccountActivation() {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   
   useEffect(() => {
-    const secret = generateOTPSecret();
-    const cleanSecret = secret.replace(/\s+/g, '');
-    const totp = new OTPAuth.TOTP({
-      issuer: 'WillTank',
-      label: 'user@example.com',
-      algorithm: 'SHA1',
-      digits: 6,
-      period: 30,
-      secret: OTPAuth.Secret.fromBase32(cleanSecret)
-    });
-    setQrCodeUrl(totp.toString());
-    setTotpSecret(secret);
+    setRecoveryKey(getRecoveryKey());
   }, []);
   
   useEffect(() => {
@@ -232,18 +177,6 @@ export default function AccountActivation() {
         
         if (user && user.email) {
           setEmail(user.email);
-          
-          const cleanSecret = totpSecret.replace(/\s+/g, '');
-          const totp = new OTPAuth.TOTP({
-            issuer: 'WillTank',
-            label: user.email,
-            algorithm: 'SHA1',
-            digits: 6,
-            period: 30,
-            secret: OTPAuth.Secret.fromBase32(cleanSecret)
-          });
-          
-          setQrCodeUrl(totp.toString());
         }
       } catch (error) {
         console.error('Error getting user email:', error);
@@ -251,142 +184,7 @@ export default function AccountActivation() {
     };
     
     getUserEmail();
-  }, [totpSecret]);
-  
-  useEffect(() => {
-    setRecoveryPhrase(generateRecoveryPhrase());
-    setRecoveryKey(getRecoveryKey());
   }, []);
-
-  const verifyAuthenticatorCode = (code: string) => {
-    if (!totpSecret) {
-      setVerificationError('Error: Missing authenticator secret');
-      return false;
-    }
-    
-    try {
-      const cleanSecret = totpSecret.replace(/\s+/g, '');
-      const cleanToken = code.replace(/\s+/g, '');
-      
-      if (cleanToken.length !== 6) {
-        setVerificationError('Verification code must be 6 digits');
-        return false;
-      }
-      
-      const totp = new OTPAuth.TOTP({
-        issuer: 'WillTank',
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: OTPAuth.Secret.fromBase32(cleanSecret)
-      });
-      
-      // Use a larger window to allow for time drift (±2 minutes)
-      const result = totp.validate({ token: cleanToken, window: 4 });
-      console.log('TOTP validation result:', result !== null ? 'Valid' : 'Invalid', 'for secret:', cleanSecret);
-      
-      if (result === null) {
-        setVerificationError('Invalid verification code. Please try again.');
-        return false;
-      }
-      
-      setVerificationError(null);
-      return true;
-    } catch (error) {
-      console.error('Error validating TOTP:', error);
-      setVerificationError('Error validating code. Please try again.');
-      return false;
-    }
-  };
-
-  const handleTotpVerification = (code: string) => {
-    setIsLoading(true);
-    
-    try {
-      if (verifyAuthenticatorCode(code)) {
-        supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
-          if (userError || !user) {
-            setVerificationError('User not found. Please ensure you are logged in.');
-            setIsLoading(false);
-            return;
-          }
-          
-          // Generate a random encryption key for the user
-          const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-          
-          supabase
-            .from('user_security')
-            .upsert({
-              user_id: user.id,
-              google_auth_enabled: enableTwoFactor,
-              google_auth_secret: totpSecret.replace(/\s+/g, ''),
-              encryption_key: encryptionKey,
-              updated_at: new Date().toISOString()
-            })
-            .then(({ error }) => {
-              if (error) {
-                console.error('Error saving authenticator settings:', error);
-                setVerificationError('Failed to save authenticator settings. Please try again.');
-                setIsLoading(false);
-                return;
-              }
-              
-              setCurrentStep(STEPS.SUBSCRIPTION);
-              setIsLoading(false);
-              
-              toast({
-                title: "2FA " + (enableTwoFactor ? "Enabled" : "Configured"),
-                description: enableTwoFactor 
-                  ? "Your account is now protected with two-factor authentication." 
-                  : "You can enable 2FA later in your security settings."
-              });
-            });
-        });
-      } else {
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error('Error in TOTP verification:', error);
-      setVerificationError('An unexpected error occurred. Please try again.');
-      setIsLoading(false);
-    }
-  };
-
-  const saveAuthenticatorSettings = async () => {
-    try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error('User not found');
-      }
-      
-      let security = await createUserSecurity();
-      
-      if (!security) {
-        throw new Error('Failed to create security record');
-      }
-      
-      const { error } = await supabase
-        .from('user_security')
-        .update({
-          google_auth_enabled: enableTwoFactor,
-          google_auth_secret: totpSecret.replace(/\s+/g, ''),
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-        
-      if (error) {
-        throw error;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving authenticator settings:', error);
-      throw error;
-    }
-  };
 
   const handleVerifyEmail = () => {
     setIsLoading(true);
@@ -435,7 +233,7 @@ export default function AccountActivation() {
     }
     
     setTimeout(() => {
-      setCurrentStep(STEPS.AUTHENTICATOR);
+      setCurrentStep(STEPS.SUBSCRIPTION);
       setIsLoading(false);
       
       toast({
@@ -443,10 +241,6 @@ export default function AccountActivation() {
         description: "Your security questions have been saved."
       });
     }, 1500);
-  };
-  
-  const handleAuthenticatorSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
   };
   
   const handleSubscriptionSubmit = (e: React.FormEvent) => {
@@ -721,82 +515,6 @@ export default function AccountActivation() {
           </Card>
         )}
         
-        {currentStep === STEPS.AUTHENTICATOR && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Setup Two-Factor Authentication</CardTitle>
-              <CardDescription>
-                Add an extra layer of security to your account by setting up two-factor authentication.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="font-medium">1. Scan this QR code with your authenticator app</h3>
-                  <div className="flex justify-center bg-white p-4 border border-gray-200 rounded-md">
-                    <QRCode 
-                      value={qrCodeUrl} 
-                      size={180}
-                    />
-                  </div>
-                  <p className="text-sm text-center text-gray-600">
-                    (Google Authenticator, Authy, etc.)
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="font-medium">2. Or enter this secret key manually:</h3>
-                  <div className="relative">
-                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-md font-mono text-center break-all select-all text-sm">
-                      {totpSecret}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={() => {
-                        navigator.clipboard.writeText(totpSecret.replace(/\s+/g, ''));
-                        toast({
-                          title: "Secret key copied",
-                          description: "The secret key has been copied to your clipboard."
-                        });
-                      }}
-                    >
-                      Copy Secret Key
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <h3 className="font-medium mb-2">3. Enter the 6-digit code from your authenticator app:</h3>
-                  <TwoFactorInput 
-                    onSubmit={handleTotpVerification} 
-                    loading={isLoading}
-                    error={verificationError}
-                  />
-                </div>
-                
-                <div className="flex flex-row items-start space-x-3 space-y-0 mt-4">
-                  <Checkbox 
-                    id="enableTwoFactor"
-                    checked={enableTwoFactor} 
-                    onCheckedChange={(checked) => setEnableTwoFactor(checked === true)}
-                  />
-                  <div className="space-y-1 leading-none">
-                    <label htmlFor="enableTwoFactor" className="text-sm font-normal">
-                      Enable two-factor authentication for my account
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                      Highly recommended for securing your account and sensitive documents.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
         {currentStep === STEPS.SUBSCRIPTION && (
           <Card>
             <CardHeader>
@@ -836,7 +554,7 @@ export default function AccountActivation() {
                           >
                             <div className="flex justify-between items-center mb-2">
                               <span className="font-medium">{plan.name}</span>
-                              <span className="font-bold">{plan.price}{billingCycle === 'monthly' ? '/mo' : '/yr'}</span>
+                              <span className="font-bold">{plan.price}{plan.id !== 'free' ? (billingCycle === 'monthly' ? '/mo' : '/yr') : ''}</span>
                             </div>
                             <p className="text-sm text-gray-600 mb-3">{plan.description}</p>
                             <ul className="text-sm space-y-1">
@@ -916,6 +634,10 @@ export default function AccountActivation() {
                     <li className="flex items-start">
                       <Check className="h-4 w-4 text-green-600 mr-2 mt-0.5" />
                       Explore templates and document options
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-4 w-4 text-green-600 mr-2 mt-0.5" />
+                      Configure 2FA in your security settings
                     </li>
                   </ul>
                 </div>

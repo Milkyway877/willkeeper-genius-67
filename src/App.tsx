@@ -3,8 +3,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Toaster } from 'sonner';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
+import { Toaster } from '@/components/ui/toaster';
 
 // Import pages
 import Home from './pages/Index';
@@ -27,6 +27,7 @@ import Settings from './pages/settings/Settings';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
+import AccountActivation from './pages/auth/AccountActivation';
 
 // Import the Documentation pages
 import Documentation from './pages/corporate/Documentation';
@@ -41,7 +42,7 @@ function App() {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <NotificationsProvider>
-          <Toaster position="bottom-right" />
+          <Toaster />
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Home />} />
@@ -58,6 +59,7 @@ function App() {
             <Route path="/auth/signup" element={<AuthSignUp />} />
             <Route path="/auth/forgot-password" element={<AuthForgotPassword />} />
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+            <Route path="/auth/activate" element={<AccountActivation />} />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />
