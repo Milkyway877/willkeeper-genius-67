@@ -1,6 +1,21 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import otpauth from 'otpauth';
+import * as otpauth from 'otpauth';
+
+// Export interface for EncryptionKey
+export interface EncryptionKey {
+  id: string;
+  user_id: string;
+  name: string;
+  type: string;
+  algorithm: string;
+  strength: string;
+  key_material: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  last_used: string | null;
+}
 
 // Get user security settings
 export const getUserSecurity = async () => {
@@ -217,6 +232,202 @@ export const disable2FA = async () => {
     return true;
   } catch (error) {
     console.error('Error disabling 2FA:', error);
+    return false;
+  }
+};
+
+// Get user recovery codes
+export const getUserRecoveryCodes = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_recovery_codes')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('used', false)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching recovery codes:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching recovery codes:', error);
+    return [];
+  }
+};
+
+// Generate new recovery codes for a user
+export const generateRecoveryCodes = async (userId: string) => {
+  try {
+    // Delete existing recovery codes
+    const { error: deleteError } = await supabase
+      .from('user_recovery_codes')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (deleteError) {
+      console.error('Error deleting existing recovery codes:', deleteError);
+      return [];
+    }
+    
+    // Generate new recovery codes
+    const recoveryCodes = Array.from({ length: 8 }, () => generateRecoveryCode());
+    
+    // Insert new recovery codes
+    const { data, error } = await supabase
+      .from('user_recovery_codes')
+      .insert(recoveryCodes.map(code => ({
+        user_id: userId,
+        code,
+        used: false
+      })))
+      .select();
+    
+    if (error) {
+      console.error('Error creating recovery codes:', error);
+      return [];
+    }
+    
+    return recoveryCodes;
+  } catch (error) {
+    console.error('Error generating recovery codes:', error);
+    return [];
+  }
+};
+
+// Validate a recovery code
+export const validateRecoveryCode = async (userId: string, code: string) => {
+  try {
+    // Get the recovery code
+    const { data, error } = await supabase
+      .from('user_recovery_codes')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('code', code)
+      .eq('used', false)
+      .single();
+    
+    if (error || !data) {
+      console.error('Error validating recovery code:', error);
+      return false;
+    }
+    
+    // Mark the code as used
+    const { error: updateError } = await supabase
+      .from('user_recovery_codes')
+      .update({ 
+        used: true,
+        used_at: new Date().toISOString()
+      })
+      .eq('id', data.id);
+    
+    if (updateError) {
+      console.error('Error marking recovery code as used:', updateError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error validating recovery code:', error);
+    return false;
+  }
+};
+
+// Get user encryption keys
+export const getUserEncryptionKeys = async (): Promise<EncryptionKey[]> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error("No authenticated user found");
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('encryption_keys')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching encryption keys:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching encryption keys:', error);
+    return [];
+  }
+};
+
+// Generate a new encryption key
+export const generateEncryptionKey = async (
+  name: string, 
+  type: string, 
+  algorithm: string, 
+  strength: string
+): Promise<EncryptionKey | null> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error("No authenticated user found");
+      return null;
+    }
+    
+    // Generate a random key material
+    const keyMaterial = generateRandomString(Number(strength) / 8);
+    
+    const { data, error } = await supabase
+      .from('encryption_keys')
+      .insert([
+        {
+          user_id: user.id,
+          name,
+          type,
+          algorithm,
+          strength,
+          key_material: keyMaterial,
+          status: 'active'
+        }
+      ])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating encryption key:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error creating encryption key:', error);
+    return null;
+  }
+};
+
+// Update encryption key status
+export const updateEncryptionKeyStatus = async (keyId: string, status: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('encryption_keys')
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', keyId);
+    
+    if (error) {
+      console.error('Error updating encryption key status:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating encryption key status:', error);
     return false;
   }
 };
