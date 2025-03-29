@@ -13,23 +13,29 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 
+// Default notification values when context is not available
+const defaultNotificationsState = {
+  notifications: [],
+  markAsRead: () => Promise.resolve(false),
+  unreadCount: 0,
+  loading: false,
+  error: null
+};
+
 export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   
   // Try to use the notifications context, but gracefully handle cases where it might not be available
-  let notificationsContext;
+  let notificationsState;
   try {
-    notificationsContext = useNotifications();
+    notificationsState = useNotifications();
   } catch (error) {
     // If NotificationsProvider is not available, use default values
-    notificationsContext = {
-      notifications: [],
-      markAsRead: () => Promise.resolve(false),
-      unreadCount: 0
-    };
+    console.warn("NotificationsContext not available, using default values");
+    notificationsState = defaultNotificationsState;
   }
   
-  const { notifications, markAsRead, unreadCount } = notificationsContext;
+  const { notifications, markAsRead, unreadCount } = notificationsState;
   
   const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
