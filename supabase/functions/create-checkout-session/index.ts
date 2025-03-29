@@ -21,7 +21,20 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const reqData = await req.json();
+    let reqData;
+    try {
+      reqData = await req.json();
+    } catch (e) {
+      console.error("Error parsing request JSON:", e);
+      return new Response(
+        JSON.stringify({ error: "Invalid request format" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+    
     const { plan, billingPeriod } = reqData;
 
     console.log("Received request for plan:", plan, "billing period:", billingPeriod);
@@ -39,11 +52,11 @@ serve(async (req) => {
       
       try {
         const token = authHeader.replace("Bearer ", "");
-        const { data } = await supabaseClient.auth.getUser(token);
+        const { data: { user } } = await supabaseClient.auth.getUser(token);
         
-        if (data?.user) {
-          customerEmail = data.user.email;
-          userId = data.user.id;
+        if (user) {
+          customerEmail = user.email;
+          userId = user.id;
           console.log(`Found authenticated user: ${customerEmail}`);
         }
       } catch (error) {
@@ -54,49 +67,59 @@ serve(async (req) => {
     // Look up existing customer or create a new one if email is available
     let customerId = undefined;
     if (customerEmail) {
-      const customers = await stripe.customers.list({
-        email: customerEmail,
-        limit: 1
-      });
-
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
-        console.log(`Found existing Stripe customer: ${customerId}`);
-      } else {
-        const newCustomer = await stripe.customers.create({
+      try {
+        const customers = await stripe.customers.list({
           email: customerEmail,
-          metadata: {
-            user_id: userId
-          }
+          limit: 1
         });
-        customerId = newCustomer.id;
-        console.log(`Created new Stripe customer: ${customerId}`);
+
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          console.log(`Found existing Stripe customer: ${customerId}`);
+        } else {
+          const newCustomer = await stripe.customers.create({
+            email: customerEmail,
+            metadata: {
+              user_id: userId
+            }
+          });
+          customerId = newCustomer.id;
+          console.log(`Created new Stripe customer: ${customerId}`);
+        }
+      } catch (error) {
+        console.error("Error handling Stripe customer:", error);
+        // Continue without customer ID
       }
     }
 
     // Define real Stripe product price IDs
-    // These are placeholder IDs that should be replaced with your actual Stripe price IDs
     const PRICE_IDS = {
       starter: {
-        monthly: "price_1SLzknHTKA0osvsHDZyNfQmV", 
-        yearly: "price_1SLzlZHTKA0osvsHayvlZEQB",
-        lifetime: "price_1SLzlyHTKA0osvsHWE6B6gTQ", 
+        monthly: process.env.STRIPE_PRICE_STARTER_MONTHLY || "price_1SLzknHTKA0osvsHDZyNfQmV",
+        yearly: process.env.STRIPE_PRICE_STARTER_YEARLY || "price_1SLzlZHTKA0osvsHayvlZEQB",
+        lifetime: process.env.STRIPE_PRICE_STARTER_LIFETIME || "price_1SLzlyHTKA0osvsHWE6B6gTQ", 
       },
       gold: {
-        monthly: "price_1SLzmRHTKA0osvsHlccYFqyn",
-        yearly: "price_1SLzmtHTKA0osvsHo5NdQg9W",
-        lifetime: "price_1SLznSHTKA0osvsHjU8w0fzK",
+        monthly: process.env.STRIPE_PRICE_GOLD_MONTHLY || "price_1SLzmRHTKA0osvsHlccYFqyn",
+        yearly: process.env.STRIPE_PRICE_GOLD_YEARLY || "price_1SLzmtHTKA0osvsHo5NdQg9W",
+        lifetime: process.env.STRIPE_PRICE_GOLD_LIFETIME || "price_1SLznSHTKA0osvsHjU8w0fzK",
       },
       platinum: {
-        monthly: "price_1SLzo3HTKA0osvsHVx1OLMsf",
-        yearly: "price_1SLzoeHTKA0osvsHDLkQJzDh",
-        lifetime: "price_1SLzp6HTKA0osvsH84fcdWAA",
+        monthly: process.env.STRIPE_PRICE_PLATINUM_MONTHLY || "price_1SLzo3HTKA0osvsHVx1OLMsf",
+        yearly: process.env.STRIPE_PRICE_PLATINUM_YEARLY || "price_1SLzoeHTKA0osvsHDLkQJzDh",
+        lifetime: process.env.STRIPE_PRICE_PLATINUM_LIFETIME || "price_1SLzp6HTKA0osvsH84fcdWAA",
       },
     };
 
     // Get the price ID for the chosen plan and billing period
     if (!PRICE_IDS[plan] || !PRICE_IDS[plan][billingPeriod]) {
-      throw new Error(`Invalid plan (${plan}) or billing period (${billingPeriod})`);
+      return new Response(
+        JSON.stringify({ error: `Invalid plan (${plan}) or billing period (${billingPeriod})` }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
     
     const priceId = PRICE_IDS[plan][billingPeriod];
@@ -105,37 +128,54 @@ serve(async (req) => {
     // Determine checkout mode based on billing period
     const checkoutMode = billingPeriod === "lifetime" ? "payment" : "subscription";
 
-    // Create a checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: !customerId ? customerEmail : undefined, // Only set if we don't have a customer ID
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: checkoutMode,
-      success_url: `${req.headers.get("origin")}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/billing?canceled=true`,
-      metadata: {
-        user_id: userId,
-        plan: plan,
-        billing_period: billingPeriod
-      }
-    });
+    // Create checkout session
+    try {
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: !customerId ? customerEmail : undefined, // Only set if we don't have a customer ID
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: checkoutMode,
+        success_url: `${req.headers.get("origin")}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.headers.get("origin")}/billing?canceled=true`,
+        metadata: {
+          user_id: userId,
+          plan: plan,
+          billing_period: billingPeriod
+        }
+      });
 
-    console.log("Checkout session created:", session.id);
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+      console.log("Checkout session created:", session.id);
+      return new Response(
+        JSON.stringify({ url: session.url }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    } catch (stripeError) {
+      console.error("Stripe error creating session:", stripeError);
+      return new Response(
+        JSON.stringify({ error: stripeError.message || "Error creating checkout session" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
   } catch (error) {
     console.error("Error creating checkout session:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: error.message || "Internal server error" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      }
+    );
   }
 });
