@@ -154,11 +154,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         
         {showAuthenticatedLayout && (
           <>
-            {/* Added z-50 class to ensure FloatingAssistant is below the mobile menu button which has z-60 */}
-            <div className="z-50">
-              <FloatingAssistant />
-              <FloatingHelp />
-            </div>
+            <FloatingAssistant />
+            <FloatingHelp />
           </>
         )}
       </motion.div>

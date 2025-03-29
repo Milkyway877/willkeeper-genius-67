@@ -129,11 +129,11 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
   if (isMobile) {
     return (
       <>
-        {/* Mobile menu button - Updated z-index to be higher than the floating chatbot */}
+        {/* Mobile menu button */}
         <button
           id="mobile-menu-button"
           onClick={toggleMobileMenu}
-          className="fixed z-60 bottom-4 right-4 bg-black text-white p-3 rounded-full shadow-lg"
+          className="fixed z-50 bottom-4 right-4 bg-black text-white p-3 rounded-full shadow-lg"
           aria-label="Toggle mobile menu"
         >
           {mobileMenuOpen ? (
