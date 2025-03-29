@@ -10,9 +10,19 @@ export const useCaptcha = () => {
     setIsCaptchaValid(isValid);
   };
 
+  const validateCaptcha = (): boolean => {
+    if (captchaRef.current) {
+      const isValid = captchaRef.current.validate();
+      setIsCaptchaValid(isValid);
+      return isValid;
+    }
+    return false;
+  };
+
   return {
     captchaRef,
     isCaptchaValid,
-    handleCaptchaValidation
+    handleCaptchaValidation,
+    validateCaptcha
   };
 };

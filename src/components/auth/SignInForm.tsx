@@ -25,7 +25,7 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { captchaRef, handleCaptchaValidation, isCaptchaValid } = useCaptcha();
+  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
   
   useEffect(() => {
     const handleAuthRedirect = async () => {
@@ -62,21 +62,20 @@ export function SignInForm() {
   });
 
   const onSubmit = async (data: SignInFormInputs) => {
-    // Validate captcha
-    if (captchaRef.current) {
-      const isCaptchaValid = captchaRef.current.validate();
-      if (!isCaptchaValid) {
-        toast({
-          title: "Security check required",
-          description: "Please complete the captcha verification before signing in.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
     try {
       setIsLoading(true);
+      
+      // Validate captcha first
+      const isCaptchaValid = validateCaptcha();
+      if (!isCaptchaValid) {
+        toast({
+          title: "Security check failed",
+          description: "Please complete the captcha verification correctly before signing in.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
       
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,

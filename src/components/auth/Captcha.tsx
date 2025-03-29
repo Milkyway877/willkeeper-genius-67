@@ -25,7 +25,18 @@ const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
   // This function will be called by the parent component when submitting
   const validateUserCaptcha = (): boolean => {
     setAttemptedValidation(true);
+    
+    // For empty captcha, always return false
+    if (!userCaptcha.trim()) {
+      setIsValid(false);
+      onValidated(false);
+      return false;
+    }
+    
+    // Use validateCaptcha from the library to check if the entered captcha is correct
     const valid = validateCaptcha(userCaptcha);
+    console.log("Captcha validation result:", valid, "for input:", userCaptcha);
+    
     setIsValid(valid);
     onValidated(valid);
     
