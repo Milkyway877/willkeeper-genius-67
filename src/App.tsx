@@ -20,6 +20,8 @@ import SecureSignUp from './pages/auth/SecureSignUp';
 import SecureRecover from './pages/auth/SecureRecover';
 import AuthResetPassword from './pages/auth/ResetPassword';
 import AccountActivation from './pages/auth/AccountActivation';
+import EmailVerification from './pages/auth/EmailVerification';
+import AuthCallback from './pages/auth/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import WillDashboard from './pages/will/Will';
 import WillEditor from './pages/will/WillCreation';
@@ -69,6 +71,8 @@ function App() {
             <Route path="/auth/forgot-password" element={<SecureRecover />} />
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
             <Route path="/auth/activate" element={<AccountActivation />} />
+            <Route path="/auth/verify" element={<EmailVerification />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -73,13 +72,12 @@ export function SignUpForm() {
       }
       
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
+        title: "Verification email sent",
+        description: "Please check your email for the verification code.",
       });
       
-      setTimeout(() => {
-        navigate('/auth/signin');
-      }, 2000);
+      // Redirect to verification page with email parameter
+      navigate(`/auth/verify?email=${encodeURIComponent(data.email)}`);
     } catch (error) {
       console.error("Error registering user:", error);
       
