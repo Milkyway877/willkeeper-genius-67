@@ -22,9 +22,14 @@ serve(async (req) => {
     // Get the Supabase client
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.1.0');
     
-    // Create a Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    // Create a Supabase client with proper environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase environment variables');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Get request data
@@ -38,7 +43,7 @@ serve(async (req) => {
       throw new Error('Missing required parameters: plan and billingPeriod are required');
     }
     
-    // Get the current user
+    // Get the current user from the authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing Authorization header');
@@ -48,7 +53,8 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
-      throw new Error('User not found. Please ensure you\'re logged in.');
+      console.error('Auth error:', userError);
+      throw new Error('User not found or authentication failed');
     }
     
     console.log(`Found authenticated user: ${user.email}`);
@@ -63,7 +69,7 @@ serve(async (req) => {
       apiVersion: '2023-10-16',
     });
     
-    // Check if customer already exists
+    // Check if customer already exists in Stripe
     let customer;
     const customers = await stripe.customers.list({
       email: user.email,
@@ -74,7 +80,7 @@ serve(async (req) => {
       customer = customers.data[0];
       console.log(`Found existing Stripe customer: ${customer.id}`);
     } else {
-      // Create a new customer
+      // Create a new customer in Stripe
       customer = await stripe.customers.create({
         email: user.email,
         metadata: {
@@ -84,29 +90,35 @@ serve(async (req) => {
       console.log(`Created new Stripe customer: ${customer.id}`);
     }
     
-    // Determine price ID based on plan and billing period
-    // NOTE: Replace these with actual Stripe price IDs in production
-    const priceMap = {
-      starter: {
-        monthly: 'price_example_starter_monthly',
-        annual: 'price_example_starter_annual'
-      },
-      professional: {
-        monthly: 'price_example_professional_monthly',
-        annual: 'price_example_professional_annual'
-      },
-      enterprise: {
-        monthly: 'price_example_enterprise_monthly',
-        annual: 'price_example_enterprise_annual'
-      }
+    // Get real price IDs - for now using test IDs
+    // In production these should be fetched from a database or environment variables
+    const getPriceId = (selectedPlan, selectedBillingPeriod) => {
+      // You can replace these with your actual Stripe price IDs
+      const prices = {
+        starter: {
+          monthly: 'price_1OtWZiLtKc3zFCqcMepYlKcI',
+          annual: 'price_1OtWbOLtKc3zFCqcH4BEimLG'
+        },
+        gold: {
+          monthly: 'price_1OtWbzLtKc3zFCqclK3kGOZd',
+          annual: 'price_1OtWceLtKc3zFCqcQROONBEQ'
+        },
+        platinum: {
+          monthly: 'price_1OtWd9LtKc3zFCqcK5oqQdDp',
+          annual: 'price_1OtWdbLtKc3zFCqc2EgSttjz'
+        }
+      };
+      
+      return prices[selectedPlan]?.[selectedBillingPeriod] || null;
     };
     
-    const priceId = priceMap[plan]?.[billingPeriod];
+    const priceId = getPriceId(plan, billingPeriod);
+    
     if (!priceId) {
       throw new Error(`Invalid plan or billing period: ${plan}, ${billingPeriod}`);
     }
     
-    console.log(`Using price ID: ${priceId}`);
+    console.log(`Using price ID for checkout: ${priceId}`);
     
     // Create checkout session configuration
     const sessionConfig = {
@@ -119,8 +131,8 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${req.headers.get('origin')}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/billing?canceled=true`,
+      success_url: `${req.headers.get('origin') || 'http://localhost:5173'}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get('origin') || 'http://localhost:5173'}/billing?canceled=true`,
       metadata: {
         user_id: user.id,
         plan,
@@ -128,7 +140,7 @@ serve(async (req) => {
       }
     };
     
-    console.log(`Creating checkout session with config:`, JSON.stringify(sessionConfig));
+    console.log('Creating checkout session with config:', JSON.stringify(sessionConfig));
     
     // Create the checkout session
     const session = await stripe.checkout.sessions.create(sessionConfig);
