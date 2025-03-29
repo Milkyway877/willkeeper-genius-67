@@ -3,10 +3,17 @@ import React, { useState } from 'react';
 import { HelpCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function FloatingHelp() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  
+  // Don't render on desktop
+  if (!isMobile) {
+    return null;
+  }
   
   const helpItems = [
     { 

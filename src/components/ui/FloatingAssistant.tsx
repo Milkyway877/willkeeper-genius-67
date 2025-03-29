@@ -1,6 +1,4 @@
 
-// Update the FloatingAssistant component to use a lower z-index
-
 import React, { useState } from 'react';
 import { Bot, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +7,7 @@ export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed right-4 bottom-4 z-50">
+    <div className="fixed right-4 bottom-4 z-40">
       <AnimatePresence>
         {isOpen && (
           <motion.div

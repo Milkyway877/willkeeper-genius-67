@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -129,17 +128,17 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
   if (isMobile) {
     return (
       <>
-        {/* Mobile menu button - Adjust position with higher z-index */}
+        {/* Mobile menu button - Now positioned at bottom left with higher z-index */}
         <button
           id="mobile-menu-button"
           onClick={toggleMobileMenu}
-          className="fixed z-[60] bottom-4 left-4 bg-black text-white p-3 rounded-full shadow-lg animate-pulse hover:animate-none"
+          className="fixed z-50 bottom-4 left-4 bg-white text-willtank-600 p-3 rounded-full shadow-soft hover:shadow-medium transition-all"
           aria-label="Toggle mobile menu"
         >
           {mobileMenuOpen ? (
-            <XIcon className="h-6 w-6" />
+            <XIcon className="h-5 w-5" />
           ) : (
-            <MenuIcon className="h-6 w-6" />
+            <MenuIcon className="h-5 w-5" />
           )}
         </button>
         
