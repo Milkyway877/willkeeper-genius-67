@@ -27,10 +27,12 @@ const SecureSignUp = () => {
       return;
     }
     
-    // Let the original form submit handler take over
-    const submitButton = event.currentTarget.querySelector('button[type="submit"]');
-    if (submitButton) {
-      (submitButton as HTMLButtonElement).click();
+    // Find the actual form inside the SignUpForm component
+    const signUpForm = event.currentTarget.querySelector('form');
+    if (signUpForm) {
+      // Trigger the form submission programmatically
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      signUpForm.dispatchEvent(submitEvent);
     }
   };
 
