@@ -1,13 +1,16 @@
 
 import * as React from "react"
-import { toast as sonnerToast, ToastOptions } from "sonner"
+import { toast as sonnerToast } from "sonner"
+
+// Define our own ToastOptions type by extracting the parameter types from sonner's toast function
+type SonnerToastOptions = Parameters<typeof sonnerToast>[1]
 
 type ToastProps = {
   title?: string
   description?: string
   variant?: "default" | "destructive"
   duration?: number
-} & Omit<ToastOptions, "duration">
+} & Omit<SonnerToastOptions, "duration">
 
 // Create a wrapper around sonner's toast that supports our expected interface
 function toast(props: ToastProps) {
