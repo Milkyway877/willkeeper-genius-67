@@ -95,19 +95,19 @@ serve(async (req) => {
     // Define real Stripe product price IDs
     const PRICE_IDS = {
       starter: {
-        monthly: process.env.STRIPE_PRICE_STARTER_MONTHLY || "price_1SLzknHTKA0osvsHDZyNfQmV",
-        yearly: process.env.STRIPE_PRICE_STARTER_YEARLY || "price_1SLzlZHTKA0osvsHayvlZEQB",
-        lifetime: process.env.STRIPE_PRICE_STARTER_LIFETIME || "price_1SLzlyHTKA0osvsHWE6B6gTQ", 
+        monthly: Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY") || "price_1SLzknHTKA0osvsHDZyNfQmV",
+        yearly: Deno.env.get("STRIPE_PRICE_STARTER_YEARLY") || "price_1SLzlZHTKA0osvsHayvlZEQB",
+        lifetime: Deno.env.get("STRIPE_PRICE_STARTER_LIFETIME") || "price_1SLzlyHTKA0osvsHWE6B6gTQ", 
       },
       gold: {
-        monthly: process.env.STRIPE_PRICE_GOLD_MONTHLY || "price_1SLzmRHTKA0osvsHlccYFqyn",
-        yearly: process.env.STRIPE_PRICE_GOLD_YEARLY || "price_1SLzmtHTKA0osvsHo5NdQg9W",
-        lifetime: process.env.STRIPE_PRICE_GOLD_LIFETIME || "price_1SLznSHTKA0osvsHjU8w0fzK",
+        monthly: Deno.env.get("STRIPE_PRICE_GOLD_MONTHLY") || "price_1SLzmRHTKA0osvsHlccYFqyn",
+        yearly: Deno.env.get("STRIPE_PRICE_GOLD_YEARLY") || "price_1SLzmtHTKA0osvsHo5NdQg9W",
+        lifetime: Deno.env.get("STRIPE_PRICE_GOLD_LIFETIME") || "price_1SLznSHTKA0osvsHjU8w0fzK",
       },
       platinum: {
-        monthly: process.env.STRIPE_PRICE_PLATINUM_MONTHLY || "price_1SLzo3HTKA0osvsHVx1OLMsf",
-        yearly: process.env.STRIPE_PRICE_PLATINUM_YEARLY || "price_1SLzoeHTKA0osvsHDLkQJzDh",
-        lifetime: process.env.STRIPE_PRICE_PLATINUM_LIFETIME || "price_1SLzp6HTKA0osvsH84fcdWAA",
+        monthly: Deno.env.get("STRIPE_PRICE_PLATINUM_MONTHLY") || "price_1SLzo3HTKA0osvsHVx1OLMsf",
+        yearly: Deno.env.get("STRIPE_PRICE_PLATINUM_YEARLY") || "price_1SLzoeHTKA0osvsHDLkQJzDh",
+        lifetime: Deno.env.get("STRIPE_PRICE_PLATINUM_LIFETIME") || "price_1SLzp6HTKA0osvsH84fcdWAA",
       },
     };
 
