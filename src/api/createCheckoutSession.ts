@@ -3,11 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export async function createCheckoutSession(plan: string, billingPeriod: string) {
+  // Show loading toast with an ID so we can dismiss it later
+  const loadingToastId = toast.loading("Preparing checkout...");
+  
   try {
     console.log(`Creating checkout session for plan: ${plan}, billing period: ${billingPeriod}`);
-    
-    // Show loading toast with an ID so we can dismiss it later
-    const loadingToastId = toast.loading("Preparing checkout...");
     
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: JSON.stringify({ 
@@ -34,14 +34,14 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
       throw new Error('Invalid response from payment service');
     }
 
-    // Only dismiss the loading toast on success if we're about to redirect
+    // Dismiss the loading toast on success before redirecting
     toast.dismiss(loadingToastId);
     console.log('Successfully created checkout session, redirecting to:', data.url);
     return data;
   } catch (error) {
     console.error('Error invoking create-checkout-session:', error);
     // Ensure any existing loading toasts are dismissed
-    toast.dismiss();
+    toast.dismiss(loadingToastId);
     toast.error('Payment processing error', {
       description: 'Could not connect to payment service. Please try again later.'
     });

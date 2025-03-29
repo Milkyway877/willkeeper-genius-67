@@ -50,6 +50,17 @@ serve(async (req) => {
     }
     
     const { plan, billingPeriod } = reqData;
+    
+    if (!plan || !billingPeriod) {
+      console.error("Missing required parameters:", { plan, billingPeriod });
+      return new Response(
+        JSON.stringify({ error: "Missing required parameters" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
 
     console.log("Received request for plan:", plan, "billing period:", billingPeriod);
 
@@ -118,22 +129,23 @@ serve(async (req) => {
       }
     }
 
-    // Define Stripe product price IDs with fallbacks
+    // Define Stripe product price IDs with fixed values
+    // The fallback values are just examples and will be replaced by real values
     const PRICE_IDS = {
       starter: {
-        monthly: Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY") || "price_1OvCj1HTKA0osvsHfGiEW2sX",
-        yearly: Deno.env.get("STRIPE_PRICE_STARTER_YEARLY") || "price_1OvCj1HTKA0osvsHpqQ5wVE3",
-        lifetime: Deno.env.get("STRIPE_PRICE_STARTER_LIFETIME") || "price_1OvCj1HTKA0osvsHLRbqKP8c",
+        monthly: Deno.env.get("STRIPE_PRICE_STARTER_MONTHLY") || "price_example_starter_monthly",
+        yearly: Deno.env.get("STRIPE_PRICE_STARTER_YEARLY") || "price_example_starter_yearly",
+        lifetime: Deno.env.get("STRIPE_PRICE_STARTER_LIFETIME") || "price_example_starter_lifetime",
       },
       gold: {
-        monthly: Deno.env.get("STRIPE_PRICE_GOLD_MONTHLY") || "price_1OvCj3HTKA0osvsHcgZJGnJP",
-        yearly: Deno.env.get("STRIPE_PRICE_GOLD_YEARLY") || "price_1OvCj3HTKA0osvsHdDpyc6NL",
-        lifetime: Deno.env.get("STRIPE_PRICE_GOLD_LIFETIME") || "price_1OvCj3HTKA0osvsH5lNZp2I3",
+        monthly: Deno.env.get("STRIPE_PRICE_GOLD_MONTHLY") || "price_example_gold_monthly",
+        yearly: Deno.env.get("STRIPE_PRICE_GOLD_YEARLY") || "price_example_gold_yearly",
+        lifetime: Deno.env.get("STRIPE_PRICE_GOLD_LIFETIME") || "price_example_gold_lifetime",
       },
       platinum: {
-        monthly: Deno.env.get("STRIPE_PRICE_PLATINUM_MONTHLY") || "price_1OvCj5HTKA0osvsHaTcWXd5J",
-        yearly: Deno.env.get("STRIPE_PRICE_PLATINUM_YEARLY") || "price_1OvCj5HTKA0osvsHYTJKYkEj",
-        lifetime: Deno.env.get("STRIPE_PRICE_PLATINUM_LIFETIME") || "price_1OvCj5HTKA0osvsHw4B9CXNV",
+        monthly: Deno.env.get("STRIPE_PRICE_PLATINUM_MONTHLY") || "price_example_platinum_monthly",
+        yearly: Deno.env.get("STRIPE_PRICE_PLATINUM_YEARLY") || "price_example_platinum_yearly",
+        lifetime: Deno.env.get("STRIPE_PRICE_PLATINUM_LIFETIME") || "price_example_platinum_lifetime",
       },
     };
 
@@ -154,11 +166,13 @@ serve(async (req) => {
     // Determine checkout mode based on billing period
     const checkoutMode = billingPeriod === "lifetime" ? "payment" : "subscription";
 
-    // Create checkout session with proper error handling
+    // Create checkout session
     try {
+      const origin = req.headers.get("origin") || "https://willtank.com";
+      
       const sessionConfig = {
         customer: customerId,
-        customer_email: !customerId ? customerEmail : undefined, // Only set if we don't have a customer ID
+        customer_email: !customerId ? customerEmail : undefined,
         payment_method_types: ["card"],
         line_items: [
           {
@@ -167,8 +181,8 @@ serve(async (req) => {
           },
         ],
         mode: checkoutMode,
-        success_url: `${req.headers.get("origin")}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${req.headers.get("origin")}/billing?canceled=true`,
+        success_url: `${origin}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/billing?canceled=true`,
         metadata: {
           user_id: userId,
           plan: plan,
