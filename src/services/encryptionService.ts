@@ -5,13 +5,13 @@ import * as OTPAuth from "otpauth";
  * Interface for User Security data
  */
 export interface UserSecurity {
-  id: string;
+  id?: string;
   user_id: string;
   encryption_key: string;
   google_auth_enabled: boolean;
   google_auth_secret: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
   last_login?: string | null;
 }
 
@@ -338,17 +338,13 @@ export async function createUserSecurity(): Promise<UserSecurity | null> {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
     
-    const now = new Date().toISOString();
-    
-    // Create new security record - make sure to include all required fields
+    // Create new security record - include only the required fields
+    // (the others will be set by database defaults)
     const securityData = {
       user_id: user.id,
       encryption_key: encryptionKey,
       google_auth_enabled: false,
-      google_auth_secret: null,
-      created_at: now,
-      updated_at: now,
-      last_login: now
+      google_auth_secret: null
     };
     
     // Insert the security record

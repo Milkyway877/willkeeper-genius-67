@@ -9,6 +9,15 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
   try {
     console.log(`Creating checkout session for plan: ${plan}, billing period: ${billingPeriod}`);
     
+    if (!plan || !billingPeriod) {
+      console.error('Missing required parameters:', { plan, billingPeriod });
+      toast.dismiss(loadingToastId);
+      toast.error('Missing checkout information', {
+        description: 'Please select a plan and billing period'
+      });
+      throw new Error('Missing required parameters');
+    }
+    
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: JSON.stringify({ 
         plan, 
@@ -22,9 +31,9 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
     if (error) {
       console.error('Error from checkout session function:', error);
       toast.error('Failed to create checkout session', {
-        description: error.message
+        description: error.message || 'An unknown error occurred'
       });
-      throw new Error(error.message);
+      throw new Error(error.message || 'Failed to create checkout session');
     }
 
     if (!data || !data.url) {

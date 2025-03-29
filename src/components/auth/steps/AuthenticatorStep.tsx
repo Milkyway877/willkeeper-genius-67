@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -90,15 +89,14 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
-      // Insert directly to user_security table
+      // Insert directly to user_security table - only include required fields
       const { error: insertError } = await supabase
         .from('user_security')
         .upsert({
           user_id: user.id,
           google_auth_enabled: enableTwoFactor,
           google_auth_secret: authenticatorKey.replace(/\s+/g, ''),
-          encryption_key: encryptionKey, // Include the required encryption_key
-          updated_at: new Date().toISOString()
+          encryption_key: encryptionKey
         });
         
       if (insertError) {
