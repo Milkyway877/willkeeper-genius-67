@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { FileText, Lock, Unlock, MoreVertical, Eye, Edit, Trash2, Image, Video, AudioLines, FileIcon } from 'lucide-react';
-import { LegacyVaultItem } from '../../types';
+import { LegacyVaultItem, VaultItemType } from '../../types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
@@ -17,23 +17,23 @@ interface VaultItemProps {
 export const VaultItem: React.FC<VaultItemProps> = ({ item, onView, onEdit, onDelete }) => {
   const getTypeIcon = () => {
     switch (item.type) {
-      case 'story':
+      case VaultItemType.story:
         return <FileText size={16} className="text-blue-500" />;
-      case 'confession':
+      case VaultItemType.confession:
         return <FileText size={16} className="text-red-500" />;
-      case 'wishes':
+      case VaultItemType.wishes:
         return <FileText size={16} className="text-purple-500" />;
-      case 'advice':
+      case VaultItemType.advice:
         return <FileText size={16} className="text-green-500" />;
-      case 'image':
+      case VaultItemType.image:
         return <Image size={16} className="text-blue-500" />;
-      case 'video':
+      case VaultItemType.video:
         return <Video size={16} className="text-red-500" />;
-      case 'audio':
+      case VaultItemType.audio:
         return <AudioLines size={16} className="text-purple-500" />;
-      case 'will':
+      case VaultItemType.will:
         return <FileText size={16} className="text-green-700" />;
-      case 'document':
+      case VaultItemType.document:
         return <FileIcon size={16} className="text-amber-500" />;
       default:
         return <FileText size={16} />;
@@ -42,15 +42,15 @@ export const VaultItem: React.FC<VaultItemProps> = ({ item, onView, onEdit, onDe
 
   const getTypeName = () => {
     const types = {
-      'story': 'Personal Story',
-      'confession': 'Confession',
-      'wishes': 'Special Wishes',
-      'advice': 'Life Advice',
-      'image': 'Image',
-      'video': 'Video',
-      'audio': 'Audio Recording',
-      'will': 'Will Document',
-      'document': 'Document'
+      [VaultItemType.story]: 'Personal Story',
+      [VaultItemType.confession]: 'Confession',
+      [VaultItemType.wishes]: 'Special Wishes',
+      [VaultItemType.advice]: 'Life Advice',
+      [VaultItemType.image]: 'Image',
+      [VaultItemType.video]: 'Video',
+      [VaultItemType.audio]: 'Audio Recording',
+      [VaultItemType.will]: 'Will Document',
+      [VaultItemType.document]: 'Document'
     };
     return types[item.type] || 'Document';
   };

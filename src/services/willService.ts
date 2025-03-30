@@ -1,7 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { notifyWillCreated, notifyWillUpdated } from '@/services/notificationService';
 import { createLegacyVaultItem } from '@/services/tankService';
+import { VaultItemType } from '@/pages/tank/types';
 
 export type Will = {
   id: string;
@@ -81,7 +81,7 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
     // Add will to legacy vault for unified access
     await createLegacyVaultItem({
       title: data.title,
-      type: 'will',
+      type: VaultItemType.will,
       preview: `Will document: ${data.title} (${data.status})`,
       document_url: data.document_url,
       encryptionStatus: false
@@ -135,7 +135,7 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
         // Create new entry if somehow it doesn't exist
         await createLegacyVaultItem({
           title: data.title,
-          type: 'will',
+          type: VaultItemType.will,
           preview: `Will document: ${data.title} (${data.status})`,
           document_url: data.document_url,
           encryptionStatus: false

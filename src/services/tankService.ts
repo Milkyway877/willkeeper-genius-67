@@ -200,7 +200,7 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
     for (const will of willsNotInVault) {
       const newVaultItem = await createLegacyVaultItem({
         title: will.title,
-        type: 'will',
+        type: VaultItemType.will,
         preview: `Will document: ${will.title} (${will.status})`,
         document_url: will.document_url,
         encryptionStatus: false

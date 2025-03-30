@@ -14,6 +14,7 @@ import {
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { createLegacyVaultItem } from '@/services/tankService';
+import { VaultItemType } from '@/pages/tank/types';
 
 type FileUploaderProps = {
   onFilesUploaded: (files: File[]) => void;
@@ -85,17 +86,17 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
     return null;
   };
   
-  const getVaultItemType = (file: File): 'document' | 'image' | 'video' | 'audio' => {
+  const getVaultItemType = (file: File): VaultItemType => {
     const type = file.type;
     
     if (type.includes('image')) {
-      return 'image';
+      return VaultItemType.image;
     } else if (type.includes('video')) {
-      return 'video';
+      return VaultItemType.video;
     } else if (type.includes('audio')) {
-      return 'audio';
+      return VaultItemType.audio;
     } else {
-      return 'document';
+      return VaultItemType.document;
     }
   };
   
