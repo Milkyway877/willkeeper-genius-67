@@ -96,12 +96,12 @@ export const createNotificationForEvent = async (
     case 'will_created':
     case 'will_updated':
     case 'item_saved':
+    case 'security_key_generated':
       notificationType = 'success';
       break;
-    case 'security_key_generated':
-      notificationType = 'security';
-      break;
     case 'will_deleted':
+      notificationType = 'warning';
+      break;
     case 'document_uploaded':
     case 'executor_added':
     case 'beneficiary_added':

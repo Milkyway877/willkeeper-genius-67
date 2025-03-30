@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createSystemNotification } from '@/services/notificationService';
@@ -86,10 +87,10 @@ export function useNotificationManager() {
     );
   }, [notifySuccess]);
 
-  const notifyDocumentUploaded = useCallback((docTitle?: string) => {
+  const notifyDocumentUploaded = useCallback((details?: { title?: string, description?: string }) => {
     return notifyInfo(
-      'Document Uploaded', 
-      `"${docTitle || 'Your document'}" has been successfully uploaded.`
+      details?.title || 'Document Uploaded', 
+      details?.description || 'Your document has been successfully uploaded.'
     );
   }, [notifyInfo]);
 
@@ -114,44 +115,25 @@ export function useNotificationManager() {
     );
   }, [notifyInfo]);
 
-  const notifyWelcome = useCallback(() => {
-    return notifyInfo(
-      'Welcome to WillTank', 
-      'Thank you for joining. Get started by creating your first will and securing your legacy.',
-      'high'
+  const notifyWillDeleted = useCallback((willTitle?: string) => {
+    return notifyWarning(
+      'Will Deleted', 
+      `Your will "${willTitle || 'Untitled'}" has been deleted.`
     );
-  }, [notifyInfo]);
-
-  const notifySecurityAlert = useCallback((description: string) => {
-    return notifySecurity(
-      'Security Alert',
-      description
-    );
-  }, [notifySecurity]);
+  }, [notifyWarning]);
 
   return {
-    // Generic notification methods
     notify,
     notifySuccess,
     notifyInfo,
     notifyWarning,
     notifySecurity,
-    
-    // Action-specific notification methods
     notifyWillCreated,
     notifyWillUpdated,
     notifyDocumentUploaded,
     notifySubscriptionChanged,
     notifyBeneficiaryAdded,
     notifyExecutorAdded,
-    notifyWelcome,
-    notifySecurityAlert,
-    
-    // Pass through any context data that might be useful
-    unreadCount: notificationsContext?.unreadCount || 0,
-    hasUnread: notificationsContext?.hasUnread || false,
-    fetchNotifications: notificationsContext?.fetchNotifications,
-    markAsRead: notificationsContext?.markAsRead,
-    markAllAsRead: notificationsContext?.markAllAsRead
+    notifyWillDeleted
   };
 }
