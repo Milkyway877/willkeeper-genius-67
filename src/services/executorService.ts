@@ -1,40 +1,7 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification } from "./notificationService";
+import { supabase } from '@/integrations/supabase/client';
 
-// Define the type that matches what our Supabase table returns
-interface WillExecutorRow {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string | null;
-  relationship?: string | null;
-  address?: string | null;
-  notes?: string | null;
-  status: string;
-  will_id?: string | null;
-  created_at: string;
-  user_id?: string | null;
-}
-
-// Define the type that matches what our Supabase table returns
-interface WillBeneficiaryRow {
-  id: string;
-  beneficiary_name: string;
-  relationship: string;
-  email?: string | null;
-  phone?: string | null;
-  address?: string | null;
-  notes?: string | null;
-  percentage?: number | null;
-  status?: string | null;
-  will_id?: string | null;
-  created_at: string;
-  user_id?: string | null;
-}
-
-// These are our application models
-export interface Executor {
+export type Executor = {
   id: string;
   name: string;
   email: string;
@@ -42,322 +9,295 @@ export interface Executor {
   relationship: string;
   address?: string;
   notes?: string;
-  isVerified: boolean;
-  will_id?: string;
-  created_at: string;
-}
+  isVerified?: boolean;
+};
 
-export interface Beneficiary {
+export type Beneficiary = {
   id: string;
   name: string;
-  relationship: string;
   email: string;
   phone: string;
+  relationship: string;
   address?: string;
   notes?: string;
   percentage?: number;
-  isVerified: boolean;
-  will_id?: string;
-  created_at: string;
-}
+  isVerified?: boolean;
+};
 
+// Get executors for current user
 export const getExecutors = async (): Promise<Executor[]> => {
   try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
     const { data, error } = await supabase
       .from('will_executors')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('user_id', user.user.id);
       
-    if (error) {
-      console.error('Error fetching executors:', error);
-      return [];
-    }
+    if (error) throw error;
     
-    return (data || []).map((item: WillExecutorRow) => ({
-      id: item.id,
-      name: item.name,
-      email: item.email,
-      phone: item.phone || '',
-      relationship: item.relationship || '',
-      address: item.address || '',
-      notes: item.notes || '',
-      isVerified: item.status === 'verified',
-      will_id: item.will_id || undefined,
-      created_at: item.created_at
+    // Transform the data to match the Executor type
+    return data.map(executor => ({
+      id: executor.id,
+      name: executor.name,
+      email: executor.email,
+      phone: executor.phone || '',
+      relationship: executor.relationship || '',
+      address: executor.address,
+      notes: executor.notes,
+      isVerified: executor.status === 'verified'
     }));
   } catch (error) {
-    console.error('Error in getExecutors:', error);
+    console.error('Error getting executors:', error);
     return [];
   }
 };
 
-export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at' | 'isVerified'>): Promise<Executor | null> => {
-  try {
-    const dbExecutor = {
-      name: executor.name,
-      email: executor.email,
-      phone: executor.phone,
-      relationship: executor.relationship,
-      address: executor.address,
-      notes: executor.notes,
-      status: 'pending',
-      will_id: executor.will_id
-    };
-    
-    const { data, error } = await supabase
-      .from('will_executors')
-      .insert(dbExecutor)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error creating executor:', error);
-      return null;
-    }
-    
-    await createSystemNotification('executor_added', {
-      title: 'Executor Added',
-      description: `${executor.name} has been added as an executor to your will.`
-    });
-    
-    const result: Executor = {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone || '',
-      relationship: data.relationship || '',
-      address: data.address || '',
-      notes: data.notes || '',
-      isVerified: data.status === 'verified',
-      will_id: data.will_id || undefined,
-      created_at: data.created_at
-    };
-    
-    return result;
-  } catch (error) {
-    console.error('Error in createExecutor:', error);
-    return null;
-  }
-};
-
-export const updateExecutor = async (id: string, updates: Partial<Executor>): Promise<Executor | null> => {
-  try {
-    const dbUpdates = {
-      ...(updates.name && { name: updates.name }),
-      ...(updates.email && { email: updates.email }),
-      ...(updates.phone && { phone: updates.phone }),
-      ...(updates.relationship && { relationship: updates.relationship }),
-      ...(updates.address !== undefined && { address: updates.address }),
-      ...(updates.notes !== undefined && { notes: updates.notes }),
-      ...(updates.isVerified !== undefined && { status: updates.isVerified ? 'verified' : 'pending' }),
-      ...(updates.will_id && { will_id: updates.will_id })
-    };
-    
-    const { data, error } = await supabase
-      .from('will_executors')
-      .update(dbUpdates)
-      .eq('id', id)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error updating executor:', error);
-      return null;
-    }
-    
-    const result: Executor = {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone || '',
-      relationship: data.relationship || '',
-      address: data.address || '',
-      notes: data.notes || '',
-      isVerified: data.status === 'verified',
-      will_id: data.will_id || undefined,
-      created_at: data.created_at
-    };
-    
-    return result;
-  } catch (error) {
-    console.error('Error in updateExecutor:', error);
-    return null;
-  }
-};
-
-export const deleteExecutor = async (id: string): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('will_executors')
-      .delete()
-      .eq('id', id);
-      
-    if (error) {
-      console.error('Error deleting executor:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in deleteExecutor:', error);
-    return false;
-  }
-};
-
+// Get beneficiaries for current user
 export const getBeneficiaries = async (): Promise<Beneficiary[]> => {
   try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
     const { data, error } = await supabase
       .from('will_beneficiaries')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('user_id', user.user.id);
       
-    if (error) {
-      console.error('Error fetching beneficiaries:', error);
-      return [];
-    }
+    if (error) throw error;
     
-    return (data || []).map((item: WillBeneficiaryRow) => ({
-      id: item.id,
-      name: item.beneficiary_name,
-      relationship: item.relationship,
-      email: item.email || '',
-      phone: item.phone || '',
-      address: item.address || '',
-      notes: item.notes || '',
-      percentage: item.percentage,
-      isVerified: item.status === 'verified',
-      will_id: item.will_id,
-      created_at: item.created_at
-    }));
-  } catch (error) {
-    console.error('Error in getBeneficiaries:', error);
-    return [];
-  }
-};
-
-export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'created_at' | 'isVerified'>): Promise<Beneficiary | null> => {
-  try {
-    const dbBeneficiary = {
-      beneficiary_name: beneficiary.name,
-      relationship: beneficiary.relationship,
+    // Transform the data to match the Beneficiary type
+    return data.map(beneficiary => ({
+      id: beneficiary.id,
+      name: beneficiary.beneficiary_name,
       email: beneficiary.email,
-      phone: beneficiary.phone,
+      phone: beneficiary.phone || '',
+      relationship: beneficiary.relationship,
       address: beneficiary.address,
       notes: beneficiary.notes,
       percentage: beneficiary.percentage,
-      status: 'pending',
-      will_id: beneficiary.will_id
-    };
+      isVerified: beneficiary.status === 'verified'
+    }));
+  } catch (error) {
+    console.error('Error getting beneficiaries:', error);
+    return [];
+  }
+};
+
+// Create a new executor
+export const createExecutor = async (executor: Omit<Executor, 'id' | 'isVerified'>): Promise<Executor | null> => {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
     
     const { data, error } = await supabase
-      .from('will_beneficiaries')
-      .insert(dbBeneficiary)
+      .from('will_executors')
+      .insert({
+        name: executor.name,
+        email: executor.email,
+        phone: executor.phone,
+        relationship: executor.relationship,
+        address: executor.address,
+        notes: executor.notes,
+        user_id: user.user.id
+      })
       .select()
       .single();
       
-    if (error) {
-      console.error('Error creating beneficiary:', error);
-      return null;
-    }
-    
-    await createSystemNotification('beneficiary_added', {
-      title: 'Beneficiary Added',
-      description: `${beneficiary.name} has been added as a beneficiary to your will.`
-    });
+    if (error) throw error;
     
     return {
       id: data.id,
-      name: data.beneficiary_name,
-      relationship: data.relationship,
-      email: data.email || '',
+      name: data.name,
+      email: data.email,
       phone: data.phone || '',
-      address: data.address || '',
-      notes: data.notes || '',
-      percentage: data.percentage,
-      isVerified: data.status === 'verified',
-      will_id: data.will_id,
-      created_at: data.created_at
+      relationship: data.relationship || '',
+      address: data.address,
+      notes: data.notes,
+      isVerified: data.status === 'verified'
     };
   } catch (error) {
-    console.error('Error in createBeneficiary:', error);
+    console.error('Error creating executor:', error);
     return null;
   }
 };
 
-export const updateBeneficiary = async (id: string, updates: Partial<Beneficiary>): Promise<Beneficiary | null> => {
+// Create a new beneficiary
+export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'isVerified'>): Promise<Beneficiary | null> => {
   try {
-    const dbUpdates = {
-      ...(updates.name && { beneficiary_name: updates.name }),
-      ...(updates.relationship && { relationship: updates.relationship }),
-      ...(updates.email && { email: updates.email }),
-      ...(updates.phone && { phone: updates.phone }),
-      ...(updates.address !== undefined && { address: updates.address }),
-      ...(updates.notes !== undefined && { notes: updates.notes }),
-      ...(updates.percentage !== undefined && { percentage: updates.percentage }),
-      ...(updates.isVerified !== undefined && { status: updates.isVerified ? 'verified' : 'pending' }),
-      ...(updates.will_id && { will_id: updates.will_id })
-    };
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
     
     const { data, error } = await supabase
       .from('will_beneficiaries')
-      .update(dbUpdates)
+      .insert({
+        beneficiary_name: beneficiary.name,
+        email: beneficiary.email,
+        phone: beneficiary.phone,
+        relationship: beneficiary.relationship,
+        address: beneficiary.address,
+        notes: beneficiary.notes,
+        percentage: beneficiary.percentage,
+        user_id: user.user.id
+      })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return {
+      id: data.id,
+      name: data.beneficiary_name,
+      email: data.email,
+      phone: data.phone || '',
+      relationship: data.relationship,
+      address: data.address,
+      notes: data.notes,
+      percentage: data.percentage,
+      isVerified: data.status === 'verified'
+    };
+  } catch (error) {
+    console.error('Error creating beneficiary:', error);
+    return null;
+  }
+};
+
+// Update an existing executor
+export const updateExecutor = async (id: string, executor: Partial<Executor>): Promise<Executor | null> => {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
+    // Transform the executor data to match the database schema
+    const executorData: any = { ...executor };
+    if (executor.name) executorData.name = executor.name;
+    if (executor.email) executorData.email = executor.email;
+    if (executor.phone !== undefined) executorData.phone = executor.phone;
+    if (executor.relationship !== undefined) executorData.relationship = executor.relationship;
+    if (executor.address !== undefined) executorData.address = executor.address;
+    if (executor.notes !== undefined) executorData.notes = executor.notes;
+    
+    const { data, error } = await supabase
+      .from('will_executors')
+      .update(executorData)
       .eq('id', id)
+      .eq('user_id', user.user.id)
       .select()
       .single();
       
-    if (error) {
-      console.error('Error updating beneficiary:', error);
-      return null;
-    }
+    if (error) throw error;
     
     return {
       id: data.id,
-      name: data.beneficiary_name,
-      relationship: data.relationship,
-      email: data.email || '',
+      name: data.name,
+      email: data.email,
       phone: data.phone || '',
-      address: data.address || '',
-      notes: data.notes || '',
-      percentage: data.percentage,
-      isVerified: data.status === 'verified',
-      will_id: data.will_id,
-      created_at: data.created_at
+      relationship: data.relationship || '',
+      address: data.address,
+      notes: data.notes,
+      isVerified: data.status === 'verified'
     };
   } catch (error) {
-    console.error('Error in updateBeneficiary:', error);
+    console.error('Error updating executor:', error);
     return null;
   }
 };
 
-export const deleteBeneficiary = async (id: string): Promise<boolean> => {
+// Update an existing beneficiary
+export const updateBeneficiary = async (id: string, beneficiary: Partial<Beneficiary>): Promise<Beneficiary | null> => {
   try {
-    const { error } = await supabase
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
+    // Transform the beneficiary data to match the database schema
+    const beneficiaryData: any = {};
+    if (beneficiary.name) beneficiaryData.beneficiary_name = beneficiary.name;
+    if (beneficiary.email) beneficiaryData.email = beneficiary.email;
+    if (beneficiary.phone !== undefined) beneficiaryData.phone = beneficiary.phone;
+    if (beneficiary.relationship !== undefined) beneficiaryData.relationship = beneficiary.relationship;
+    if (beneficiary.address !== undefined) beneficiaryData.address = beneficiary.address;
+    if (beneficiary.notes !== undefined) beneficiaryData.notes = beneficiary.notes;
+    if (beneficiary.percentage !== undefined) beneficiaryData.percentage = beneficiary.percentage;
+    
+    const { data, error } = await supabase
       .from('will_beneficiaries')
-      .delete()
-      .eq('id', id);
+      .update(beneficiaryData)
+      .eq('id', id)
+      .eq('user_id', user.user.id)
+      .select()
+      .single();
       
-    if (error) {
-      console.error('Error deleting beneficiary:', error);
-      return false;
-    }
+    if (error) throw error;
+    
+    return {
+      id: data.id,
+      name: data.beneficiary_name,
+      email: data.email,
+      phone: data.phone || '',
+      relationship: data.relationship,
+      address: data.address,
+      notes: data.notes,
+      percentage: data.percentage,
+      isVerified: data.status === 'verified'
+    };
+  } catch (error) {
+    console.error('Error updating beneficiary:', error);
+    return null;
+  }
+};
+
+// Delete an executor
+export const deleteExecutor = async (id: string): Promise<boolean> => {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
+    const { error } = await supabase
+      .from('will_executors')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.user.id);
+      
+    if (error) throw error;
     
     return true;
   } catch (error) {
-    console.error('Error in deleteBeneficiary:', error);
+    console.error('Error deleting executor:', error);
     return false;
   }
 };
 
+// Delete a beneficiary
+export const deleteBeneficiary = async (id: string): Promise<boolean> => {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
+    const { error } = await supabase
+      .from('will_beneficiaries')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.user.id);
+      
+    if (error) throw error;
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting beneficiary:', error);
+    return false;
+  }
+};
+
+// Send verification request to executor or beneficiary
 export const sendVerificationRequest = async (email: string, name: string, type: 'executor' | 'beneficiary'): Promise<boolean> => {
   try {
-    // In a real implementation, you would send an email verification
-    // We'll simulate it by logging and creating a notification
-    console.log(`Verification email sent to ${email} for ${type} ${name}`);
+    // In a real implementation, this would send an email to the executor/beneficiary
+    // Here we'll just simulate a successful verification request
+    console.log(`Sending verification request to ${email} (${name}) as ${type}`);
     
-    await createSystemNotification('will_updated', {
-      title: 'Verification Email Sent',
-      description: `A verification request has been sent to ${email}.`
-    });
+    // This would typically involve a call to a serverless function or similar
+    // that would send the actual email with a verification link
     
     return true;
   } catch (error) {

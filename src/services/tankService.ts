@@ -1,290 +1,151 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem, VaultItemType } from "../pages/tank/types";
-import { createSystemNotification } from "./notificationService";
+import { supabase } from '@/integrations/supabase/client';
 
-export interface FutureMessage {
+export type FutureMessage = {
   id: string;
-  title: string | null;
+  title: string;
   recipient_name: string;
   recipient_email: string;
-  message_type: string | null;
-  preview: string | null;
+  message_type: string;
+  preview: string;
   message_url: string | null;
   status: string;
   delivery_date: string;
-  created_at: string;
-}
+  created_at?: string;
+  user_id?: string;
+};
 
-// Database functions remain the same
+// Get all future messages for the current user
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
     const { data, error } = await supabase
       .from('future_messages')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('user_id', user.user.id)
+      .order('delivery_date', { ascending: true });
       
-    if (error) {
-      console.error('Error fetching future messages:', error);
-      return [];
-    }
+    if (error) throw error;
     
-    return data || [];
+    return data;
   } catch (error) {
-    console.error('Error in getFutureMessages:', error);
+    console.error('Error fetching future messages:', error);
     return [];
   }
 };
 
-export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'created_at'>): Promise<FutureMessage | null> => {
+// Get a single future message by ID
+export const getFutureMessage = async (messageId: string): Promise<FutureMessage | null> => {
   try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
     const { data, error } = await supabase
       .from('future_messages')
-      .insert(message)
-      .select()
+      .select('*')
+      .eq('id', messageId)
+      .eq('user_id', user.user.id)
       .single();
       
-    if (error) {
-      console.error('Error creating future message:', error);
-      return null;
-    }
-    
-    await createSystemNotification('item_saved', {
-      title: 'Future Message Created',
-      description: `Your message "${message.title || 'Untitled'}" has been scheduled for ${new Date(message.delivery_date).toLocaleDateString()}.`
-    });
+    if (error) throw error;
     
     return data;
   } catch (error) {
-    console.error('Error in createFutureMessage:', error);
+    console.error('Error fetching future message:', error);
     return null;
   }
 };
 
-export const updateFutureMessage = async (id: string, updates: Partial<FutureMessage>): Promise<FutureMessage | null> => {
+// Create a new future message
+export const createFutureMessage = async (message: Omit<FutureMessage, 'id'>): Promise<FutureMessage | null> => {
   try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabase
+      .from('future_messages')
+      .insert({
+        ...message,
+        user_id: user.user.id
+      })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error('Error creating future message:', error);
+    return null;
+  }
+};
+
+// Update an existing future message
+export const updateFutureMessage = async (
+  messageId: string, 
+  updates: Partial<FutureMessage>
+): Promise<FutureMessage | null> => {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
     const { data, error } = await supabase
       .from('future_messages')
       .update(updates)
-      .eq('id', id)
+      .eq('id', messageId)
+      .eq('user_id', user.user.id)
       .select()
       .single();
       
-    if (error) {
-      console.error('Error updating future message:', error);
-      return null;
-    }
+    if (error) throw error;
     
     return data;
   } catch (error) {
-    console.error('Error in updateFutureMessage:', error);
+    console.error('Error updating future message:', error);
     return null;
   }
 };
 
-export const deleteFutureMessage = async (id: string): Promise<boolean> => {
+// Delete a future message
+export const deleteFutureMessage = async (messageId: string): Promise<boolean> => {
   try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user?.user?.id) throw new Error('Not authenticated');
+    
     const { error } = await supabase
       .from('future_messages')
       .delete()
-      .eq('id', id);
+      .eq('id', messageId)
+      .eq('user_id', user.user.id);
       
-    if (error) {
-      console.error('Error deleting future message:', error);
-      return false;
-    }
+    if (error) throw error;
     
     return true;
   } catch (error) {
-    console.error('Error in deleteFutureMessage:', error);
+    console.error('Error deleting future message:', error);
     return false;
   }
 };
 
-export const getLegacyVaultItems = async (): Promise<UILegacyVaultItem[]> => {
+// Update message content in storage
+export const updateMessageContent = async (messageId: string, content: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
-      .from('legacy_vault')
-      .select('*')
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error fetching legacy vault items:', error);
-      return [];
-    }
+    // For demonstration purposes, we'll simulate updating content
+    console.log(`Updating content for message ${messageId}`);
     
-    return (data || []).map(item => ({
-      id: item.id,
-      title: item.title,
-      type: mapCategoryToType(item.category),
-      preview: item.preview || '',
-      document_url: item.document_url,
-      createdAt: item.created_at,
-      created_at: item.created_at,
-      encryptionStatus: item.is_encrypted || false
-    }));
-  } catch (error) {
-    console.error('Error in getLegacyVaultItems:', error);
-    return [];
-  }
-};
-
-// Helper function to map database category to UI type
-const mapCategoryToType = (category: string | null): VaultItemType => {
-  const map: Record<string, VaultItemType> = {
-    'story': 'story',
-    'confession': 'confession',
-    'wishes': 'wishes',
-    'advice': 'advice',
-    'personal_story': 'story',
-    'family_secret': 'confession',
-    'special_wishes': 'wishes',
-    'life_advice': 'advice'
-  };
-  
-  return category && map[category] ? map[category] : 'story';
-};
-
-export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' | 'createdAt' | 'created_at'>): Promise<UILegacyVaultItem | null> => {
-  try {
-    // Convert from UI schema to database schema
-    const dbItem = {
-      title: item.title,
-      category: item.type, // Map type to category
-      preview: item.preview,
-      document_url: item.document_url || '', // Default empty string if not provided
-      is_encrypted: item.encryptionStatus || false // Include encryption status
-    };
+    // In a real app, you would upload the content to storage
+    // and then update the message_url in the database
     
-    const { data, error } = await supabase
-      .from('legacy_vault')
-      .insert(dbItem)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error creating legacy vault item:', error);
-      return null;
-    }
-    
-    await createSystemNotification('document_uploaded', {
-      title: 'Legacy Item Added',
-      description: `Your legacy item "${item.title}" has been added to your vault.`
+    // Update the message to reflect that the content has changed
+    const result = await updateFutureMessage(messageId, {
+      preview: content.length > 100 ? content.substring(0, 97) + '...' : content
     });
     
-    // Convert back to UI schema
-    return {
-      id: data.id,
-      title: data.title,
-      type: mapCategoryToType(data.category),
-      preview: data.preview || '',
-      document_url: data.document_url,
-      createdAt: data.created_at,
-      created_at: data.created_at,
-      encryptionStatus: data.is_encrypted || false
-    };
+    return !!result;
   } catch (error) {
-    console.error('Error in createLegacyVaultItem:', error);
-    return null;
-  }
-};
-
-export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVaultItem>): Promise<UILegacyVaultItem | null> => {
-  try {
-    // Convert from UI schema to database schema
-    const dbItem: Record<string, any> = {};
-    
-    if (item.title !== undefined) dbItem.title = item.title;
-    if (item.type !== undefined) dbItem.category = item.type;
-    if (item.preview !== undefined) dbItem.preview = item.preview;
-    if (item.document_url !== undefined) dbItem.document_url = item.document_url;
-    if (item.encryptionStatus !== undefined) dbItem.is_encrypted = item.encryptionStatus;
-    
-    const { data, error } = await supabase
-      .from('legacy_vault')
-      .update(dbItem)
-      .eq('id', id)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error updating legacy vault item:', error);
-      return null;
-    }
-    
-    await createSystemNotification('item_saved', {
-      title: 'Legacy Item Updated',
-      description: `Your legacy item "${data.title}" has been updated.`
-    });
-    
-    // Convert back to UI schema
-    return {
-      id: data.id,
-      title: data.title,
-      type: mapCategoryToType(data.category),
-      preview: data.preview || '',
-      document_url: data.document_url,
-      createdAt: data.created_at,
-      created_at: data.created_at,
-      encryptionStatus: data.is_encrypted || false
-    };
-  } catch (error) {
-    console.error('Error in updateLegacyVaultItem:', error);
-    return null;
-  }
-};
-
-export const toggleItemEncryption = async (id: string, encrypt: boolean): Promise<UILegacyVaultItem | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('legacy_vault')
-      .update({ is_encrypted: encrypt })
-      .eq('id', id)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error toggling encryption status:', error);
-      return null;
-    }
-    
-    await createSystemNotification('item_saved', {
-      title: encrypt ? 'Item Encrypted' : 'Item Decrypted',
-      description: `Your legacy item "${data.title}" has been ${encrypt ? 'encrypted' : 'decrypted'}.`
-    });
-    
-    // Convert back to UI schema
-    return {
-      id: data.id,
-      title: data.title,
-      type: mapCategoryToType(data.category),
-      preview: data.preview || '',
-      document_url: data.document_url,
-      createdAt: data.created_at,
-      created_at: data.created_at,
-      encryptionStatus: data.is_encrypted || false
-    };
-  } catch (error) {
-    console.error('Error in toggleItemEncryption:', error);
-    return null;
-  }
-};
-
-export const deleteLegacyVaultItem = async (id: string): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('legacy_vault')
-      .delete()
-      .eq('id', id);
-      
-    if (error) {
-      console.error('Error deleting legacy vault item:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in deleteLegacyVaultItem:', error);
+    console.error('Error updating message content:', error);
     return false;
   }
 };
