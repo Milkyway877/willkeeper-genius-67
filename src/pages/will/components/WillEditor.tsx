@@ -1,9 +1,9 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Save, Copy, Undo, Redo, Code } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { validateAddress } from '@/services/locationService';
 
 type WillEditorProps = {
   content: string;
@@ -12,6 +12,8 @@ type WillEditorProps = {
 
 export function WillEditor({ content, onChange }: WillEditorProps) {
   const { toast } = useToast();
+  
+  const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
@@ -31,6 +33,41 @@ export function WillEditor({ content, onChange }: WillEditorProps) {
       title: "Formatted",
       description: "Document has been formatted according to legal standards"
     });
+  };
+
+  const validateAddressField = async (address: string) => {
+    if (!address || address.trim().length < 5) return;
+    
+    setIsValidatingAddress(true);
+    
+    try {
+      const result = await validateAddress(address);
+      
+      if (result.isValid && result.formattedAddress) {
+        // Optionally update the field with the formatted address
+        // setContent(prev => ({...prev, address: result.formattedAddress}));
+        
+        toast({
+          title: "Address Validated",
+          description: `The address is valid: ${result.formattedAddress}`,
+        });
+      } else {
+        toast({
+          title: "Address Validation Failed",
+          description: "The provided address could not be verified. Please check and try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error validating address:", error);
+      toast({
+        title: "Validation Error",
+        description: "There was an error validating the address.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsValidatingAddress(false);
+    }
   };
 
   return (

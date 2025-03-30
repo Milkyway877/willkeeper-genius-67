@@ -1,101 +1,128 @@
-
-import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { Logo } from '@/components/ui/logo/Logo';
-import { cn } from '@/lib/utils';
-import { 
-  Home, 
-  FileText, 
-  Users, 
-  Vault, 
-  CreditCard, 
-  Shield, 
+import React from 'react';
+import {
+  LayoutDashboard,
+  Scroll,
+  BookTemplate,
+  Vault,
+  Bot,
+  Activity,
   Settings,
-  FileCode,
-  ChevronLeft,
-  ChevronRight
+  HelpCircle,
+  LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useSidebar } from '@/contexts/SidebarContext';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUserProfile } from '@/contexts/UserProfileContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export function Sidebar() {
+  const { isCollapsed, toggleSidebar } = useSidebar();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, initials } = useUserProfile();
+  const { toast } = useToast();
+  
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out successfully."
+      });
+      
+      // Redirect to login page
+      window.location.href = '/auth/signin';
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast({
+        title: "Logout Failed",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  return (
+    <aside className={`
+      ${isCollapsed ? 'w-20' : 'w-60'}
+      flex flex-col h-screen bg-gray-50 border-r border-gray-200 transition-all duration-200`}>
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Link to="/" className="flex items-center">
+            <img src="/logo.svg" alt="Logo" className="h-8 w-auto" />
+            {!isCollapsed && <span className="ml-2 text-lg font-bold">Skyler</span>}
+          </Link>
+          <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+            {isCollapsed ? <Menu className="h-6 w-6" /> : <X className="h-6 w-6" />}
+          </Button>
+        </div>
+        
+        <nav className="space-y-1.5 mt-6">
+          <SidebarLink to="/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} label="Dashboard" />
+          <SidebarLink to="/dashboard/will" icon={<Scroll className="h-5 w-5" />} label="My Will" />
+          <SidebarLink to="/templates" icon={<BookTemplate className="h-5 w-5" />} label="Templates" />
+          <SidebarLink to="/tank" icon={<Vault className="h-5 w-5" />} label="Will Tank" />
+          <SidebarLink to="/pages/ai/AIAssistance" icon={<Bot className="h-5 w-5" />} label="Skyler" />
+          <SidebarLink to="/activity" icon={<Activity className="h-5 w-5" />} label="Activity" />
+        </nav>
+        
+        <div className="mt-auto p-4">
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.avatar_url || ""} />
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                {!isCollapsed && <span className="ml-2 font-medium">{user?.email}</span>}
+              </div>
+            </div>
+            
+            <SidebarLink to="/settings" icon={<Settings className="h-5 w-5" />} label="Settings" />
+            <SidebarLink to="/help" icon={<HelpCircle className="h-5 w-5" />} label="Help" />
+            
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
 
 interface SidebarLinkProps {
   to: string;
   icon: React.ReactNode;
   label: string;
-  isCollapsed: boolean;
 }
 
-const SidebarLink = ({ to, icon, label, isCollapsed }: SidebarLinkProps) => {
+function SidebarLink({ to, icon, label }: SidebarLinkProps) {
   const location = useLocation();
   const isActive = location.pathname === to;
-
+  
   return (
-    <NavLink 
-      to={to} 
-      className={({isActive}) => cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200',
-        isActive 
-          ? 'bg-willtank-100 text-willtank-800 font-medium' 
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-        isCollapsed && 'justify-center'
-      )}
+    <Link
+      to={to}
+      className={`
+        flex items-center px-4 py-2 rounded-md
+        hover:bg-gray-100
+        ${isActive ? 'bg-gray-100 font-medium' : 'text-gray-600'}
+      `}
     >
-      <span className="flex-shrink-0 w-5 h-5">{icon}</span>
-      {!isCollapsed && <span>{label}</span>}
-    </NavLink>
-  );
-};
-
-export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
-  return (
-    <div 
-      className={cn(
-        "h-screen flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out relative",
-        isCollapsed ? "w-16" : "w-64"
-      )}
-    >
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        {!isCollapsed ? (
-          <Logo size="sm" />
-        ) : (
-          <div className="w-full flex justify-center">
-            <Logo size="sm" className="!h-8 w-8 overflow-hidden" />
-          </div>
-        )}
-        {!isCollapsed && (
-          <button 
-            onClick={toggleSidebar}
-            className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
-      </div>
-      
-      {/* Toggle button for collapsed state */}
-      {isCollapsed && (
-        <button 
-          onClick={toggleSidebar}
-          className="absolute -right-3 top-16 bg-white p-1.5 rounded-full border border-gray-200 text-gray-400 hover:text-gray-700 shadow-sm"
-        >
-          <ChevronRight size={14} />
-        </button>
-      )}
-      
-      <div className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
-        <SidebarLink to="/dashboard" icon={<Home size={18} />} label="Dashboard" isCollapsed={isCollapsed} />
-        <SidebarLink to="/wills" icon={<FileText size={18} />} label="My Wills" isCollapsed={isCollapsed} />
-        <SidebarLink to="/executors" icon={<Users size={18} />} label="Executors" isCollapsed={isCollapsed} />
-        <SidebarLink to="/vault" icon={<Vault size={18} />} label="Vault" isCollapsed={isCollapsed} />
-        <SidebarLink to="/billing" icon={<CreditCard size={18} />} label="Payments" isCollapsed={isCollapsed} />
-        <SidebarLink to="/security" icon={<Shield size={18} />} label="Security" isCollapsed={isCollapsed} />
-        <SidebarLink to="/templates" icon={<FileCode size={18} />} label="Legal Templates" isCollapsed={isCollapsed} />
-        <SidebarLink to="/settings" icon={<Settings size={18} />} label="Settings" isCollapsed={isCollapsed} />
-      </div>
-    </div>
+      {icon}
+      <span className="ml-3">{label}</span>
+    </Link>
   );
 }

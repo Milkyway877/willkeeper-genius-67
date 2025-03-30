@@ -33,7 +33,7 @@ import WillEditor from './pages/will/WillCreation';
 import WillTemplates from './pages/templates/Templates';
 import WillTank from './pages/tank/Tank';
 import Settings from './pages/settings/Settings';
-import Profile from './pages/settings/Profile'; // New import for Profile page
+import Profile from './pages/settings/Profile';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
@@ -55,6 +55,7 @@ import AIAssistance from './pages/ai/AIAssistance';
 import IDSecurity from './pages/security/IDSecurity';
 import Billing from './pages/billing/Billing';
 import Notifications from './pages/notifications/Notifications';
+import Activity from './pages/activity/Activity';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
@@ -102,7 +103,8 @@ function App() {
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/profile" element={<Profile />} /> {/* Add the Profile route */}
+            <Route path="/settings/profile" element={<Profile />} />
+            <Route path="/activity" element={<Activity />} />
 
             {/* Routes for sidebar links */}
             <Route path="/pages/encryption/Encryption" element={<Encryption />} />

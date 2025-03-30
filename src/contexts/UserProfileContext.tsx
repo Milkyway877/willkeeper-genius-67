@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserProfile, getInitials, UserProfile } from "@/services/profileService";
+import { logUserActivity } from "@/services/activityService";
 
 interface UserProfileContextType {
   user: User | null;
@@ -27,6 +28,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [initials, setInitials] = useState("U");
+  const [prevAuthState, setPrevAuthState] = useState<User | null>(null);
 
   const refreshProfile = async () => {
     try {
@@ -45,6 +47,23 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state changed:", event);
+        
+        // Log user sign in
+        if (event === 'SIGNED_IN' && session?.user) {
+          logUserActivity('login', { 
+            email: session.user.email,
+            method: 'password' // or other auth method
+          });
+        }
+        
+        // Log user sign out
+        if (event === 'SIGNED_OUT' && prevAuthState) {
+          logUserActivity('logout', { 
+            email: prevAuthState.email 
+          });
+        }
+        
+        setPrevAuthState(user);
         setUser(session?.user ?? null);
         
         if (session?.user) {
@@ -63,6 +82,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         const { data: { session } } = await supabase.auth.getSession();
         
         setUser(session?.user ?? null);
+        setPrevAuthState(session?.user ?? null);
         
         if (session?.user) {
           await refreshProfile();
