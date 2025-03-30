@@ -122,7 +122,7 @@ export function useNotifications() {
     notifyWillUpdated: notifyWillUpdatedAction,
     notifyDocumentUploaded: notifyDocumentUploadedAction,
     notifyProfileUpdated: notifyProfileUpdatedAction,
-    notifySecurity: notifySecurityAction,
+    notifySecurityEvent: notifySecurityAction,
     notifyVaultItemAdded: notifyVaultItemAddedAction,
     notifyVaultItemUpdated: notifyVaultItemUpdatedAction,
     notifyMessageScheduled: notifyMessageScheduledAction,
