@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,20 +26,71 @@ export const UnifiedVault: React.FC = () => {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [filterType, setFilterType] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [countsById, setCountsById] = useState<{
+    all: number;
+    documents: number;
+    images: number;
+    videos: number;
+    audio: number;
+    wills: number;
+  }>({
+    all: 0,
+    documents: 0,
+    images: 0,
+    videos: 0,
+    audio: 0,
+    wills: 0
+  });
   
   useEffect(() => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    updateItemCounts();
+  }, [items, wills, searchQuery, filterType]);
+
+  const updateItemCounts = () => {
+    const filteredItems = getFilteredItems();
+    const filteredWills = getFilteredWills();
+    
+    const documents = filteredItems.filter(item => 
+      item.type === 'story' || 
+      item.type === 'confession' || 
+      item.type === 'wishes' || 
+      item.type === 'advice' ||
+      item.type === 'document'
+    ).length;
+    
+    const images = filteredItems.filter(item => 
+      item.type === 'image'
+    ).length;
+    
+    const videos = filteredItems.filter(item => 
+      item.type === 'video'
+    ).length;
+    
+    const audio = filteredItems.filter(item => 
+      item.type === 'audio'
+    ).length;
+    
+    setCountsById({
+      all: filteredItems.length + filteredWills.length,
+      documents,
+      images,
+      videos,
+      audio,
+      wills: filteredWills.length
+    });
+  };
+
   const loadData = async () => {
     try {
       setIsLoading(true);
       
-      // Load vault items
       const vaultData = await getLegacyVaultItems();
       setItems(vaultData);
       
-      // Load wills
       const willsData = await getWills();
       setWills(willsData);
       
@@ -120,20 +170,23 @@ export const UnifiedVault: React.FC = () => {
 
   const getFilteredItems = () => {
     return items.filter(item => {
-      // Apply search filter
       const matchesSearch = 
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.preview.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // Apply type filter
       const matchesType = filterType ? item.type === filterType : true;
       
-      // Apply tab filter
       if (activeTab === 'all') return matchesSearch && matchesType;
-      if (activeTab === 'documents') return matchesSearch && matchesType && (item.type === 'story' || item.type === 'confession' || item.type === 'wishes' || item.type === 'advice');
-      if (activeTab === 'images') return matchesSearch && matchesType && item.type === 'story'; // Assuming images are stored as stories
-      if (activeTab === 'videos') return matchesSearch && matchesType && item.type === 'story'; // Assuming videos are stored as stories
-      if (activeTab === 'audio') return matchesSearch && matchesType && item.type === 'story'; // Assuming audio files are stored as stories
+      if (activeTab === 'documents') return matchesSearch && matchesType && (
+        item.type === 'story' || 
+        item.type === 'confession' || 
+        item.type === 'wishes' || 
+        item.type === 'advice' ||
+        item.type === 'document'
+      );
+      if (activeTab === 'images') return matchesSearch && matchesType && item.type === 'image';
+      if (activeTab === 'videos') return matchesSearch && matchesType && item.type === 'video';
+      if (activeTab === 'audio') return matchesSearch && matchesType && item.type === 'audio';
       
       return matchesSearch && matchesType;
     });
@@ -141,7 +194,6 @@ export const UnifiedVault: React.FC = () => {
 
   const getFilteredWills = () => {
     return wills.filter(will => {
-      // Apply search filter to wills
       return will.title.toLowerCase().includes(searchQuery.toLowerCase());
     });
   };
@@ -177,7 +229,7 @@ export const UnifiedVault: React.FC = () => {
         <Card className="w-full">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center justify-between">
-              <span>Legacy Vault ({items.length + wills.length} {items.length + wills.length === 1 ? 'item' : 'items'})</span>
+              <span>Legacy Vault ({countsById.all} {countsById.all === 1 ? 'item' : 'items'})</span>
               <Button 
                 className="bg-willtank-600 hover:bg-willtank-700 text-white flex-shrink-0"
                 onClick={handleAddItemClick}
@@ -213,21 +265,21 @@ export const UnifiedVault: React.FC = () => {
                   className="flex-shrink-0 text-xs px-3 h-9"
                   onClick={() => handleFilterClick('image')}
                 >
-                  Images
+                  Images ({countsById.images})
                 </Button>
                 <Button 
                   variant={filterType === 'video' ? "default" : "outline"} 
                   className="flex-shrink-0 text-xs px-3 h-9"
                   onClick={() => handleFilterClick('video')}
                 >
-                  Videos
+                  Videos ({countsById.videos})
                 </Button>
                 <Button 
                   variant={filterType === 'audio' ? "default" : "outline"} 
                   className="flex-shrink-0 text-xs px-3 h-9"
                   onClick={() => handleFilterClick('audio')}
                 >
-                  Audio
+                  Audio ({countsById.audio})
                 </Button>
               </div>
             </div>
@@ -236,27 +288,27 @@ export const UnifiedVault: React.FC = () => {
               <TabsList>
                 <TabsTrigger value="all" className="flex items-center">
                   <FileText className="h-4 w-4 mr-2" />
-                  All
+                  All ({countsById.all})
                 </TabsTrigger>
                 <TabsTrigger value="documents" className="flex items-center">
                   <FileText className="h-4 w-4 mr-2" />
-                  Documents
+                  Documents ({countsById.documents})
                 </TabsTrigger>
                 <TabsTrigger value="images" className="flex items-center">
                   <Image className="h-4 w-4 mr-2" />
-                  Images
+                  Images ({countsById.images})
                 </TabsTrigger>
                 <TabsTrigger value="videos" className="flex items-center">
                   <Video className="h-4 w-4 mr-2" />
-                  Videos
+                  Videos ({countsById.videos})
                 </TabsTrigger>
                 <TabsTrigger value="audio" className="flex items-center">
                   <AudioLines className="h-4 w-4 mr-2" />
-                  Audio
+                  Audio ({countsById.audio})
                 </TabsTrigger>
                 <TabsTrigger value="wills" className="flex items-center">
                   <FileText className="h-4 w-4 mr-2" />
-                  Wills
+                  Wills ({countsById.wills})
                 </TabsTrigger>
               </TabsList>
 
@@ -413,7 +465,6 @@ export const UnifiedVault: React.FC = () => {
         </Card>
       </div>
 
-      {/* Item Details Dialog */}
       <VaultItemDialog 
         item={selectedItem}
         isOpen={isDetailsOpen}
@@ -422,7 +473,6 @@ export const UnifiedVault: React.FC = () => {
         onDelete={handleItemDelete}
       />
 
-      {/* Add Item Dialog */}
       <AddVaultItem 
         isOpen={isAddingItem}
         onClose={handleAddItemClose}
@@ -537,4 +587,3 @@ const WillVaultItem: React.FC<WillVaultItemProps> = ({ will }) => {
     </motion.div>
   );
 };
-

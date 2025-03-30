@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { VaultItemType } from '@/pages/tank/types';
 import { notifyVaultItemAdded, notifyVaultItemUpdated } from '@/services/notificationService';
@@ -157,6 +158,7 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
+    // Get items from the legacy_vault table
     const { data, error } = await supabase
       .from('legacy_vault')
       .select('*')
@@ -165,7 +167,16 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
       
     if (error) throw error;
     
-    return data.map(item => ({
+    // Also get wills to include them, if not already in the vault
+    const { data: wills, error: willsError } = await supabase
+      .from('wills')
+      .select('*')
+      .eq('user_id', user.user.id);
+      
+    if (willsError) throw willsError;
+    
+    // Convert legacy_vault items to LegacyVaultItem format
+    const legacyItems = data.map(item => ({
       id: item.id,
       title: item.title,
       type: (item.category || 'story') as VaultItemType,
@@ -176,6 +187,31 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
       created_at: item.created_at || new Date().toISOString(),
       user_id: item.user_id
     }));
+    
+    // Check which wills are not already in the vault
+    const willsNotInVault = wills.filter(will => {
+      // Check if this will is already represented in the vault
+      return !legacyItems.some(item => 
+        item.preview.includes(`Will document: ${will.title}`)
+      );
+    });
+    
+    // Sync missing wills to the vault
+    for (const will of willsNotInVault) {
+      const newVaultItem = await createLegacyVaultItem({
+        title: will.title,
+        type: 'will',
+        preview: `Will document: ${will.title} (${will.status})`,
+        document_url: will.document_url,
+        encryptionStatus: false
+      });
+      
+      if (newVaultItem) {
+        legacyItems.push(newVaultItem);
+      }
+    }
+    
+    return legacyItems;
   } catch (error) {
     console.error('Error fetching legacy vault items:', error);
     return [];

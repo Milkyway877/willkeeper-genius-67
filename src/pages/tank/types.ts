@@ -1,54 +1,43 @@
 
-export type MessageType = 'letter' | 'video' | 'audio' | 'document';
-export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
-export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
-
-export interface Message {
-  id: string | number;
-  type: MessageType;
-  title: string;
-  recipient: string;
-  deliveryDate: string;
-  status: MessageStatus;
-  preview?: string;
+export enum VaultItemType {
+  story = 'story',
+  confession = 'confession',
+  wishes = 'wishes', 
+  advice = 'advice',
+  image = 'image',
+  video = 'video',
+  audio = 'audio',
+  will = 'will',
+  document = 'document'
 }
 
-export type VaultItemType = 'story' | 'confession' | 'wishes' | 'advice';
-
-export interface LegacyVaultItem {
+export type LegacyVaultItem = {
   id: string;
   title: string;
   type: VaultItemType;
   preview: string;
   document_url: string;
-  createdAt: string;
-  created_at: string;
   encryptionStatus: boolean;
+  createdAt: string;
+};
+
+export enum MessageType {
+  letter = 'letter',
+  video = 'video',
+  audio = 'audio',
+  document = 'document'
 }
 
-// Database schema type with additional is_encrypted field
-export interface DBLegacyVaultItem {
+export type FutureMessageItem = {
   id: string;
   title: string;
-  document_url: string;
-  preview: string | null;
-  category: string | null;
-  created_at: string;
-  is_encrypted?: boolean;
-  user_id?: string;
-}
-
-// Subscription types for billing
-export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
-export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
-
-export interface PlanDetails {
-  name: string;
-  price: {
-    monthly: number;
-    yearly: number;
-    lifetime?: number;
+  recipient: {
+    name: string;
+    email: string;
   };
-  features: string[];
-  description: string;
-}
+  type: MessageType;
+  preview: string;
+  status: 'Scheduled' | 'Delivered' | 'Failed';
+  deliveryDate: string;
+  createdAt: string;
+};

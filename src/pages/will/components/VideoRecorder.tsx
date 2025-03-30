@@ -1,10 +1,10 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Video, X, Check, RefreshCw, Play, Pause, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { createLegacyVaultItem } from '@/services/tankService';
 
 type VideoRecorderProps = {
   onRecordingComplete: (blob: Blob) => void;
@@ -28,13 +28,11 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const recordedChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Initialize camera when component mounts
   useEffect(() => {
     const initCamera = async () => {
       try {
         setIsPreparing(true);
         
-        // Request camera and microphone permissions
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: {
             width: { ideal: 1280 },
@@ -68,7 +66,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     
     initCamera();
     
-    // Cleanup function
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -79,16 +76,34 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     };
   }, [toast]);
   
+  const addVideoToLegacyVault = async (blob: Blob) => {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const title = `Video Testament (${timestamp})`;
+      
+      const videoUrl = `https://example.com/videos/testament-${timestamp}.webm`;
+      
+      await createLegacyVaultItem({
+        title,
+        type: 'video',
+        preview: 'Video testament recording',
+        document_url: videoUrl,
+        encryptionStatus: false
+      });
+    } catch (error) {
+      console.error('Error adding video to legacy vault:', error);
+    }
+  };
+  
   const startRecording = () => {
     if (!stream) return;
     
     recordedChunksRef.current = [];
     
     try {
-      // Create media recorder with specific MIME type and bitrate
       const options = { 
         mimeType: 'video/webm;codecs=vp9,opus',
-        videoBitsPerSecond: 2500000 // 2.5 Mbps
+        videoBitsPerSecond: 2500000
       };
       
       let mediaRecorder: MediaRecorder;
@@ -96,7 +111,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       try {
         mediaRecorder = new MediaRecorder(stream, options);
       } catch (e) {
-        // Fallback if the specified options aren't supported
         console.log('Falling back to default recorder options');
         mediaRecorder = new MediaRecorder(stream);
       }
@@ -108,7 +122,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       };
       
       mediaRecorder.onstop = () => {
-        // Process the recorded chunks
         if (recordedChunksRef.current.length === 0) {
           console.error('No video data recorded');
           toast({
@@ -124,7 +137,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         
         setVideoUrl(url);
         
-        // Simulate processing (in a real app, this might involve compression or uploading)
         setIsProcessing(true);
         const processInterval = setInterval(() => {
           setUploadProgress(prev => {
@@ -132,7 +144,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
               clearInterval(processInterval);
               setTimeout(() => {
                 setIsProcessing(false);
-                // Send the completed recording to parent component
                 onRecordingComplete(blob);
               }, 500);
               return 100;
@@ -143,10 +154,9 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       };
       
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.start(1000);
       setIsRecording(true);
       
-      // Start timer
       setRecordingTime(0);
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
@@ -171,7 +181,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       
-      // Stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -219,7 +228,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     setIsPreparing(true);
     
     try {
-      // Try to get camera and microphone permissions again
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: true, 
         audio: true 
@@ -257,23 +265,22 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  // Handle video end event
   const handleVideoEnded = () => {
     setIsPlaying(false);
   };
 
-  // Use this recorded video
   const handleUseRecording = () => {
     if (!videoUrl || !videoRef.current) return;
     
-    // Get video element's video blob
     fetch(videoUrl)
       .then(res => res.blob())
       .then(blob => {
+        addVideoToLegacyVault(blob);
         onRecordingComplete(blob);
+        
         toast({
           title: "Video Saved",
-          description: "Your video testament has been successfully saved."
+          description: "Your video testament has been successfully saved to your legacy vault."
         });
       })
       .catch(err => {

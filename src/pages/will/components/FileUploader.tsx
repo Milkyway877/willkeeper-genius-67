@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { createLegacyVaultItem } from '@/services/tankService';
 
 type FileUploaderProps = {
   onFilesUploaded: (files: File[]) => void;
@@ -85,6 +85,36 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
     return null;
   };
   
+  const getVaultItemType = (file: File): 'document' | 'image' | 'video' | 'audio' => {
+    const type = file.type;
+    
+    if (type.includes('image')) {
+      return 'image';
+    } else if (type.includes('video')) {
+      return 'video';
+    } else if (type.includes('audio')) {
+      return 'audio';
+    } else {
+      return 'document';
+    }
+  };
+  
+  const addFileToLegacyVault = async (file: File) => {
+    try {
+      const documentUrl = `https://example.com/documents/${encodeURIComponent(file.name)}`;
+      
+      await createLegacyVaultItem({
+        title: file.name,
+        type: getVaultItemType(file),
+        preview: `File: ${file.name} (${formatFileSize(file.size)})`,
+        document_url: documentUrl,
+        encryptionStatus: false
+      });
+    } catch (error) {
+      console.error('Error adding file to legacy vault:', error);
+    }
+  };
+  
   const processFiles = (fileList: FileList) => {
     const newFiles: UploadedFile[] = [];
     const validFiles: File[] = [];
@@ -121,7 +151,6 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
     if (newFiles.length > 0) {
       setFiles(prev => [...prev, ...newFiles]);
       
-      // Simulate file upload for each valid file
       newFiles.forEach(fileObj => {
         if (!fileObj.error) {
           simulateUpload(fileObj.id);
@@ -129,8 +158,11 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
       });
       
       if (validFiles.length > 0) {
-        // Will be called when all uploads complete
         setTimeout(() => {
+          validFiles.forEach(file => {
+            addFileToLegacyVault(file);
+          });
+          
           onFilesUploaded(validFiles);
         }, 3000);
       }
@@ -146,7 +178,6 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
         progress = 100;
         clearInterval(interval);
         
-        // Mark as completed
         setFiles(prev => 
           prev.map(f => 
             f.id === fileId 
@@ -155,7 +186,6 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
           )
         );
       } else {
-        // Update progress
         setFiles(prev => 
           prev.map(f => 
             f.id === fileId 

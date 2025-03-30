@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { FileText, Lock, Unlock, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
+import { FileText, Lock, Unlock, MoreVertical, Eye, Edit, Trash2, Image, Video, AudioLines, FileIcon } from 'lucide-react';
 import { LegacyVaultItem } from '../../types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -25,6 +25,16 @@ export const VaultItem: React.FC<VaultItemProps> = ({ item, onView, onEdit, onDe
         return <FileText size={16} className="text-purple-500" />;
       case 'advice':
         return <FileText size={16} className="text-green-500" />;
+      case 'image':
+        return <Image size={16} className="text-blue-500" />;
+      case 'video':
+        return <Video size={16} className="text-red-500" />;
+      case 'audio':
+        return <AudioLines size={16} className="text-purple-500" />;
+      case 'will':
+        return <FileText size={16} className="text-green-700" />;
+      case 'document':
+        return <FileIcon size={16} className="text-amber-500" />;
       default:
         return <FileText size={16} />;
     }
@@ -35,7 +45,12 @@ export const VaultItem: React.FC<VaultItemProps> = ({ item, onView, onEdit, onDe
       'story': 'Personal Story',
       'confession': 'Confession',
       'wishes': 'Special Wishes',
-      'advice': 'Life Advice'
+      'advice': 'Life Advice',
+      'image': 'Image',
+      'video': 'Video',
+      'audio': 'Audio Recording',
+      'will': 'Will Document',
+      'document': 'Document'
     };
     return types[item.type] || 'Document';
   };
