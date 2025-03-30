@@ -4,6 +4,7 @@ import { Bot, X, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,6 +12,7 @@ export function FloatingAssistant() {
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { notifyInfo } = useNotificationManager();
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -29,25 +31,62 @@ export function FloatingAssistant() {
       
       if (error) {
         console.error('Error invoking AI assistant:', error);
+        
+        // Fallback response if there's an error
+        const fallbackResponse = generateFallbackResponse(message);
+        setResponse(fallbackResponse);
+        
         toast({
-          title: 'Error',
-          description: 'Could not connect to AI assistant. Please try again later.',
-          variant: 'destructive'
+          title: 'Connection Issue',
+          description: 'Using offline response mode. Some features may be limited.',
+          variant: 'default'
         });
         return;
       }
       
       setResponse(data?.response || 'I could not process your request. Please try again.');
+      
+      // Try to create a notification for this interaction, but don't block if it fails
+      try {
+        notifyInfo('AI Assistant', 'You received a new response from the AI assistant.', 'low');
+      } catch (notifyError) {
+        console.warn('Could not create notification:', notifyError);
+      }
     } catch (err) {
       console.error('Error with AI processing:', err);
+      
+      // Fallback response
+      const fallbackResponse = generateFallbackResponse(message);
+      setResponse(fallbackResponse);
+      
       toast({
-        title: 'Error',
-        description: 'Failed to process your request. Please try again later.',
-        variant: 'destructive'
+        title: 'Offline Mode',
+        description: 'Using AI assistant in offline mode.',
+        variant: 'default'
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Generate a fallback response when the edge function fails
+  const generateFallbackResponse = (query: string) => {
+    const lowerQuery = query.toLowerCase();
+    
+    if (lowerQuery.includes('will') && 
+        (lowerQuery.includes('create') || lowerQuery.includes('make'))) {
+      return "Creating a will with WillTank is simple. Our platform guides you through selecting a template, answering questions, and finalizing your document. Would you like me to help you get started?";
+    } 
+    
+    if (lowerQuery.includes('executor') || lowerQuery.includes('trustee')) {
+      return "An executor is responsible for administering your estate after your passing. WillTank makes it easy to designate executors and provide them with necessary instructions. Would you like to know more about choosing the right executor?";
+    }
+    
+    if (lowerQuery.includes('digital') && lowerQuery.includes('assets')) {
+      return "WillTank specializes in digital asset planning. Our platform helps you inventory digital assets (cryptocurrency, online accounts), assign specific executors, and create secure access instructions. Would you like help setting this up?";
+    }
+    
+    return "I'm your WillTank AI assistant. I can help with estate planning, will creation, digital assets management, and more. What specific aspect of legacy planning can I assist you with today?";
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

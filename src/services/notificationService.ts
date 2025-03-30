@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -13,6 +14,14 @@ export interface Notification {
 
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
+    // First, check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot fetch notifications');
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
@@ -41,10 +50,19 @@ function validateNotificationType(type: string): 'success' | 'warning' | 'info' 
 
 export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot mark notification as read');
+      return false;
+    }
+    
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', session.user.id); // Ensure we only update the current user's notifications
       
     if (error) {
       console.error('Error marking notification as read:', error);
@@ -60,10 +78,19 @@ export const markNotificationAsRead = async (id: string): Promise<boolean> => {
 
 export const markAllNotificationsAsRead = async (): Promise<boolean> => {
   try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot mark all notifications as read');
+      return false;
+    }
+    
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
-      .eq('read', false);
+      .eq('read', false)
+      .eq('user_id', session.user.id); // Ensure we only update the current user's notifications
       
     if (error) {
       console.error('Error marking all notifications as read:', error);
@@ -82,7 +109,8 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      throw new Error('No user logged in');
+      console.warn('No user logged in, skipping notification creation');
+      return null;
     }
     
     // Ensure the type is valid
@@ -100,7 +128,7 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
       
     if (error) {
       console.error('Error creating notification:', error);
-      throw error;
+      return null;
     }
     
     return {
@@ -118,7 +146,8 @@ export const deleteAllNotifications = async (): Promise<boolean> => {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      throw new Error('No user logged in');
+      console.warn('No user logged in, cannot delete notifications');
+      return false;
     }
     
     const { error } = await supabase
@@ -168,6 +197,14 @@ export const createSystemNotification = async (
   type: 'success' | 'warning' | 'info' | 'security' | string,
   details: { title: string, description: string }
 ): Promise<Notification | null> => {
+  // Check if user is authenticated first
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    console.warn('No user logged in, skipping system notification creation');
+    return null;
+  }
+  
   // Convert event-based type to notification type if needed
   const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
     ? type as 'success' | 'warning' | 'info' | 'security'
@@ -186,6 +223,14 @@ export const createSystemNotification2 = async (
   event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved' | 'will_deleted',
   details?: { title?: string, description?: string, itemId?: string }
 ): Promise<Notification | null> => {
+  // Check authentication first  
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    console.warn('No user logged in, skipping system notification creation');
+    return null;
+  }
+  
   // Default notification templates based on event type
   const notificationTemplates: Record<string, { title: string, description: string, type: 'success' | 'warning' | 'info' | 'security' }> = {
     will_updated: {
