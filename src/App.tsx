@@ -31,7 +31,6 @@ import Dashboard from './pages/Dashboard';
 import WillDashboard from './pages/will/Will';
 import WillEditor from './pages/will/WillCreation';
 import WillTemplates from './pages/templates/Templates';
-import WillTank from './pages/tank/Tank';
 import Settings from './pages/settings/Settings';
 import Profile from './pages/settings/Profile';
 import Help from './pages/Help';
@@ -58,8 +57,8 @@ import Notifications from './pages/notifications/Notifications';
 import Activity from './pages/activity/Activity';
 import FutureMessage from './pages/FutureMessage';
 import Tank from './pages/Tank';
-import DeathVerification from './pages/settings/DeathVerification';
 import LegacyVault from './pages/LegacyVault';
+import DeathVerification from './pages/settings/DeathVerification';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -18,8 +17,8 @@ import { FileUploader } from './will/components/FileUploader';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Plus, Vault, FileText, Key, Image, CreditCard, FileImage, Lock, Password, 
-  LockKeyhole, Shield, Share2, Files, UserPlus, Trash2, Eye, Edit, Download, Loader2
+  Plus, Vault, FileText, Key, Image, CreditCard, FileImage, Lock, LockKeyhole, 
+  Shield, Share2, Files, UserPlus, Trash2, Eye, Edit, Download, Loader2
 } from 'lucide-react';
 
 interface LegacyItem {

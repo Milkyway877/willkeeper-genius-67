@@ -1,749 +1,513 @@
 
-// Import existing dependencies and only modifying the handleCompleteWill function and related functionality
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
-import { useSystemNotifications } from '@/hooks/use-system-notifications';
-import { 
-  FileText, 
-  Book, 
-  PenTool, 
-  Video, 
-  Upload, 
-  Check, 
-  ArrowRight, 
-  ArrowLeft, 
-  Camera,
-  File,
-  Key,
-  Lock,
-  Briefcase,
-  Share2,
-  Download,
-  Save,
-  AlertCircle,
-  Info,
-  Trash2,
-  RefreshCw,
-  User,
-  UserCheck,
-  Edit,
-  MoveRight,
-  Heart,
-  Loader2
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { TemplateCard } from './components/TemplateCard';
-import { WillEditor } from './components/WillEditor';
-import { WillPreview } from './components/WillPreview';
-import { AIQuestionFlow } from './components/AIQuestionFlow';
-import { VideoRecorder } from './components/VideoRecorder';
-import { FileUploader } from './components/FileUploader';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { DigitalSignature } from './components/DigitalSignature';
-import { Progress } from "@/components/ui/progress";
-import { createWill } from '@/services/willService';
+import { FileUploader } from './components/FileUploader';
+import { VideoRecorder } from './components/VideoRecorder';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { File, Upload, Video, Signature, CheckCircle, ChevronRight, Loader2, Save, ArrowRight, X, Check } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { AIQuestionFlow } from './components/AIQuestionFlow';
+import { format } from 'date-fns';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
-type WillTemplate = {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  sample: string;
-  tags: string[];
-};
-
-type Step = {
-  id: string;
-  title: string;
-  description: string;
-  component: React.ReactNode;
-};
+// Define the schema for our will form
+const willFormSchema = z.object({
+  title: z.string().min(2, {
+    message: "Will title must be at least 2 characters.",
+  }),
+  content: z.string().min(50, {
+    message: "Will content must be at least 50 characters.",
+  }),
+  is_public: z.boolean().default(false),
+  ai_generated: z.boolean().default(false),
+});
 
 export default function WillCreation() {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { notifyWillUpdated, notifyDocumentUploaded } = useSystemNotifications();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [selectedTemplate, setSelectedTemplate] = useState<WillTemplate | null>(null);
-  const [willContent, setWillContent] = useState("");
-  const [userResponses, setUserResponses] = useState<Record<string, any>>({});
+  const [activeTab, setActiveTab] = useState("content");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState("");
   const [videoRecorded, setVideoRecorded] = useState(false);
-  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [signatureData, setSignatureData] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzeComplete, setAnalyzeComplete] = useState(false);
-  const [legalIssues, setLegalIssues] = useState<string[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [willTitle, setWillTitle] = useState('My Will');
   const [isSaving, setIsSaving] = useState(false);
-  const [completionDisabled, setCompletionDisabled] = useState({
-    template: true,
-    questions: true,
-    editor: false,
-    video: true,
-    documents: false,
-    signature: true,
-    analysis: false
+  const [signatureData, setSignatureData] = useState("");
+  const [questions, setQuestions] = useState([
+    { id: 1, question: "What are your main assets?", answer: "" },
+    { id: 2, question: "Who are your primary beneficiaries?", answer: "" },
+    { id: 3, question: "Do you have any specific bequests?", answer: "" },
+    { id: 4, question: "Who would you like to name as executor?", answer: "" },
+    { id: 5, question: "Do you have any funeral preferences?", answer: "" },
+  ]);
+  
+  const navigate = useNavigate();
+  const params = useParams();
+  const willId = params.id;
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Initialize form with react-hook-form
+  const form = useForm<z.infer<typeof willFormSchema>>({
+    resolver: zodResolver(willFormSchema),
+    defaultValues: {
+      title: "",
+      content: "",
+      is_public: false,
+      ai_generated: false,
+    },
   });
-
-  const handleSelectTemplate = (template: WillTemplate) => {
-    setSelectedTemplate(template);
-    setWillContent(template.sample);
-    setWillTitle(`My ${template.title}`);
-    setCompletionDisabled(prev => ({ ...prev, template: false }));
-    toast({
-      title: "Template Selected",
-      description: `You've selected the ${template.title} template.`
-    });
-  };
-
-  const handleQuestionsComplete = (responses: Record<string, any>, generatedWill: string) => {
-    setUserResponses(responses);
-    setWillContent(generatedWill);
-    if (responses.willTitle) {
-      setWillTitle(responses.willTitle);
+  
+  // Check if all questions have been answered
+  const allQuestionsAnswered = questions.every(q => q.answer.trim().length > 0);
+  
+  useEffect(() => {
+    // If we have a will ID, fetch the will data
+    if (willId) {
+      fetchWillData();
     }
-    setCompletionDisabled(prev => ({ ...prev, questions: false }));
-    setCurrentStep(currentStep + 1);
-    toast({
-      title: "Questionnaire Completed",
-      description: "Your will has been generated based on your answers."
-    });
-  };
-
-  const handleAnalyzeWill = () => {
-    setIsAnalyzing(true);
-    
-    // Simulating progress updates
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 500);
-    
-    // Simulate analysis with timeout
-    setTimeout(() => {
-      clearInterval(progressInterval);
-      setProgress(100);
-      setIsAnalyzing(false);
-      setAnalyzeComplete(true);
-      setCompletionDisabled(prev => ({ ...prev, analysis: false }));
+  }, [willId]);
+  
+  const fetchWillData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('wills')
+        .select('*')
+        .eq('id', willId)
+        .single();
+        
+      if (error) throw error;
       
-      // For demonstration, randomly decide if there are issues
-      if (Math.random() > 0.5) {
-        setLegalIssues([
-          "The executor appointment lacks an alternative in case your primary executor is unavailable.",
-          "Your digital assets section should specify which platforms and accounts are included.",
-          "Consider adding more specificity about how your personal belongings should be distributed."
-        ]);
+      if (data) {
+        // Populate the form with existing data
+        form.reset({
+          title: data.title || "",
+          content: data.content || "",
+          is_public: data.is_public || false,
+          ai_generated: data.ai_generated || false,
+        });
+        
+        // If it's AI generated, update the questions and generated content
+        if (data.ai_generated && data.metadata?.questions) {
+          setQuestions(data.metadata.questions);
+          setGeneratedContent(data.content || "");
+        }
+        
+        // If there's a signature, set it
+        if (data.metadata?.signature) {
+          setSignatureData(data.metadata.signature);
+        }
+        
+        // If there's a video recording, mark it as recorded
+        if (data.metadata?.video_url) {
+          setVideoRecorded(true);
+        }
       }
-    }, 5000);
-  };
-
-  const handleIgnoreIssues = () => {
-    toast({
-      title: "Issues Acknowledged",
-      description: "You've chosen to continue with the current will document."
-    });
-    setCurrentStep(currentStep + 1);
-  };
-
-  const handleDownloadWill = () => {
-    if (!willContent) {
+    } catch (error) {
+      console.error('Error fetching will data:', error);
       toast({
-        title: "Cannot Download",
-        description: "There is no content to download.",
+        title: "Error",
+        description: "Failed to load will data. Please try again.",
         variant: "destructive"
       });
-      return;
     }
-    
-    // Create a PDF-like blob from the will content
-    const willHtml = `
-      <html>
-        <head>
-          <title>${willTitle}</title>
-          <style>
-            body { font-family: 'Times New Roman', Times, serif; margin: 3cm; }
-            h1 { text-align: center; font-size: 24pt; margin-bottom: 24pt; }
-            .content { line-height: 1.5; font-size: 12pt; }
-            .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; text-align: center; }
-            .date { margin-top: 30pt; }
-            .header { text-align: center; margin-bottom: 30pt; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>${willTitle}</h1>
-            <p>Created on ${new Date().toLocaleDateString()}</p>
-          </div>
-          <div class="content">
-            ${willContent.replace(/\n/g, '<br>')}
-          </div>
-          ${signatureData ? `
-            <div class="date">
-              <p>Dated: ${new Date().toLocaleDateString()}</p>
-            </div>
-            <div class="signature">
-              <img src="${signatureData}" width="250" />
-              <p>Signature</p>
-            </div>
-          ` : ''}
-        </body>
-      </html>
-    `;
-    
-    const blob = new Blob([willHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${willTitle.replace(/\s+/g, '_')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-    
-    toast({
-      title: "Download Started",
-      description: "Your will document is being downloaded."
-    });
   };
   
-  const handleCompleteWill = async () => {
+  const generateWillContent = async () => {
+    try {
+      setIsGenerating(true);
+      
+      // Check if all questions have been answered
+      if (!allQuestionsAnswered) {
+        toast({
+          title: "Incomplete Information",
+          description: "Please answer all questions to generate your will.",
+          variant: "destructive"
+        });
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Create content based on questions and answers
+      const content = `
+Last Will and Testament of ${questions.find(q => q.question.includes("name"))?.answer || "[Your Name]"}
+
+I, ${questions.find(q => q.question.includes("name"))?.answer || "[Your Name]"}, being of sound mind and disposing memory, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking any and all wills and codicils by me heretofore made.
+
+ARTICLE I: PERSONAL INFORMATION
+I am currently residing at ${questions.find(q => q.question.includes("address"))?.answer || "[Your Address]"}.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I hereby appoint ${questions.find(q => q.question.includes("executor"))?.answer || "[Executor Name]"} as Executor of this, my Last Will and Testament. If this person is unable or unwilling to serve, then I appoint [Alternate Executor] as alternate Executor.
+
+ARTICLE III: DISTRIBUTION OF ASSETS
+My primary assets include: ${questions.find(q => q.question.includes("assets"))?.answer || "[List of Assets]"}.
+
+I hereby give, devise, and bequeath my assets as follows:
+${questions.find(q => q.question.includes("beneficiaries"))?.answer || "[Beneficiary Information]"}
+
+Specific bequests:
+${questions.find(q => q.question.includes("bequests"))?.answer || "[Specific Bequests]"}
+
+ARTICLE IV: FUNERAL ARRANGEMENTS
+My funeral preferences are as follows:
+${questions.find(q => q.question.includes("funeral"))?.answer || "[Funeral Preferences]"}
+
+IN WITNESS WHEREOF, I have hereunto set my hand and seal this ${format(new Date(), "do 'day of' MMMM, yyyy")}.
+
+Signed: ________________________
+      `;
+      
+      // Set the generated content
+      setGeneratedContent(content);
+      
+      // Update the form value
+      form.setValue("content", content);
+      form.setValue("ai_generated", true);
+      
+      // Move to the content tab
+      setActiveTab("content");
+      
+      toast({
+        title: "Will Generated",
+        description: "Your will has been generated based on your answers. You can now review and edit it."
+      });
+      
+      // Scroll to content if it exists
+      if (contentRef.current) {
+        contentRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    } catch (error) {
+      console.error('Error generating will content:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate will content. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  const onSubmit = async (values: z.infer<typeof willFormSchema>) => {
     try {
       setIsSaving(true);
       
-      // Check user authentication
+      // Get the current user session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
         toast({
           title: "Authentication Required",
-          description: "Please sign in to save your will",
+          description: "Please sign in to save your will.",
           variant: "destructive"
         });
         setIsSaving(false);
         return;
       }
       
-      // Upload video if recorded
-      let videoUrl = '';
-      if (videoBlob) {
-        try {
-          // Create a file object from the blob
-          const videoFile = new File([videoBlob], `will_video_${Date.now()}.webm`, { 
-            type: 'video/webm' 
-          });
-          
-          // Upload to Supabase Storage (you'll need to create a bucket for this)
-          const { data: videoData, error: videoError } = await supabase.storage
-            .from('will_videos')
-            .upload(`${session.user.id}/${videoFile.name}`, videoFile);
-            
-          if (videoError) throw videoError;
-          
-          // Get public URL
-          const { data: videoPublicUrl } = supabase.storage
-            .from('will_videos')
-            .getPublicUrl(videoData.path);
-            
-          videoUrl = videoPublicUrl.publicUrl;
-        } catch (error) {
-          console.error('Error uploading video:', error);
-          toast({
-            title: "Video Upload Failed",
-            description: "Your will document will be saved without the video testament.",
-            variant: "destructive"
-          });
+      // Prepare will data
+      const willData = {
+        user_id: session.user.id,
+        title: values.title,
+        content: values.content,
+        is_public: values.is_public,
+        ai_generated: values.ai_generated,
+        status: "draft",
+        metadata: {
+          questions: questions,
+          signature: signatureData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
-      }
+      };
       
-      // Upload supporting documents if any
-      const documentUrls: string[] = [];
-      if (uploadedFiles.length > 0) {
-        try {
-          for (const file of uploadedFiles) {
-            const { data: docData, error: docError } = await supabase.storage
-              .from('will_documents')
-              .upload(`${session.user.id}/${file.name}`, file);
-              
-            if (docError) throw docError;
-            
-            const { data: docPublicUrl } = supabase.storage
-              .from('will_documents')
-              .getPublicUrl(docData.path);
-              
-            documentUrls.push(docPublicUrl.publicUrl);
-          }
-        } catch (error) {
-          console.error('Error uploading documents:', error);
-          toast({
-            title: "Document Upload Issue",
-            description: "Some documents may not have been saved correctly.",
-            variant: "destructive"
-          });
-        }
-      }
+      let response;
       
-      // Convert will content to a document in storage
-      let willDocumentUrl = '';
-      try {
-        // Create a blob with the will content
-        const willBlob = new Blob([willContent], { type: 'text/plain' });
-        const willFile = new File([willBlob], `${willTitle.replace(/\s+/g, '_')}_${Date.now()}.txt`, { 
-          type: 'text/plain' 
-        });
-        
-        // Upload to storage
-        const { data: willData, error: willError } = await supabase.storage
+      if (willId) {
+        // Update existing will
+        response = await supabase
           .from('wills')
-          .upload(`${session.user.id}/${willFile.name}`, willFile);
-          
-        if (willError) throw willError;
-        
-        // Get public URL
-        const { data: willPublicUrl } = supabase.storage
+          .update(willData)
+          .eq('id', willId);
+      } else {
+        // Create new will
+        response = await supabase
           .from('wills')
-          .getPublicUrl(willData.path);
-          
-        willDocumentUrl = willPublicUrl.publicUrl;
-      } catch (error) {
-        console.error('Error saving will document:', error);
-        // Continue anyway but notify the user
-        toast({
-          title: "Document Storage Issue",
-          description: "The will text may not have been stored correctly, but other details were saved.",
-          variant: "destructive"
-        });
+          .insert(willData);
       }
       
-      // Save will data to the database
-      const newWill = await createWill({
-        title: willTitle,
-        status: 'Active',
-        document_url: willDocumentUrl || '',
-        template_type: selectedTemplate?.id || 'custom',
-        ai_generated: userResponses && Object.keys(userResponses).length > 0
+      if (response.error) throw response.error;
+      
+      // Create a notification
+      await supabase.from('notifications').insert({
+        user_id: session.user.id,
+        title: willId ? 'Will Updated' : 'Will Created',
+        description: `Your will "${values.title}" has been ${willId ? 'updated' : 'created'}.`,
+        type: 'info',
+        read: false
       });
       
-      if (newWill) {
-        // If video or documents were uploaded, update additional metadata
-        if (videoUrl || documentUrls.length > 0) {
-          const { error: metadataError } = await supabase
-            .from('will_metadata')
-            .insert({
-              will_id: newWill.id,
-              user_id: session.user.id,
-              video_url: videoUrl,
-              supporting_documents: documentUrls,
-              signature_data: signatureData || null,
-              creation_date: new Date().toISOString()
-            });
-            
-          if (metadataError) {
-            console.error('Error saving will metadata:', metadataError);
-          }
-        }
-        
-        // Create notification
-        await notifyWillUpdated({
-          title: 'Will Created',
-          description: `Your will "${willTitle}" has been created successfully.`
-        });
-        
-        toast({
-          title: "Will Saved Successfully",
-          description: "Your will has been created and is now available in your dashboard.",
-        });
-        
-        // Navigate to the will dashboard
-        navigate("/dashboard/will");
-      } else {
-        throw new Error('Failed to create will record');
-      }
+      toast({
+        title: willId ? "Will Updated" : "Will Created",
+        description: `Your will has been ${willId ? 'updated' : 'created'} successfully.`,
+      });
+      
+      // Navigate back to the will dashboard
+      navigate('/dashboard/will');
     } catch (error) {
       console.error('Error saving will:', error);
       toast({
-        title: "Error Creating Will",
-        description: "There was a problem saving your will. Please try again.",
+        title: "Error",
+        description: "Failed to save your will. Please try again.",
         variant: "destructive"
       });
     } finally {
       setIsSaving(false);
     }
   };
-
-  const templates: WillTemplate[] = [
-    {
-      id: "traditional",
-      title: "Traditional Last Will & Testament",
-      description: "A comprehensive will covering all standard aspects of estate distribution and executor appointment.",
-      icon: <FileText className="h-10 w-10 text-willtank-600" />,
-      sample: "LAST WILL AND TESTAMENT OF [NAME]\n\nI, [NAME], residing at [ADDRESS], being of sound mind, declare this to be my Last Will and Testament...",
-      tags: ["Standard", "Comprehensive", "Basic"]
-    },
-    {
-      id: "living-trust",
-      title: "Living Trust & Estate Plan",
-      description: "Advanced estate planning with living trust provisions to avoid probate and manage assets.",
-      icon: <Book className="h-10 w-10 text-willtank-600" />,
-      sample: "REVOCABLE LIVING TRUST OF [NAME]\n\nThis Trust Agreement is made between [NAME] as Grantor and [NAME] as Trustee...",
-      tags: ["Advanced", "Trust", "Estate Planning"]
-    },
-    {
-      id: "digital-assets",
-      title: "Digital Asset Will",
-      description: "Specialized will focused on digital asset management including cryptocurrencies, NFTs, and online accounts.",
-      icon: <Key className="h-10 w-10 text-willtank-600" />,
-      sample: "DIGITAL ASSET WILL AND TESTAMENT OF [NAME]\n\nI, [NAME], designate the following individual(s) to access and manage my digital assets...",
-      tags: ["Digital", "Cryptocurrency", "Modern"]
-    },
-    {
-      id: "charitable",
-      title: "Charitable Bequest Will",
-      description: "Will with focus on philanthropic giving and charitable donations of assets and property.",
-      icon: <Heart className="h-10 w-10 text-willtank-600" />,
-      sample: "CHARITABLE WILL AND TESTAMENT OF [NAME]\n\nI, [NAME], direct the following charitable gifts and bequests to be made from my estate...",
-      tags: ["Charity", "Philanthropy", "Giving"]
-    },
-    {
-      id: "business",
-      title: "Business Succession Plan",
-      description: "Structured plan for business ownership transition and management succession.",
-      icon: <Briefcase className="h-10 w-10 text-willtank-600" />,
-      sample: "BUSINESS SUCCESSION PLAN OF [NAME]\n\nI, [NAME], being the owner of [BUSINESS NAME], establish this succession plan for the business...",
-      tags: ["Business", "Succession", "Professional"]
-    },
-    {
-      id: "pet-care",
-      title: "Pet Care Trust",
-      description: "Specialized trust for the ongoing care and maintenance of pets after your passing.",
-      icon: <Heart className="h-10 w-10 text-willtank-600" />,
-      sample: "PET CARE TRUST OF [NAME]\n\nI, [NAME], establish this trust for the care and maintenance of my pets...",
-      tags: ["Pets", "Care", "Trust"]
-    }
-  ];
-
-  const steps: Step[] = [
-    {
-      id: "template",
-      title: "Select Template",
-      description: "Choose the type of will that best suits your needs",
-      component: (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
-            <TemplateCard
-              key={template.id}
-              template={template}
-              isSelected={selectedTemplate?.id === template.id}
-              onSelect={() => handleSelectTemplate(template)}
-            />
-          ))}
-        </div>
-      )
-    },
-    {
-      id: "ai-questions",
-      title: "AI-Guided Questions",
-      description: "Answer questions to personalize your will",
-      component: <AIQuestionFlow 
-                  selectedTemplate={selectedTemplate} 
-                  responses={userResponses} 
-                  setResponses={setUserResponses} 
-                  onComplete={handleQuestionsComplete} 
-                />
-    },
-    {
-      id: "editor",
-      title: "Review & Edit",
-      description: "Review and edit your generated will document",
-      component: (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <WillEditor content={willContent} onChange={setWillContent} />
-          <WillPreview content={willContent} onDownload={handleDownloadWill} />
-        </div>
-      )
-    },
-    {
-      id: "video",
-      title: "Video Testament",
-      description: "Record a video statement to accompany your will",
-      component: <VideoRecorder 
-                  onRecordingComplete={(blob) => {
-                    setVideoBlob(blob);
-                    setVideoRecorded(true);
-                    setCompletionDisabled(prev => ({ ...prev, video: false }));
-                    toast({
-                      title: "Video Recorded",
-                      description: "Your video testament has been securely recorded."
-                    });
-                  }} 
-                />
-    },
-    {
-      id: "documents",
-      title: "Support Documents",
-      description: "Upload supporting documents for your will",
-      component: <FileUploader 
-                  onFilesUploaded={(files) => {
-                    setUploadedFiles(prev => [...prev, ...files]);
-                    
-                    // Notify about uploads
-                    if (files.length > 0) {
-                      notifyDocumentUploaded({
-                        title: "Documents Uploaded",
-                        description: `${files.length} supporting document${files.length > 1 ? 's' : ''} uploaded successfully.`
-                      });
-                    }
-                    
-                    toast({
-                      title: "Files Uploaded",
-                      description: `${files.length} files have been uploaded successfully.`
-                    });
-                  }} 
-                />
-    },
-    {
-      id: "signature",
-      title: "Digital Signature",
-      description: "Sign your will electronically to authenticate it",
-      component: <DigitalSignature 
-                  onSignatureCapture={(signatureData) => {
-                    setSignatureData(signatureData);
-                    setCompletionDisabled(prev => ({ ...prev, signature: false }));
-                    toast({
-                      title: "Signature Captured",
-                      description: "Your digital signature has been securely recorded."
-                    });
-                  }} 
-                />
-    },
-    {
-      id: "analysis",
-      title: "Legal Analysis",
-      description: "AI analysis of your will for legal consistency",
-      component: (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center mb-6">
-            <div className="h-12 w-12 rounded-full bg-willtank-100 flex items-center justify-center mr-4">
-              <AlertCircle className="h-6 w-6 text-willtank-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium">Legal Analysis</h3>
-              <p className="text-gray-500">Our AI analyzes your will for potential legal issues</p>
-            </div>
-          </div>
-
-          {isAnalyzing ? (
-            <div className="text-center py-6">
-              <RefreshCw className="h-8 w-8 text-willtank-600 animate-spin mx-auto mb-4" />
-              <p className="text-willtank-700 font-medium mb-2">Analyzing Your Will</p>
-              <p className="text-gray-500 mb-4">This may take a moment...</p>
-              <Progress value={progress} className="w-2/3 mx-auto" />
-            </div>
-          ) : analyzeComplete ? (
-            <div className="py-4">
-              {legalIssues.length > 0 ? (
-                <div>
-                  <div className="flex items-center text-amber-600 mb-4">
-                    <AlertCircle className="h-5 w-5 mr-2" />
-                    <p className="font-medium">We found some potential issues in your will:</p>
-                  </div>
-                  <ul className="space-y-3 mb-6">
-                    {legalIssues.map((issue, index) => (
-                      <li key={index} className="bg-amber-50 p-3 rounded-lg border border-amber-100 flex">
-                        <Info className="h-5 w-5 text-amber-500 mr-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-amber-700">{issue}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <div className="flex justify-between mt-4">
-                    <Button variant="outline" onClick={() => setCurrentStep(2)}>
-                      Go Back & Edit
-                    </Button>
-                    <Button onClick={handleIgnoreIssues}>
-                      Continue Anyway
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-4">
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-6">
-                    <div className="flex">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-green-700 font-medium">Your will looks good!</p>
-                        <p className="text-green-600 text-sm mt-1">
-                          Our AI analysis did not find any potential legal issues with your will. You're ready to proceed to the next step.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button className="w-full" onClick={() => setCurrentStep(currentStep + 1)}>
-                    Continue
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <p className="text-gray-600 mb-6">
-                Our AI will analyze your will for potential legal issues and inconsistencies. This helps ensure your will is legally sound and your wishes are clearly expressed.
-              </p>
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-6">
-                <h4 className="text-sm font-medium mb-2">What we check for:</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                    <span>Missing or unclear executor appointments</span>
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                    <span>Ambiguous asset distributions</span>
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                    <span>Conflicting provisions</span>
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                    <span>Common legal pitfalls</span>
-                  </li>
-                </ul>
-              </div>
-              <Button className="w-full" onClick={handleAnalyzeWill}>
-                Start Analysis
-              </Button>
-            </div>
-          )}
-        </div>
-      )
-    }
-  ];
-
-  const currentStepData = steps[currentStep];
-
-  const isStepComplete = (stepIndex: number) => {
-    switch (stepIndex) {
-      case 0: // Template selection
-        return selectedTemplate !== null;
-      case 1: // AI Questions
-        return Object.keys(userResponses).length > 0;
-      case 2: // Editor
-        return willContent.length > 0;
-      case 3: // Video
-        return videoRecorded;
-      case 4: // Documents
-        return true; // Optional
-      case 5: // Signature
-        return signatureData !== null;
-      case 6: // Analysis
-        return analyzeComplete;
-      default:
-        return false;
-    }
+  
+  const updateQuestion = (id: number, answer: string) => {
+    setQuestions(questions.map(q => 
+      q.id === id ? { ...q, answer } : q
+    ));
   };
-
-  const canProceedToNextStep = !completionDisabled[currentStepData.id as keyof typeof completionDisabled];
-
+  
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Create Your Will</h1>
-          <p className="text-gray-600">Follow the steps below to create your personalized will document.</p>
+          <h1 className="text-3xl font-bold mb-2">{willId ? "Edit Will" : "Create New Will"}</h1>
+          <p className="text-gray-600">Create your legal will by filling out the form below.</p>
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div className="flex space-x-1 overflow-x-auto pb-1 scrollbar-hide">
-                {steps.map((step, index) => (
-                  <div 
-                    key={index} 
-                    className={`flex items-center ${index > 0 ? 'ml-2' : ''}`}
-                  >
-                    <div 
-                      className={`
-                        h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium
-                        ${currentStep > index 
-                          ? 'bg-willtank-500 text-white' 
-                          : currentStep === index 
-                            ? 'bg-willtank-100 text-willtank-700 border-2 border-willtank-500' 
-                            : 'bg-gray-100 text-gray-500'}
-                      `}
-                    >
-                      {currentStep > index ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        index + 1
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card className="p-6">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Will Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. My Last Will and Testament" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      A descriptive title for your will
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Card>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+              <TabsList className="grid grid-cols-4">
+                <TabsTrigger value="ai">AI Assistant</TabsTrigger>
+                <TabsTrigger value="content">Will Content</TabsTrigger>
+                <TabsTrigger value="attachments">Attachments</TabsTrigger>
+                <TabsTrigger value="signature">Signature</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="ai" className="mt-4">
+                <Card className="p-6">
+                  <h2 className="text-xl font-medium mb-4">Create Your Will with AI Assistance</h2>
+                  <p className="mb-6 text-gray-600">
+                    Answer the questions below and our AI will help you create a basic will. You can edit the generated content afterward.
+                  </p>
+                  
+                  <AIQuestionFlow 
+                    questions={questions} 
+                    onUpdateAnswer={updateQuestion} 
+                  />
+                  
+                  <div className="mt-6 flex justify-between">
+                    <div>
+                      {!allQuestionsAnswered && (
+                        <p className="text-amber-600 text-sm flex items-center">
+                          <X className="mr-1 h-4 w-4" />
+                          Please answer all questions before generating
+                        </p>
+                      )}
+                      
+                      {allQuestionsAnswered && (
+                        <p className="text-green-600 text-sm flex items-center">
+                          <Check className="mr-1 h-4 w-4" />
+                          All questions answered
+                        </p>
                       )}
                     </div>
-                    {index < steps.length - 1 && (
-                      <div 
-                        className={`w-8 h-1 ${
-                          currentStep > index ? 'bg-willtank-500' : 'bg-gray-200'
-                        }`}
-                      />
-                    )}
+                    
+                    <Button 
+                      type="button" 
+                      onClick={generateWillContent} 
+                      disabled={isGenerating || !allQuestionsAnswered}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          Generate Will
+                          <ChevronRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
                   </div>
-                ))}
-              </div>
+                </Card>
+              </TabsContent>
               
-              <div className="text-sm font-medium text-gray-500">
-                Step {currentStep + 1} of {steps.length}
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-medium mb-1">{currentStepData.title}</h2>
-              <p className="text-gray-600">{currentStepData.description}</p>
-            </div>
+              <TabsContent value="content" className="mt-4">
+                <Card className="p-6">
+                  <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Will Content</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter the content of your will here..."
+                            className="min-h-[400px] font-mono"
+                            ref={contentRef}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Write or edit the content of your will. Be specific about your assets, beneficiaries, and wishes.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="mt-4">
+                    <FormField
+                      control={form.control}
+                      name="is_public"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Make Will Public</FormLabel>
+                            <FormDescription>
+                              Allow your will to be viewed by designated individuals even before activation.
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="attachments" className="mt-4">
+                <Card className="p-6">
+                  <h2 className="text-xl font-medium mb-4">Attachments & Video Testament</h2>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Upload Documents</h3>
+                      <p className="text-gray-600 mb-4">
+                        Upload any supporting documents such as asset inventories, property deeds, etc.
+                      </p>
+                      
+                      <FileUploader 
+                        onFilesUploaded={(files) => {
+                          setUploadedFiles(files);
+                          toast({
+                            title: "Files Uploaded",
+                            description: `${files.length} files uploaded successfully.`,
+                          });
+                        }}
+                      />
+                      
+                      {uploadedFiles.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium">Uploaded Files:</p>
+                          <ul className="list-disc pl-5 mt-2">
+                            {uploadedFiles.map((file, index) => (
+                              <li key={index} className="text-sm text-gray-600">
+                                {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Video Testament</h3>
+                      <p className="text-gray-600 mb-4">
+                        Record a video explaining your wishes to add clarity to your written will.
+                      </p>
+                      
+                      <VideoRecorder 
+                        onRecordingComplete={() => {
+                          setVideoRecorded(true);
+                          toast({
+                            title: "Video Recorded",
+                            description: "Your video testament has been recorded.",
+                          });
+                        }}
+                        isRecorded={videoRecorded}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="signature" className="mt-4">
+                <Card className="p-6">
+                  <h2 className="text-xl font-medium mb-4">Digital Signature</h2>
+                  <p className="text-gray-600 mb-6">
+                    Sign your will by drawing your signature below. This will be digitally attached to your will.
+                  </p>
+                  
+                  <DigitalSignature 
+                    onSignatureCapture={(data) => {
+                      setSignatureData(data);
+                      toast({
+                        title: "Signature Captured",
+                        description: "Your digital signature has been saved.",
+                      });
+                    }}
+                    existingSignature={signatureData}
+                  />
+                </Card>
+              </TabsContent>
+            </Tabs>
             
-            <div className="mb-6">
-              {currentStepData.component}
-            </div>
-            
-            <div className="flex justify-between pt-4 border-t border-gray-100">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStep(prev => prev - 1)}
-                disabled={currentStep === 0}
+            <div className="flex justify-between">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => navigate('/dashboard/will')}
               >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Previous Step
+                Cancel
               </Button>
               
-              {currentStep < steps.length - 1 ? (
-                <Button
-                  onClick={() => setCurrentStep(prev => prev + 1)}
-                  disabled={!canProceedToNextStep}
-                >
-                  Next Step
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleCompleteWill}
-                  disabled={isSaving || !isStepComplete(currentStep)}
+              <div className="flex space-x-2">
+                <Button 
+                  type="submit"
+                  disabled={isSaving}
                 >
                   {isSaving ? (
                     <>
@@ -753,14 +517,14 @@ export default function WillCreation() {
                   ) : (
                     <>
                       <Save className="mr-2 h-4 w-4" />
-                      Save and Finish
+                      {willId ? "Update Will" : "Save Will"}
                     </>
                   )}
                 </Button>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
+          </form>
+        </Form>
       </div>
     </Layout>
   );

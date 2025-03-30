@@ -204,7 +204,10 @@ export default function FutureMessage() {
                         <FormItem>
                           <FormLabel>Recipient Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="John Doe" icon={<User />} {...field} />
+                            <div className="relative">
+                              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                              <Input className="pl-10" placeholder="John Doe" {...field} />
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -307,6 +310,7 @@ export default function FutureMessage() {
                               onSelect={field.onChange}
                               disabled={(date) => date < new Date()}
                               initialFocus
+                              className="p-3 pointer-events-auto"
                             />
                           </PopoverContent>
                         </Popover>
@@ -373,7 +377,6 @@ export default function FutureMessage() {
                               description: "Your video has been uploaded successfully.",
                             });
                           }}
-                          allowedFileTypes={["video/*"]}
                         />
                       </div>
                       {uploadedFiles.length === 0 && (
@@ -416,7 +419,6 @@ export default function FutureMessage() {
                               description: "Your document has been uploaded successfully.",
                             });
                           }}
-                          allowedFileTypes={["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]}
                         />
                       </div>
                       {uploadedFiles.length === 0 && (
