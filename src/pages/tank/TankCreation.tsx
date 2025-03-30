@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { MessageType } from './types';
+import { MessageType, CreationType, DeliveryTrigger } from './types';
 import { TankLetterCreator } from './components/creators/TankLetterCreator';
 import { TankVideoCreator } from './components/creators/TankVideoCreator';
 import { TankAudioCreator } from './components/creators/TankAudioCreator';
@@ -31,8 +30,7 @@ import { TankDocumentCreator } from './components/creators/TankDocumentCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
 
-type CreationType = MessageType | null;
-type DeliveryType = 'date' | 'event' | 'posthumous' | null;
+type DeliveryType = DeliveryTrigger | null;
 
 type Step = {
   id: string;
@@ -53,7 +51,7 @@ export default function TankCreation() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   
-  const handleSelectCreationType = (type: CreationType) => {
+  const handleSelectCreationType = (type: MessageType) => {
     setCreationType(type);
     
     toast({
@@ -106,7 +104,6 @@ export default function TankCreation() {
     }, 4500);
   };
 
-  // Define the steps for the creation process
   const steps: Step[] = [
     {
       id: "type",
@@ -135,12 +132,11 @@ export default function TankCreation() {
     }
   ];
   
-  // Component for the first step - selecting message type
   const MessageTypeSelector = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card 
         className={`cursor-pointer hover:shadow-md transition-all border-2 hover:border-willtank-300`}
-        onClick={() => handleSelectCreationType('letter')}
+        onClick={() => handleSelectCreationType(MessageType.letter)}
       >
         <CardHeader>
           <div className="flex items-center mb-2">
@@ -173,7 +169,7 @@ export default function TankCreation() {
       
       <Card 
         className={`cursor-pointer hover:shadow-md transition-all border-2 hover:border-willtank-300`}
-        onClick={() => handleSelectCreationType('video')}
+        onClick={() => handleSelectCreationType(MessageType.video)}
       >
         <CardHeader>
           <div className="flex items-center mb-2">
@@ -206,7 +202,7 @@ export default function TankCreation() {
       
       <Card 
         className={`cursor-pointer hover:shadow-md transition-all border-2 hover:border-willtank-300`}
-        onClick={() => handleSelectCreationType('audio')}
+        onClick={() => handleSelectCreationType(MessageType.audio)}
       >
         <CardHeader>
           <div className="flex items-center mb-2">
@@ -239,7 +235,7 @@ export default function TankCreation() {
       
       <Card 
         className={`cursor-pointer hover:shadow-md transition-all border-2 hover:border-willtank-300`}
-        onClick={() => handleSelectCreationType('document')}
+        onClick={() => handleSelectCreationType(MessageType.document)}
       >
         <CardHeader>
           <div className="flex items-center mb-2">
@@ -272,7 +268,6 @@ export default function TankCreation() {
     </div>
   );
   
-  // Component for the third step - selecting delivery method
   const DeliveryMethodSelector = () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <Card 

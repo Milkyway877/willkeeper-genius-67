@@ -38,7 +38,8 @@ const convertToMessage = (dbMessage: FutureMessage): Message => ({
   },
   deliveryDate: dbMessage.delivery_date,
   status: (dbMessage.status || 'Scheduled') as MessageStatus,
-  preview: dbMessage.preview || ''
+  preview: dbMessage.preview || '',
+  createdAt: dbMessage.created_at || new Date().toISOString(),
 });
 
 const getTypeIcon = (type: MessageType) => {

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { createLegacyVaultItem } from '@/services/tankService';
+import { VaultItemType } from '@/pages/tank/types';
 
 type VideoRecorderProps = {
   onRecordingComplete: (blob: Blob) => void;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -109,6 +110,7 @@ export default function Billing() {
   const plans: Record<SubscriptionPlan, PlanDetails> = {
     starter: {
       name: 'Starter',
+      icon: <Zap className="h-6 w-6" />,
       price: {
         monthly: '14.99',
         yearly: '149.99',
@@ -125,6 +127,7 @@ export default function Billing() {
     },
     gold: {
       name: 'Gold',
+      icon: <Star className="h-6 w-6" />,
       price: {
         monthly: '29',
         yearly: '290',
@@ -143,6 +146,7 @@ export default function Billing() {
     },
     platinum: {
       name: 'Platinum',
+      icon: <Shield className="h-6 w-6" />,
       price: {
         monthly: '55',
         yearly: '550',
@@ -162,6 +166,7 @@ export default function Billing() {
     },
     enterprise: {
       name: 'Enterprise',
+      icon: <Building className="h-6 w-6" />,
       price: {
         monthly: '0',
         yearly: '0',

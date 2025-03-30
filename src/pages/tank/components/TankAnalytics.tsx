@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +57,10 @@ const getStatusBadge = (status: string) => {
     default:
       return <Badge variant="outline">Unknown</Badge>;
   }
+};
+
+const handleCreateMessage = (type: MessageType) => {
+  // implementation details
 };
 
 export const TankAnalytics: React.FC = () => {

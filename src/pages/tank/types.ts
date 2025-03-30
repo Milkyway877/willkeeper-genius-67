@@ -1,4 +1,6 @@
 
+import React from 'react';
+
 export enum VaultItemType {
   story = 'story',
   confession = 'confession',
@@ -95,5 +97,5 @@ export type Message = {
 // Adding DeliveryTrigger type
 export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
 
-// CreationType for TankCreation components
+// Ensure CreationType matches MessageType enum
 export type CreationType = MessageType;
