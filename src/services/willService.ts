@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -19,6 +20,11 @@ export interface WillExecutor {
   status: string;
   created_at: string;
   will_id?: string;
+  // Add the missing properties
+  phone?: string;
+  relationship?: string;
+  address?: string;
+  notes?: string;
 }
 
 export interface WillBeneficiary {
