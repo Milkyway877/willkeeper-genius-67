@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export type Will = {
@@ -159,3 +158,6 @@ export const getWillContent = async (willId: string) => {
     return null;
   }
 };
+
+// Alias for getUserWills to match the import in the components
+export const getWills = getUserWills;
