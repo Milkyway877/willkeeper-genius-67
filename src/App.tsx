@@ -4,7 +4,7 @@ import { Toaster } from 'sonner';
 import './App.css';
 import './MobileStyles.css';
 import Dashboard from './pages/dashboard/Dashboard';
-import Home from './pages/Home';
+import { default as Home } from './pages/Index';
 import Settings from './pages/settings/Settings';
 import Confirm from './pages/Confirm';
 import CheckIn from './pages/CheckIn';

@@ -1,227 +1,104 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, User, Check, AlertTriangle, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { differenceInDays, format, parseISO } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  getDeathVerificationSettings, 
-  getLatestCheckin, 
-  processCheckin, 
+  getLatestCheckin,
+  processCheckin,
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
 
 export function DeathVerificationWidget() {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  
   const [loading, setLoading] = useState(true);
-  const [checkinLoading, setCheckinLoading] = useState(false);
-  const [checkinEnabled, setCheckinEnabled] = useState(false);
   const [checkin, setCheckin] = useState<DeathVerificationCheckin | null>(null);
-  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   
   useEffect(() => {
-    fetchVerificationStatus();
+    const loadCheckinStatus = async () => {
+      try {
+        setLoading(true);
+        const data = await getLatestCheckin();
+        setCheckin(data);
+      } catch (error) {
+        console.error('Error loading check-in status:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadCheckinStatus();
   }, []);
   
-  const fetchVerificationStatus = async () => {
-    try {
-      setLoading(true);
-      
-      const settings = await getDeathVerificationSettings();
-      
-      if (settings) {
-        setCheckinEnabled(settings.check_in_enabled);
-        
-        if (settings.check_in_enabled) {
-          const latestCheckin = await getLatestCheckin();
-          
-          if (latestCheckin) {
-            setCheckin(latestCheckin);
-            
-            // Calculate days remaining until next check-in
-            const nextCheckInDate = parseISO(latestCheckin.next_check_in);
-            const today = new Date();
-            const days = differenceInDays(nextCheckInDate, today);
-            setDaysRemaining(days);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching verification status:', error);
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
-  
-  const handleCheckin = async () => {
-    try {
-      setCheckinLoading(true);
-      
-      const updatedCheckin = await processCheckin('alive');
-      
-      if (updatedCheckin) {
-        setCheckin(updatedCheckin);
-        
-        // Calculate days remaining until next check-in
-        const nextCheckInDate = parseISO(updatedCheckin.next_check_in);
-        const today = new Date();
-        const days = differenceInDays(nextCheckInDate, today);
-        setDaysRemaining(days);
-        
-        toast({
-          title: "Check-in Successful",
-          description: "You have successfully checked in. Thank you!",
-        });
-      } else {
-        throw new Error("Failed to process check-in");
-      }
-    } catch (error) {
-      console.error('Error processing check-in:', error);
-      toast({
-        title: "Check-in Failed",
-        description: "There was an error processing your check-in. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setCheckinLoading(false);
-    }
-  };
-  
-  const navigateToSettings = () => {
-    navigate('/settings/death-verification');
-  };
-  
-  if (loading) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Shield className="mr-2 h-5 w-5 text-willtank-600" />
-            Death Verification
-          </CardTitle>
-          <CardDescription>Loading verification status...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-20 flex items-center justify-center">
-            <div className="animate-spin h-6 w-6 border-2 border-willtank-600 border-t-transparent rounded-full"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  if (!checkinEnabled) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Shield className="mr-2 h-5 w-5 text-willtank-600" />
-            Death Verification
-          </CardTitle>
-          <CardDescription>Protect your will with our automated verification system</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="p-4 bg-amber-50 rounded-md">
-            <h3 className="font-medium text-amber-800 flex items-center mb-2">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Death Verification is disabled
-            </h3>
-            <p className="text-sm text-amber-700">
-              Enable death verification to ensure your will is only accessible after verified death confirmation.
-            </p>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={navigateToSettings} className="w-full">Enable Death Verification</Button>
-        </CardFooter>
-      </Card>
-    );
-  }
   
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <Shield className="mr-2 h-5 w-5 text-willtank-600" />
-          Death Verification
-        </CardTitle>
-        <CardDescription>
-          {checkin && daysRemaining !== null 
-            ? `Next check-in in ${daysRemaining} days`
-            : 'Protect your will with regular check-ins'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {checkin ? (
-          <>
-            <div className={`p-4 ${daysRemaining && daysRemaining <= 2 ? 'bg-amber-50' : 'bg-green-50'} rounded-md mb-4`}>
-              <h3 className={`font-medium flex items-center mb-2 ${daysRemaining && daysRemaining <= 2 ? 'text-amber-800' : 'text-green-800'}`}>
-                {daysRemaining && daysRemaining <= 2 ? (
-                  <>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Check-in required soon
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Your status is confirmed
-                  </>
-                )}
-              </h3>
-              <p className={`text-sm ${daysRemaining && daysRemaining <= 2 ? 'text-amber-700' : 'text-green-700'}`}>
-                {daysRemaining && daysRemaining <= 2 
-                  ? `Your next check-in is in ${daysRemaining} days. Please confirm you're alive by clicking the button below.`
-                  : `Last check-in: ${format(parseISO(checkin.checked_in_at), 'PPP')}. Your next check-in is on ${format(parseISO(checkin.next_check_in), 'PPP')}.`}
-              </p>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-500 flex items-center">
-                <User className="h-4 w-4 mr-1" />
-                Status: <span className="font-medium text-green-600 ml-1">Alive & Well</span>
-              </div>
-              
-              <Button
-                onClick={handleCheckin}
-                disabled={checkinLoading}
-                size="sm"
-                variant={daysRemaining && daysRemaining <= 2 ? "default" : "outline"}
-              >
-                {checkinLoading ? (
-                  <span className="flex items-center">
-                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
-                    Processing...
-                  </span>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    I'm Alive
-                  </>
-                )}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <div className="p-4 bg-amber-50 rounded-md">
-            <h3 className="font-medium text-amber-800 flex items-center mb-2">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Initial check-in required
-            </h3>
-            <p className="text-sm text-amber-700">
-              Please confirm your status to activate the death verification system.
-            </p>
+    <div className="lg:col-span-3 xl:col-span-1">
+      <Card className="p-6 border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium">Death Verification</h3>
+          <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
+            <Clock size={20} className="text-willtank-500" />
           </div>
+        </div>
+        
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-10 w-full mt-4" />
+          </div>
+        ) : (
+          <>
+            {checkin ? (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  {checkin.status === 'alive' ? (
+                    <CheckCircle size={16} className="text-green-500" />
+                  ) : checkin.status === 'dead' ? (
+                    <AlertTriangle size={16} className="text-red-500" />
+                  ) : (
+                    <Clock size={16} className="text-orange-500" />
+                  )}
+                  <span className="font-medium">
+                    Status: {checkin.status === 'alive' 
+                      ? 'Alive' 
+                      : checkin.status === 'dead' 
+                      ? 'Reported Deceased' 
+                      : 'Pending'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Last check-in: {formatDate(checkin.last_checkin)}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Verified by: {checkin.executor_email}
+                </p>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600">
+                  No death verification check-ins have been set up yet. Configure your death verification settings to ensure your will is accessible when needed.
+                </p>
+              </div>
+            )}
+            
+            <Link to="/settings/death-verification">
+              <Button variant="outline" className="w-full">
+                Manage Verification
+              </Button>
+            </Link>
+          </>
         )}
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="link" onClick={navigateToSettings} className="px-0">
-          Verification Settings
-        </Button>
-      </CardFooter>
-    </Card>
+      </Card>
+    </div>
   );
 }
