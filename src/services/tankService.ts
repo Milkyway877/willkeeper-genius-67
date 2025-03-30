@@ -252,11 +252,21 @@ export const createLegacyVaultItem = async (
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
+    const validCategories = ['story', 'confession', 'wishes', 'advice', 'will', 'video', 'audio', 'document'];
+    let category = 'story'; // Default
+    
+    const itemTypeStr = item.type.toString();
+    if (validCategories.includes(itemTypeStr)) {
+      category = itemTypeStr;
+    }
+    
+    console.log(`Creating legacy vault item with category: ${category}`);
+    
     const { data, error } = await supabase
       .from('legacy_vault')
       .insert({
         title: item.title,
-        category: item.type,
+        category: category,
         preview: item.preview,
         document_url: item.document_url,
         is_encrypted: item.encryptionStatus,
@@ -265,9 +275,12 @@ export const createLegacyVaultItem = async (
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating legacy vault item:', error);
+      throw error;
+    }
     
-    await notifyVaultItemAdded(item.type.toString(), item.title);
+    await notifyVaultItemAdded(category, item.title);
     
     return {
       id: data.id,

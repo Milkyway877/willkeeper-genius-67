@@ -67,9 +67,14 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
-    // Validate status to ensure it matches the constraints in the database
+    // Ensure the status is capitalized precisely as required by the database constraint
+    // Database likely has an enum or check constraint for 'Draft', 'Active', or 'Archived'
     const validStatuses = ['Draft', 'Active', 'Archived'];
-    const status = validStatuses.includes(will.status) ? will.status : 'Draft';
+    let status = 'Draft'; // Default to Draft
+    
+    if (will.status && validStatuses.includes(will.status)) {
+      status = will.status;
+    }
     
     const { data, error } = await supabase
       .from('wills')

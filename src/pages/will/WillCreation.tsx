@@ -221,7 +221,7 @@ export default function WillCreation() {
       // Save the will to the database with proper error handling
       const newWill = await createWill({
         title: willTitle,
-        status: 'Active',
+        status: 'Draft',
         document_url: '', // In a real app, you'd upload to storage and get URL
         template_type: selectedTemplate?.id || 'custom',
         ai_generated: userResponses && Object.keys(userResponses).length > 0
@@ -234,10 +234,7 @@ export default function WillCreation() {
       // We successfully created the will
       if (typeof notifyWillUpdated === 'function') {
         try {
-          await notifyWillUpdated({
-            title: 'Will Created',
-            description: `Your will "${willTitle}" has been created successfully.`
-          });
+          await notifyWillUpdated(willTitle);
         } catch (notificationError) {
           console.error("Error sending notification:", notificationError);
           // Continue even if notification fails

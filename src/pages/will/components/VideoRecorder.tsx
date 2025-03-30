@@ -48,11 +48,13 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         
         let mediaStream;
         try {
+          console.log("Attempting to get user media with ideal constraints");
           mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
           console.log("Camera initialized with ideal constraints");
         } catch (err) {
           console.warn('Failed with ideal constraints, trying fallback:', err);
           try {
+            console.log("Attempting with fallback constraints");
             mediaStream = await navigator.mediaDevices.getUserMedia({ 
               video: true, 
               audio: true 
@@ -67,13 +69,15 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         setStream(mediaStream);
         
         if (videoRef.current) {
+          console.log("Setting video source to media stream");
           videoRef.current.srcObject = mediaStream;
           videoRef.current.onloadedmetadata = () => {
             try {
               if (videoRef.current) {
+                console.log("Video metadata loaded, attempting to play");
                 videoRef.current.play()
                   .then(() => {
-                    console.log("Video preview started");
+                    console.log("Video preview started successfully");
                     setIsCameraReady(true);
                     setIsPreparing(false);
                   })
@@ -107,8 +111,12 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     initCamera();
     
     return () => {
+      console.log("Cleaning up camera resources");
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => {
+          console.log(`Stopping track: ${track.kind}`);
+          track.stop();
+        });
       }
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -148,6 +156,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       return;
     }
     
+    console.log("Preparing to start recording");
     recordedChunksRef.current = [];
     
     try {
@@ -181,6 +190,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         console.log('Falling back to default recorder options');
         try {
           mediaRecorder = new MediaRecorder(stream);
+          console.log("Created MediaRecorder with default options");
         } catch (e) {
           console.error('Failed to create MediaRecorder with default options', e);
           toast({
@@ -246,6 +256,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       mediaRecorderRef.current = mediaRecorder;
       
       try {
+        console.log("Starting MediaRecorder");
         mediaRecorder.start(1000);
         console.log("Recording started");
         setIsRecording(true);
