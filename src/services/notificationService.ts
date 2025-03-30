@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -148,10 +147,10 @@ export const notifyWillUpdated = async (title: string): Promise<Notification | n
   });
 };
 
-export const notifyDocumentUploaded = async (docType: string, docName: string): Promise<Notification | null> => {
+export const notifyDocumentUploaded = async (details: { title?: string, description?: string, itemId?: string }): Promise<Notification | null> => {
   return createSystemNotification('document_uploaded', {
-    title: `${docType} Uploaded`,
-    description: `"${docName}" has been successfully uploaded to your account.`
+    title: details.title || "Document Uploaded",
+    description: details.description || "A new document has been uploaded to your account."
   });
 };
 

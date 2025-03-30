@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { createSystemNotification } from '@/services/notificationService';
 import { toast } from '@/components/ui/use-toast';
