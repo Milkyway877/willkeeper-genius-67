@@ -59,126 +59,6 @@ export const eventTypeToNotificationType = (
   return typeMap[eventType] || 'info';
 };
 
-export const createSystemNotification = async (
-  type: 'success' | 'warning' | 'info' | 'security' | string,
-  details: { title: string, description: string }
-): Promise<Notification | null> => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.user) {
-    console.warn('No user logged in, skipping system notification creation');
-    return null;
-  }
-  
-  const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
-    ? type as 'success' | 'warning' | 'info' | 'security'
-    : eventTypeToNotificationType(type);
-  
-  return createNotification({
-    title: details.title,
-    description: details.description,
-    type: notificationType,
-    read: false
-  });
-};
-
-export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
-  return createSystemNotification('vault_item_added', {
-    title: `${itemType} Added to Vault`,
-    description: `"${title}" has been added to your Legacy Vault.`
-  });
-};
-
-export const notifyVaultItemUpdated = async (itemType: string, title: string): Promise<Notification | null> => {
-  return createSystemNotification('vault_item_updated', {
-    title: `${itemType} Updated`,
-    description: `"${title}" in your Legacy Vault has been updated.`
-  });
-};
-
-export const getNotifications = async (): Promise<Notification[]> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.warn('User not authenticated, cannot fetch notifications');
-      return [];
-    }
-    
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error fetching notifications:', error);
-      return [];
-    }
-    
-    return (data || []).map(item => ({
-      ...item,
-      type: validateNotificationType(item.type)
-    })) as Notification[];
-  } catch (error) {
-    console.error('Error in getNotifications:', error);
-    return [];
-  }
-};
-
-export const markNotificationAsRead = async (id: string): Promise<boolean> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.warn('User not authenticated, cannot mark notification as read');
-      return false;
-    }
-    
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', id)
-      .eq('user_id', session.user.id);
-      
-    if (error) {
-      console.error('Error marking notification as read:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in markNotificationAsRead:', error);
-    return false;
-  }
-};
-
-export const markAllNotificationsAsRead = async (): Promise<boolean> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.warn('User not authenticated, cannot mark all notifications as read');
-      return false;
-    }
-    
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('read', false)
-      .eq('user_id', session.user.id);
-      
-    if (error) {
-      console.error('Error marking all notifications as read:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in markAllNotificationsAsRead:', error);
-    return false;
-  }
-};
-
 export const createNotification = async (notification: Omit<Notification, 'id' | 'user_id' | 'created_at'>): Promise<Notification | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -215,30 +95,41 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
   }
 };
 
-export const deleteAllNotifications = async (): Promise<boolean> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.warn('No user logged in, cannot delete notifications');
-      return false;
-    }
-    
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('user_id', session.user.id);
-      
-    if (error) {
-      console.error('Error deleting notifications:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in deleteAllNotifications:', error);
-    return false;
+export const createSystemNotification = async (
+  type: 'success' | 'warning' | 'info' | 'security' | string,
+  details: { title: string, description: string }
+): Promise<Notification | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    console.warn('No user logged in, skipping system notification creation');
+    return null;
   }
+  
+  const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
+    ? type as 'success' | 'warning' | 'info' | 'security'
+    : eventTypeToNotificationType(type);
+  
+  return createNotification({
+    title: details.title,
+    description: details.description,
+    type: notificationType,
+    read: false
+  });
+};
+
+export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
+  return createSystemNotification('vault_item_added', {
+    title: `${itemType} Added to Vault`,
+    description: `"${title}" has been added to your Legacy Vault.`
+  });
+};
+
+export const notifyVaultItemUpdated = async (itemType: string, title: string): Promise<Notification | null> => {
+  return createSystemNotification('vault_item_updated', {
+    title: `${itemType} Updated`,
+    description: `"${title}" in your Legacy Vault has been updated.`
+  });
 };
 
 export const notifyWillCreated = async (title: string): Promise<Notification | null> => {
@@ -400,4 +291,113 @@ export const createSystemNotification2 = async (
     type: template.type,
     read: false
   });
+};
+
+export const getNotifications = async (): Promise<Notification[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot fetch notifications');
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      return [];
+    }
+    
+    return (data || []).map(item => ({
+      ...item,
+      type: validateNotificationType(item.type)
+    })) as Notification[];
+  } catch (error) {
+    console.error('Error in getNotifications:', error);
+    return [];
+  }
+};
+
+export const markNotificationAsRead = async (id: string): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot mark notification as read');
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error marking notification as read:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in markNotificationAsRead:', error);
+    return false;
+  }
+};
+
+export const markAllNotificationsAsRead = async (): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot mark all notifications as read');
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('read', false)
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error marking all notifications as read:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in markAllNotificationsAsRead:', error);
+    return false;
+  }
+};
+
+export const deleteAllNotifications = async (): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('No user logged in, cannot delete notifications');
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error deleting notifications:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteAllNotifications:', error);
+    return false;
+  }
 };
