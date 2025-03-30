@@ -11,6 +11,91 @@ export interface Notification {
   icon?: string;
 }
 
+function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
+  const validTypes = ['success', 'warning', 'info', 'security'];
+  return validTypes.includes(type) ? type as 'success' | 'warning' | 'info' | 'security' : 'info';
+}
+
+export const eventTypeToNotificationType = (
+  eventType: string
+): 'success' | 'warning' | 'info' | 'security' => {
+  const typeMap: Record<string, 'success' | 'warning' | 'info' | 'security'> = {
+    'will_created': 'success',
+    'will_updated': 'success',
+    'will_deleted': 'info',
+    'document_uploaded': 'info',
+    'document_updated': 'info',
+    'document_deleted': 'info',
+    
+    'security_key_generated': 'security',
+    'password_changed': 'security',
+    'login_attempt': 'security',
+    'recovery_requested': 'security',
+    
+    'profile_updated': 'info',
+    'settings_changed': 'info',
+    'avatar_updated': 'info',
+    
+    'beneficiary_added': 'info',
+    'beneficiary_removed': 'info',
+    'executor_added': 'info',
+    'executor_removed': 'info',
+    
+    'vault_item_added': 'success',
+    'vault_item_updated': 'info',
+    'vault_item_deleted': 'info',
+    'item_encrypted': 'security',
+    'item_decrypted': 'security',
+    
+    'message_scheduled': 'success',
+    'message_delivered': 'info',
+    'message_cancelled': 'info',
+    
+    'welcome': 'info',
+    'feature_tip': 'info',
+    'account_created': 'success'
+  };
+  
+  return typeMap[eventType] || 'info';
+};
+
+export const createSystemNotification = async (
+  type: 'success' | 'warning' | 'info' | 'security' | string,
+  details: { title: string, description: string }
+): Promise<Notification | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    console.warn('No user logged in, skipping system notification creation');
+    return null;
+  }
+  
+  const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
+    ? type as 'success' | 'warning' | 'info' | 'security'
+    : eventTypeToNotificationType(type);
+  
+  return createNotification({
+    title: details.title,
+    description: details.description,
+    type: notificationType,
+    read: false
+  });
+};
+
+export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
+  return createSystemNotification('vault_item_added', {
+    title: `${itemType} Added to Vault`,
+    description: `"${title}" has been added to your Legacy Vault.`
+  });
+};
+
+export const notifyVaultItemUpdated = async (itemType: string, title: string): Promise<Notification | null> => {
+  return createSystemNotification('vault_item_updated', {
+    title: `${itemType} Updated`,
+    description: `"${title}" in your Legacy Vault has been updated.`
+  });
+};
+
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -39,11 +124,6 @@ export const getNotifications = async (): Promise<Notification[]> => {
     return [];
   }
 };
-
-function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
-  const validTypes = ['success', 'warning', 'info', 'security'];
-  return validTypes.includes(type) ? type as 'success' | 'warning' | 'info' | 'security' : 'info';
-}
 
 export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   try {
@@ -161,83 +241,57 @@ export const deleteAllNotifications = async (): Promise<boolean> => {
   }
 };
 
-export const createSystemNotification = async (
-  type: 'success' | 'warning' | 'info' | 'security' | string,
-  details: { title: string, description: string }
+export const notifyWillCreated = async (title: string): Promise<Notification | null> => {
+  return createSystemNotification('will_created', {
+    title: "Will Created",
+    description: `Your will "${title}" has been successfully created.`
+  });
+};
+
+export const notifyWillUpdated = async (title: string): Promise<Notification | null> => {
+  return createSystemNotification('will_updated', {
+    title: "Will Updated",
+    description: `Your will "${title}" has been successfully updated.`
+  });
+};
+
+export const notifyDocumentUploaded = async (docType: string, docName: string): Promise<Notification | null> => {
+  return createSystemNotification('document_uploaded', {
+    title: `${docType} Uploaded`,
+    description: `"${docName}" has been successfully uploaded to your account.`
+  });
+};
+
+export const notifyProfileUpdated = async (field?: string): Promise<Notification | null> => {
+  return createSystemNotification('profile_updated', {
+    title: "Profile Updated",
+    description: field 
+      ? `Your ${field.toLowerCase()} has been successfully updated.`
+      : "Your profile information has been successfully updated."
+  });
+};
+
+export const notifySecurityEvent = async (event: string, details: string): Promise<Notification | null> => {
+  return createSystemNotification('security', {
+    title: event,
+    description: details
+  });
+};
+
+export const notifyMessageScheduled = async (recipient: string, date: string): Promise<Notification | null> => {
+  return createSystemNotification('message_scheduled', {
+    title: "Future Message Scheduled",
+    description: `Your message to ${recipient} has been scheduled for ${date}.`
+  });
+};
+
+export const createFeatureTipNotification = async (
+  feature: string,
+  description: string
 ): Promise<Notification | null> => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.user) {
-    console.warn('No user logged in, skipping system notification creation');
-    return null;
-  }
-  
-  const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
-    ? type as 'success' | 'warning' | 'info' | 'security'
-    : eventTypeToNotificationType(type);
-  
-  return createNotification({
-    title: details.title,
-    description: details.description,
-    type: notificationType,
-    read: false
-  });
-};
-
-export const eventTypeToNotificationType = (
-  eventType: string
-): 'success' | 'warning' | 'info' | 'security' => {
-  const typeMap: Record<string, 'success' | 'warning' | 'info' | 'security'> = {
-    'will_created': 'success',
-    'will_updated': 'success',
-    'will_deleted': 'info',
-    'document_uploaded': 'info',
-    'document_updated': 'info',
-    'document_deleted': 'info',
-    
-    'security_key_generated': 'security',
-    'password_changed': 'security',
-    'login_attempt': 'security',
-    'recovery_requested': 'security',
-    
-    'profile_updated': 'info',
-    'settings_changed': 'info',
-    'avatar_updated': 'info',
-    
-    'beneficiary_added': 'info',
-    'beneficiary_removed': 'info',
-    'executor_added': 'info',
-    'executor_removed': 'info',
-    
-    'vault_item_added': 'success',
-    'vault_item_updated': 'info',
-    'vault_item_deleted': 'info',
-    'item_encrypted': 'security',
-    'item_decrypted': 'security',
-    
-    'message_scheduled': 'success',
-    'message_delivered': 'info',
-    'message_cancelled': 'info',
-    
-    'welcome': 'info',
-    'feature_tip': 'info',
-    'account_created': 'success'
-  };
-  
-  return typeMap[eventType] || 'info';
-};
-
-export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
-  return createSystemNotification('vault_item_added', {
-    title: `${itemType} Added to Vault`,
-    description: `"${title}" has been added to your Legacy Vault.`
-  });
-};
-
-export const notifyVaultItemUpdated = async (itemType: string, title: string): Promise<Notification | null> => {
-  return createSystemNotification('vault_item_updated', {
-    title: `${itemType} Updated`,
-    description: `"${title}" in your Legacy Vault has been updated.`
+  return createSystemNotification('feature_tip', {
+    title: `Tip: ${feature}`,
+    description
   });
 };
 
@@ -282,60 +336,6 @@ export const createWelcomeNotificationPack = async (): Promise<boolean> => {
     console.error('Error creating welcome notification pack:', error);
     return false;
   }
-};
-
-export const createFeatureTipNotification = async (
-  feature: string,
-  description: string
-): Promise<Notification | null> => {
-  return createSystemNotification('feature_tip', {
-    title: `Tip: ${feature}`,
-    description
-  });
-};
-
-export const notifyProfileUpdated = async (field?: string): Promise<Notification | null> => {
-  return createSystemNotification('profile_updated', {
-    title: "Profile Updated",
-    description: field 
-      ? `Your ${field.toLowerCase()} has been successfully updated.`
-      : "Your profile information has been successfully updated."
-  });
-};
-
-export const notifyDocumentUploaded = async (docType: string, docName: string): Promise<Notification | null> => {
-  return createSystemNotification('document_uploaded', {
-    title: `${docType} Uploaded`,
-    description: `"${docName}" has been successfully uploaded to your account.`
-  });
-};
-
-export const notifyWillCreated = async (title: string): Promise<Notification | null> => {
-  return createSystemNotification('will_created', {
-    title: "Will Created",
-    description: `Your will "${title}" has been successfully created.`
-  });
-};
-
-export const notifyWillUpdated = async (title: string): Promise<Notification | null> => {
-  return createSystemNotification('will_updated', {
-    title: "Will Updated",
-    description: `Your will "${title}" has been successfully updated.`
-  });
-};
-
-export const notifySecurityEvent = async (event: string, details: string): Promise<Notification | null> => {
-  return createSystemNotification('security', {
-    title: event,
-    description: details
-  });
-};
-
-export const notifyMessageScheduled = async (recipient: string, date: string): Promise<Notification | null> => {
-  return createSystemNotification('message_scheduled', {
-    title: "Future Message Scheduled",
-    description: `Your message to ${recipient} has been scheduled for ${date}.`
-  });
 };
 
 export const createSystemNotification2 = async (
