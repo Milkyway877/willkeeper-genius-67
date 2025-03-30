@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,6 +9,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod } from '@/pages/tank/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { createCheckoutSession } from '@/api/createCheckoutSession';
 
 export function Pricing() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
@@ -26,13 +28,26 @@ export function Pricing() {
         return;
       }
       
-      toast.info('Payment processing has been disabled');
+      // Call the createCheckoutSession function to redirect to Stripe
+      const result = await createCheckoutSession(planName, billingPeriod);
+      
+      if (result.status === 'success' && result.url) {
+        // Redirect to Stripe checkout
+        window.location.href = result.url;
+      } else {
+        toast.error('Payment processing error', {
+          description: result.error || 'There was an error processing your request. Please try again later.',
+        });
+      }
+      
       setIsLoading(null);
       
     } catch (error) {
       console.error('Error handling plan selection:', error);
       setIsLoading(null);
-      toast.error('This feature is currently unavailable');
+      toast.error('Payment processing error', {
+        description: 'There was an error processing your payment. Please try again later.',
+      });
     }
   };
 

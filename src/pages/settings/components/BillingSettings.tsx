@@ -55,6 +55,7 @@ export function BillingSettings() {
       setIsLoading(true);
       setErrorMessage(null);
       
+      // Call the createCheckoutSession function
       const result = await createCheckoutSession(plan, 'monthly');
       
       if (result.status === 'success' && result.url) {

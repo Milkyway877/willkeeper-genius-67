@@ -75,54 +75,81 @@ serve(async (req) => {
       customerId = userData.stripe_customer_id;
       console.log("Found existing Stripe customer:", customerId);
     } else {
-      // Create a new customer in Stripe by calling our create-stripe-customer function
+      // Create a new customer in Stripe
       console.log("No Stripe customer ID found, creating new customer");
       
-      const { data: customerData, error: customerError } = await supabase.functions.invoke("create-stripe-customer", { 
-        body: { 
-          user_id: user.id, 
-          email: user.email, 
-          name: user.user_metadata?.full_name 
+      try {
+        // Create customer directly in this function
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.user_metadata?.full_name || user.email,
+          metadata: {
+            supabase_uid: user.id
+          }
+        });
+        
+        customerId = customer.id;
+        console.log("Created new Stripe customer:", customerId);
+        
+        // Store the customer ID in user_profiles
+        const { error: updateError } = await supabase
+          .from("user_profiles")
+          .update({ stripe_customer_id: customerId })
+          .eq("id", user.id);
+          
+        if (updateError) {
+          console.error("Error saving Stripe customer ID:", updateError);
+          // Continue anyway as we have the customer ID now
         }
-      });
-      
-      if (customerError || !customerData?.customer_id) {
-        console.error("Error creating Stripe customer:", customerError || "No customer ID returned");
+      } catch (error) {
+        console.error("Error creating Stripe customer:", error);
         throw new Error("Failed to create Stripe customer");
       }
-      
-      customerId = customerData.customer_id;
-      console.log("Created new Stripe customer:", customerId);
     }
 
-    // Using hardcoded price IDs that MUST match what's in your Stripe dashboard
-    // These are dummy IDs - you need to replace these with your actual Stripe price IDs
-    const priceMap = {
+    // Mapping product IDs to their corresponding price IDs
+    // These are the product IDs provided by you
+    const productMap = {
       starter: {
-        monthly: "price_1Pw5n4HTKA0osvsHkCuFgfXL",  // Replace with your actual price ID
-        yearly: "price_1Pw5n4HTKA0osvsHfzP7EY2T",   // Replace with your actual price ID
-        lifetime: "price_1Pw5n4HTKA0osvsHA4IXOBUq"  // Replace with your actual price ID
+        monthly: "prod_S24mg95AMIms1O",  // STARTER MONTHLY
+        yearly: "prod_S24nzeS5Bi8BLr",   // STARTER YEARLY
+        lifetime: "prod_S251guGbh50tje"  // STARTER LIFETIME
       },
       gold: {
-        monthly: "price_1Pw5mmHTKA0osvsHXJmFhUTw",  // Replace with your actual price ID
-        yearly: "price_1Pw5mmHTKA0osvsHe91cWzfE",   // Replace with your actual price ID
-        lifetime: "price_1Pw5mmHTKA0osvsHq0xmJPrE"  // Replace with your actual price ID
+        monthly: "prod_S24rv3q2Fscixp",  // GOLD MONTHLY
+        yearly: "prod_S24sJE25TZiWmp",   // GOLD YEARLY
+        lifetime: "prod_S252Aj8D5tFfXg"  // GOLD LIFETIME
       },
       platinum: {
-        monthly: "price_1Pw5m7HTKA0osvsHvhUxabnP",  // Replace with your actual price ID
-        yearly: "price_1Pw5m7HTKA0osvsHKAYNu1Bb",   // Replace with your actual price ID
-        lifetime: "price_1Pw5m7HTKA0osvsHYALjnZLQ"  // Replace with your actual price ID
+        monthly: "prod_S24uIjzixtsIhy",  // PLATINUM MONTHLY
+        yearly: "prod_S24vvPrNB1N2Rs",   // PLATINUM YEARLY
+        lifetime: "prod_S2537v7mpccHQI"  // PLATINUM LIFETIME
       }
     };
     
-    // Get price ID based on plan and billing period
-    const priceId = priceMap[plan]?.[billingPeriod];
+    // Get product ID based on plan and billing period
+    const productId = productMap[plan]?.[billingPeriod];
     
-    if (!priceId) {
-      throw new Error(`No price configured for ${plan} with ${billingPeriod} billing period`);
+    if (!productId) {
+      throw new Error(`No product configured for ${plan} with ${billingPeriod} billing period`);
     }
     
-    console.log(`Using price ID for checkout: ${priceId}`);
+    console.log(`Using product ID for checkout: ${productId}`);
+    
+    // Get the price ID for the selected product
+    const prices = await stripe.prices.list({
+      product: productId,
+      active: true,
+      limit: 1
+    });
+    
+    if (prices.data.length === 0) {
+      console.error(`No price found for product: ${productId}`);
+      throw new Error(`No price found for plan: ${plan} with billing period: ${billingPeriod}`);
+    }
+    
+    const priceId = prices.data[0].id;
+    console.log(`Found price ID for checkout: ${priceId}`);
 
     // Configure checkout session
     const sessionConfig = {
@@ -164,7 +191,8 @@ serve(async (req) => {
     // Return a friendly error message
     return new Response(
       JSON.stringify({ 
-        error: error.message || "There was an error processing your payment request. Please try again later." 
+        error: error.message || "There was an error processing your payment request. Please try again later.",
+        status: 'error'
       }),
       {
         headers: corsHeaders,
