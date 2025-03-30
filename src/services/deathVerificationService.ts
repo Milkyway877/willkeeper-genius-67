@@ -63,7 +63,6 @@ export interface VerificationResponseRecord {
   responded_at: string;
 }
 
-// Default settings
 export const DEFAULT_SETTINGS: DeathVerificationSettings = {
   user_id: '', // Will be set at runtime
   check_in_enabled: true,
@@ -78,7 +77,6 @@ export const DEFAULT_SETTINGS: DeathVerificationSettings = {
   unlock_mode: 'pin'
 };
 
-// Get death verification settings for current user
 export const getDeathVerificationSettings = async (): Promise<DeathVerificationSettings | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -109,7 +107,6 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
   }
 };
 
-// Create or update death verification settings
 export const saveDeathVerificationSettings = async (settings: DeathVerificationSettings): Promise<DeathVerificationSettings | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -176,7 +173,6 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
   }
 };
 
-// Get latest check-in for current user
 export const getLatestCheckin = async (): Promise<DeathVerificationCheckin | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -209,7 +205,6 @@ export const getLatestCheckin = async (): Promise<DeathVerificationCheckin | nul
   }
 };
 
-// Create initial check-in record
 export const createInitialCheckin = async (): Promise<DeathVerificationCheckin | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -254,7 +249,6 @@ export const createInitialCheckin = async (): Promise<DeathVerificationCheckin |
   }
 };
 
-// Process a check-in confirmation
 export const processCheckin = async (status: 'alive'): Promise<DeathVerificationCheckin | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -305,7 +299,6 @@ export const processCheckin = async (status: 'alive'): Promise<DeathVerification
   }
 };
 
-// Generate unique PIN codes for beneficiaries and executors
 export const generatePINCode = (): string => {
   const digits = '0123456789';
   let pin = '';
@@ -315,7 +308,6 @@ export const generatePINCode = (): string => {
   return pin;
 };
 
-// Generate and store PIN codes for all beneficiaries and executors
 export const generateAndStorePINCodes = async (): Promise<boolean> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -327,7 +319,6 @@ export const generateAndStorePINCodes = async (): Promise<boolean> => {
     const beneficiaries = await getBeneficiaries();
     const executors = await getExecutors();
     
-    // Generate and store PINs for beneficiaries
     for (const beneficiary of beneficiaries) {
       const pinCode = generatePINCode();
       
@@ -345,7 +336,6 @@ export const generateAndStorePINCodes = async (): Promise<boolean> => {
       }
     }
     
-    // Generate and store PINs for executors
     for (const executor of executors) {
       const pinCode = generatePINCode();
       
@@ -363,7 +353,6 @@ export const generateAndStorePINCodes = async (): Promise<boolean> => {
       }
     }
     
-    // Generate PIN for trusted contact if configured
     const settings = await getDeathVerificationSettings();
     if (settings?.trusted_contact_email) {
       const pinCode = generatePINCode();
@@ -371,7 +360,7 @@ export const generateAndStorePINCodes = async (): Promise<boolean> => {
       const { error } = await supabase
         .from('death_verification_pins')
         .insert({
-          person_id: user.id, // Use user's ID for the trusted contact
+          person_id: user.id,
           pin_code: pinCode,
           person_type: 'trusted',
           used: false
@@ -395,7 +384,6 @@ export const generateAndStorePINCodes = async (): Promise<boolean> => {
   }
 };
 
-// Validate a PIN code
 export const validatePINCode = async (pinCode: string, personId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
@@ -410,7 +398,6 @@ export const validatePINCode = async (pinCode: string, personId: string): Promis
       return false;
     }
     
-    // Mark PIN as used
     const { error: updateError } = await supabase
       .from('death_verification_pins')
       .update({ 
@@ -436,14 +423,11 @@ export const validatePINCode = async (pinCode: string, personId: string): Promis
   }
 };
 
-// Check if all PINs have been validated
 export const checkAllPINsValidated = async (userId: string): Promise<boolean> => {
   try {
-    // Get all beneficiaries and executors
     const beneficiaries = await getBeneficiaries();
     const executors = await getExecutors();
     
-    // Get PIN records
     const { data: pins, error } = await supabase
       .from('death_verification_pins')
       .select('*')
@@ -457,7 +441,6 @@ export const checkAllPINsValidated = async (userId: string): Promise<boolean> =>
       return false;
     }
     
-    // Check if all PINs are used
     const totalPeople = beneficiaries.length + executors.length;
     const usedPins = pins.filter(pin => pin.used).length;
     
@@ -468,10 +451,8 @@ export const checkAllPINsValidated = async (userId: string): Promise<boolean> =>
   }
 };
 
-// Trigger the death verification process (missing check-in)
 export const triggerDeathVerification = async (userId: string): Promise<boolean> => {
   try {
-    // Create verification request
     const settings = await getDeathVerificationSettings();
     const interval = settings?.beneficiary_verification_interval || DEFAULT_SETTINGS.beneficiary_verification_interval;
     
@@ -496,7 +477,6 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
       throw error;
     }
     
-    // Update check-in status
     const { error: updateError } = await supabase
       .from('death_verification_checkins')
       .update({ status: 'verification_triggered' as CheckinStatus })
@@ -513,11 +493,7 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
       expires_at: data.expires_at
     });
     
-    // Generate PIN codes for beneficiaries and executors
     await generateAndStorePINCodes();
-    
-    // TODO: Send notifications to beneficiaries and executors
-    // This would be handled by a separate function triggered by Supabase Edge Functions
     
     return true;
   } catch (error) {
@@ -526,14 +502,12 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
   }
 };
 
-// Process a verification response
 export const processVerificationResponse = async (
   requestId: string, 
   responderId: string, 
   response: VerificationResponse
 ): Promise<boolean> => {
   try {
-    // Record the response
     const { error } = await supabase
       .from('death_verification_responses')
       .insert({
@@ -547,7 +521,6 @@ export const processVerificationResponse = async (
       throw error;
     }
     
-    // If response is 'alive', cancel the verification process
     if (response === 'alive') {
       const { error: updateError } = await supabase
         .from('death_verification_requests')
@@ -558,7 +531,6 @@ export const processVerificationResponse = async (
         throw updateError;
       }
       
-      // Create a new check-in
       const { data: requestData } = await supabase
         .from('death_verification_requests')
         .select('user_id')
@@ -587,7 +559,6 @@ export const processVerificationResponse = async (
         }
       }
     } else {
-      // If response is 'dead', check if all responses are 'dead'
       const { data: request } = await supabase
         .from('death_verification_requests')
         .select('user_id')
@@ -620,7 +591,6 @@ export const processVerificationResponse = async (
       const totalPeople = (beneficiaries.length || 0) + (executors.length || 0);
       const deadResponses = responses.filter(r => r.response === 'dead').length;
       
-      // If all responses are 'dead', mark the verification as verified
       if (deadResponses === totalPeople) {
         const { error: updateError } = await supabase
           .from('death_verification_requests')
@@ -645,7 +615,6 @@ export const processVerificationResponse = async (
   }
 };
 
-// Log verification events
 export const logVerificationEvent = async (action: string, details: Record<string, any>): Promise<boolean> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();

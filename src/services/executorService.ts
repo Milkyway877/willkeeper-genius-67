@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification } from "./notificationService";
+import { createSystemNotification, createNotificationForEvent } from "./notificationService";
 
 interface WillExecutorRow {
   id: string;
@@ -111,7 +112,7 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
       return null;
     }
     
-    await createSystemNotification('executor_added', {
+    await createNotificationForEvent('executor_added', {
       title: 'Executor Added',
       description: `${executor.name} has been added as an executor to your will.`
     });
@@ -256,7 +257,7 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'c
       return null;
     }
     
-    await createSystemNotification('beneficiary_added', {
+    await createNotificationForEvent('beneficiary_added', {
       title: 'Beneficiary Added',
       description: `${beneficiary.name} has been added as a beneficiary to your will.`
     });
@@ -348,7 +349,7 @@ export const sendVerificationRequest = async (email: string, name: string, type:
   try {
     console.log(`Verification email sent to ${email} for ${type} ${name}`);
     
-    await createSystemNotification('will_updated', {
+    await createNotificationForEvent('will_updated', {
       title: 'Verification Email Sent',
       description: `A verification request has been sent to ${email}.`
     });

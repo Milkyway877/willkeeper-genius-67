@@ -1,6 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem, VaultItemType } from "../pages/tank/types";
-import { createSystemNotification } from "./notificationService";
+import { createSystemNotification, createNotificationForEvent } from "./notificationService";
 
 export interface FutureMessage {
   id: string;
@@ -47,7 +48,7 @@ export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'c
       return null;
     }
     
-    await createSystemNotification('item_saved', {
+    await createNotificationForEvent('item_saved', {
       title: 'Future Message Created',
       description: `Your message "${message.title || 'Untitled'}" has been scheduled for ${new Date(message.delivery_date).toLocaleDateString()}.`
     });
@@ -163,7 +164,7 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
       return null;
     }
     
-    await createSystemNotification('document_uploaded', {
+    await createNotificationForEvent('document_uploaded', {
       title: 'Legacy Item Added',
       description: `Your legacy item "${item.title}" has been added to your vault.`
     });
@@ -206,7 +207,7 @@ export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVa
       return null;
     }
     
-    await createSystemNotification('item_saved', {
+    await createNotificationForEvent('item_saved', {
       title: 'Legacy Item Updated',
       description: `Your legacy item "${data.title}" has been updated.`
     });
@@ -241,7 +242,7 @@ export const toggleItemEncryption = async (id: string, encrypt: boolean): Promis
       return null;
     }
     
-    await createSystemNotification('item_saved', {
+    await createNotificationForEvent('item_saved', {
       title: encrypt ? 'Item Encrypted' : 'Item Decrypted',
       description: `Your legacy item "${data.title}" has been ${encrypt ? 'encrypted' : 'decrypted'}.`
     });

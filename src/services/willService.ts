@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification } from "./notificationService";
+import { createSystemNotification, createNotificationForEvent } from "./notificationService";
 import { toast } from "@/components/ui/use-toast";
 
 export interface Will {
@@ -169,7 +170,7 @@ export const deleteWill = async (id: string): Promise<boolean> => {
     }
     
     if (willToDelete) {
-      const notificationResult = await createSystemNotification('will_deleted', {
+      const notificationResult = await createNotificationForEvent('will_deleted', {
         title: 'Will Deleted',
         description: `Your will "${willToDelete.title}" has been deleted.`
       });
@@ -226,7 +227,7 @@ export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'cr
       return null;
     }
     
-    const notificationResult = await createSystemNotification('executor_added', {
+    const notificationResult = await createNotificationForEvent('executor_added', {
       title: 'Executor Added',
       description: `${executor.name} has been added as an executor to your will.`
     });
@@ -296,7 +297,7 @@ export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, '
       return null;
     }
     
-    const notificationResult = await createSystemNotification('beneficiary_added', {
+    const notificationResult = await createNotificationForEvent('beneficiary_added', {
       title: 'Beneficiary Added',
       description: `${beneficiary.name} has been added as a beneficiary to your will.`
     });
