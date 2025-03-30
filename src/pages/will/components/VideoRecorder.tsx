@@ -85,7 +85,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       
       await createLegacyVaultItem({
         title,
-        type: 'video',
+        type: VaultItemType.video,
         preview: 'Video testament recording',
         document_url: videoUrl,
         encryptionStatus: false

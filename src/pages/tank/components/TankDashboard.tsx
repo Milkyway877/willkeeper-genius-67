@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
@@ -31,10 +32,13 @@ const convertToMessage = (dbMessage: FutureMessage): Message => ({
   id: dbMessage.id,
   type: (dbMessage.message_type || 'letter') as MessageType,
   title: dbMessage.title || 'Untitled Message',
-  recipient: dbMessage.recipient_name,
+  recipient: {
+    name: dbMessage.recipient_name,
+    email: dbMessage.recipient_email
+  },
   deliveryDate: dbMessage.delivery_date,
-  status: dbMessage.status.toLowerCase() as MessageStatus,
-  preview: dbMessage.preview || undefined
+  status: (dbMessage.status || 'Scheduled') as MessageStatus,
+  preview: dbMessage.preview || ''
 });
 
 const getTypeIcon = (type: MessageType) => {
@@ -54,13 +58,13 @@ const getTypeIcon = (type: MessageType) => {
 
 const getStatusBadge = (status: MessageStatus) => {
   switch (status) {
-    case 'scheduled':
+    case MessageStatus.Scheduled:
       return <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50">Scheduled</Badge>;
-    case 'draft':
+    case MessageStatus.Draft:
       return <Badge variant="outline" className="border-amber-200 text-amber-700 bg-amber-50">Draft</Badge>;
-    case 'delivered':
+    case MessageStatus.Delivered:
       return <Badge variant="outline" className="border-green-200 text-green-700 bg-green-50">Delivered</Badge>;
-    case 'verified':
+    case MessageStatus.Verified:
       return <Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">Verified</Badge>;
     default:
       return <Badge variant="outline">Unknown</Badge>;
@@ -100,7 +104,8 @@ export const TankDashboard: React.FC = () => {
   
   const filteredMessages = messages.filter(message => 
     message.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    message.recipient.toLowerCase().includes(searchQuery.toLowerCase())
+    message.recipient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    message.recipient.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   const handleEdit = (id: string | number) => {
@@ -146,7 +151,7 @@ export const TankDashboard: React.FC = () => {
       
       if (updatedMessage) {
         setMessages(messages.map(message => 
-          message.id === id ? { ...message, status: 'verified' } : message
+          message.id === id ? { ...message, status: MessageStatus.Verified } : message
         ));
         
         toast({
@@ -232,7 +237,7 @@ export const TankDashboard: React.FC = () => {
                   
                   <div className="text-sm text-gray-600 mb-2">
                     <span className="flex items-center">
-                      For: {message.recipient}
+                      For: {message.recipient.name}
                     </span>
                   </div>
                   
@@ -267,7 +272,7 @@ export const TankDashboard: React.FC = () => {
                       </Tooltip>
                     </TooltipProvider>
                     
-                    {message.status === 'scheduled' && (
+                    {message.status === MessageStatus.Scheduled && (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>

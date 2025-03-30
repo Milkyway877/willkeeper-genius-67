@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { VaultItemType } from '@/pages/tank/types';
 import { notifyVaultItemAdded, notifyVaultItemUpdated } from '@/services/notificationService';
@@ -207,7 +206,11 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
       });
       
       if (newVaultItem) {
-        legacyItems.push(newVaultItem);
+        // Ensure user_id is present, even though it's optional in the type
+        legacyItems.push({
+          ...newVaultItem,
+          user_id: newVaultItem.user_id || ''
+        });
       }
     }
     

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -111,9 +110,9 @@ export default function Billing() {
     starter: {
       name: 'Starter',
       price: {
-        monthly: 14.99,
-        yearly: 149.99,
-        lifetime: 299.99
+        monthly: '14.99',
+        yearly: '149.99',
+        lifetime: '299.99'
       },
       features: [
         'Basic will templates',
@@ -127,9 +126,9 @@ export default function Billing() {
     gold: {
       name: 'Gold',
       price: {
-        monthly: 29,
-        yearly: 290,
-        lifetime: 599
+        monthly: '29',
+        yearly: '290',
+        lifetime: '599'
       },
       features: [
         'All Starter features',
@@ -145,9 +144,9 @@ export default function Billing() {
     platinum: {
       name: 'Platinum',
       price: {
-        monthly: 55,
-        yearly: 550,
-        lifetime: 999
+        monthly: '55',
+        yearly: '550',
+        lifetime: '999'
       },
       features: [
         'All Gold features',
@@ -164,9 +163,9 @@ export default function Billing() {
     enterprise: {
       name: 'Enterprise',
       price: {
-        monthly: 0,
-        yearly: 0,
-        lifetime: 0
+        monthly: '0',
+        yearly: '0',
+        lifetime: '0'
       },
       features: [
         'Custom templates',
@@ -221,8 +220,8 @@ export default function Billing() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return price === 0 ? 'Custom' : `$${price}`;
+  const formatPrice = (price: string) => {
+    return price === '0' ? 'Custom' : `$${price}`;
   };
 
   const getPriceWithPeriod = (plan: PlanDetails) => {

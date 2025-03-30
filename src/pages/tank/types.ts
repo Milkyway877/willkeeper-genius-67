@@ -1,5 +1,4 @@
 
-
 export enum VaultItemType {
   story = 'story',
   confession = 'confession',
@@ -40,36 +39,44 @@ export type FutureMessageItem = {
   };
   type: MessageType;
   preview: string;
-  status: 'Scheduled' | 'Delivered' | 'Failed';
+  status: MessageStatus;
   deliveryDate: string;
   createdAt: string;
 };
 
-// Adding missing types referenced in various files
+// Fixing the MessageStatus enum to match the string literals used in the codebase
+export enum MessageStatus {
+  Scheduled = 'Scheduled',
+  Delivered = 'Delivered',
+  Failed = 'Failed',
+  Draft = 'Draft',
+  Verified = 'Verified'
+}
+
+// Adding BillingPeriod type
 export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
 
 export type PlanDetails = {
   name: string;
   icon: React.ReactNode;
-  title: string;
   description: string;
   price: {
     monthly: string;
     yearly: string;
     lifetime: string;
   };
-  period: string;
+  period?: string;
   features: string[];
-  highlighted: boolean;
-  cta: string;
+  highlighted?: boolean;
+  cta?: string;
   badge?: string;
-  color: string;
+  color?: string;
   isEnterprise?: boolean;
 };
 
 export type SubscriptionPlan = 'free' | 'starter' | 'gold' | 'platinum' | 'enterprise';
 
-// Adding Message and MessageStatus types
+// Complete Message type definition
 export type Message = {
   id: string;
   title: string;
@@ -78,14 +85,15 @@ export type Message = {
     email: string;
   };
   type: MessageType;
-  content: string;
+  content?: string;
+  preview?: string;
   status: MessageStatus;
   deliveryDate: string;
   createdAt: string;
 };
 
-export type MessageStatus = 'Scheduled' | 'Delivered' | 'Failed';
-
 // Adding DeliveryTrigger type
 export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
 
+// CreationType for TankCreation components
+export type CreationType = MessageType;
