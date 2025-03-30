@@ -129,7 +129,7 @@ export function NotificationDropdown() {
                     <div className="flex justify-between w-full mb-1">
                       <span className="font-medium text-sm">{notification.title}</span>
                       <div className="flex items-center space-x-1">
-                        {!notification.read && (
+                        {!notification.is_read && (
                           <Badge variant="outline" className="text-xs bg-willtank-100 text-willtank-800 border-willtank-200">
                             New
                           </Badge>
@@ -137,9 +137,9 @@ export function NotificationDropdown() {
                         <button
                           onClick={(e) => handleMarkAsRead(notification.id, e)}
                           className="ml-1 text-gray-400 hover:text-gray-600"
-                          aria-label={notification.read ? "Notification already read" : "Mark as read"}
+                          aria-label={notification.is_read ? "Notification already read" : "Mark as read"}
                         >
-                          {notification.read ? (
+                          {notification.is_read ? (
                             <Check className="h-4 w-4" />
                           ) : (
                             <X className="h-4 w-4" />
@@ -147,7 +147,7 @@ export function NotificationDropdown() {
                         </button>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500">{notification.description}</p>
+                    <p className="text-xs text-gray-500">{notification.message || ''}</p>
                     <span className="text-xs text-gray-400 mt-1">
                       {new Date(notification.created_at).toLocaleString()}
                     </span>

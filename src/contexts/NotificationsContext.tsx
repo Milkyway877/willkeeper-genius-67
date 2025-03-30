@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getNotifications, Notification, markNotificationAsRead, markAllNotificationsAsRead } from '@/services/notificationService';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationsContextType {
@@ -45,7 +45,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         // Update local state
         setNotifications(prev => 
           prev.map(notification => 
-            notification.id === id ? { ...notification, read: true } : notification
+            notification.id === id ? { ...notification, is_read: true } : notification
           )
         );
         return true;
@@ -64,7 +64,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (success) {
         // Update local state
         setNotifications(prev => 
-          prev.map(notification => ({ ...notification, read: true }))
+          prev.map(notification => ({ ...notification, is_read: true }))
         );
         return true;
       }
@@ -105,7 +105,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           // Show a toast for the new notification
           toast({
             title: newNotification.title,
-            description: newNotification.description,
+            description: newNotification.message || '',
             // Map notification types to valid toast variants
             variant: getToastVariant(validatedType)
           });
@@ -141,7 +141,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
   const hasUnread = unreadCount > 0;
 
   // Helper function to validate notification types
