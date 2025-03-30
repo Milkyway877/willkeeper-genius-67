@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { VaultItemType } from '@/pages/tank/types';
+import { notifyVaultItemAdded, notifyVaultItemUpdated } from '@/services/notificationService';
 
 export type FutureMessage = {
   id: string;
@@ -19,16 +19,15 @@ export type FutureMessage = {
 export type LegacyVaultItem = {
   id: string;
   title: string;
-  type: VaultItemType; // Changed from string to VaultItemType
+  type: VaultItemType;
   preview: string;
   document_url: string;
   encryptionStatus: boolean;
   createdAt: string;
-  created_at: string; // Added to match the type in tank/types.ts
+  created_at: string;
   user_id?: string;
 };
 
-// Get all future messages for the current user
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -49,7 +48,6 @@ export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   }
 };
 
-// Get a single future message by ID
 export const getFutureMessage = async (messageId: string): Promise<FutureMessage | null> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -71,7 +69,6 @@ export const getFutureMessage = async (messageId: string): Promise<FutureMessage
   }
 };
 
-// Create a new future message
 export const createFutureMessage = async (message: Omit<FutureMessage, 'id'>): Promise<FutureMessage | null> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -95,7 +92,6 @@ export const createFutureMessage = async (message: Omit<FutureMessage, 'id'>): P
   }
 };
 
-// Update an existing future message
 export const updateFutureMessage = async (
   messageId: string, 
   updates: Partial<FutureMessage>
@@ -121,7 +117,6 @@ export const updateFutureMessage = async (
   }
 };
 
-// Delete a future message
 export const deleteFutureMessage = async (messageId: string): Promise<boolean> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -142,7 +137,6 @@ export const deleteFutureMessage = async (messageId: string): Promise<boolean> =
   }
 };
 
-// Update message content in storage
 export const updateMessageContent = async (messageId: string, content: string): Promise<boolean> => {
   try {
     console.log(`Updating content for message ${messageId}`);
@@ -158,7 +152,6 @@ export const updateMessageContent = async (messageId: string, content: string): 
   }
 };
 
-// Get all legacy vault items for the current user
 export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -175,7 +168,7 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
     return data.map(item => ({
       id: item.id,
       title: item.title,
-      type: (item.category || 'story') as VaultItemType, // Cast to VaultItemType
+      type: (item.category || 'story') as VaultItemType,
       preview: item.preview || '',
       document_url: item.document_url,
       encryptionStatus: item.is_encrypted || false,
@@ -189,7 +182,6 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
   }
 };
 
-// Get a single legacy vault item
 export const getLegacyVaultItem = async (itemId: string): Promise<LegacyVaultItem | null> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -207,7 +199,7 @@ export const getLegacyVaultItem = async (itemId: string): Promise<LegacyVaultIte
     return {
       id: data.id,
       title: data.title,
-      type: (data.category || 'story') as VaultItemType, // Cast to VaultItemType
+      type: (data.category || 'story') as VaultItemType,
       preview: data.preview || '',
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
@@ -221,7 +213,6 @@ export const getLegacyVaultItem = async (itemId: string): Promise<LegacyVaultIte
   }
 };
 
-// Create a new legacy vault item
 export const createLegacyVaultItem = async (
   item: Omit<LegacyVaultItem, 'id' | 'createdAt' | 'created_at' | 'user_id'>
 ): Promise<LegacyVaultItem | null> => {
@@ -244,10 +235,12 @@ export const createLegacyVaultItem = async (
       
     if (error) throw error;
     
+    await notifyVaultItemAdded(item.type.toString(), item.title);
+    
     return {
       id: data.id,
       title: data.title,
-      type: (data.category || 'story') as VaultItemType, // Cast to VaultItemType
+      type: (data.category || 'story') as VaultItemType,
       preview: data.preview || '',
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
@@ -261,7 +254,6 @@ export const createLegacyVaultItem = async (
   }
 };
 
-// Update a legacy vault item
 export const updateLegacyVaultItem = async (
   itemId: string,
   updates: Partial<LegacyVaultItem>
@@ -287,10 +279,12 @@ export const updateLegacyVaultItem = async (
       
     if (error) throw error;
     
+    await notifyVaultItemUpdated(data.category || 'item', data.title);
+    
     return {
       id: data.id,
       title: data.title,
-      type: (data.category || 'story') as VaultItemType, // Cast to VaultItemType
+      type: (data.category || 'story') as VaultItemType,
       preview: data.preview || '',
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
@@ -304,7 +298,6 @@ export const updateLegacyVaultItem = async (
   }
 };
 
-// Delete a legacy vault item
 export const deleteLegacyVaultItem = async (itemId: string): Promise<boolean> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -325,7 +318,6 @@ export const deleteLegacyVaultItem = async (itemId: string): Promise<boolean> =>
   }
 };
 
-// Toggle encryption status of an item
 export const toggleItemEncryption = async (
   itemId: string,
   encryptionStatus: boolean

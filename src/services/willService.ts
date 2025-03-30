@@ -1,4 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
+import { notifyWillCreated, notifyWillUpdated } from '@/services/notificationService';
 
 export type Will = {
   id: string;
@@ -72,6 +74,9 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       
     if (error) throw error;
     
+    // Create a notification for the new will
+    await notifyWillCreated(data.title);
+    
     return data;
   } catch (error) {
     console.error('Error creating will:', error);
@@ -94,6 +99,9 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
       .single();
       
     if (error) throw error;
+    
+    // Create a notification for the updated will
+    await notifyWillUpdated(data.title);
     
     return data;
   } catch (error) {

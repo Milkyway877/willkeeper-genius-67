@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { notifyProfileUpdated } from '@/services/notificationService';
 
 export type UserProfile = {
   id: string;
@@ -8,6 +8,8 @@ export type UserProfile = {
   created_at?: string;
   updated_at?: string;
   activation_complete?: boolean;
+  email?: string;
+  email_verified?: boolean;
 };
 
 export type UserSettings = {
@@ -33,7 +35,12 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       
     if (error) throw error;
     
-    return data;
+    // Add email from auth.user
+    return {
+      ...data,
+      email: user.user.email,
+      email_verified: user.user.email_confirmed_at !== null
+    };
   } catch (error) {
     console.error('Error fetching user profile:', error);
     return null;
@@ -46,16 +53,31 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
+    // Don't include email or email_verified in the update as they're managed by Auth
+    const { email, email_verified, ...dbUpdates } = updates;
+    
     const { data, error } = await supabase
       .from('user_profiles')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', user.user.id)
       .select()
       .single();
       
     if (error) throw error;
     
-    return data;
+    // Create a notification for the profile update
+    const updateField = updates.full_name ? 'profile' 
+      : updates.avatar_url ? 'avatar' 
+      : 'profile information';
+    
+    await notifyProfileUpdated(updateField);
+    
+    // Add email from auth.user
+    return {
+      ...data,
+      email: user.user.email,
+      email_verified: user.user.email_confirmed_at !== null
+    };
   } catch (error) {
     console.error('Error updating user profile:', error);
     return null;

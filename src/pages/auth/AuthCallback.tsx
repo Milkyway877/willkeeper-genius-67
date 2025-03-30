@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { createWelcomeNotification, createSystemNotification } from '@/services/notificationService';
+import { createWelcomeNotificationPack } from '@/services/notificationService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -35,32 +34,6 @@ export default function AuthCallback() {
   }, [isVerified, navigate]);
 
   useEffect(() => {
-    const createWelcomeNotifications = async () => {
-      try {
-        console.log("Creating welcome notifications for new user");
-        
-        // Send welcome notification
-        await createWelcomeNotification();
-        
-        // Send getting started instructions
-        await createSystemNotification('info', {
-          title: "Getting Started with WillTank",
-          description: "Follow our quick guide to set up your account and create your first will."
-        });
-        
-        // Send a security reminder
-        await createSystemNotification('security', {
-          title: "Secure Your Account",
-          description: "For maximum security, we recommend enabling two-factor authentication in settings."
-        });
-        
-        return true;
-      } catch (notifError) {
-        console.error("Error creating welcome notifications:", notifError);
-        return false;
-      }
-    };
-
     const handleEmailVerification = async () => {
       try {
         // Check if this is coming from an email verification link
@@ -75,8 +48,8 @@ export default function AuthCallback() {
 
         // If session exists, the email has been verified
         if (data?.session) {
-          // Create notifications for the user
-          const notificationsCreated = await createWelcomeNotifications();
+          // Create welcome notifications pack for the user
+          const notificationsCreated = await createWelcomeNotificationPack();
           
           if (notificationsCreated) {
             console.log("Welcome notifications created successfully");
@@ -110,8 +83,8 @@ export default function AuthCallback() {
               return;
             }
             
-            // Create notifications for the user
-            const notificationsCreated = await createWelcomeNotifications();
+            // Create welcome notifications pack for the user
+            const notificationsCreated = await createWelcomeNotificationPack();
             
             if (notificationsCreated) {
               console.log("Welcome notifications created successfully");
