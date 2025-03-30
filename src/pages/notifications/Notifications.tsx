@@ -3,7 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -146,7 +146,7 @@ export default function Notifications() {
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
       toast.error("Error", {
-        description: "Failed to mark all notifications as read. Please try again."
+        description: "Failed to mark all notifications as read. Please try again"
       });
     }
   };

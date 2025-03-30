@@ -70,81 +70,83 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <NotificationsProvider>
-        <Toaster />
-        <FloatingAssistant />
-        <Router>
-          <AnimatePresence mode="wait">
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Home />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/blog" element={<Blog />} />
-              <Route path="/blog/:id" element={<BlogArticle />} />
-              <Route path="/help" element={<Help />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-              <Route path="/security" element={<Security />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/business" element={<Business />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/cookies" element={<Cookies />} />
-              
-              {/* Auth routes - using our new secure components */}
-              <Route path="/auth/signin" element={<SecureSignIn />} />
-              <Route path="/auth/signup" element={<SecureSignUp />} />
-              <Route path="/auth/forgot-password" element={<SecureRecover />} />
-              <Route path="/auth/reset-password" element={<AuthResetPassword />} />
-              <Route path="/auth/activate" element={<AccountActivation />} />
-              <Route path="/auth/verify-email" element={<EmailVerification />} />
-              <Route path="/auth/verification-banner" element={<VerifyEmailBanner />} />
-              
-              {/* Dashboard routes */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/will" element={<WillDashboard />} />
-              <Route path="/will/:id" element={<WillEditor />} />
-              <Route path="/templates" element={<WillTemplates />} />
-              <Route path="/tank" element={<WillTank />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/settings/profile" element={<Profile />} />
-              <Route path="/settings/death-verification" element={<DeathVerification />} />
-              <Route path="/activity" element={<Activity />} />
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <NotificationsProvider>
+          <Toaster />
+          <FloatingAssistant />
+          <Router>
+            <AnimatePresence mode="wait">
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Home />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:id" element={<BlogArticle />} />
+                <Route path="/help" element={<Help />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/security" element={<Security />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/business" element={<Business />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/cookies" element={<Cookies />} />
+                
+                {/* Auth routes - using our new secure components */}
+                <Route path="/auth/signin" element={<SecureSignIn />} />
+                <Route path="/auth/signup" element={<SecureSignUp />} />
+                <Route path="/auth/forgot-password" element={<SecureRecover />} />
+                <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+                <Route path="/auth/activate" element={<AccountActivation />} />
+                <Route path="/auth/verify-email" element={<EmailVerification />} />
+                <Route path="/auth/verification-banner" element={<VerifyEmailBanner />} />
+                
+                {/* Dashboard routes */}
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/dashboard/will" element={<WillDashboard />} />
+                <Route path="/will/:id" element={<WillEditor />} />
+                <Route path="/templates" element={<WillTemplates />} />
+                <Route path="/tank" element={<WillTank />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/settings/profile" element={<Profile />} />
+                <Route path="/settings/death-verification" element={<DeathVerification />} />
+                <Route path="/activity" element={<Activity />} />
 
-              {/* Routes for sidebar links */}
-              <Route path="/pages/encryption/Encryption" element={<Encryption />} />
-              <Route path="/pages/executors/Executors" element={<Executors />} />
-              <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
-              <Route path="/pages/ai/AIAssistantPage" element={<AIAssistantPage />} />
-              <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
-              <Route path="/billing" element={<Billing />} />
-              <Route path="/pages/billing/Billing" element={<Billing />} />
-              <Route path="/pages/notifications/Notifications" element={<Notifications />} />
+                {/* Routes for sidebar links */}
+                <Route path="/pages/encryption/Encryption" element={<Encryption />} />
+                <Route path="/pages/executors/Executors" element={<Executors />} />
+                <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
+                <Route path="/pages/ai/AIAssistantPage" element={<AIAssistantPage />} />
+                <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+                <Route path="/billing" element={<Billing />} />
+                <Route path="/pages/billing/Billing" element={<Billing />} />
+                <Route path="/pages/notifications/Notifications" element={<Notifications />} />
 
-              {/* Corporate routes */}
-              <Route path="/corporate" element={<Corporate />} />
-              <Route path="/corporate/documentation" element={<Documentation />} />
-              
-              {/* Documentation sub-pages */}
-              <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
-              <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
-              <Route path="/corporate/documentation/api" element={<API />} />
-              
-              {/* Tank routes */}
-              <Route path="/tank" element={<Tank />} />
-              <Route path="/tank/create" element={<TankCreation />} />
-              <Route path="/tank/create-message" element={<TankMessageCreation />} />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnimatePresence>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </Router>
-      </NotificationsProvider>
-    </QueryClientProvider>
+                {/* Corporate routes */}
+                <Route path="/corporate" element={<Corporate />} />
+                <Route path="/corporate/documentation" element={<Documentation />} />
+                
+                {/* Documentation sub-pages */}
+                <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
+                <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
+                <Route path="/corporate/documentation/api" element={<API />} />
+                
+                {/* Tank routes */}
+                <Route path="/tank" element={<Tank />} />
+                <Route path="/tank/create" element={<TankCreation />} />
+                <Route path="/tank/create-message" element={<TankMessageCreation />} />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AnimatePresence>
+            <ReactQueryDevtools initialIsOpen={false} />
+          </Router>
+        </NotificationsProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
   );
 }
 
