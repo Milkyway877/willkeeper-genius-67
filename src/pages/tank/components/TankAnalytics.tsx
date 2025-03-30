@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,13 +34,13 @@ type SecurityEvent = {
 
 const getTypeIcon = (type: MessageType) => {
   switch (type) {
-    case 'letter':
+    case MessageType.letter:
       return <FileText size={16} className="text-blue-500" />;
-    case 'video':
+    case MessageType.video:
       return <Video size={16} className="text-red-500" />;
-    case 'audio':
+    case MessageType.audio:
       return <FileAudio size={16} className="text-purple-500" />;
-    case 'document':
+    case MessageType.document:
       return <File size={16} className="text-green-500" />;
     default:
       return <FileText size={16} />;

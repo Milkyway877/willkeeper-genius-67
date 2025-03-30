@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Calendar, CheckCircle, Shield, Zap, Building, Star, Users, Loader } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { BillingPeriod, PlanDetails, SubscriptionPlan } from '../tank/types';
@@ -27,7 +26,6 @@ export default function Billing() {
   const canceled = queryParams.get('canceled');
   const sessionId = queryParams.get('session_id');
 
-  // Fetch subscription data on component mount
   useEffect(() => {
     async function fetchSubscription() {
       try {
@@ -61,7 +59,6 @@ export default function Billing() {
     fetchSubscription();
   }, []);
 
-  // Handle redirect from Stripe
   useEffect(() => {
     if (success === 'true') {
       toast.success("Payment successful!", {
@@ -70,7 +67,6 @@ export default function Billing() {
       
       navigate('/billing', { replace: true });
       
-      // Refresh subscription data
       setIsLoadingSubscription(true);
       setTimeout(async () => {
         try {
@@ -97,7 +93,7 @@ export default function Billing() {
         } finally {
           setIsLoadingSubscription(false);
         }
-      }, 2000); // Delay to allow webhook processing
+      }, 2000);
     } else if (canceled === 'true') {
       toast.error("Payment canceled", {
         description: "You have canceled the payment process.",
@@ -108,6 +104,23 @@ export default function Billing() {
   }, [success, canceled, navigate]);
 
   const plans: Record<SubscriptionPlan, PlanDetails> = {
+    free: {
+      name: 'Free',
+      icon: <CheckCircle className="h-6 w-6" />,
+      price: {
+        monthly: '0',
+        yearly: '0',
+        lifetime: '0'
+      },
+      features: [
+        'Basic will template',
+        '1 future message',
+        'Basic encryption',
+        'Email support',
+        '1GB document storage'
+      ],
+      description: 'Get started with basic estate planning'
+    },
     starter: {
       name: 'Starter',
       icon: <Zap className="h-6 w-6" />,
@@ -182,7 +195,8 @@ export default function Billing() {
         'Custom AI model training',
         'Multi-team administration'
       ],
-      description: 'Contact us for custom enterprise solutions'
+      description: 'Contact us for custom enterprise solutions',
+      isEnterprise: true
     }
   };
 
@@ -193,7 +207,6 @@ export default function Billing() {
       const result = await createCheckoutSession(plan, billingPeriod);
       
       if (result.status === 'success' && result.url) {
-        // Redirect to Stripe Checkout
         window.location.href = result.url;
       } else {
         toast.error('Payment processing error', {
