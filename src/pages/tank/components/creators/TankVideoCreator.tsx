@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,32 +73,6 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     }
   }, [videoBlob, onContentChange]);
   
-  const initCamera = async () => {
-    try {
-      setIsPreparing(true);
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
-      
-      streamRef.current = mediaStream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-      
-      setIsCameraReady(true);
-      setIsPreparing(false);
-    } catch (err) {
-      console.error('Error accessing camera:', err);
-      toast({
-        title: "Camera Access Error",
-        description: "Unable to access your camera. Please check permissions."
-      });
-      setIsPreparing(false);
-    }
-  };
-  
   useEffect(() => {
     if (activeTab === 'record') {
       initCamera();
@@ -114,6 +87,50 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       }
     };
   }, [activeTab]);
+  
+  const initCamera = async () => {
+    try {
+      setIsPreparing(true);
+      
+      const constraints = {
+        video: {
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          facingMode: 'user'
+        }, 
+        audio: true
+      };
+      
+      let mediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        console.warn('Failed with ideal constraints, trying fallback:', err);
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: true 
+        });
+      }
+      
+      streamRef.current = mediaStream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.error("Error playing video:", e));
+          setIsCameraReady(true);
+          setIsPreparing(false);
+        };
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      toast({
+        title: "Camera Access Error",
+        description: "Unable to access your camera. Please check permissions."
+      });
+      setIsPreparing(false);
+    }
+  };
   
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
@@ -131,40 +148,91 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     if (!streamRef.current) return;
     
     chunksRef.current = [];
-    const mediaRecorder = new MediaRecorder(streamRef.current);
     
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data);
-      }
-    };
-    
-    mediaRecorder.onstop = () => {
-      const recordedBlob = new Blob(chunksRef.current, { type: 'video/webm' });
-      const videoURL = URL.createObjectURL(recordedBlob);
-      setVideoBlob(recordedBlob);
-      setVideoPreviewUrl(videoURL);
+    try {
+      let options;
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4'
+      ];
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-        videoRef.current.src = videoURL;
+      let mediaRecorder: MediaRecorder | null = null;
+      
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          options = { mimeType };
+          try {
+            mediaRecorder = new MediaRecorder(streamRef.current, options);
+            console.log(`Using MIME type: ${mimeType}`);
+            break;
+          } catch (e) {
+            console.warn(`Failed to create MediaRecorder with ${mimeType}`, e);
+          }
+        }
       }
-    };
-    
-    mediaRecorderRef.current = mediaRecorder;
-    mediaRecorder.start();
-    setIsRecording(true);
-    
-    // Start timer
-    setRecordingTime(0);
-    timerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1);
-    }, 1000);
-    
-    toast({
-      title: "Recording Started",
-      description: "You are now recording your video message."
-    });
+      
+      if (!mediaRecorder) {
+        console.log('Falling back to default recorder options');
+        mediaRecorder = new MediaRecorder(streamRef.current);
+      }
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        if (chunksRef.current.length === 0) {
+          toast({
+            title: "Recording Error",
+            description: "No video data was captured. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        const mimeType = mediaRecorder.mimeType || 'video/webm';
+        const recordedBlob = new Blob(chunksRef.current, { type: mimeType });
+        const videoURL = URL.createObjectURL(recordedBlob);
+        setVideoBlob(recordedBlob);
+        setVideoPreviewUrl(videoURL);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+          videoRef.current.src = videoURL;
+        }
+        
+        onContentChange('Video recorded and ready for delivery', videoURL);
+        
+        toast({
+          title: "Recording Complete",
+          description: "Your video has been successfully recorded."
+        });
+      };
+      
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+      toast({
+        title: "Recording Started",
+        description: "You are now recording your video message."
+      });
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      toast({
+        title: "Recording Error",
+        description: "There was a problem starting the recording. Please try again."
+      });
+    }
   };
   
   const stopRecording = () => {
@@ -172,7 +240,6 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       
-      // Stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -214,7 +281,6 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Check if file is a video
     if (!file.type.startsWith('video/')) {
       toast({
         title: "Invalid File",

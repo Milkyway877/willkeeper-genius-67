@@ -61,6 +61,8 @@ export const getUserWills = async (): Promise<Will[]> => {
 // Create a new will
 export const createWill = async (will: Omit<Will, 'id'>) => {
   try {
+    console.log("Creating will with data:", will);
+    
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
@@ -68,12 +70,16 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       .from('wills')
       .insert({
         ...will,
-        user_id: user.user.id
+        user_id: user.user.id,
+        status: will.status || 'Draft' // Ensure status is a valid value
       })
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error creating will:", error);
+      throw error;
+    }
     
     // Create a notification for the new will
     await notifyWillCreated(data.title);
@@ -83,7 +89,7 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       title: data.title,
       type: VaultItemType.will,
       preview: `Will document: ${data.title} (${data.status})`,
-      document_url: data.document_url,
+      document_url: data.document_url || '',
       encryptionStatus: false
     });
     
@@ -97,6 +103,8 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
 // Update an existing will
 export const updateWill = async (willId: string, updates: Partial<Will>) => {
   try {
+    console.log("Updating will with ID:", willId, "and updates:", updates);
+    
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
@@ -108,7 +116,10 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error updating will:", error);
+      throw error;
+    }
     
     // Create a notification for the updated will
     await notifyWillUpdated(data.title);
@@ -137,7 +148,7 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
           title: data.title,
           type: VaultItemType.will,
           preview: `Will document: ${data.title} (${data.status})`,
-          document_url: data.document_url,
+          document_url: data.document_url || '',
           encryptionStatus: false
         });
       }

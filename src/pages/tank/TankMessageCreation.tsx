@@ -114,27 +114,46 @@ export default function TankMessageCreation() {
     setIsCreatingMessage(true);
 
     try {
+      toast({
+        title: "Saving message",
+        description: "Your message is being saved...",
+      });
+
+      // Ensure we have valid data
       const newMessage = {
         title,
         recipient_name: recipientName,
         recipient_email: recipientEmail,
         message_type: messageType,
         preview: preview,
-        message_url: messageUrl,
+        message_url: messageUrl || '',
         status: 'Scheduled',
         delivery_date: date.toISOString()
       };
 
-      const createdMessage = await createFutureMessage(newMessage);
-
-      if (createdMessage) {
+      console.log("Saving message with data:", newMessage);
+      
+      // Use a try-catch to see what's going wrong
+      try {
+        const createdMessage = await createFutureMessage(newMessage);
+        console.log("Created message response:", createdMessage);
+        
+        if (!createdMessage) {
+          throw new Error("Failed to create message - no response");
+        }
+        
         toast({
           title: "Message created",
           description: "Your message has been scheduled successfully.",
         });
-        navigate('/tank');
-      } else {
-        throw new Error("Failed to create message");
+        
+        // Add a small delay before navigating to prevent any race conditions
+        setTimeout(() => {
+          navigate('/tank');
+        }, 500);
+      } catch (innerError) {
+        console.error("Inner error creating message:", innerError);
+        throw innerError;
       }
     } catch (error) {
       console.error("Error creating message:", error);

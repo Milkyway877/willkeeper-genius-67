@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -209,7 +208,13 @@ export default function WillCreation() {
   
   const handleCompleteWill = async () => {
     try {
-      // Save the will to the database
+      // Show loading state
+      toast({
+        title: "Saving your will",
+        description: "Please wait while we save your will...",
+      });
+
+      // Save the will to the database with proper error handling
       const newWill = await createWill({
         title: willTitle,
         status: 'active',
@@ -218,21 +223,28 @@ export default function WillCreation() {
         ai_generated: userResponses && Object.keys(userResponses).length > 0
       });
       
-      if (newWill) {
+      if (!newWill) {
+        throw new Error("Failed to create will");
+      }
+      
+      // We successfully created the will
+      if (typeof notifyWillUpdated === 'function') {
         await notifyWillUpdated({
           title: 'Will Created',
           description: `Your will "${willTitle}" has been created successfully.`
         });
-        
-        toast({
-          title: "Will Created Successfully",
-          description: "Your will has been saved and is now available in your dashboard.",
-          variant: "default"
-        });
-        
-        // Navigate to the will dashboard
-        navigate("/will");
       }
+      
+      toast({
+        title: "Will Created Successfully",
+        description: "Your will has been saved and is now available in your dashboard.",
+        variant: "default"
+      });
+      
+      // Navigate to the will dashboard
+      setTimeout(() => {
+        navigate("/will");
+      }, 500);
     } catch (error) {
       console.error('Error saving will:', error);
       toast({

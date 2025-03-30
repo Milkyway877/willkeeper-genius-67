@@ -34,14 +34,25 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       try {
         setIsPreparing(true);
         
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        const constraints = {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
             facingMode: 'user'
           }, 
-          audio: true 
-        });
+          audio: true
+        };
+        
+        let mediaStream;
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+          console.warn('Failed with ideal constraints, trying fallback:', err);
+          mediaStream = await navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: true 
+          });
+        }
         
         setStream(mediaStream);
         
@@ -102,16 +113,33 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     recordedChunksRef.current = [];
     
     try {
-      const options = { 
-        mimeType: 'video/webm;codecs=vp9,opus',
-        videoBitsPerSecond: 2500000
-      };
+      let options;
+      const mimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4'
+      ];
       
-      let mediaRecorder: MediaRecorder;
+      let mediaRecorder: MediaRecorder | null = null;
       
-      try {
-        mediaRecorder = new MediaRecorder(stream, options);
-      } catch (e) {
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          options = { 
+            mimeType,
+            videoBitsPerSecond: 2500000
+          };
+          try {
+            mediaRecorder = new MediaRecorder(stream, options);
+            console.log(`Using MIME type: ${mimeType}`);
+            break;
+          } catch (e) {
+            console.warn(`Failed to create MediaRecorder with ${mimeType}`, e);
+          }
+        }
+      }
+      
+      if (!mediaRecorder) {
         console.log('Falling back to default recorder options');
         mediaRecorder = new MediaRecorder(stream);
       }
@@ -133,7 +161,8 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           return;
         }
         
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const mimeType = mediaRecorder.mimeType || 'video/webm';
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
         const url = URL.createObjectURL(blob);
         
         setVideoUrl(url);
@@ -273,9 +302,11 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const handleUseRecording = () => {
     if (!videoUrl || !videoRef.current) return;
     
-    fetch(videoUrl)
-      .then(res => res.blob())
-      .then(blob => {
+    try {
+      if (recordedChunksRef.current.length > 0) {
+        const mimeType = mediaRecorderRef.current?.mimeType || 'video/webm';
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        
         addVideoToLegacyVault(blob);
         onRecordingComplete(blob);
         
@@ -283,15 +314,35 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           title: "Video Saved",
           description: "Your video testament has been successfully saved to your legacy vault."
         });
-      })
-      .catch(err => {
-        console.error('Error getting video blob:', err);
-        toast({
-          title: "Error Saving Video",
-          description: "Could not save the recorded video. Please try again.",
-          variant: "destructive"
-        });
+      } else {
+        fetch(videoUrl)
+          .then(res => res.blob())
+          .then(blob => {
+            addVideoToLegacyVault(blob);
+            onRecordingComplete(blob);
+            
+            toast({
+              title: "Video Saved",
+              description: "Your video testament has been successfully saved to your legacy vault."
+            });
+          })
+          .catch(err => {
+            console.error('Error getting video blob:', err);
+            toast({
+              title: "Error Saving Video",
+              description: "Could not save the recorded video. Please try again.",
+              variant: "destructive"
+            });
+          });
+      }
+    } catch (err) {
+      console.error('Error saving video:', err);
+      toast({
+        title: "Error Saving Video",
+        description: "Could not save the recorded video. Please try again.",
+        variant: "destructive"
       });
+    }
   };
 
   return (
