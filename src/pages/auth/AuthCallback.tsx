@@ -35,6 +35,32 @@ export default function AuthCallback() {
   }, [isVerified, navigate]);
 
   useEffect(() => {
+    const createWelcomeNotifications = async () => {
+      try {
+        console.log("Creating welcome notifications for new user");
+        
+        // Send welcome notification
+        await createWelcomeNotification();
+        
+        // Send getting started instructions
+        await createSystemNotification('info', {
+          title: "Getting Started with WillTank",
+          description: "Follow our quick guide to set up your account and create your first will."
+        });
+        
+        // Send a security reminder
+        await createSystemNotification('security', {
+          title: "Secure Your Account",
+          description: "For maximum security, we recommend enabling two-factor authentication in settings."
+        });
+        
+        return true;
+      } catch (notifError) {
+        console.error("Error creating welcome notifications:", notifError);
+        return false;
+      }
+    };
+
     const handleEmailVerification = async () => {
       try {
         // Check if this is coming from an email verification link
@@ -49,25 +75,11 @@ export default function AuthCallback() {
 
         // If session exists, the email has been verified
         if (data?.session) {
-          // Create a welcome notification for new users
-          try {
-            // Send welcome notification
-            await createWelcomeNotification();
-            
-            // Send getting started instructions
-            await createSystemNotification('info', {
-              title: "Getting Started with WillTank",
-              description: "Follow our quick guide to set up your account and create your first will."
-            });
-            
-            // Send a security reminder
-            await createSystemNotification('security', {
-              title: "Secure Your Account",
-              description: "For maximum security, we recommend enabling two-factor authentication in settings."
-            });
-          } catch (notifError) {
-            console.error("Error creating welcome notifications:", notifError);
-            // Don't block the flow if notification creation fails
+          // Create notifications for the user
+          const notificationsCreated = await createWelcomeNotifications();
+          
+          if (notificationsCreated) {
+            console.log("Welcome notifications created successfully");
           }
           
           toast({
@@ -98,25 +110,11 @@ export default function AuthCallback() {
               return;
             }
             
-            // Create a welcome notification for new users
-            try {
-              // Send welcome notification
-              await createWelcomeNotification();
-              
-              // Send getting started instructions
-              await createSystemNotification('info', {
-                title: "Getting Started with WillTank",
-                description: "Follow our quick guide to set up your account and create your first will."
-              });
-              
-              // Send a security reminder
-              await createSystemNotification('security', {
-                title: "Secure Your Account",
-                description: "For maximum security, we recommend enabling two-factor authentication in settings."
-              });
-            } catch (notifError) {
-              console.error("Error creating welcome notifications:", notifError);
-              // Don't block the flow if notification creation fails
+            // Create notifications for the user
+            const notificationsCreated = await createWelcomeNotifications();
+            
+            if (notificationsCreated) {
+              console.log("Welcome notifications created successfully");
             }
             
             toast({

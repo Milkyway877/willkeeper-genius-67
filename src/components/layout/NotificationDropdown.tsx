@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BellRing, Check, X } from 'lucide-react';
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
 
 // Default notification values when context is not available
 const defaultNotificationsState = {
@@ -24,6 +25,7 @@ const defaultNotificationsState = {
 
 export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
+  const [lastFetched, setLastFetched] = useState(0);
   
   // Try to use the notifications context, but gracefully handle cases where it might not be available
   let notificationsState;
@@ -35,11 +37,37 @@ export function NotificationDropdown() {
     notificationsState = defaultNotificationsState;
   }
   
-  const { notifications, markAsRead, unreadCount } = notificationsState;
+  const { notifications, markAsRead, unreadCount, fetchNotifications, loading } = notificationsState;
   
-  const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
+  // Refresh notifications when dropdown is opened
+  useEffect(() => {
+    if (isOpen && fetchNotifications && Date.now() - lastFetched > 30000) {
+      // Only fetch if it's been more than 30 seconds since last fetch
+      fetchNotifications();
+      setLastFetched(Date.now());
+    }
+  }, [isOpen, fetchNotifications, lastFetched]);
+  
+  const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    markAsRead(id);
+    try {
+      const success = await markAsRead(id);
+      if (!success) {
+        console.error("Failed to mark notification as read");
+        toast({
+          title: "Error",
+          description: "Failed to mark notification as read. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const toggleOpen = () => {
@@ -70,7 +98,14 @@ export function NotificationDropdown() {
           </Link>
         </div>
         
-        {notifications && notifications.length > 0 ? (
+        {loading ? (
+          <div className="py-6 px-4 text-center">
+            <div className="flex justify-center">
+              <BellRing className="h-8 w-8 text-gray-300 animate-pulse" />
+            </div>
+            <p className="text-gray-500 text-sm mt-2">Loading notifications...</p>
+          </div>
+        ) : notifications && notifications.length > 0 ? (
           <div className="divide-y divide-gray-100">
             <AnimatePresence>
               {notifications.slice(0, 5).map((notification) => (
@@ -93,6 +128,7 @@ export function NotificationDropdown() {
                         <button
                           onClick={(e) => handleMarkAsRead(notification.id, e)}
                           className="ml-1 text-gray-400 hover:text-gray-600"
+                          aria-label={notification.read ? "Notification already read" : "Mark as read"}
                         >
                           {notification.read ? (
                             <Check className="h-4 w-4" />

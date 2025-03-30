@@ -20,7 +20,7 @@ export function TwoFactorInput({
   const [otp, setOtp] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   
-  // Clear local error when external error prop changes
+  // Clear local error when external error prop changes or reset when the error is fixed
   useEffect(() => {
     setLocalError(error);
   }, [error]);
@@ -41,8 +41,7 @@ export function TwoFactorInput({
     
     // Ensure only digits are entered
     if (value && !/^\d*$/.test(value)) {
-      setLocalError("Code must contain only digits");
-      return;
+      return; // Don't update if non-digits are entered
     }
     
     setOtp(value);
