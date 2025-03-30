@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { notifyWillCreated, notifyWillUpdated } from '@/services/notificationService';
 import { createLegacyVaultItem } from '@/services/tankService';
@@ -51,7 +52,7 @@ export const getUserWills = async (): Promise<Will[]> => {
       
     if (error) throw error;
     
-    return data;
+    return data || [];
   } catch (error) {
     console.error('Error fetching wills:', error);
     return [];
@@ -66,12 +67,16 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
+    // Validate status to ensure it matches the constraints in the database
+    const validStatuses = ['Draft', 'Active', 'Archived'];
+    const status = validStatuses.includes(will.status) ? will.status : 'Draft';
+    
     const { data, error } = await supabase
       .from('wills')
       .insert({
         ...will,
         user_id: user.user.id,
-        status: will.status || 'Draft' // Ensure status is a valid value
+        status: status
       })
       .select()
       .single();
@@ -81,17 +86,27 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       throw error;
     }
     
-    // Create a notification for the new will
-    await notifyWillCreated(data.title);
+    try {
+      // Create a notification for the new will
+      await notifyWillCreated(data.title);
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Continue even if notification fails
+    }
     
-    // Add will to legacy vault for unified access
-    await createLegacyVaultItem({
-      title: data.title,
-      type: VaultItemType.will,
-      preview: `Will document: ${data.title} (${data.status})`,
-      document_url: data.document_url || '',
-      encryptionStatus: false
-    });
+    try {
+      // Add will to legacy vault for unified access
+      await createLegacyVaultItem({
+        title: data.title,
+        type: VaultItemType.will,
+        preview: `Will document: ${data.title} (${data.status})`,
+        document_url: data.document_url || '',
+        encryptionStatus: false
+      });
+    } catch (vaultError) {
+      console.error('Error adding will to legacy vault:', vaultError);
+      // Continue even if vault addition fails
+    }
     
     return data;
   } catch (error) {
@@ -108,6 +123,14 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user?.id) throw new Error('Not authenticated');
     
+    // Validate status to ensure it matches the constraints in the database
+    if (updates.status) {
+      const validStatuses = ['Draft', 'Active', 'Archived'];
+      if (!validStatuses.includes(updates.status)) {
+        updates.status = 'Draft';
+      }
+    }
+    
     const { data, error } = await supabase
       .from('wills')
       .update(updates)
@@ -121,37 +144,47 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
       throw error;
     }
     
-    // Create a notification for the updated will
-    await notifyWillUpdated(data.title);
+    try {
+      // Create a notification for the updated will
+      await notifyWillUpdated(data.title);
+    } catch (notificationError) {
+      console.error('Error creating update notification:', notificationError);
+      // Continue even if notification fails
+    }
     
-    // Update the item in legacy vault if title or status changed
-    if (updates.title || updates.status) {
-      // First check if this will already exists in the vault
-      const { data: vaultItems } = await supabase
-        .from('legacy_vault')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .ilike('preview', `Will document: ${data.title}%`);
-        
-      if (vaultItems && vaultItems.length > 0) {
-        // Update existing entry
-        await supabase
+    try {
+      // Update the item in legacy vault if title or status changed
+      if (updates.title || updates.status) {
+        // First check if this will already exists in the vault
+        const { data: vaultItems } = await supabase
           .from('legacy_vault')
-          .update({
+          .select('*')
+          .eq('user_id', user.user.id)
+          .ilike('preview', `Will document: ${data.title}%`);
+          
+        if (vaultItems && vaultItems.length > 0) {
+          // Update existing entry
+          await supabase
+            .from('legacy_vault')
+            .update({
+              title: data.title,
+              preview: `Will document: ${data.title} (${data.status})`,
+            })
+            .eq('id', vaultItems[0].id);
+        } else {
+          // Create new entry if somehow it doesn't exist
+          await createLegacyVaultItem({
             title: data.title,
+            type: VaultItemType.will,
             preview: `Will document: ${data.title} (${data.status})`,
-          })
-          .eq('id', vaultItems[0].id);
-      } else {
-        // Create new entry if somehow it doesn't exist
-        await createLegacyVaultItem({
-          title: data.title,
-          type: VaultItemType.will,
-          preview: `Will document: ${data.title} (${data.status})`,
-          document_url: data.document_url || '',
-          encryptionStatus: false
-        });
+            document_url: data.document_url || '',
+            encryptionStatus: false
+          });
+        }
       }
+    } catch (vaultError) {
+      console.error('Error updating legacy vault item:', vaultError);
+      // Continue even if vault update fails
     }
     
     return data;
@@ -180,17 +213,22 @@ export const deleteWill = async (willId: string) => {
     
     // Also delete from legacy vault if it exists
     if (will) {
-      const { data: vaultItems } = await supabase
-        .from('legacy_vault')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .ilike('preview', `Will document: ${will.title}%`);
-        
-      if (vaultItems && vaultItems.length > 0) {
-        await supabase
+      try {
+        const { data: vaultItems } = await supabase
           .from('legacy_vault')
-          .delete()
-          .eq('id', vaultItems[0].id);
+          .select('*')
+          .eq('user_id', user.user.id)
+          .ilike('preview', `Will document: ${will.title}%`);
+          
+        if (vaultItems && vaultItems.length > 0) {
+          await supabase
+            .from('legacy_vault')
+            .delete()
+            .eq('id', vaultItems[0].id);
+        }
+      } catch (vaultError) {
+        console.error('Error deleting legacy vault item:', vaultError);
+        // Continue even if vault deletion fails
       }
     }
     

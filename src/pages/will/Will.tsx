@@ -22,6 +22,7 @@ export default function Will() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [currentWill, setCurrentWill] = useState<any>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -32,6 +33,7 @@ export default function Will() {
     const fetchWillData = async () => {
       try {
         setIsLoading(true);
+        setSaveError(null);
         
         // If ID is provided in the URL, fetch that specific will
         if (id) {
@@ -161,25 +163,40 @@ Witnesses: [Witness 1], [Witness 2]
   const handleSave = async () => {
     try {
       setIsSaving(true);
+      setSaveError(null);
       
       if (!currentWill) {
         // Create a new will if none exists
         console.log('Creating new will');
+        
+        const { data: user } = await supabase.auth.getUser();
+        if (!user?.user?.id) {
+          throw new Error('Not authenticated');
+        }
+        
         const { data, error } = await supabase
           .from('wills')
           .insert({
             title: willTitle,
             document_url: 'placeholder_url', // In a real app, you'd upload the document
-            status: 'Active'
+            status: 'Draft',
+            user_id: user.user.id
           })
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating will:", error);
+          throw error;
+        }
+        
         setCurrentWill(data);
         
         // Save the will content
-        await saveWillContent(data.id, willContent);
+        const contentSaved = await saveWillContent(data.id, willContent);
+        if (!contentSaved) {
+          throw new Error("Failed to save will content");
+        }
       } else {
         // Update existing will
         console.log('Updating existing will:', currentWill.id);
@@ -187,17 +204,27 @@ Witnesses: [Witness 1], [Witness 2]
           updated_at: new Date().toISOString()
         });
         
-        if (!updated) throw new Error("Failed to update will");
+        if (!updated) {
+          throw new Error("Failed to update will");
+        }
         
         // Save the will content
-        await saveWillContent(currentWill.id, willContent);
+        const contentSaved = await saveWillContent(currentWill.id, willContent);
+        if (!contentSaved) {
+          throw new Error("Failed to save will content");
+        }
       }
       
       setIsEditing(false);
       const now = new Date();
       setLastSaved(format(now, 'h:mm a'));
       
-      await notifyWillUpdated(willTitle);
+      try {
+        await notifyWillUpdated(willTitle);
+      } catch (notifyError) {
+        console.error("Error creating notification:", notifyError);
+        // Continue even if notification fails
+      }
       
       toast({
         title: "Will saved",
@@ -205,6 +232,7 @@ Witnesses: [Witness 1], [Witness 2]
       });
     } catch (error) {
       console.error("Error saving will:", error);
+      setSaveError(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       toast({
         title: "Error saving will",
         description: "Could not save your will document. Please try again later.",
@@ -264,24 +292,33 @@ Witnesses: [Witness 1], [Witness 2]
       </html>
     `;
     
-    const blob = new Blob([willHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${willTitle.replace(/\s+/g, '_')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-    
-    toast({
-      title: "Download Started",
-      description: "Your will document is being downloaded."
-    });
+    try {
+      const blob = new Blob([willHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${willTitle.replace(/\s+/g, '_')}.html`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast({
+        title: "Download Started",
+        description: "Your will document is being downloaded."
+      });
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      toast({
+        title: "Download Error",
+        description: "There was a problem downloading your document.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (isLoading) {
@@ -354,6 +391,13 @@ Witnesses: [Witness 1], [Witness 2]
             </Button>
           </div>
         </div>
+        
+        {saveError && (
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md mb-6">
+            <p className="font-medium">Error saving will</p>
+            <p className="text-sm">{saveError}</p>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
