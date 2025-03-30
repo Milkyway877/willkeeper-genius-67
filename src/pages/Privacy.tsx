@@ -26,7 +26,7 @@ export default function Privacy() {
             >
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Privacy Policy</h1>
               <p className="text-lg text-gray-600">
-                We take your privacy seriously. This policy explains how we collect, use, and protect your information.
+                WillTank is committed to protecting your privacy and personal data.
               </p>
               <p className="text-sm text-gray-500 mt-2">Last updated: June 1, 2023</p>
             </motion.div>
@@ -37,99 +37,71 @@ export default function Privacy() {
               animate="visible"
               variants={fadeIn}
             >
-              <h2>1. Information We Collect</h2>
+              <h2>1. Introduction</h2>
               <p>
-                We collect several types of information from and about users of our Services, including:
+                WillTank ("we", "our", "us") respects your privacy and is committed to protecting your personal data. This privacy policy will inform you how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.
+              </p>
+              <p>
+                This privacy policy aims to give you information on how WillTank collects and processes your personal data through your use of this website, including any data you may provide through this website when you sign up for our service, purchase a subscription, or use our estate planning tools.
+              </p>
+
+              <h2>2. Data We Collect</h2>
+              <p>
+                We may collect, use, store and transfer different kinds of personal data about you which we have grouped together as follows:
               </p>
               <ul>
-                <li>Personal identifiers (name, email address, phone number)</li>
-                <li>Account credentials</li>
-                <li>Content of your documents and communications</li>
-                <li>Usage data and analytics</li>
-                <li>Device and browser information</li>
+                <li><strong>Identity Data</strong> includes first name, last name, username or similar identifier, date of birth.</li>
+                <li><strong>Contact Data</strong> includes email address, telephone numbers, and physical address.</li>
+                <li><strong>Financial Data</strong> includes payment card details (stored securely through our payment processor).</li>
+                <li><strong>Transaction Data</strong> includes details about payments to and from you and other details of products and services you have purchased from us.</li>
+                <li><strong>Technical Data</strong> includes internet protocol (IP) address, your login data, browser type and version, time zone setting and location, browser plug-in types and versions, operating system and platform, and other technology on the devices you use to access this website.</li>
+                <li><strong>Profile Data</strong> includes your username and password, purchases or orders made by you, your preferences, feedback, and survey responses.</li>
+                <li><strong>Usage Data</strong> includes information about how you use our website, products, and services.</li>
+                <li><strong>Will and Estate Data</strong> includes information you provide to create your will and other estate planning documents.</li>
               </ul>
 
-              <h2>2. How We Use Your Information</h2>
+              <h2>3. How We Use Your Data</h2>
               <p>
-                We use the information we collect to:
+                We will only use your personal data when the law allows us to. Most commonly, we will use your personal data in the following circumstances:
               </p>
               <ul>
-                <li>Provide, maintain, and improve our Services</li>
-                <li>Process transactions and manage your account</li>
-                <li>Fulfill the purposes for which you provided the information</li>
-                <li>Send notifications and updates related to your account and documents</li>
-                <li>Respond to your requests and inquiries</li>
-                <li>Monitor and analyze usage patterns and trends</li>
-                <li>Protect against unauthorized access and legal liability</li>
+                <li>Where we need to perform the contract we are about to enter into or have entered into with you.</li>
+                <li>Where it is necessary for our legitimate interests (or those of a third party) and your interests and fundamental rights do not override those interests.</li>
+                <li>Where we need to comply with a legal obligation.</li>
+                <li>With your consent.</li>
               </ul>
 
-              <h2>3. Data Security</h2>
+              <h2>4. Data Security</h2>
               <p>
-                We implement robust security measures to protect your personal information, including:
+                We have put in place appropriate security measures to prevent your personal data from being accidentally lost, used, or accessed in an unauthorized way, altered, or disclosed. In addition, we limit access to your personal data to those employees, agents, contractors, and other third parties who have a business need to know. They will only process your personal data on our instructions, and they are subject to a duty of confidentiality.
+              </p>
+              <p>
+                We have put in place procedures to deal with any suspected personal data breach and will notify you and any applicable regulator of a breach where we are legally required to do so.
+              </p>
+
+              <h2>5. Data Retention</h2>
+              <p>
+                We will only retain your personal data for as long as reasonably necessary to fulfill the purposes we collected it for, including for the purposes of satisfying any legal, regulatory, tax, accounting, or reporting requirements. We may retain your personal data for a longer period in the event of a complaint or if we reasonably believe there is a prospect of litigation in respect to our relationship with you.
+              </p>
+
+              <h2>6. Your Legal Rights</h2>
+              <p>
+                Under certain circumstances, you have rights under data protection laws in relation to your personal data,
+                including the right to:
               </p>
               <ul>
-                <li>AES-256 bit encryption for all stored documents</li>
-                <li>TLS/SSL encryption for data transmission</li>
-                <li>Role-based access controls</li>
-                <li>Regular security audits and penetration testing</li>
-                <li>Secure data centers with physical safeguards</li>
-              </ul>
-              <p>
-                Despite our efforts, no method of transmission over the Internet or electronic storage is 100% secure. We cannot guarantee absolute security.
-              </p>
-
-              <h2>4. Data Sharing and Disclosure</h2>
-              <p>
-                We do not sell your personal information. We may share your information in the following circumstances:
-              </p>
-              <ul>
-                <li>With trusted service providers who help us operate our business</li>
-                <li>With individuals you explicitly designate as trustees, executors, or beneficiaries</li>
-                <li>To comply with legal obligations or enforce our agreements</li>
-                <li>In connection with a merger, acquisition, or sale of assets</li>
+                <li>Request access to your personal data</li>
+                <li>Request correction of your personal data</li>
+                <li>Request erasure of your personal data</li>
+                <li>Object to processing of your personal data</li>
+                <li>Request restriction of processing your personal data</li>
+                <li>Request transfer of your personal data</li>
+                <li>Right to withdraw consent</li>
               </ul>
 
-              <h2>5. Your Privacy Rights</h2>
+              <h2>7. Contact Us</h2>
               <p>
-                Depending on your location, you may have rights regarding your personal information, including:
-              </p>
-              <ul>
-                <li>Access to personal data we hold about you</li>
-                <li>Correction of inaccurate or incomplete data</li>
-                <li>Deletion of your data (subject to legal obligations)</li>
-                <li>Objection to or restriction of certain processing</li>
-                <li>Data portability</li>
-              </ul>
-              <p>
-                To exercise these rights, please <Link to="/contact" className="text-willtank-600 hover:text-willtank-700">contact us</Link>.
-              </p>
-
-              <h2>6. Cookies and Tracking Technologies</h2>
-              <p>
-                We use cookies and similar technologies to enhance your experience on our website. For more information, please see our <Link to="/cookies" className="text-willtank-600 hover:text-willtank-700">Cookie Policy</Link>.
-              </p>
-
-              <h2>7. Children's Privacy</h2>
-              <p>
-                Our Services are not intended for children under 18 years of age. We do not knowingly collect personal information from children under 18.
-              </p>
-
-              <h2>8. International Data Transfers</h2>
-              <p>
-                Your information may be transferred to, and processed in, countries other than the country in which you reside. These countries may have different data protection laws. When we transfer your information, we implement appropriate safeguards in accordance with applicable law, including the European Union's General Data Protection Regulation (GDPR).
-              </p>
-              <p>
-                For more information about our compliance with international data protection regulations, please see our <Link to="/gdpr" className="text-willtank-600 hover:text-willtank-700">GDPR Compliance</Link> page.
-              </p>
-
-              <h2>9. Changes to This Privacy Policy</h2>
-              <p>
-                We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.
-              </p>
-
-              <h2>10. Contact Us</h2>
-              <p>
-                If you have any questions about this Privacy Policy, please <Link to="/contact" className="text-willtank-600 hover:text-willtank-700">contact us</Link>.
+                If you have any questions about this privacy policy or our privacy practices, please <Link to="/contact" className="text-willtank-600 hover:text-willtank-700">contact us</Link>.
               </p>
             </motion.div>
           </div>

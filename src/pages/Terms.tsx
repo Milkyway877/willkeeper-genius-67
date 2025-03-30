@@ -26,7 +26,7 @@ export default function Terms() {
             >
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Terms of Service</h1>
               <p className="text-lg text-gray-600">
-                Please read these terms and conditions carefully before using WillTank's services.
+                Please read these terms and conditions carefully before using our service.
               </p>
               <p className="text-sm text-gray-500 mt-2">Last updated: June 1, 2023</p>
             </motion.div>
@@ -37,70 +37,73 @@ export default function Terms() {
               animate="visible"
               variants={fadeIn}
             >
-              <h2>1. Acceptance of Terms</h2>
+              <h2>1. Agreement to Terms</h2>
               <p>
-                By accessing or using WillTank's services, website, or application (collectively, the "Services"), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our Services.
+                By accessing or using the WillTank service, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.
               </p>
 
-              <h2>2. Description of Services</h2>
+              <h2>2. Use License</h2>
               <p>
-                WillTank provides an online platform for creating, storing, and managing legal documents related to estate planning, including wills, trusts, and advance directives. Our Services may include:
+                Permission is granted to temporarily access the materials (information or software) on WillTank's website for personal, non-commercial use only. This is the grant of a license, not a transfer of title, and under this license you may not:
               </p>
               <ul>
-                <li>Document creation tools and templates</li>
-                <li>Secure digital storage of documents and related information</li>
-                <li>Access control and sharing features for trustees, executors, and beneficiaries</li>
-                <li>Educational resources about estate planning</li>
+                <li>Modify or copy the materials</li>
+                <li>Use the materials for any commercial purpose or for any public display</li>
+                <li>Attempt to decompile or reverse engineer any software contained on WillTank's website</li>
+                <li>Remove any copyright or other proprietary notations from the materials</li>
+                <li>Transfer the materials to another person or "mirror" the materials on any other server</li>
               </ul>
-
-              <h2>3. User Accounts</h2>
               <p>
-                To use certain features of our Services, you must register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete.
-              </p>
-              <p>
-                You are responsible for safeguarding your password and for all activities that occur under your account. You agree to notify us immediately of any unauthorized use of your account.
+                This license shall automatically terminate if you violate any of these restrictions and may be terminated by WillTank at any time.
               </p>
 
-              <h2>4. User Responsibilities</h2>
+              <h2>3. Subscription and Payments</h2>
               <p>
-                You are solely responsible for:
+                WillTank offers various subscription plans. By subscribing to our service, you agree to pay the applicable fees. All fees are exclusive of taxes, which may be added to the fees charged to you.
               </p>
-              <ul>
-                <li>The accuracy and completeness of all information and documents you create using our Services</li>
-                <li>Ensuring that your will and other estate planning documents comply with relevant laws in your jurisdiction</li>
-                <li>Properly executing documents according to the legal requirements in your jurisdiction (such as having witnesses or notarization)</li>
-                <li>Keeping your estate planning information updated</li>
-              </ul>
-
-              <h2>5. Privacy</h2>
               <p>
-                Your privacy is important to us. Our <Link to="/privacy" className="text-willtank-600 hover:text-willtank-700">Privacy Policy</Link> describes how we collect, use, and disclose information about you.
+                Subscriptions automatically renew unless canceled before the renewal date. You can cancel your subscription at any time through your account settings or by contacting our customer support.
               </p>
 
-              <h2>6. Termination</h2>
+              <h2>4. Legal Disclaimer</h2>
               <p>
-                We reserve the right to suspend or terminate your account and access to our Services at any time, for any reason, including but not limited to, your violation of these Terms of Service.
+                The materials on WillTank's website are provided on an 'as is' basis. WillTank makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+              </p>
+              <p>
+                WillTank does not provide legal advice. The documents and services we offer are not a substitute for the advice of an attorney. WillTank is not a law firm and is not a substitute for an attorney or law firm. We cannot provide any kind of legal advice, opinion, or recommendation about possible legal rights, remedies, defenses, options, or strategies.
               </p>
 
-              <h2>7. Limitation of Liability</h2>
+              <h2>5. Limitations</h2>
               <p>
-                To the maximum extent permitted by law, WillTank shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, or use, incurred by you or any third party, whether in an action in contract or tort, arising from your access to, or use of, our Services.
+                In no event shall WillTank or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on WillTank's website, even if WillTank or a WillTank authorized representative has been notified orally or in writing of the possibility of such damage.
               </p>
 
-              <h2>8. Disclaimers</h2>
+              <h2>6. Accuracy of Materials</h2>
               <p>
-                WillTank provides tools and information to help you create estate planning documents, but we do not provide legal advice. Nothing in our Services should be considered legal advice, and we strongly recommend consulting with a qualified attorney to review your specific situation and documents.
-              </p>
-              <p>
-                Our Services are provided "as is" without any warranty of any kind, either express or implied, including but not limited to the implied warranties of merchantability, fitness for a particular purpose, or non-infringement.
+                The materials appearing on WillTank's website could include technical, typographical, or photographic errors. WillTank does not warrant that any of the materials on its website are accurate, complete, or current. WillTank may make changes to the materials contained on its website at any time without notice.
               </p>
 
-              <h2>9. Changes to These Terms</h2>
+              <h2>7. User Accounts</h2>
               <p>
-                We may update these Terms of Service from time to time. We will notify you of any changes by posting the new Terms on this page and updating the "Last updated" date. You are advised to review these Terms periodically for any changes.
+                When you create an account with us, you must provide accurate and complete information. You are solely responsible for the activity that occurs on your account, and you must keep your account password secure. You must notify WillTank immediately of any breach of security or unauthorized use of your account.
               </p>
 
-              <h2>10. Contact Us</h2>
+              <h2>8. Termination</h2>
+              <p>
+                We may terminate or suspend access to our service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.
+              </p>
+
+              <h2>9. Governing Law</h2>
+              <p>
+                These Terms shall be governed and construed in accordance with the laws of [Your Jurisdiction], without regard to its conflict of law provisions.
+              </p>
+
+              <h2>10. Changes to Terms</h2>
+              <p>
+                WillTank reserves the right, at its sole discretion, to modify or replace these Terms at any time. If a revision is material we will try to provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion.
+              </p>
+
+              <h2>11. Contact Us</h2>
               <p>
                 If you have any questions about these Terms, please <Link to="/contact" className="text-willtank-600 hover:text-willtank-700">contact us</Link>.
               </p>

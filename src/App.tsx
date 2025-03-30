@@ -14,6 +14,10 @@ import Pricing from './pages/Pricing';
 import NotFound from './pages/NotFound';
 import Blog from './pages/Blog';
 import BlogArticle from './pages/BlogArticle';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import Cookies from './pages/Cookies';
+
 // Import secure auth components
 import SecureSignIn from './pages/auth/SecureSignIn';
 import SecureSignUp from './pages/auth/SecureSignUp';
@@ -75,6 +79,9 @@ function App() {
             <Route path="/security" element={<Security />} />
             <Route path="/services" element={<Services />} />
             <Route path="/business" element={<Business />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/cookies" element={<Cookies />} />
             
             {/* Auth routes - using our new secure components */}
             <Route path="/auth/signin" element={<SecureSignIn />} />

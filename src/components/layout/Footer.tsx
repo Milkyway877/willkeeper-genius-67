@@ -22,7 +22,6 @@ export function Footer() {
             <ul className="space-y-2">
               <li><Link to="/about" className="text-gray-400 hover:text-white transition">About</Link></li>
               <li><Link to="/blog" className="text-gray-400 hover:text-white transition">Blog</Link></li>
-              <li><Link to="/careers" className="text-gray-400 hover:text-white transition">Careers</Link></li>
               <li><Link to="/contact" className="text-gray-400 hover:text-white transition">Contact</Link></li>
             </ul>
           </div>
@@ -33,7 +32,6 @@ export function Footer() {
               <li><Link to="/corporate/documentation" className="text-gray-400 hover:text-white transition">Documentation</Link></li>
               <li><Link to="/help" className="text-gray-400 hover:text-white transition">Help Center</Link></li>
               <li><Link to="/corporate/documentation/api" className="text-gray-400 hover:text-white transition">API</Link></li>
-              <li><Link to="/community" className="text-gray-400 hover:text-white transition">Community</Link></li>
             </ul>
           </div>
           
@@ -43,7 +41,6 @@ export function Footer() {
               <li><Link to="/privacy" className="text-gray-400 hover:text-white transition">Privacy Policy</Link></li>
               <li><Link to="/terms" className="text-gray-400 hover:text-white transition">Terms of Service</Link></li>
               <li><Link to="/cookies" className="text-gray-400 hover:text-white transition">Cookie Policy</Link></li>
-              <li><Link to="/gdpr" className="text-gray-400 hover:text-white transition">GDPR</Link></li>
             </ul>
           </div>
         </div>
