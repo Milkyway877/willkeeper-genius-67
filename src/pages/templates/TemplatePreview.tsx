@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Eye, CheckCircle, ArrowRight } from 'lucide-react';
+import { Eye, CheckCircle, ArrowRight, Download } from 'lucide-react';
 import { WillPreview } from '@/pages/will/components/WillPreview';
 import { motion } from 'framer-motion';
 
@@ -30,9 +30,30 @@ export function TemplatePreview({
     setIsDialogOpen(false);
     onSelect();
   };
+  
+  const handleDownloadTemplate = () => {
+    // Create a blob with the sample content
+    const blob = new Blob([sampleContent], { type: 'text/plain;charset=utf-8' });
+    
+    // Create a URL for the blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create an anchor element
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.toLowerCase().replace(/\s+/g, '-')}-template.txt`;
+    
+    // Append to the document, click, and clean up
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // Release the blob URL
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <Card className={`h-full flex flex-col relative overflow-hidden ${popularTemplate ? 'border-willtank-500' : ''}`}>
+    <Card className={`h-full flex flex-col relative overflow-hidden transition-all duration-300 hover:shadow-md ${popularTemplate ? 'border-willtank-500' : ''}`}>
       {popularTemplate && (
         <div className="absolute top-0 right-0">
           <div className="bg-willtank-500 text-white text-xs font-medium px-3 py-1 rounded-bl-lg">
@@ -58,7 +79,7 @@ export function TemplatePreview({
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full transition-colors hover:bg-willtank-50">
               <Eye className="h-4 w-4 mr-2" />
               Preview Template
             </Button>
@@ -77,12 +98,24 @@ export function TemplatePreview({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <WillPreview content={sampleContent} />
+                <WillPreview 
+                  content={sampleContent} 
+                  onDownload={handleDownloadTemplate}
+                />
               </motion.div>
             </div>
             
-            <DialogFooter>
-              <Button onClick={handleSelectInDialog} className="w-full md:w-auto">
+            <DialogFooter className="flex justify-between flex-col sm:flex-row gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadTemplate}
+                className="sm:mr-auto"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Template
+              </Button>
+              
+              <Button onClick={handleSelectInDialog}>
                 Use This Template
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -92,7 +125,10 @@ export function TemplatePreview({
       </CardContent>
       
       <CardFooter className="pt-2">
-        <Button className="w-full" onClick={onSelect}>
+        <Button 
+          className="w-full bg-willtank-600 hover:bg-willtank-700 transition-colors"
+          onClick={onSelect}
+        >
           Select Template
         </Button>
       </CardFooter>

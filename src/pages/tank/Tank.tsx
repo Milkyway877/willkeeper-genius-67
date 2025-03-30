@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TankDashboard } from './components/TankDashboard';
 import { TankAnalytics } from './components/TankAnalytics';
-import { TankLegacyVault } from './components/TankLegacyVault';
+import { UnifiedVault } from './components/UnifiedVault';
 import { TimerReset, Plus, LineChart, Archive, ShieldCheck, Loader2, Sparkles, MessageSquare, Bot } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,6 +102,11 @@ export default function Tank() {
     setAiPrompt(suggestion);
   };
 
+  // Fixed: Created direct navigation to the TankMessageCreation component
+  const handleCreateMessage = () => {
+    navigate('/tank/create-message');
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -126,7 +131,7 @@ export default function Tank() {
               AI Helper
             </Button>
             <Button 
-              onClick={() => navigate('/tank/create')}
+              onClick={handleCreateMessage}
               className="bg-willtank-600 hover:bg-willtank-700 text-white flex-shrink-0"
             >
               <Plus size={16} className="mr-2" />
@@ -266,7 +271,7 @@ export default function Tank() {
           <TabsList className="mb-6">
             <TabsTrigger value="dashboard">Messages Dashboard</TabsTrigger>
             <TabsTrigger value="analytics">Analytics & Status</TabsTrigger>
-            <TabsTrigger value="legacy">Legacy Vault</TabsTrigger>
+            <TabsTrigger value="vault">Legacy Vault</TabsTrigger>
           </TabsList>
           
           <AnimatePresence mode="wait">
@@ -285,8 +290,8 @@ export default function Tank() {
                 <TankAnalytics />
               </TabsContent>
               
-              <TabsContent value="legacy" className="space-y-6">
-                <TankLegacyVault />
+              <TabsContent value="vault" className="space-y-6">
+                <UnifiedVault />
               </TabsContent>
             </motion.div>
           </AnimatePresence>
