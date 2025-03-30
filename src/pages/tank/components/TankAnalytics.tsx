@@ -306,7 +306,7 @@ export const TankAnalytics: React.FC = () => {
                   {upcomingDeliveries.map((delivery) => (
                     <div key={delivery.id} className="flex items-center p-3 border rounded-lg">
                       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
-                        {getTypeIcon((delivery.message_type as MessageType) || 'letter')}
+                        {getTypeIcon(delivery.message_type as MessageType || MessageType.letter)}
                       </div>
                       
                       <div className="flex-grow">
