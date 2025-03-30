@@ -375,7 +375,7 @@ export default function WillCreation() {
                   onFilesUploaded={(files) => {
                     setUploadedFiles(prev => [...prev, ...files]);
                     
-                    // Notify about uploads
+                    // Updated to use the correct object parameter format
                     if (files.length > 0) {
                       notifyDocumentUploaded({
                         title: "Documents Uploaded",

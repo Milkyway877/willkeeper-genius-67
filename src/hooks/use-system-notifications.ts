@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { createSystemNotification } from '@/services/notificationService';
 import { toast } from '@/components/ui/use-toast';
@@ -82,7 +83,14 @@ export function useSystemNotifications() {
   }, []);
 
   // Legacy methods kept for backward compatibility
-  const notifyWillUpdated = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
+  const notifyWillUpdated = useCallback(async (details?: { title?: string, description?: string, itemId?: string } | string) => {
+    // Handle string parameter for backward compatibility
+    if (typeof details === 'string') {
+      const title = 'Will Updated';
+      const description = `Your will "${details}" has been successfully updated.`;
+      return notifySuccess(title, description);
+    }
+    
     const title = details?.title || 'Will Updated';
     const description = details?.description || 'Your will has been successfully updated.';
     return notifySuccess(title, description);

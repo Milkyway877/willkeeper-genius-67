@@ -81,8 +81,9 @@ export function useNotifications() {
     return notifyWillUpdated(willTitle);
   }, []);
 
-  const notifyDocumentUploadedAction = useCallback((docType: string, docTitle: string) => {
-    return notifyDocumentUploaded(docType, docTitle);
+  // Updated to use the new signature with a single object parameter
+  const notifyDocumentUploadedAction = useCallback((details: { title?: string, description?: string, itemId?: string }) => {
+    return notifyDocumentUploaded(details);
   }, []);
 
   const notifyProfileUpdatedAction = useCallback((field?: string) => {
