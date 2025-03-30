@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { createSystemNotification } from '@/services/notificationService';
+import { createSystemNotification, createNotificationForEvent } from '@/services/notificationService';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
 export type NotificationPriority = 'low' | 'medium' | 'high';
@@ -122,6 +122,23 @@ export function useNotificationManager() {
     );
   }, [notifyWarning]);
 
+  // Add the welcome notification method
+  const notifyWelcome = useCallback(() => {
+    return notifyInfo(
+      'Welcome to WillTank', 
+      'Thank you for joining. Get started by creating your first will and securing your legacy.',
+      'high'
+    );
+  }, [notifyInfo]);
+
+  // Add the security alert method
+  const notifySecurityAlert = useCallback((description: string) => {
+    return notifySecurity(
+      'Security Alert',
+      description
+    );
+  }, [notifySecurity]);
+
   return {
     notify,
     notifySuccess,
@@ -134,6 +151,15 @@ export function useNotificationManager() {
     notifySubscriptionChanged,
     notifyBeneficiaryAdded,
     notifyExecutorAdded,
-    notifyWillDeleted
+    notifyWillDeleted,
+    notifyWelcome,
+    notifySecurityAlert,
+    
+    // Pass through any context data that might be useful
+    unreadCount: notificationsContext?.unreadCount || 0,
+    hasUnread: notificationsContext?.hasUnread || false,
+    fetchNotifications: notificationsContext?.fetchNotifications,
+    markAsRead: notificationsContext?.markAsRead,
+    markAllAsRead: notificationsContext?.markAllAsRead
   };
 }
