@@ -7,7 +7,6 @@ import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   getLatestCheckin,
-  processCheckin,
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
 
