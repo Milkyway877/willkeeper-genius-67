@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -37,6 +38,7 @@ import TankCreation from './pages/tank/TankCreation';
 import TankMessageCreation from './pages/tank/TankMessageCreation';
 import Settings from './pages/settings/Settings';
 import Profile from './pages/settings/Profile';
+import DeathVerification from './pages/settings/DeathVerification';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
@@ -145,3 +147,4 @@ function App() {
 }
 
 export default App;
+
