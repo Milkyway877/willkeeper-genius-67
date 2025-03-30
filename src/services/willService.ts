@@ -32,9 +32,17 @@ export interface WillBeneficiary {
 
 export const getWills = async (): Promise<Will[]> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot fetch wills');
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('wills')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('updated_at', { ascending: false });
       
     if (error) {
@@ -51,10 +59,18 @@ export const getWills = async (): Promise<Will[]> => {
 
 export const getWill = async (id: string): Promise<Will | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot fetch will');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('wills')
       .select('*')
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .single();
       
     if (error) {
@@ -71,9 +87,19 @@ export const getWill = async (id: string): Promise<Will | null> => {
 
 export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot create will');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('wills')
-      .insert(will)
+      .insert({
+        ...will,
+        user_id: session.user.id
+      })
       .select()
       .single();
       
@@ -96,10 +122,18 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
 
 export const updateWill = async (id: string, updates: Partial<Will>): Promise<Will | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot update will');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('wills')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .select()
       .single();
       
@@ -122,16 +156,25 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
 
 export const deleteWill = async (id: string): Promise<boolean> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot delete will');
+      return false;
+    }
+    
     const { data: willToDelete } = await supabase
       .from('wills')
       .select('title')
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .single();
     
     const { error } = await supabase
       .from('wills')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', session.user.id);
       
     if (error) {
       console.error('Error deleting will:', error);
@@ -152,12 +195,25 @@ export const deleteWill = async (id: string): Promise<boolean> => {
   }
 };
 
-export const getWillExecutors = async (): Promise<WillExecutor[]> => {
+export const getWillExecutors = async (willId?: string): Promise<WillExecutor[]> => {
   try {
-    const { data, error } = await supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot fetch executors');
+      return [];
+    }
+    
+    let query = supabase
       .from('will_executors')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('user_id', session.user.id);
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
       
     if (error) {
       console.error('Error fetching executors:', error);
@@ -173,9 +229,19 @@ export const getWillExecutors = async (): Promise<WillExecutor[]> => {
 
 export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'created_at'>): Promise<WillExecutor | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot create executor');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('will_executors')
-      .insert(executor)
+      .insert({
+        ...executor,
+        user_id: session.user.id
+      })
       .select()
       .single();
       
@@ -193,6 +259,81 @@ export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'cr
   } catch (error) {
     console.error('Error in createWillExecutor:', error);
     return null;
+  }
+};
+
+export const updateWillExecutor = async (id: string, updates: Partial<WillExecutor>): Promise<WillExecutor | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot update executor');
+      return null;
+    }
+    
+    const { data, error } = await supabase
+      .from('will_executors')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating executor:', error);
+      return null;
+    }
+    
+    await createSystemNotification('executor_updated', {
+      title: 'Executor Updated',
+      description: `${data.name}'s information has been updated successfully.`
+    });
+    
+    return data;
+  } catch (error) {
+    console.error('Error in updateWillExecutor:', error);
+    return null;
+  }
+};
+
+export const deleteWillExecutor = async (id: string): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot delete executor');
+      return false;
+    }
+    
+    const { data: executorToDelete } = await supabase
+      .from('will_executors')
+      .select('name')
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .single();
+    
+    const { error } = await supabase
+      .from('will_executors')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error deleting executor:', error);
+      return false;
+    }
+    
+    if (executorToDelete) {
+      await createSystemNotification('executor_removed', {
+        title: 'Executor Removed',
+        description: `${executorToDelete.name} has been removed as an executor.`
+      });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteWillExecutor:', error);
+    return false;
   }
 };
 

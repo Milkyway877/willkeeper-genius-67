@@ -4,13 +4,14 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserWills } from '@/services/dashboardService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getWill, updateWill } from '@/services/willService';
 import { format } from 'date-fns';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -20,10 +21,12 @@ export default function Will() {
   const [createdDate, setCreatedDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [currentWill, setCurrentWill] = useState<any>(null);
+  const [hasNoWills, setHasNoWills] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
   const { id } = useParams(); // Get will ID from URL params
+  const { createNotification } = useNotifications();
 
   useEffect(() => {
     const fetchWillData = async () => {
@@ -38,38 +41,12 @@ export default function Will() {
             setWillTitle(will.title || "Last Will and Testament");
             
             // For demonstration, we're creating sample will content based on the title
-            const sampleWillContent = `
-LAST WILL AND TESTAMENT OF ALEX MORGAN
-
-I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
-
-ARTICLE I: REVOCATION
-I revoke all previous wills and codicils.
-
-ARTICLE II: FAMILY INFORMATION
-I am married to Jamie Morgan. We have two children: Taylor Morgan and Riley Morgan.
-
-ARTICLE III: EXECUTOR
-I appoint Jamie Morgan as the Executor of this Will. If they are unable or unwilling to serve, I appoint my sibling, Casey Morgan, as alternate Executor.
-
-ARTICLE IV: GUARDIAN
-If my spouse does not survive me, I appoint my sibling, Casey Morgan, as guardian of my minor children.
-
-ARTICLE V: DISPOSITION OF PROPERTY
-I give all my property, real and personal, to my spouse, Jamie Morgan, if they survive me.
-If my spouse does not survive me, I give all my property in equal shares to my children, Taylor Morgan and Riley Morgan.
-
-ARTICLE VI: DIGITAL ASSETS
-I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
-
-ARTICLE VII: TAXES AND EXPENSES
-I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
-
-Signed: Alex Morgan
-Date: ${will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : new Date().toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]
-`;
-            setWillContent(sampleWillContent);
+            if (will.document_url && will.document_url !== 'placeholder_url') {
+              setWillContent(will.document_url);
+            } else {
+              const sampleWillContent = generateSampleWillContent(will);
+              setWillContent(sampleWillContent);
+            }
             
             // Set dates
             setLastSaved(will.updated_at ? format(new Date(will.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
@@ -80,7 +57,7 @@ Witnesses: [Witness 1], [Witness 2]
               description: "The requested will document could not be found.",
               variant: "destructive"
             });
-            navigate('/wills');
+            navigate('/will/create');
           }
         } else {
           // No ID provided, fetch the most recent will
@@ -92,45 +69,20 @@ Witnesses: [Witness 1], [Witness 2]
             setWillTitle(latestWill.title || "Last Will and Testament");
             
             // For demonstration, create sample will content
-            const sampleWillContent = `
-LAST WILL AND TESTAMENT OF ALEX MORGAN
-
-I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
-
-ARTICLE I: REVOCATION
-I revoke all previous wills and codicils.
-
-ARTICLE II: FAMILY INFORMATION
-I am married to Jamie Morgan. We have two children: Taylor Morgan and Riley Morgan.
-
-ARTICLE III: EXECUTOR
-I appoint Jamie Morgan as the Executor of this Will. If they are unable or unwilling to serve, I appoint my sibling, Casey Morgan, as alternate Executor.
-
-ARTICLE IV: GUARDIAN
-If my spouse does not survive me, I appoint my sibling, Casey Morgan, as guardian of my minor children.
-
-ARTICLE V: DISPOSITION OF PROPERTY
-I give all my property, real and personal, to my spouse, Jamie Morgan, if they survive me.
-If my spouse does not survive me, I give all my property in equal shares to my children, Taylor Morgan and Riley Morgan.
-
-ARTICLE VI: DIGITAL ASSETS
-I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
-
-ARTICLE VII: TAXES AND EXPENSES
-I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
-
-Signed: Alex Morgan
-Date: ${new Date(latestWill.created_at).toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]
-`;
-            setWillContent(sampleWillContent);
+            if (latestWill.document_url && latestWill.document_url !== 'placeholder_url') {
+              setWillContent(latestWill.document_url);
+            } else {
+              const sampleWillContent = generateSampleWillContent(latestWill);
+              setWillContent(sampleWillContent);
+            }
             
             // Set dates
             setLastSaved(latestWill.updated_at ? format(new Date(latestWill.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
             setCreatedDate(latestWill.created_at ? format(new Date(latestWill.created_at), 'MMMM dd, yyyy') : 'N/A');
           } else {
             // No wills found
-            setWillContent("No will document found. Create your first will to get started.");
+            setHasNoWills(true);
+            setWillContent("");
             setLastSaved(new Date().toLocaleTimeString());
             setCreatedDate("N/A");
           }
@@ -150,6 +102,45 @@ Witnesses: [Witness 1], [Witness 2]
     fetchWillData();
   }, [id, toast, navigate]);
 
+  const generateSampleWillContent = (will: any) => {
+    const dateStr = will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : new Date().toLocaleDateString();
+    
+    return `
+LAST WILL AND TESTAMENT
+
+I, [Your Full Legal Name], residing at [Your Address], being of sound mind, declare this to be my Last Will and Testament.
+
+ARTICLE I: REVOCATION
+I hereby revoke all previous wills and codicils.
+
+ARTICLE II: FAMILY INFORMATION
+[Include information about your spouse, children, or other dependents]
+
+ARTICLE III: EXECUTOR
+I appoint [Executor Name] as the Executor of this Will. If they are unable or unwilling to serve, I appoint [Alternate Executor Name] as alternate Executor.
+
+ARTICLE IV: GUARDIAN
+[If applicable, appoint a guardian for minor children]
+
+ARTICLE V: DISPOSITION OF PROPERTY
+[Detail how you want your property distributed]
+
+ARTICLE VI: DIGITAL ASSETS
+I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
+
+ARTICLE VII: TAXES AND EXPENSES
+I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
+
+Signed: ____________________
+
+Date: ${dateStr}
+
+Witnesses:
+1. ____________________
+2. ____________________
+`;
+  };
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
   };
@@ -164,7 +155,7 @@ Witnesses: [Witness 1], [Witness 2]
           .from('wills')
           .insert({
             title: willTitle,
-            document_url: 'placeholder_url', // In a real app, you'd upload the document
+            document_url: willContent, // Save the actual content
             status: 'Active'
           })
           .select()
@@ -172,13 +163,26 @@ Witnesses: [Witness 1], [Witness 2]
           
         if (error) throw error;
         setCurrentWill(data);
+        
+        // Create notification
+        await createNotification('success', {
+          title: "Will Created",
+          description: "Your will has been created successfully."
+        });
       } else {
         // Update existing will
         const updated = await updateWill(currentWill.id, { 
+          document_url: willContent,
           updated_at: new Date().toISOString()
         });
         
         if (!updated) throw new Error("Failed to update will");
+        
+        // Create notification for update
+        await createNotification('success', {
+          title: "Will Updated",
+          description: "Your will has been updated successfully."
+        });
       }
       
       setIsEditing(false);
@@ -228,6 +232,40 @@ Witnesses: [Witness 1], [Witness 2]
           
           <div className="flex justify-center items-center py-16">
             <Loader2 className="w-10 h-10 text-willtank-600 animate-spin" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (hasNoWills) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Will</h1>
+              <p className="text-gray-600">You don't have any wills yet.</p>
+            </div>
+            
+            <Button onClick={handleCreateNewWill} variant="default">
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Will
+            </Button>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
+              <FileText className="h-12 w-12 text-gray-400" />
+            </div>
+            <h2 className="text-2xl font-medium mb-3">No Will Documents Found</h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              You haven't created any will documents yet. Create your first will to secure your legacy.
+            </p>
+            <Button onClick={handleCreateNewWill} size="lg">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Your First Will
+            </Button>
           </div>
         </div>
       </Layout>
