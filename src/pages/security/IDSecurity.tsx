@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -51,6 +50,7 @@ export default function IDSecurity() {
     secret: '',
     qrCodeUrl: ''
   });
+  const [enableTwoFactor, setEnableTwoFactor] = useState(false);
 
   useEffect(() => {
     fetchSecurityData();
@@ -61,6 +61,7 @@ export default function IDSecurity() {
       setLoading(true);
       const data = await getUserSecurity();
       setSecurity(data);
+      setEnableTwoFactor(data?.google_auth_enabled || false);
       
       if (!data?.google_auth_secret) {
         // Generate a new secret if user doesn't have one
@@ -99,26 +100,63 @@ export default function IDSecurity() {
         return;
       }
       
-      const result = await setup2FA(cleanCode);
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (result.success) {
-        await fetchSecurityData(); // Refresh security data
-        
-        toast({
-          title: '2FA Enabled',
-          description: 'Two-factor authentication has been successfully enabled for your account.',
-        });
-        
-        // Show recovery codes if available
-        if (result.recoveryCodes && result.recoveryCodes.length > 0) {
-          setActiveTab("recovery");
-        }
-      } else {
-        setVerificationError(result.error || 'Failed to set up 2FA. Please try again.');
+      if (userError || !user) {
+        throw new Error("User not found. Please ensure you're logged in.");
       }
+      
+      console.log("Setting up 2FA for user:", user.id);
+      
+      // Generate a random encryption key if needed
+      const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      // Check if a security record already exists
+      const { data: existingRecord, error: checkError } = await supabase
+        .from('user_security')
+        .select('id, encryption_key')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      const finalEncryptionKey = existingRecord?.encryption_key || encryptionKey;
+      
+      // Use upsert to handle both insert and update cases
+      const { error: upsertError } = await supabase
+        .from('user_security')
+        .upsert({
+          user_id: user.id,
+          google_auth_enabled: enableTwoFactor,
+          google_auth_secret: totp.secret,
+          encryption_key: finalEncryptionKey
+        }, { onConflict: 'user_id' });
+      
+      if (upsertError) {
+        console.error("Error updating security record:", upsertError);
+        throw new Error("Failed to update security settings. Database error.");
+      }
+      
+      console.log("2FA setup successful, enabled:", enableTwoFactor);
+      
+      toast({
+        title: "Two-factor authentication " + (enableTwoFactor ? "enabled" : "configured"),
+        description: enableTwoFactor 
+          ? "Your account is now protected with 2FA." 
+          : "You can enable 2FA later in your security settings.",
+      });
+      
+      await fetchSecurityData(); // Refresh security data
+      
+      // Success! Proceed to next step
     } catch (error) {
-      console.error('Error setting up 2FA:', error);
-      setVerificationError('Failed to set up 2FA. Please try again.');
+      console.error("Error setting up authenticator:", error);
+      setVerificationError(
+        error instanceof Error 
+          ? error.message 
+          : "Failed to set up authenticator. Please try again."
+      );
     } finally {
       setSetting2FA(false);
     }
@@ -132,6 +170,8 @@ export default function IDSecurity() {
       // Clean up the code
       const cleanCode = otpCode.replace(/\s+/g, '');
       
+      console.log("Disabling 2FA with code:", cleanCode);
+      
       // Call the disable2FA function
       const result = await disable2FA(cleanCode);
       
@@ -144,6 +184,7 @@ export default function IDSecurity() {
           description: 'Two-factor authentication has been disabled for your account.',
         });
       } else {
+        console.error("Failed to disable 2FA:", result.error);
         setVerificationError(result.error || 'Failed to disable 2FA. Please try again.');
       }
     } catch (error) {
@@ -159,10 +200,14 @@ export default function IDSecurity() {
   };
 
   const toggleTwoFactor = (enabled: boolean) => {
+    console.log("Toggle 2FA to:", enabled);
+    setEnableTwoFactor(enabled);
     if (!enabled && security?.google_auth_enabled) {
       setShowDisableDialog(true);
     } else if (enabled && !security?.google_auth_enabled) {
-      // Do nothing, the user needs to go through the setup flow
+      // We don't show dialog here because the user still needs to set up 2FA
+      // Just update the UI state to reflect their intent
+      setActiveTab("2fa");
     }
   };
 
@@ -202,11 +247,11 @@ export default function IDSecurity() {
                   {!loading && security !== null && (
                     <div className="flex items-center gap-2">
                       <Switch 
-                        checked={security?.google_auth_enabled || false} 
+                        checked={enableTwoFactor} 
                         disabled={loading || setting2FA}
                         onCheckedChange={toggleTwoFactor}
                       />
-                      {security?.google_auth_enabled ? (
+                      {enableTwoFactor ? (
                         <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
                           Enabled
                         </span>

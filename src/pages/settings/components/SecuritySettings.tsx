@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -91,6 +90,7 @@ export function SecuritySettings() {
     if (setting === 'twoFactorEnabled') {
       if (security.twoFactorEnabled) {
         // Show confirmation dialog to disable 2FA
+        console.log("Opening dialog to disable 2FA");
         setShowDisableDialog(true);
       } else {
         // Redirect to ID & Security page to enable 2FA
@@ -120,17 +120,13 @@ export function SecuritySettings() {
       setDisabling2FA(true);
       setVerificationError(null);
       
-      // Get user security settings
-      const userSecurity = await getUserSecurity();
-      
-      if (!userSecurity) {
-        throw new Error("Security settings not found");
-      }
+      console.log("Attempting to disable 2FA with code:", code);
       
       // Attempt to disable 2FA
       const result = await disable2FA(code);
       
       if (result.success) {
+        console.log("2FA disabled successfully");
         setShowDisableDialog(false);
         setSecurity(prev => ({
           ...prev,
@@ -142,6 +138,7 @@ export function SecuritySettings() {
           description: "Two-factor authentication has been successfully disabled for your account."
         });
       } else {
+        console.error("Failed to disable 2FA:", result.error);
         setVerificationError(result.error || "Failed to disable 2FA. Please try again.");
       }
     } catch (error) {

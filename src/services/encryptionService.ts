@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as otpauth from 'otpauth';
 
@@ -138,26 +137,37 @@ export const validateTOTP = (code: string, secret: string) => {
     // Clean up the secret - remove spaces and ensure proper base32 format
     const cleanSecret = secret.replace(/\s+/g, '').toUpperCase();
     
-    const totp = new otpauth.TOTP({
-      issuer: 'WillTank',
-      label: 'User',
-      secret: otpauth.Secret.fromBase32(cleanSecret),
-      digits: 6,
-      period: 30,
-      algorithm: 'SHA1'
-    });
+    // Check if the secret is valid base32
+    if (!/^[A-Z2-7]+=*$/.test(cleanSecret)) {
+      console.error("Secret is not valid base32 format:", cleanSecret);
+      return false;
+    }
     
-    // Verify the TOTP code with a larger window to account for time drift
-    // This will check the current and adjacent time windows (-1, 0, +1)
-    const delta = totp.validate({
-      token: code,
-      window: 1
-    });
-    
-    console.log("TOTP validation result:", delta !== null ? "Valid" : "Invalid");
-    
-    // Return true if the code is valid (delta will be non-null if valid)
-    return delta !== null;
+    try {
+      const totp = new otpauth.TOTP({
+        issuer: 'WillTank',
+        label: 'User',
+        secret: otpauth.Secret.fromBase32(cleanSecret),
+        digits: 6,
+        period: 30,
+        algorithm: 'SHA1'
+      });
+      
+      // Verify the TOTP code with a larger window to account for time drift
+      // This will check the current and adjacent time windows (-1, 0, +1)
+      const delta = totp.validate({
+        token: code,
+        window: 1
+      });
+      
+      console.log("TOTP validation result:", delta !== null ? "Valid" : "Invalid");
+      
+      // Return true if the code is valid (delta will be non-null if valid)
+      return delta !== null;
+    } catch (error) {
+      console.error('Error in TOTP validation:', error);
+      return false;
+    }
   } catch (error) {
     console.error('Error validating TOTP:', error);
     return false;
@@ -265,17 +275,21 @@ export const disable2FA = async (code: string) => {
       }
     }
     
-    // Update the user security record
+    // Update the user security record - use upsert to handle both insert and update
     const { error } = await supabase
       .from('user_security')
-      .update({ 
-        google_auth_enabled: false 
-      })
-      .eq('user_id', user.id);
+      .upsert({ 
+        user_id: user.id,
+        google_auth_enabled: false,
+        // Keep the existing secret so we don't have to regenerate it if the user enables 2FA again
+        google_auth_secret: securityRecord.google_auth_secret,
+        // Keep the existing encryption key
+        encryption_key: securityRecord.encryption_key || generateRandomString(32)
+      }, { onConflict: 'user_id' });
     
     if (error) {
       console.error('Error disabling 2FA:', error);
-      return { success: false, error: "Database error" };
+      return { success: false, error: "Database error: " + error.message };
     }
     
     return { success: true };

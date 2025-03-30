@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,7 +28,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   const [localKey, setLocalKey] = useState(authenticatorKey);
   const [localQrCode, setLocalQrCode] = useState(qrCodeUrl);
 
-  // Use form for validation
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),
     defaultValues: {
@@ -37,7 +35,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     },
   });
 
-  // Ensure we have a valid authenticator key
   useEffect(() => {
     if (!authenticatorKey || !qrCodeUrl) {
       console.log("Generating new TOTP secret due to missing key or QR code");
@@ -72,7 +69,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       description: "Authenticator key has been copied to your clipboard."
     });
     
-    // Reset copied state after 2 seconds
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -96,7 +92,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       console.log("Verifying OTP:", cleanCode);
       console.log("Using authenticator key:", cleanKey);
       
-      // Validate the OTP code
       const isValid = validateTOTP(cleanCode, cleanKey);
       console.log("OTP validation result:", isValid);
       
@@ -106,8 +101,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         return;
       }
 
-      // If the code is valid, we'll update the database
-      // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
@@ -116,12 +109,10 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       
       console.log("Setting up 2FA for user:", user.id);
       
-      // Generate a random encryption key if needed
       const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
-      // Check if a security record already exists
       const { data: existingRecord, error: checkError } = await supabase
         .from('user_security')
         .select('id')
@@ -130,7 +121,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       
       let dbOperation;
       if (existingRecord) {
-        // Update existing record
         dbOperation = supabase
           .from('user_security')
           .update({
@@ -139,7 +129,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           })
           .eq('user_id', user.id);
       } else {
-        // Insert new record
         dbOperation = supabase
           .from('user_security')
           .insert({
@@ -164,7 +153,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
           : "You can enable 2FA later in your security settings.",
       });
       
-      // Success! Proceed to next step
       onNext();
     } catch (error) {
       console.error("Error setting up authenticator:", error);
@@ -182,7 +170,8 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     verifyOTP(data.otp);
   };
 
-  const handleTwoFactorChange = (checked: boolean) => {
+  const toggleTwoFactor = (checked: boolean) => {
+    console.log("Toggle 2FA:", checked);
     setEnableTwoFactor(checked);
   };
 
@@ -248,7 +237,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
               <Checkbox 
                 id="enableTwoFactor"
                 checked={enableTwoFactor} 
-                onCheckedChange={handleTwoFactorChange}
+                onCheckedChange={toggleTwoFactor}
               />
               <div className="space-y-1 leading-none">
                 <label htmlFor="enableTwoFactor" className="text-sm font-normal">
