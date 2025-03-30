@@ -347,18 +347,19 @@ export default function TankMessageCreation() {
                 <div className="h-full">
                   {messageType === 'letter' && (
                     <TankLetterCreator 
-                      initialContent={aiResponse} 
-                      onContentUpdated={handleContentUpdated} 
+                      onContentChange={(content) => handleContentUpdated(content)}
+                      onTitleChange={setTitle}
+                      onRecipientChange={setRecipientName}
                     />
                   )}
                   {messageType === 'video' && (
-                    <TankVideoCreator onContentUpdated={handleContentUpdated} />
+                    <TankVideoCreator />
                   )}
                   {messageType === 'audio' && (
-                    <TankAudioCreator onContentUpdated={handleContentUpdated} />
+                    <TankAudioCreator />
                   )}
                   {messageType === 'document' && (
-                    <TankDocumentCreator onContentUpdated={handleContentUpdated} />
+                    <TankDocumentCreator />
                   )}
                 </div>
               </CardContent>

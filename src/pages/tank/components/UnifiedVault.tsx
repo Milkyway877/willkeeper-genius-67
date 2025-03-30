@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Plus, FileText, Image, Video, AudioLines, Filter, Loader2 } from 'lucide-react';
 import { getLegacyVaultItems, deleteLegacyVaultItem } from '@/services/tankService';
-import { LegacyVaultItem } from '../types';
+import { LegacyVaultItem, VaultItemType } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { VaultItem } from './vault/VaultItem';
 import { VaultItemDialog } from './vault/VaultItemDialog';
 import { AddVaultItem } from './vault/AddVaultItem';
 import { getWills } from '@/services/willService';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 export const UnifiedVault: React.FC = () => {
   const { toast } = useToast();
@@ -129,10 +130,10 @@ export const UnifiedVault: React.FC = () => {
       
       // Apply tab filter
       if (activeTab === 'all') return matchesSearch && matchesType;
-      if (activeTab === 'documents') return matchesSearch && matchesType && (item.type === 'document' || item.type === 'story');
-      if (activeTab === 'images') return matchesSearch && matchesType && item.type === 'image';
-      if (activeTab === 'videos') return matchesSearch && matchesType && item.type === 'video';
-      if (activeTab === 'audio') return matchesSearch && matchesType && item.type === 'audio';
+      if (activeTab === 'documents') return matchesSearch && matchesType && (item.type === 'story' || item.type === 'confession' || item.type === 'wishes' || item.type === 'advice');
+      if (activeTab === 'images') return matchesSearch && matchesType && item.type === 'story'; // Assuming images are stored as stories
+      if (activeTab === 'videos') return matchesSearch && matchesType && item.type === 'story'; // Assuming videos are stored as stories
+      if (activeTab === 'audio') return matchesSearch && matchesType && item.type === 'story'; // Assuming audio files are stored as stories
       
       return matchesSearch && matchesType;
     });
@@ -301,7 +302,11 @@ export const UnifiedVault: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="documents" className="mt-4">
-                {filteredItems.filter(item => item.type === 'document' || item.type === 'story').length === 0 ? (
+                {filteredItems.filter(item => 
+                  item.type === 'story' || 
+                  item.type === 'confession' || 
+                  item.type === 'wishes' || 
+                  item.type === 'advice').length === 0 ? (
                   <EmptyVaultState
                     category="documents"
                     searchQuery={searchQuery}
@@ -311,7 +316,11 @@ export const UnifiedVault: React.FC = () => {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredItems
-                      .filter(item => item.type === 'document' || item.type === 'story')
+                      .filter(item => 
+                        item.type === 'story' || 
+                        item.type === 'confession' || 
+                        item.type === 'wishes' || 
+                        item.type === 'advice')
                       .map(item => (
                         <VaultItem 
                           key={item.id} 
@@ -326,7 +335,7 @@ export const UnifiedVault: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="images" className="mt-4">
-                {filteredItems.filter(item => item.type === 'image').length === 0 ? (
+                {filteredItems.filter(item => item.type === 'story').length === 0 ? (
                   <EmptyVaultState
                     category="images"
                     searchQuery={searchQuery}
@@ -336,7 +345,7 @@ export const UnifiedVault: React.FC = () => {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredItems
-                      .filter(item => item.type === 'image')
+                      .filter(item => item.type === 'story')
                       .map(item => (
                         <VaultItem 
                           key={item.id} 
@@ -351,7 +360,7 @@ export const UnifiedVault: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="videos" className="mt-4">
-                {filteredItems.filter(item => item.type === 'video').length === 0 ? (
+                {filteredItems.filter(item => item.type === 'story').length === 0 ? (
                   <EmptyVaultState
                     category="videos"
                     searchQuery={searchQuery}
@@ -361,7 +370,7 @@ export const UnifiedVault: React.FC = () => {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredItems
-                      .filter(item => item.type === 'video')
+                      .filter(item => item.type === 'story')
                       .map(item => (
                         <VaultItem 
                           key={item.id} 
@@ -376,7 +385,7 @@ export const UnifiedVault: React.FC = () => {
               </TabsContent>
 
               <TabsContent value="audio" className="mt-4">
-                {filteredItems.filter(item => item.type === 'audio').length === 0 ? (
+                {filteredItems.filter(item => item.type === 'story').length === 0 ? (
                   <EmptyVaultState
                     category="audio files"
                     searchQuery={searchQuery}
@@ -386,7 +395,7 @@ export const UnifiedVault: React.FC = () => {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredItems
-                      .filter(item => item.type === 'audio')
+                      .filter(item => item.type === 'story')
                       .map(item => (
                         <VaultItem 
                           key={item.id} 
@@ -528,3 +537,4 @@ const WillVaultItem: React.FC<WillVaultItemProps> = ({ will }) => {
     </motion.div>
   );
 };
+
