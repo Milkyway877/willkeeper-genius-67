@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
@@ -57,6 +57,7 @@ import API from './pages/corporate/documentation/API';
 import Encryption from './pages/encryption/Encryption';
 import Executors from './pages/executors/Executors';
 import AIAssistance from './pages/ai/AIAssistance';
+import AIAssistantPage from './pages/ai/AIAssistantPage';
 import IDSecurity from './pages/security/IDSecurity';
 import Billing from './pages/billing/Billing';
 import Notifications from './pages/notifications/Notifications';
@@ -69,13 +70,13 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <NotificationsProvider>
-          <Toaster />
-          <FloatingAssistant />
+    <QueryClientProvider client={queryClient}>
+      <NotificationsProvider>
+        <Toaster />
+        <FloatingAssistant />
+        <Router>
           <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
+            <Routes>
               {/* Public routes */}
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />
@@ -117,6 +118,7 @@ function App() {
               <Route path="/pages/encryption/Encryption" element={<Encryption />} />
               <Route path="/pages/executors/Executors" element={<Executors />} />
               <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
+              <Route path="/pages/ai/AIAssistantPage" element={<AIAssistantPage />} />
               <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
               <Route path="/billing" element={<Billing />} />
               <Route path="/pages/billing/Billing" element={<Billing />} />
@@ -140,11 +142,10 @@ function App() {
             </Routes>
           </AnimatePresence>
           <ReactQueryDevtools initialIsOpen={false} />
-        </NotificationsProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+        </Router>
+      </NotificationsProvider>
+    </QueryClientProvider>
   );
 }
 
 export default App;
-
