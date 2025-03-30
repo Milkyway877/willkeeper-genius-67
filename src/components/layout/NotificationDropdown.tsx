@@ -12,15 +12,18 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 
 // Default notification values when context is not available
 const defaultNotificationsState = {
   notifications: [],
   markAsRead: () => Promise.resolve(false),
+  markAllAsRead: () => Promise.resolve(false),
   unreadCount: 0,
   loading: false,
-  error: null
+  error: null,
+  fetchNotifications: () => Promise.resolve(),
+  hasUnread: false
 };
 
 export function NotificationDropdown() {
@@ -43,6 +46,7 @@ export function NotificationDropdown() {
   useEffect(() => {
     if (isOpen && fetchNotifications && Date.now() - lastFetched > 30000) {
       // Only fetch if it's been more than 30 seconds since last fetch
+      console.log("Fetching notifications...");
       fetchNotifications();
       setLastFetched(Date.now());
     }
@@ -51,6 +55,7 @@ export function NotificationDropdown() {
   const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      console.log("Marking notification as read:", id);
       const success = await markAsRead(id);
       if (!success) {
         console.error("Failed to mark notification as read");
@@ -72,10 +77,14 @@ export function NotificationDropdown() {
   
   const toggleOpen = () => {
     setIsOpen(!isOpen);
+    if (!isOpen) {
+      // Fetch notifications when opening the dropdown
+      fetchNotifications?.();
+    }
   };
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={toggleOpen}>
       <DropdownMenuTrigger asChild>
         <Button 
           variant="ghost" 
@@ -93,7 +102,7 @@ export function NotificationDropdown() {
       <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto p-0">
         <div className="flex items-center justify-between p-3 border-b">
           <h3 className="font-medium">Notifications</h3>
-          <Link to="/notifications" className="text-sm text-willtank-600 hover:underline">
+          <Link to="/pages/notifications/Notifications" className="text-sm text-willtank-600 hover:underline">
             View all
           </Link>
         </div>

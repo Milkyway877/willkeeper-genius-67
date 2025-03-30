@@ -32,6 +32,8 @@ export const getNotifications = async (): Promise<Notification[]> => {
       return [];
     }
     
+    console.log('Notifications fetched:', data);
+    
     // Convert database type string to our Notification type
     return (data || []).map(item => ({
       ...item,
@@ -131,6 +133,8 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
       return null;
     }
     
+    console.log('Notification created:', data);
+    
     return {
       ...data,
       type: validateNotificationType(data.type)
@@ -209,6 +213,8 @@ export const createSystemNotification = async (
   const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
     ? type as 'success' | 'warning' | 'info' | 'security'
     : eventTypeToNotificationType(type);
+  
+  console.log(`Creating ${notificationType} notification: ${details.title}`);
   
   return createNotification({
     title: details.title,

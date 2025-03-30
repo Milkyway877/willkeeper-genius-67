@@ -1,6 +1,6 @@
 
 import { useCallback } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { createSystemNotification } from '@/services/notificationService';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
@@ -38,7 +38,9 @@ export function useNotificationManager() {
     // Create a persistent notification if priority is medium or high
     try {
       console.log(`Creating ${type} notification: ${title}`);
-      return await createSystemNotification(type, { title, description });
+      const result = await createSystemNotification(type, { title, description });
+      console.log("Notification creation result:", result);
+      return result;
     } catch (error) {
       console.error(`Failed to create ${type} notification:`, error);
       return null;

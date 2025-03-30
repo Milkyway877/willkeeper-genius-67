@@ -1,5 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
+import { toast } from "@/components/ui/use-toast";
 
 export interface Will {
   id: string;
@@ -79,11 +81,25 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       
     if (error) {
       console.error('Error creating will:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create will. Please try again.",
+        variant: "destructive"
+      });
       return null;
     }
     
-    await createSystemNotification('will_updated', {
+    // Create a notification for the user
+    const notificationResult = await createSystemNotification('will_updated', {
       title: 'Will Created',
+      description: `Your will "${will.title}" has been created successfully.`
+    });
+    
+    console.log("Will created notification result:", notificationResult);
+    
+    // Also show an immediate toast
+    toast({
+      title: "Will Created",
       description: `Your will "${will.title}" has been created successfully.`
     });
     
@@ -105,11 +121,25 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
       
     if (error) {
       console.error('Error updating will:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update will. Please try again.",
+        variant: "destructive"
+      });
       return null;
     }
     
-    await createSystemNotification('will_updated', {
+    // Create a notification for the user
+    const notificationResult = await createSystemNotification('will_updated', {
       title: 'Will Updated',
+      description: `Your will "${data.title}" has been updated successfully.`
+    });
+    
+    console.log("Will updated notification result:", notificationResult);
+    
+    // Also show an immediate toast
+    toast({
+      title: "Will Updated",
       description: `Your will "${data.title}" has been updated successfully.`
     });
     
@@ -135,12 +165,26 @@ export const deleteWill = async (id: string): Promise<boolean> => {
       
     if (error) {
       console.error('Error deleting will:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete will. Please try again.",
+        variant: "destructive"
+      });
       return false;
     }
     
     if (willToDelete) {
-      await createSystemNotification('will_deleted', {
+      // Create a notification for the user
+      const notificationResult = await createSystemNotification('will_deleted', {
         title: 'Will Deleted',
+        description: `Your will "${willToDelete.title}" has been deleted.`
+      });
+      
+      console.log("Will deleted notification result:", notificationResult);
+      
+      // Also show an immediate toast
+      toast({
+        title: "Will Deleted",
         description: `Your will "${willToDelete.title}" has been deleted.`
       });
     }
@@ -181,11 +225,25 @@ export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'cr
       
     if (error) {
       console.error('Error creating executor:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add executor. Please try again.",
+        variant: "destructive"
+      });
       return null;
     }
     
-    await createSystemNotification('executor_added', {
+    // Create a notification for the user
+    const notificationResult = await createSystemNotification('executor_added', {
       title: 'Executor Added',
+      description: `${executor.name} has been added as an executor to your will.`
+    });
+    
+    console.log("Executor added notification result:", notificationResult);
+    
+    // Also show an immediate toast
+    toast({
+      title: "Executor Added",
       description: `${executor.name} has been added as an executor to your will.`
     });
     
@@ -239,11 +297,25 @@ export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, '
       
     if (error) {
       console.error('Error creating beneficiary:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add beneficiary. Please try again.",
+        variant: "destructive"
+      });
       return null;
     }
     
-    await createSystemNotification('beneficiary_added', {
+    // Create a notification for the user
+    const notificationResult = await createSystemNotification('beneficiary_added', {
       title: 'Beneficiary Added',
+      description: `${beneficiary.name} has been added as a beneficiary to your will.`
+    });
+    
+    console.log("Beneficiary added notification result:", notificationResult);
+    
+    // Also show an immediate toast
+    toast({
+      title: "Beneficiary Added",
       description: `${beneficiary.name} has been added as a beneficiary to your will.`
     });
     

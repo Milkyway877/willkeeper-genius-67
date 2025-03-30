@@ -90,6 +90,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           table: 'notifications'
         },
         (payload) => {
+          console.log('New notification received:', payload);
           const newNotification = payload.new as Notification;
           // Make sure we validate the type
           const validatedType = validateNotificationType(newNotification.type);
@@ -115,6 +116,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           table: 'notifications'
         },
         (payload) => {
+          console.log('Notification updated:', payload);
           const updatedNotification = payload.new as Notification;
           setNotifications(prev => 
             prev.map(notification => 
