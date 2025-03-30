@@ -118,7 +118,6 @@ export const createSystemNotification = async (
   });
 };
 
-// These functions are explicitly exported for tankService.ts
 export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
   return createSystemNotification('vault_item_added', {
     title: `${itemType} Added to Vault`,
