@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 
 interface TankVideoCreatorProps {
-  onContentChange: (content: string) => void;
+  onContentChange: (content: string, url?: string | null) => void;
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
 }
@@ -67,11 +67,11 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   
   useEffect(() => {
     if (videoBlob) {
-      onContentChange('Video recorded and ready for delivery');
+      onContentChange('Video recorded and ready for delivery', videoPreviewUrl);
     } else {
       onContentChange('');
     }
-  }, [videoBlob, onContentChange]);
+  }, [videoBlob, onContentChange, videoPreviewUrl]);
   
   useEffect(() => {
     if (activeTab === 'record') {
@@ -298,6 +298,8 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       videoRef.current.srcObject = null;
       videoRef.current.src = videoURL;
     }
+    
+    onContentChange('Video recorded and ready for delivery', videoURL);
     
     toast({
       title: "Video Uploaded",
