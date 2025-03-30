@@ -99,7 +99,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             ...prev
           ]);
           
-          // Display toast notification
           toast({
             title: newNotification.title,
             description: newNotification.description,

@@ -1,156 +1,154 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Video, Camera, StopCircle, PlayCircle, Save, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Camera, Video, X, Check, RefreshCw, Play, Pause, Save } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
 
-export interface VideoRecorderProps {
+type VideoRecorderProps = {
   onRecordingComplete: (blob: Blob) => void;
-  isRecorded?: boolean; // Add this prop to support the prop passed from WillCreation
-}
+};
 
-export const VideoRecorder: React.FC<VideoRecorderProps> = ({ 
-  onRecordingComplete,
-  isRecorded = false // Default to false if not provided
-}) => {
+export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
+  const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const recordedChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Set recorded state if isRecorded prop is true
+  // Initialize camera when component mounts
   useEffect(() => {
-    if (isRecorded && !recordedBlob) {
-      // Simulate a recorded state when isRecorded is true but we don't have actual blob data
-      setRecordedBlob(new Blob([], { type: 'video/webm' }));
-    }
-  }, [isRecorded, recordedBlob]);
-  
-  useEffect(() => {
-    // Initialize camera when component mounts
-    initializeCamera();
+    const initCamera = async () => {
+      try {
+        setIsPreparing(true);
+        
+        // Request camera and microphone permissions
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          }, 
+          audio: true 
+        });
+        
+        setStream(mediaStream);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.onloadedmetadata = () => {
+            setIsCameraReady(true);
+            setIsPreparing(false);
+          };
+        }
+      } catch (err) {
+        console.error('Error accessing camera:', err);
+        setPermissionDenied(true);
+        setIsPreparing(false);
+        
+        toast({
+          title: "Camera Access Error",
+          description: "Unable to access your camera or microphone. Please check permissions.",
+          variant: "destructive"
+        });
+      }
+    };
     
-    // Clean up when component unmounts
+    initCamera();
+    
+    // Cleanup function
     return () => {
-      stopCamera();
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, []);
-  
-  const initializeCamera = async () => {
-    // Only try to initialize the camera if we don't already have a recording
-    if (recordedBlob) {
-      setLoading(false);
-      return;
-    }
-    
-    setLoading(true);
-    setCameraError(null);
-    
-    try {
-      // Stop any existing streams
-      stopCamera();
-      
-      // Request camera and microphone permissions
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }, 
-        audio: true 
-      });
-      
-      // Set the stream as the video source
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
-      // Save the stream reference
-      streamRef.current = stream;
-      setCameraPermission(true);
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setCameraPermission(false);
-      setCameraError('Could not access your camera. Please check your browser permissions.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-  };
+  }, [toast]);
   
   const startRecording = () => {
-    if (!streamRef.current) {
-      useToast().toast({
-        title: "Camera not available",
-        description: "Please allow camera access to record your video.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!stream) return;
+    
+    recordedChunksRef.current = [];
     
     try {
-      chunksRef.current = [];
+      // Create media recorder with specific MIME type and bitrate
+      const options = { 
+        mimeType: 'video/webm;codecs=vp9,opus',
+        videoBitsPerSecond: 2500000 // 2.5 Mbps
+      };
       
-      // Create a new MediaRecorder instance
-      const mediaRecorder = new MediaRecorder(streamRef.current);
-      mediaRecorderRef.current = mediaRecorder;
+      let mediaRecorder: MediaRecorder;
       
-      // Handle data available event
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        // Fallback if the specified options aren't supported
+        mediaRecorder = new MediaRecorder(stream);
+      }
+      
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
         }
       };
       
-      // Handle recording stop event
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        setRecordedBlob(blob);
+        // Process the recorded chunks
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
         
-        // Reset recording time
-        setRecordingTime(0);
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
+        setVideoUrl(url);
+        
+        // Simulate processing (in a real app, this might involve compression or uploading)
+        setIsProcessing(true);
+        const processInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(processInterval);
+              setTimeout(() => {
+                setIsProcessing(false);
+                onRecordingComplete(blob);
+              }, 500);
+              return 100;
+            }
+            return prev + 5;
+          });
+        }, 100);
       };
       
-      // Start recording
-      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(1000); // Collect data every second
       setIsRecording(true);
       
-      // Start the timer
+      // Start timer
+      setRecordingTime(0);
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
       
-      useToast().toast({
-        title: "Recording started",
-        description: "You are now recording your video testament.",
+      toast({
+        title: "Recording Started",
+        description: "You are now recording your video testament."
       });
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      useToast().toast({
-        title: "Recording error",
-        description: "Could not start recording. Please try again.",
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      toast({
+        title: "Recording Error",
+        description: "There was a problem starting the recording. Please try again.",
         variant: "destructive"
       });
     }
@@ -161,214 +159,227 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       
-      useToast().toast({
-        title: "Recording stopped",
-        description: "Your video testament has been recorded.",
-      });
+      // Stop timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     }
   };
   
-  const playRecording = () => {
-    if (recordedBlob && videoRef.current) {
-      // Create a URL for the blob
-      const url = URL.createObjectURL(recordedBlob);
-      
-      // Set the URL as the video source
-      videoRef.current.srcObject = null;
-      videoRef.current.src = url;
-      
-      // Play the video
-      videoRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch(error => {
-          console.error('Error playing video:', error);
-          useToast().toast({
-            title: "Playback error",
-            description: "Could not play the recorded video. Please try again.",
-            variant: "destructive"
-          });
-        });
-    }
-  };
-  
-  const pausePlayback = () => {
-    if (videoRef.current) {
+  const handlePlayPause = () => {
+    if (!videoRef.current) return;
+    
+    if (isPlaying) {
       videoRef.current.pause();
       setIsPlaying(false);
+    } else {
+      videoRef.current.play();
+      setIsPlaying(true);
     }
   };
   
-  const handleSave = () => {
-    if (recordedBlob) {
-      onRecordingComplete(recordedBlob);
+  const resetRecording = () => {
+    setVideoUrl(null);
+    setUploadProgress(0);
+    
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(err => console.error('Error playing video:', err));
+      setIsCameraReady(true);
+    }
+    
+    toast({
+      title: "Recording Reset",
+      description: "You can now record a new video testament."
+    });
+  };
+  
+  const retryCamera = async () => {
+    setPermissionDenied(false);
+    setIsPreparing(true);
+    
+    try {
+      // Try to get camera and microphone permissions again
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
       
-      useToast().toast({
-        title: "Video saved",
-        description: "Your video testament has been saved successfully.",
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      
+      setIsCameraReady(true);
+      setIsPreparing(false);
+      
+      toast({
+        title: "Camera Connected",
+        description: "Camera and microphone access granted."
+      });
+    } catch (err) {
+      console.error('Error accessing camera on retry:', err);
+      setPermissionDenied(true);
+      setIsPreparing(false);
+      
+      toast({
+        title: "Camera Access Error",
+        description: "Still unable to access your camera. Please check browser settings.",
+        variant: "destructive"
       });
     }
   };
   
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  const retakeVideo = () => {
-    setRecordedBlob(null);
-    initializeCamera();
+  // Handle video end event
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
   };
-  
-  // Show loading state
-  if (loading) {
-    return (
-      <Card className="p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="h-12 w-12 text-willtank-600 animate-spin mb-4" />
-        <h3 className="text-xl font-medium mb-2">Initializing Camera</h3>
-        <p className="text-gray-600 text-center mb-4">
-          Please wait while we set up your camera...
-        </p>
-      </Card>
-    );
-  }
-  
-  // Show camera permission error
-  if (cameraPermission === false || cameraError) {
-    return (
-      <Card className="p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <div className="bg-red-50 p-4 rounded-full mb-4">
-          <AlertCircle className="h-10 w-10 text-red-500" />
-        </div>
-        <h3 className="text-xl font-medium mb-2">Camera Access Required</h3>
-        <p className="text-gray-600 text-center mb-4">
-          {cameraError || "We need access to your camera and microphone to record your video testament. Please allow access in your browser settings."}
-        </p>
-        <Button onClick={initializeCamera}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Try Again
-        </Button>
-      </Card>
-    );
-  }
-  
+
   return (
-    <Card className="overflow-hidden">
-      <div className="p-6 bg-gray-50 border-b">
-        <h3 className="text-lg font-medium flex items-center">
-          <Video className="h-5 w-5 mr-2 text-willtank-600" />
-          Video Testament
-        </h3>
-        <p className="text-sm text-gray-600">
-          Record a video statement to accompany your will. This can provide additional context and ensure your wishes are clearly understood.
-        </p>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <div className="flex items-center">
+          <Video className="text-willtank-700 mr-2" size={18} />
+          <h3 className="font-medium">Video Testament</h3>
+        </div>
+        
+        {isRecording && (
+          <div className="flex items-center text-red-500">
+            <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse mr-2"></span>
+            <span className="text-sm">{formatTime(recordingTime)}</span>
+          </div>
+        )}
       </div>
       
       <div className="p-6">
-        <div className="bg-black rounded-md overflow-hidden mb-4 aspect-video flex items-center justify-center">
-          <video 
-            ref={videoRef} 
-            className="w-full h-full" 
-            autoPlay={!recordedBlob} 
-            muted={!recordedBlob}
-            playsInline
-          />
-        </div>
-        
-        <div className="flex justify-between items-center mb-4">
-          {isRecording ? (
-            <div className="flex items-center">
-              <div className="h-3 w-3 rounded-full bg-red-500 mr-2 animate-pulse" />
-              <span className="text-red-500 font-medium">Recording: {formatTime(recordingTime)}</span>
-            </div>
-          ) : recordedBlob ? (
-            <div className="flex items-center">
-              <span className="text-willtank-600 font-medium">Video Recorded</span>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <Camera className="h-4 w-4 mr-1 text-willtank-600" />
-              <span className="text-willtank-600 font-medium">Camera Ready</span>
-            </div>
-          )}
-          
-          <div className="flex gap-2">
-            {!recordedBlob ? (
-              isRecording ? (
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={stopRecording}
-                >
-                  <StopCircle className="h-4 w-4 mr-1" />
-                  Stop Recording
+        <div className="mb-6">
+          <div className="bg-black aspect-video rounded-lg overflow-hidden relative">
+            {isPreparing ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                <RefreshCw className="h-10 w-10 text-white animate-spin" />
+                <p className="text-white ml-3">Preparing camera...</p>
+              </div>
+            ) : isProcessing ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                <RefreshCw className="h-10 w-10 text-white animate-spin mb-3" />
+                <p className="text-white mb-4">Processing video...</p>
+                <div className="w-64">
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              </div>
+            ) : permissionDenied ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-center p-6">
+                <Video className="h-12 w-12 text-red-400 mb-3" />
+                <p className="text-white mb-4">Camera or microphone access denied</p>
+                <Button size="sm" onClick={retryCamera}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Camera Access
                 </Button>
-              ) : (
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  onClick={startRecording}
-                >
-                  <Camera className="h-4 w-4 mr-1" />
-                  Start Recording
-                </Button>
-              )
+              </div>
             ) : (
-              isPlaying ? (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={pausePlayback}
-                >
-                  <StopCircle className="h-4 w-4 mr-1" />
-                  Pause
-                </Button>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={playRecording}
-                >
-                  <PlayCircle className="h-4 w-4 mr-1" />
-                  Play
-                </Button>
-              )
+              <video 
+                ref={videoRef} 
+                className="w-full h-full object-cover"
+                autoPlay={isCameraReady && !videoUrl} 
+                muted={!videoUrl} 
+                playsInline
+                loop={false}
+                controls={!!videoUrl}
+                onEnded={handleVideoEnded}
+              />
             )}
             
-            {recordedBlob && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={retakeVideo}
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Retake
-              </Button>
+            {isRecording && (
+              <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                <span className="h-2 w-2 bg-white rounded-full animate-pulse mr-2"></span>
+                REC
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-center gap-4 mt-4">
+            {videoUrl ? (
+              <>
+                <Button variant="outline" onClick={handlePlayPause} disabled={isProcessing}>
+                  {isPlaying ? (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Play
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={resetRecording} disabled={isProcessing}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Record Again
+                </Button>
+                <Button disabled={isProcessing}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Use This Recording
+                </Button>
+              </>
+            ) : (
+              <>
+                {isRecording ? (
+                  <Button 
+                    variant="destructive" 
+                    onClick={stopRecording}
+                    disabled={isPreparing || isProcessing || permissionDenied}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Stop Recording
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={startRecording}
+                    disabled={!isCameraReady || isPreparing || isProcessing || permissionDenied}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Start Recording
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
         
-        <div className="bg-amber-50 p-4 rounded-md mb-6">
-          <h4 className="text-sm font-medium text-amber-800 mb-1">Helpful Tips</h4>
-          <ul className="text-xs text-amber-700 space-y-1 list-disc pl-4">
-            <li>Speak clearly and face the camera directly</li>
-            <li>Introduce yourself by stating your full name and the date</li>
-            <li>Confirm that you are making this will of your own free will</li>
-            <li>Briefly explain your key wishes regarding your estate</li>
-            <li>Mention who your executor is and why you've chosen them</li>
+        <div className="bg-willtank-50 rounded-lg p-4 border border-willtank-100">
+          <h4 className="font-medium text-willtank-700 mb-2">Video Testament Instructions</h4>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Begin by stating your full name, the date, and that this is your video testament
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Confirm that you are of sound mind and creating this will voluntarily
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Briefly summarize your main wishes as documented in your written will
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Add any personal messages to loved ones you would like to include
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Keep your recording under 5 minutes for optimal quality
+            </li>
           </ul>
         </div>
-        
-        {recordedBlob && (
-          <Button 
-            className="w-full" 
-            onClick={handleSave}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save Video Testament
-          </Button>
-        )}
       </div>
-    </Card>
+    </div>
   );
-};
+}

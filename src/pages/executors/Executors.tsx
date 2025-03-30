@@ -1,586 +1,797 @@
 
 import React, { useState, useEffect } from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { motion } from 'framer-motion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  UserPlus, Mail, Phone, Home, ClipboardEdit, Trash2, User, UserCheck, Check
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { 
-  getWillExecutors, 
-  WillExecutor, 
-  createWillExecutor,
-  updateWillExecutor,
-  deleteWillExecutor
-} from '@/services/willService';
+  UserRoundPlus, 
+  Users, 
+  Edit, 
+  Trash2, 
+  CheckCircle2, 
+  XCircle, 
+  Send, 
+  Percent, 
+  Plus,
+  Loader2,
+  User 
+} from 'lucide-react';
+import { 
+  Executor, 
+  Beneficiary, 
+  getExecutors, 
+  getBeneficiaries, 
+  createExecutor, 
+  createBeneficiary, 
+  updateExecutor, 
+  updateBeneficiary, 
+  deleteExecutor, 
+  deleteBeneficiary, 
+  sendVerificationRequest 
+} from '@/services/executorService';
 
-const executorSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  phone: z.string().optional(),
-  relationship: z.string().optional(),
-  address: z.string().optional(),
-  notes: z.string().optional(),
-  status: z.string().default("pending")
-});
+// Define a separate type for form data to handle both executor and beneficiary fields
+type FormData = {
+  name: string;
+  email: string;
+  phone: string;
+  relationship: string;
+  address?: string;
+  notes?: string;
+  percentage?: number;
+  will_id?: string;
+};
 
 export default function Executors() {
   const { toast } = useToast();
-  const [executors, setExecutors] = useState<WillExecutor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [addExecutorOpen, setAddExecutorOpen] = useState(false);
-  const [editExecutorOpen, setEditExecutorOpen] = useState(false);
-  const [editingExecutor, setEditingExecutor] = useState<WillExecutor | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [executorToDelete, setExecutorToDelete] = useState<WillExecutor | null>(null);
+  const [activeTab, setActiveTab] = useState("executors");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isSendingVerification, setIsSendingVerification] = useState<boolean>(false);
   
-  const form = useForm<z.infer<typeof executorSchema>>({
-    resolver: zodResolver(executorSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      relationship: "",
-      address: "",
-      notes: "",
-      status: "pending"
-    },
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [editItemId, setEditItemId] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
+  
+  const [executors, setExecutors] = useState<Executor[]>([]);
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    email: '',
+    phone: '',
+    relationship: '',
+    address: '',
+    notes: '',
+    percentage: undefined
   });
 
-  const editForm = useForm<z.infer<typeof executorSchema>>({
-    resolver: zodResolver(executorSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      relationship: "",
-      address: "",
-      notes: "",
-      status: "pending"
-    },
-  });
-
+  // Fetch data on component mount
   useEffect(() => {
-    // Fetch executors when component mounts
-    fetchExecutors();
+    fetchData();
   }, []);
 
-  const fetchExecutors = async () => {
+  const fetchData = async () => {
+    setIsLoading(true);
     try {
-      setLoading(true);
-      const data = await getWillExecutors();
-      setExecutors(data);
+      const executorsData = await getExecutors();
+      const beneficiariesData = await getBeneficiaries();
+      
+      setExecutors(executorsData);
+      setBeneficiaries(beneficiariesData);
     } catch (error) {
-      console.error('Error fetching executors:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Unable to fetch executors. Please try again.",
+        description: "Failed to load your executors and beneficiaries.",
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof executorSchema>) => {
-    try {
-      const newExecutor = await createWillExecutor({
-        name: values.name,
-        email: values.email,
-        status: values.status,
-        phone: values.phone,
-        relationship: values.relationship,
-        address: values.address,
-        notes: values.notes
-      });
-      
-      if (newExecutor) {
-        setExecutors(prev => [newExecutor, ...prev]);
-        form.reset();
-        setAddExecutorOpen(false);
-        toast({
-          title: "Executor Added",
-          description: `${values.name} has been added as an executor.`,
-        });
-      } else {
-        throw new Error("Failed to create executor");
-      }
-    } catch (error) {
-      console.error('Error creating executor:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add executor. Please try again.",
-        variant: "destructive"
-      });
-    }
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      relationship: '',
+      address: '',
+      notes: '',
+      percentage: undefined
+    });
+    setIsEditMode(false);
+    setEditItemId(null);
   };
 
-  const onEditSubmit = async (values: z.infer<typeof executorSchema>) => {
-    if (!editingExecutor) return;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     
-    try {
-      const updatedExecutor = await updateWillExecutor(editingExecutor.id, {
-        name: values.name,
-        email: values.email,
-        status: values.status,
-        phone: values.phone,
-        relationship: values.relationship,
-        address: values.address,
-        notes: values.notes
-      });
-      
-      if (updatedExecutor) {
-        setExecutors(prev => 
-          prev.map(exec => exec.id === updatedExecutor.id ? updatedExecutor : exec)
-        );
-        editForm.reset();
-        setEditExecutorOpen(false);
-        setEditingExecutor(null);
-        toast({
-          title: "Executor Updated",
-          description: `${values.name}'s information has been updated.`,
-        });
-      } else {
-        throw new Error("Failed to update executor");
-      }
-    } catch (error) {
-      console.error('Error updating executor:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update executor. Please try again.",
-        variant: "destructive"
-      });
+    // Handle percentage as a number
+    if (name === 'percentage') {
+      const numValue = value === '' ? undefined : Number(value);
+      setFormData({ ...formData, [name]: numValue });
+    } else {
+      setFormData({ ...formData, [name]: value });
     }
   };
 
-  const handleDeleteExecutor = async () => {
-    if (!executorToDelete) return;
+  const handleEdit = (item: Executor | Beneficiary) => {
+    const isExecutor = 'relationship' in item && !('percentage' in item);
     
+    setFormData({
+      name: item.name,
+      email: item.email,
+      phone: item.phone,
+      relationship: item.relationship,
+      address: item.address || '',
+      notes: item.notes || '',
+      percentage: 'percentage' in item ? item.percentage : undefined
+    });
+    
+    setIsEditMode(true);
+    setEditItemId(item.id);
+    setIsSheetOpen(true);
+    setActiveTab(isExecutor ? "executors" : "beneficiaries");
+  };
+
+  const handleDelete = async (id: string, type: 'executor' | 'beneficiary') => {
+    setIsDeleting(true);
     try {
-      const success = await deleteWillExecutor(executorToDelete.id);
+      let success;
+      
+      if (type === 'executor') {
+        success = await deleteExecutor(id);
+        if (success) {
+          setExecutors(executors.filter(item => item.id !== id));
+        }
+      } else {
+        success = await deleteBeneficiary(id);
+        if (success) {
+          setBeneficiaries(beneficiaries.filter(item => item.id !== id));
+        }
+      }
       
       if (success) {
-        setExecutors(prev => prev.filter(exec => exec.id !== executorToDelete.id));
-        setDeleteConfirmOpen(false);
-        setExecutorToDelete(null);
         toast({
-          title: "Executor Removed",
-          description: `${executorToDelete.name} has been removed from your executors.`,
+          title: "Deleted",
+          description: `The ${type} has been successfully removed.`
         });
       } else {
-        throw new Error("Failed to delete executor");
+        throw new Error(`Failed to delete ${type}`);
       }
     } catch (error) {
-      console.error('Error deleting executor:', error);
+      console.error(`Error deleting ${type}:`, error);
       toast({
         title: "Error",
-        description: "Failed to remove executor. Please try again.",
+        description: `Failed to delete the ${type}.`,
         variant: "destructive"
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const openEditDialog = (executor: WillExecutor) => {
-    setEditingExecutor(executor);
-    editForm.reset({
-      name: executor.name,
-      email: executor.email,
-      status: executor.status,
-      phone: executor.phone || '',
-      relationship: executor.relationship || '',
-      address: executor.address || '',
-      notes: executor.notes || ''
-    });
-    setEditExecutorOpen(true);
+  const handleVerificationRequest = async (email: string, name: string, type: 'executor' | 'beneficiary') => {
+    setIsSendingVerification(true);
+    try {
+      const success = await sendVerificationRequest(email, name, type);
+      
+      if (success) {
+        toast({
+          title: "Verification Sent",
+          description: `A verification request has been sent to ${email}.`
+        });
+      } else {
+        throw new Error('Failed to send verification');
+      }
+    } catch (error) {
+      console.error('Error sending verification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send the verification request.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingVerification(false);
+    }
   };
 
-  const openDeleteDialog = (executor: WillExecutor) => {
-    setExecutorToDelete(executor);
-    setDeleteConfirmOpen(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    
+    try {
+      // Validate required fields
+      if (!formData.name || !formData.email || !formData.relationship) {
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all required fields.",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Check percentage for beneficiaries
+      if (activeTab === "beneficiaries" && (formData.percentage === undefined || formData.percentage < 0 || formData.percentage > 100)) {
+        toast({
+          title: "Invalid Percentage",
+          description: "Please enter a percentage between 0 and 100.",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      let result;
+      
+      if (isEditMode && editItemId) {
+        // Update existing item
+        if (activeTab === "executors") {
+          result = await updateExecutor(editItemId, formData as Partial<Executor>);
+          if (result) {
+            setExecutors(executors.map(item => item.id === editItemId ? result as Executor : item));
+          }
+        } else {
+          result = await updateBeneficiary(editItemId, formData as Partial<Beneficiary>);
+          if (result) {
+            setBeneficiaries(beneficiaries.map(item => item.id === editItemId ? result as Beneficiary : item));
+          }
+        }
+        
+        if (result) {
+          toast({
+            title: "Updated",
+            description: `The ${activeTab === "executors" ? "executor" : "beneficiary"} has been updated successfully.`
+          });
+          setIsSheetOpen(false);
+          resetForm();
+        } else {
+          throw new Error('Update failed');
+        }
+      } else {
+        // Create new item
+        if (activeTab === "executors") {
+          const newExecutor = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            relationship: formData.relationship,
+            address: formData.address,
+            notes: formData.notes
+          };
+          
+          result = await createExecutor(newExecutor);
+          if (result) {
+            setExecutors([result, ...executors]);
+          }
+        } else {
+          const newBeneficiary = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            relationship: formData.relationship,
+            address: formData.address,
+            notes: formData.notes,
+            percentage: formData.percentage
+          };
+          
+          result = await createBeneficiary(newBeneficiary);
+          if (result) {
+            setBeneficiaries([result, ...beneficiaries]);
+          }
+        }
+        
+        if (result) {
+          toast({
+            title: "Created",
+            description: `New ${activeTab === "executors" ? "executor" : "beneficiary"} has been added successfully.`
+          });
+          setIsSheetOpen(false);
+          resetForm();
+        } else {
+          throw new Error('Creation failed');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving data:', error);
+      toast({
+        title: "Error",
+        description: `Failed to ${isEditMode ? 'update' : 'create'} the ${activeTab === "executors" ? "executor" : "beneficiary"}.`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <Layout>
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Will Executors</h1>
-            <p className="text-gray-600">Manage the executors for your will.</p>
-          </div>
-          
-          <Button onClick={() => setAddExecutorOpen(true)}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add Executor
-          </Button>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Will Executors & Beneficiaries</h1>
+          <p className="text-gray-500 mt-1">Manage the people who will handle your will and receive your assets.</p>
         </div>
         
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2].map((i) => (
-              <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
-                <div className="flex items-center mb-4">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 mr-3"></div>
-                  <div>
-                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-24"></div>
-                  </div>
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetTrigger asChild>
+            <Button 
+              onClick={() => {
+                resetForm();
+                setIsSheetOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add {activeTab === "executors" ? "Executor" : "Beneficiary"}
+            </Button>
+          </SheetTrigger>
+          
+          <SheetContent className="sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>{isEditMode ? 'Edit' : 'Add'} {activeTab === "executors" ? "Executor" : "Beneficiary"}</SheetTitle>
+              <SheetDescription>
+                {activeTab === "executors" 
+                  ? "Add someone who will execute your will and ensure your wishes are followed." 
+                  : "Add someone who will receive a portion of your assets."}
+              </SheetDescription>
+            </SheetHeader>
+            
+            <form onSubmit={handleSubmit} className="mt-6">
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name *
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    required
+                  />
                 </div>
-                <div className="space-y-3">
-                  <div className="h-3 bg-gray-200 rounded w-full"></div>
-                  <div className="h-3 bg-gray-200 rounded w-5/6"></div>
-                  <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+                
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="email" className="text-right">
+                    Email *
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="phone" className="text-right">
+                    Phone
+                  </Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="relationship" className="text-right">
+                    Relationship *
+                  </Label>
+                  <Input
+                    id="relationship"
+                    name="relationship"
+                    value={formData.relationship}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    placeholder="e.g. Spouse, Child, Friend"
+                    required
+                  />
+                </div>
+                
+                {activeTab === "beneficiaries" && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="percentage" className="text-right">
+                      Percentage *
+                    </Label>
+                    <Input
+                      id="percentage"
+                      name="percentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.percentage !== undefined ? formData.percentage : ''}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                      required={activeTab === "beneficiaries"}
+                    />
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="address" className="text-right">
+                    Address
+                  </Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label htmlFor="notes" className="text-right pt-2">
+                    Notes
+                  </Label>
+                  <Textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    rows={3}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        ) : executors.length === 0 ? (
-          <Card className="p-10 text-center">
-            <div className="flex flex-col items-center">
-              <User className="h-16 w-16 text-gray-300 mb-4" />
-              <h2 className="text-xl font-medium text-gray-700 mb-2">No Executors Added</h2>
-              <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                You haven't added any executors yet. Executors are responsible for carrying out the instructions in your will after your passing.
-              </p>
-              <Button onClick={() => setAddExecutorOpen(true)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Your First Executor
-              </Button>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {executors.map((executor) => (
-              <motion.div
-                key={executor.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center">
-                    <div className="h-12 w-12 rounded-full bg-willtank-100 flex items-center justify-center mr-3">
-                      <UserCheck className="h-6 w-6 text-willtank-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-lg">{executor.name}</h3>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Mail className="h-3.5 w-3.5 mr-1" />
-                        {executor.email}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className={`px-2 py-1 text-xs font-medium rounded-full ${
-                    executor.status === 'confirmed' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {executor.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-                  </div>
-                </div>
-                
-                {executor.relationship && (
-                  <div className="mb-3 text-sm">
-                    <span className="font-medium text-gray-700">Relationship:</span> {executor.relationship}
-                  </div>
-                )}
-                
-                {executor.phone && (
-                  <div className="flex items-center mb-3 text-sm">
-                    <Phone className="h-4 w-4 mr-2 text-gray-500" />
-                    <span>{executor.phone}</span>
-                  </div>
-                )}
-                
-                {executor.address && (
-                  <div className="flex items-start mb-3 text-sm">
-                    <Home className="h-4 w-4 mr-2 text-gray-500 mt-0.5" />
-                    <span>{executor.address}</span>
-                  </div>
-                )}
-                
-                {executor.notes && (
-                  <div className="mb-4 p-3 bg-gray-50 rounded-md text-sm">
-                    <p className="text-gray-700">{executor.notes}</p>
-                  </div>
-                )}
-                
-                <div className="flex justify-end space-x-2 mt-4 pt-3 border-t border-gray-100">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => openEditDialog(executor)}
-                  >
-                    <ClipboardEdit className="h-3.5 w-3.5 mr-1" />
-                    Edit
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => openDeleteDialog(executor)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Remove
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+              
+              <SheetFooter>
+                <SheetClose asChild>
+                  <Button type="button" variant="outline">Cancel</Button>
+                </SheetClose>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEditMode ? 'Update' : 'Save'}
+                </Button>
+              </SheetFooter>
+            </form>
+          </SheetContent>
+        </Sheet>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="executors" className="flex items-center">
+            <Users className="mr-2 h-4 w-4" />
+            Executors
+          </TabsTrigger>
+          <TabsTrigger value="beneficiaries" className="flex items-center">
+            <UserRoundPlus className="mr-2 h-4 w-4" />
+            Beneficiaries
+          </TabsTrigger>
+        </TabsList>
         
-        {/* Add Executor Dialog */}
-        <Dialog open={addExecutorOpen} onOpenChange={setAddExecutorOpen}>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>Add Executor</DialogTitle>
-            </DialogHeader>
-            
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input placeholder="Full name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="Email address" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        <TabsContent value="executors">
+          <Card>
+            <CardHeader>
+              <CardTitle>Executors</CardTitle>
+              <CardDescription>
+                The people who will manage your estate and execute your will after your passing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Phone number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="relationship"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Relationship</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Spouse, Child, Friend" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Address" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Any additional notes about this executor" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <DialogFooter>
-                  <Button type="submit">
-                    <Check className="mr-2 h-4 w-4" />
+              ) : executors.length === 0 ? (
+                <div className="text-center py-8">
+                  <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium">No Executors Added</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Add executors who will manage your estate after your passing.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => {
+                      resetForm();
+                      setIsSheetOpen(true);
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Executor
                   </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Edit Executor Dialog */}
-        <Dialog open={editExecutorOpen} onOpenChange={setEditExecutorOpen}>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>Edit Executor</DialogTitle>
-            </DialogHeader>
-            
-            <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input placeholder="Full name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={editForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="Email address" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Phone number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={editForm.control}
-                    name="relationship"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Relationship</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Spouse, Child, Friend" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={editForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Address" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={editForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Any additional notes about this executor" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <DialogFooter>
-                  <Button type="submit">
-                    <Check className="mr-2 h-4 w-4" />
-                    Save Changes
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>Confirm Removal</DialogTitle>
-            </DialogHeader>
-            
-            <div className="py-4">
-              <p className="mb-4">
-                Are you sure you want to remove <span className="font-medium">{executorToDelete?.name}</span> as an executor?
-              </p>
-              
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteExecutor}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Remove Executor
-                </Button>
+              ) : (
+                <Table>
+                  <TableCaption>A list of your will executors.</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Relationship</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {executors.map((executor) => (
+                      <TableRow key={executor.id}>
+                        <TableCell className="font-medium">{executor.name}</TableCell>
+                        <TableCell>{executor.relationship}</TableCell>
+                        <TableCell>{executor.email}</TableCell>
+                        <TableCell>
+                          {executor.isVerified ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              Verified
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                              <XCircle className="mr-1 h-3 w-3" />
+                              Pending
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleEdit(executor)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete {executor.name} from your executors list.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    className="bg-red-500 hover:bg-red-600"
+                                    onClick={() => handleDelete(executor.id, 'executor')}
+                                    disabled={isDeleting}
+                                  >
+                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            
+                            {!executor.isVerified && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleVerificationRequest(executor.email, executor.name, 'executor')}
+                                disabled={isSendingVerification}
+                              >
+                                {isSendingVerification ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Send className="h-4 w-4 text-blue-500" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <div className="text-sm text-gray-500">
+                {executors.length} {executors.length === 1 ? 'executor' : 'executors'} listed
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </Layout>
+              {executors.length > 0 && (
+                <Button variant="outline" onClick={() => setIsSheetOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Another
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="beneficiaries">
+          <Card>
+            <CardHeader>
+              <CardTitle>Beneficiaries</CardTitle>
+              <CardDescription>
+                The people who will receive portions of your estate after your passing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : beneficiaries.length === 0 ? (
+                <div className="text-center py-8">
+                  <UserRoundPlus className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium">No Beneficiaries Added</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Add beneficiaries who will receive portions of your estate.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => {
+                      resetForm();
+                      setIsSheetOpen(true);
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Beneficiary
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableCaption>A list of your will beneficiaries.</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Relationship</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Percentage</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {beneficiaries.map((beneficiary) => (
+                      <TableRow key={beneficiary.id}>
+                        <TableCell className="font-medium">{beneficiary.name}</TableCell>
+                        <TableCell>{beneficiary.relationship}</TableCell>
+                        <TableCell>{beneficiary.email}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center">
+                            <Percent className="mr-1 h-3 w-3" />
+                            {beneficiary.percentage || 0}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {beneficiary.isVerified ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              Verified
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                              <XCircle className="mr-1 h-3 w-3" />
+                              Pending
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleEdit(beneficiary)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete {beneficiary.name} from your beneficiaries list.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    className="bg-red-500 hover:bg-red-600"
+                                    onClick={() => handleDelete(beneficiary.id, 'beneficiary')}
+                                    disabled={isDeleting}
+                                  >
+                                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            
+                            {!beneficiary.isVerified && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleVerificationRequest(beneficiary.email, beneficiary.name, 'beneficiary')}
+                                disabled={isSendingVerification}
+                              >
+                                {isSendingVerification ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Send className="h-4 w-4 text-blue-500" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <div className="text-sm text-gray-500">
+                {beneficiaries.length} {beneficiaries.length === 1 ? 'beneficiary' : 'beneficiaries'} listed
+              </div>
+              {beneficiaries.length > 0 && (
+                <Button variant="outline" onClick={() => setIsSheetOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Another
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
