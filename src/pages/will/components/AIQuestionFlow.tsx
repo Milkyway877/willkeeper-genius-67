@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,19 +17,48 @@ type Question = {
   required?: boolean;
 };
 
-type AIQuestionFlowProps = {
+type SimpleQuestion = {
+  id: number;
+  question: string;
+  answer: string;
+};
+
+export type AIQuestionFlowProps = {
   selectedTemplate?: any;
-  responses: Record<string, any>;
-  setResponses: React.Dispatch<React.SetStateAction<Record<string, any>>>;
-  onComplete: (responses: Record<string, any>, generatedWill: string) => void;
+  responses?: Record<string, any>;
+  setResponses?: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  onComplete?: (responses: Record<string, any>, generatedWill: string) => void;
+  
+  questions?: SimpleQuestion[];
+  onUpdateAnswer?: (id: number, answer: string) => void;
 };
 
 export const AIQuestionFlow: React.FC<AIQuestionFlowProps> = ({
   selectedTemplate,
   responses,
   setResponses,
-  onComplete
+  onComplete,
+  questions: simpleQuestions,
+  onUpdateAnswer
 }) => {
+  if (simpleQuestions && onUpdateAnswer) {
+    return (
+      <div className="space-y-6">
+        {simpleQuestions.map((q) => (
+          <div key={q.id} className="border p-4 rounded-lg">
+            <Label className="font-medium mb-2 block">{q.question}</Label>
+            <Textarea
+              value={q.answer}
+              onChange={(e) => onUpdateAnswer(q.id, e.target.value)}
+              placeholder="Type your answer here..."
+              className="w-full min-h-[100px]"
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -38,12 +66,10 @@ export const AIQuestionFlow: React.FC<AIQuestionFlowProps> = ({
   const [currentAnswer, setCurrentAnswer] = useState<any>('');
   const [validationError, setValidationError] = useState('');
 
-  // Generate questions based on the selected template
   const questions = getQuestionsForTemplate(selectedTemplate?.id || 'traditional');
 
   useEffect(() => {
-    // Check if the current question has been answered
-    if (responses[questions[currentQuestionIndex]?.id]) {
+    if (responses && questions[currentQuestionIndex]?.id && responses[questions[currentQuestionIndex].id]) {
       setCurrentAnswer(responses[questions[currentQuestionIndex].id]);
       setCurrentQuestionAnswered(true);
     } else {
@@ -74,11 +100,12 @@ export const AIQuestionFlow: React.FC<AIQuestionFlowProps> = ({
   const handleNextQuestion = () => {
     if (validationError) return;
     
-    // Save current answer to responses
-    setResponses(prev => ({
-      ...prev,
-      [questions[currentQuestionIndex].id]: currentAnswer
-    }));
+    if (setResponses) {
+      setResponses(prev => ({
+        ...prev,
+        [questions[currentQuestionIndex].id]: currentAnswer
+      }));
+    }
     
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
@@ -94,15 +121,15 @@ export const AIQuestionFlow: React.FC<AIQuestionFlowProps> = ({
   };
 
   const handleGenerateWill = async () => {
+    if (!onComplete || !responses) return;
+    
     setIsGenerating(true);
     
-    // Simulate AI generation with a timeout
     setTimeout(() => {
       const generatedWill = generateSampleWill(responses, selectedTemplate?.id);
       setIsGenerating(false);
       setIsComplete(true);
       
-      // Call the onComplete callback with responses and the generated will
       onComplete(responses, generatedWill);
     }, 3000);
   };
@@ -261,7 +288,6 @@ export const AIQuestionFlow: React.FC<AIQuestionFlowProps> = ({
   );
 };
 
-// Helper function to generate questions based on template
 function getQuestionsForTemplate(templateId: string): Question[] {
   const commonQuestions: Question[] = [
     {
@@ -417,11 +443,9 @@ function getQuestionsForTemplate(templateId: string): Question[] {
     ]
   };
   
-  // Combine common questions with template-specific questions
   return [...commonQuestions, ...(templateSpecificQuestions[templateId] || [])];
 }
 
-// Function to generate a sample will based on user answers
 function generateSampleWill(responses: Record<string, any>, templateId: string): string {
   const today = new Date().toLocaleDateString('en-US', { 
     year: 'numeric', 

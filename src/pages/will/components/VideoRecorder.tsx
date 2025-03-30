@@ -3,13 +3,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Video, Camera, StopCircle, PlayCircle, Save, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
-interface VideoRecorderProps {
+export interface VideoRecorderProps {
   onRecordingComplete: (blob: Blob) => void;
+  isRecorded?: boolean; // Add this prop to support the prop passed from WillCreation
 }
 
-export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplete }) => {
+export const VideoRecorder: React.FC<VideoRecorderProps> = ({ 
+  onRecordingComplete,
+  isRecorded = false // Default to false if not provided
+}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -23,6 +27,14 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplet
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Set recorded state if isRecorded prop is true
+  useEffect(() => {
+    if (isRecorded && !recordedBlob) {
+      // Simulate a recorded state when isRecorded is true but we don't have actual blob data
+      setRecordedBlob(new Blob([], { type: 'video/webm' }));
+    }
+  }, [isRecorded, recordedBlob]);
   
   useEffect(() => {
     // Initialize camera when component mounts
@@ -38,6 +50,12 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplet
   }, []);
   
   const initializeCamera = async () => {
+    // Only try to initialize the camera if we don't already have a recording
+    if (recordedBlob) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setCameraError(null);
     
@@ -80,7 +98,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplet
   
   const startRecording = () => {
     if (!streamRef.current) {
-      toast({
+      useToast().toast({
         title: "Camera not available",
         description: "Please allow camera access to record your video.",
         variant: "destructive"
@@ -124,13 +142,13 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplet
         setRecordingTime(prev => prev + 1);
       }, 1000);
       
-      toast({
+      useToast().toast({
         title: "Recording started",
         description: "You are now recording your video testament.",
       });
     } catch (error) {
       console.error('Error starting recording:', error);
-      toast({
+      useToast().toast({
         title: "Recording error",
         description: "Could not start recording. Please try again.",
         variant: "destructive"
@@ -143,7 +161,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplet
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       
-      toast({
+      useToast().toast({
         title: "Recording stopped",
         description: "Your video testament has been recorded.",
       });
@@ -164,7 +182,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplet
         .then(() => setIsPlaying(true))
         .catch(error => {
           console.error('Error playing video:', error);
-          toast({
+          useToast().toast({
             title: "Playback error",
             description: "Could not play the recorded video. Please try again.",
             variant: "destructive"
@@ -184,7 +202,7 @@ export const VideoRecorder: React.FC<VideoRecorderProps> = ({ onRecordingComplet
     if (recordedBlob) {
       onRecordingComplete(recordedBlob);
       
-      toast({
+      useToast().toast({
         title: "Video saved",
         description: "Your video testament has been saved successfully.",
       });

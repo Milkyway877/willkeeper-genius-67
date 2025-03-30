@@ -5,11 +5,12 @@ import { Card } from '@/components/ui/card';
 import { Pen, Trash2, Save, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface DigitalSignatureProps {
+export interface DigitalSignatureProps {
   onSignatureCapture: (signatureData: string) => void;
+  existingSignature?: string; // Add this prop to support the prop passed from WillCreation
 }
 
-export function DigitalSignature({ onSignatureCapture }: DigitalSignatureProps) {
+export function DigitalSignature({ onSignatureCapture, existingSignature }: DigitalSignatureProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -17,6 +18,25 @@ export function DigitalSignature({ onSignatureCapture }: DigitalSignatureProps) 
   const [lastX, setLastX] = useState(0);
   const [lastY, setLastY] = useState(0);
   const { toast } = useToast();
+
+  // If there's an existing signature, set hasSignature to true
+  useEffect(() => {
+    if (existingSignature) {
+      setHasSignature(true);
+      
+      // If we have an existing signature and a canvas, draw it on the canvas
+      if (existingSignature && canvasRef.current) {
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+          };
+          img.src = existingSignature;
+        }
+      }
+    }
+  }, [existingSignature]);
 
   // Initialize canvas when component mounts
   useEffect(() => {
@@ -43,7 +63,16 @@ export function DigitalSignature({ onSignatureCapture }: DigitalSignatureProps) 
     // Clear canvas initially
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }, []);
+    
+    // If we have an existing signature, draw it
+    if (existingSignature) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = existingSignature;
+    }
+  }, [existingSignature]);
 
   // Handle window resize
   useEffect(() => {
