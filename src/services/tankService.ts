@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem, VaultItemType } from "../pages/tank/types";
-import { createSystemNotification, createNotificationForEvent } from "./notificationService";
+import { createNotificationForEvent } from "./notificationService";
 
 export interface FutureMessage {
   id: string;

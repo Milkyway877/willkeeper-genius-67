@@ -14,28 +14,33 @@ import { NotificationsProvider } from './contexts/NotificationsContext';
 import Will from './pages/will/Will';
 import WillCreation from './pages/will/WillCreation';
 import Wills from './pages/wills/Wills';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <Router>
-      <NotificationsProvider>
-        <Toaster position="top-right" richColors />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/dashboard/*" element={<Dashboard />} />
-          <Route path="/settings/*" element={<Settings />} />
-          <Route path="/confirm" element={<Confirm />} />
-          <Route path="/decline" element={<Confirm />} />
-          <Route path="/checkin" element={<CheckIn />} />
-          <Route path="/access-will" element={<AccessWill />} />
-          <Route path="/will" element={<Will />} />
-          <Route path="/will/:id" element={<Will />} />
-          <Route path="/will/create" element={<WillCreation />} />
-          <Route path="/will/edit/:id" element={<Will />} />
-          <Route path="/wills" element={<Wills />} />
-        </Routes>
-      </NotificationsProvider>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <NotificationsProvider>
+          <Toaster position="top-right" richColors />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/dashboard/*" element={<Dashboard />} />
+            <Route path="/settings/*" element={<Settings />} />
+            <Route path="/confirm" element={<Confirm />} />
+            <Route path="/decline" element={<Confirm />} />
+            <Route path="/checkin" element={<CheckIn />} />
+            <Route path="/access-will" element={<AccessWill />} />
+            <Route path="/will" element={<Will />} />
+            <Route path="/will/:id" element={<Will />} />
+            <Route path="/will/create" element={<WillCreation />} />
+            <Route path="/will/edit/:id" element={<Will />} />
+            <Route path="/wills" element={<Wills />} />
+          </Routes>
+        </NotificationsProvider>
+      </Router>
+    </QueryClientProvider>
   );
 }
 
