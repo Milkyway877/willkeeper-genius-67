@@ -1,8 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
-// Define the type that matches what our Supabase table returns
 interface WillExecutorRow {
   id: string;
   name: string;
@@ -17,7 +15,6 @@ interface WillExecutorRow {
   user_id?: string | null;
 }
 
-// Define the type that matches what our Supabase table returns
 interface WillBeneficiaryRow {
   id: string;
   beneficiary_name: string;
@@ -33,7 +30,6 @@ interface WillBeneficiaryRow {
   user_id?: string | null;
 }
 
-// These are our application models
 export interface Executor {
   id: string;
   name: string;
@@ -350,8 +346,6 @@ export const deleteBeneficiary = async (id: string): Promise<boolean> => {
 
 export const sendVerificationRequest = async (email: string, name: string, type: 'executor' | 'beneficiary'): Promise<boolean> => {
   try {
-    // In a real implementation, you would send an email verification
-    // We'll simulate it by logging and creating a notification
     console.log(`Verification email sent to ${email} for ${type} ${name}`);
     
     await createSystemNotification('will_updated', {

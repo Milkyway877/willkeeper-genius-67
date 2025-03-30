@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification } from "./notificationService";
+import { createNotificationForEvent } from "./notificationService";
 import { Beneficiary, Executor, getBeneficiaries, getExecutors } from "./executorService";
 import { Database } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
@@ -165,7 +164,7 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
       await createInitialCheckin();
     }
     
-    await createSystemNotification('security_key_generated', {
+    await createNotificationForEvent('security_key_generated', {
       title: 'Death Verification Settings Updated',
       description: 'Your death verification settings have been updated successfully.'
     });
@@ -294,7 +293,7 @@ export const processCheckin = async (status: 'alive'): Promise<DeathVerification
       next_check_in: data.next_check_in 
     });
     
-    await createSystemNotification('security_key_generated', {
+    await createNotificationForEvent('security_key_generated', {
       title: 'Check-in Confirmed',
       description: 'You have successfully checked in. Your next check-in is scheduled.'
     });
