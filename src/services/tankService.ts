@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { VaultItemType } from '@/pages/tank/types';
 
 export type FutureMessage = {
   id: string;
@@ -18,7 +19,7 @@ export type FutureMessage = {
 export type LegacyVaultItem = {
   id: string;
   title: string;
-  type: string;
+  type: VaultItemType; // Changed from string to VaultItemType
   preview: string;
   document_url: string;
   encryptionStatus: boolean;
@@ -174,12 +175,12 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
     return data.map(item => ({
       id: item.id,
       title: item.title,
-      type: item.category || 'story',
+      type: (item.category || 'story') as VaultItemType, // Cast to VaultItemType
       preview: item.preview || '',
       document_url: item.document_url,
       encryptionStatus: item.is_encrypted || false,
       createdAt: item.created_at || new Date().toISOString(),
-      created_at: item.created_at || new Date().toISOString(), // Added to match type
+      created_at: item.created_at || new Date().toISOString(),
       user_id: item.user_id
     }));
   } catch (error) {
@@ -206,12 +207,12 @@ export const getLegacyVaultItem = async (itemId: string): Promise<LegacyVaultIte
     return {
       id: data.id,
       title: data.title,
-      type: data.category || 'story',
+      type: (data.category || 'story') as VaultItemType, // Cast to VaultItemType
       preview: data.preview || '',
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
       createdAt: data.created_at || new Date().toISOString(),
-      created_at: data.created_at || new Date().toISOString(), // Added to match type
+      created_at: data.created_at || new Date().toISOString(),
       user_id: data.user_id
     };
   } catch (error) {
@@ -246,12 +247,12 @@ export const createLegacyVaultItem = async (
     return {
       id: data.id,
       title: data.title,
-      type: data.category || 'story',
+      type: (data.category || 'story') as VaultItemType, // Cast to VaultItemType
       preview: data.preview || '',
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
       createdAt: data.created_at || new Date().toISOString(),
-      created_at: data.created_at || new Date().toISOString(), // Added to match type
+      created_at: data.created_at || new Date().toISOString(),
       user_id: data.user_id
     };
   } catch (error) {
@@ -289,12 +290,12 @@ export const updateLegacyVaultItem = async (
     return {
       id: data.id,
       title: data.title,
-      type: data.category || 'story',
+      type: (data.category || 'story') as VaultItemType, // Cast to VaultItemType
       preview: data.preview || '',
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
       createdAt: data.created_at || new Date().toISOString(),
-      created_at: data.created_at || new Date().toISOString(), // Added to match type
+      created_at: data.created_at || new Date().toISOString(),
       user_id: data.user_id
     };
   } catch (error) {
