@@ -214,25 +214,34 @@ export default function WillCreation() {
         description: "Please wait while we save your will...",
       });
 
+      console.log("Creating will with title:", willTitle);
+      console.log("Template type:", selectedTemplate?.id || 'custom');
+      console.log("AI generated:", userResponses && Object.keys(userResponses).length > 0);
+
       // Save the will to the database with proper error handling
       const newWill = await createWill({
         title: willTitle,
-        status: 'active',
+        status: 'Active',
         document_url: '', // In a real app, you'd upload to storage and get URL
         template_type: selectedTemplate?.id || 'custom',
         ai_generated: userResponses && Object.keys(userResponses).length > 0
       });
       
       if (!newWill) {
-        throw new Error("Failed to create will");
+        throw new Error("Failed to create will - no response from server");
       }
       
       // We successfully created the will
       if (typeof notifyWillUpdated === 'function') {
-        await notifyWillUpdated({
-          title: 'Will Created',
-          description: `Your will "${willTitle}" has been created successfully.`
-        });
+        try {
+          await notifyWillUpdated({
+            title: 'Will Created',
+            description: `Your will "${willTitle}" has been created successfully.`
+          });
+        } catch (notificationError) {
+          console.error("Error sending notification:", notificationError);
+          // Continue even if notification fails
+        }
       }
       
       toast({

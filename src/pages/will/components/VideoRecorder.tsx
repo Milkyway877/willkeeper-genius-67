@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Video, X, Check, RefreshCw, Play, Pause, Save } from 'lucide-react';
@@ -50,6 +49,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         let mediaStream;
         try {
           mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          console.log("Camera initialized with ideal constraints");
         } catch (err) {
           console.warn('Failed with ideal constraints, trying fallback:', err);
           try {
@@ -57,6 +57,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
               video: true, 
               audio: true 
             });
+            console.log("Camera initialized with fallback constraints");
           } catch (fallbackErr) {
             console.error('Failed with fallback constraints:', fallbackErr);
             throw fallbackErr;
@@ -69,12 +70,19 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           videoRef.current.srcObject = mediaStream;
           videoRef.current.onloadedmetadata = () => {
             try {
-              videoRef.current?.play().catch(e => {
-                console.error("Error playing video:", e);
-                setCameraError("Could not play video stream. Please check your browser permissions.");
-              });
-              setIsCameraReady(true);
-              setIsPreparing(false);
+              if (videoRef.current) {
+                videoRef.current.play()
+                  .then(() => {
+                    console.log("Video preview started");
+                    setIsCameraReady(true);
+                    setIsPreparing(false);
+                  })
+                  .catch(e => {
+                    console.error("Error playing video:", e);
+                    setCameraError("Could not play video stream. Please check your browser permissions.");
+                    setIsPreparing(false);
+                  });
+              }
             } catch (playError) {
               console.error("Error in play:", playError);
               setCameraError("Could not start video preview. Please check your browser settings.");
@@ -113,8 +121,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const title = `Video Testament (${timestamp})`;
       
-      // In a real app, you would upload this to storage and get the URL
-      // This is just a placeholder URL - you should replace it with your actual upload logic
       const videoUrl = URL.createObjectURL(blob);
       
       await createLegacyVaultItem({
@@ -189,6 +195,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
+          console.log(`Received data chunk: ${event.data.size} bytes`);
         }
       };
       
@@ -204,8 +211,10 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         }
         
         try {
+          console.log(`Recording stopped, processing ${recordedChunksRef.current.length} chunks`);
           const mimeType = mediaRecorder.mimeType || 'video/webm';
           const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+          console.log(`Created blob of size: ${blob.size} bytes, type: ${blob.type}`);
           const url = URL.createObjectURL(blob);
           
           setVideoUrl(url);
@@ -238,6 +247,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       
       try {
         mediaRecorder.start(1000);
+        console.log("Recording started");
         setIsRecording(true);
         
         setRecordingTime(0);
@@ -414,14 +424,12 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         const mimeType = mediaRecorderRef.current?.mimeType || 'video/webm';
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
         
-        // First try to add to vault
         addVideoToLegacyVault(blob)
           .then(success => {
             if (!success) {
               console.warn("Failed to add video to legacy vault, but continuing with recording");
             }
             
-            // Then pass to the parent component
             onRecordingComplete(blob);
             
             toast({
@@ -433,7 +441,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           })
           .catch(error => {
             console.error('Error in vault processing:', error);
-            // Still try to complete the recording even if vault fails
             onRecordingComplete(blob);
             setIsProcessing(false);
             
@@ -443,7 +450,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
             });
           });
       } else if (videoUrl) {
-        // If we don't have chunks but do have a URL, try to get the blob from the URL
         fetch(videoUrl)
           .then(res => res.blob())
           .then(blob => {
