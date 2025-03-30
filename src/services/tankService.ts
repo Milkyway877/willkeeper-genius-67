@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export type FutureMessage = {
@@ -22,6 +23,7 @@ export type LegacyVaultItem = {
   document_url: string;
   encryptionStatus: boolean;
   createdAt: string;
+  created_at: string; // Added to match the type in tank/types.ts
   user_id?: string;
 };
 
@@ -177,6 +179,7 @@ export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
       document_url: item.document_url,
       encryptionStatus: item.is_encrypted || false,
       createdAt: item.created_at || new Date().toISOString(),
+      created_at: item.created_at || new Date().toISOString(), // Added to match type
       user_id: item.user_id
     }));
   } catch (error) {
@@ -208,6 +211,7 @@ export const getLegacyVaultItem = async (itemId: string): Promise<LegacyVaultIte
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
       createdAt: data.created_at || new Date().toISOString(),
+      created_at: data.created_at || new Date().toISOString(), // Added to match type
       user_id: data.user_id
     };
   } catch (error) {
@@ -218,7 +222,7 @@ export const getLegacyVaultItem = async (itemId: string): Promise<LegacyVaultIte
 
 // Create a new legacy vault item
 export const createLegacyVaultItem = async (
-  item: Omit<LegacyVaultItem, 'id' | 'createdAt' | 'user_id'>
+  item: Omit<LegacyVaultItem, 'id' | 'createdAt' | 'created_at' | 'user_id'>
 ): Promise<LegacyVaultItem | null> => {
   try {
     const { data: user } = await supabase.auth.getUser();
@@ -247,6 +251,7 @@ export const createLegacyVaultItem = async (
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
       createdAt: data.created_at || new Date().toISOString(),
+      created_at: data.created_at || new Date().toISOString(), // Added to match type
       user_id: data.user_id
     };
   } catch (error) {
@@ -289,6 +294,7 @@ export const updateLegacyVaultItem = async (
       document_url: data.document_url,
       encryptionStatus: data.is_encrypted || false,
       createdAt: data.created_at || new Date().toISOString(),
+      created_at: data.created_at || new Date().toISOString(), // Added to match type
       user_id: data.user_id
     };
   } catch (error) {
