@@ -33,15 +33,9 @@ export const getUserSecurity = async () => {
       .from('user_security')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (error) {
-      // Handle 406 errors gracefully
-      if (error.code === '406') {
-        console.warn("Content negotiation issue with security data fetch, returning empty security record");
-        return null;
-      }
-      
       console.error('Error fetching user security:', error);
       return null;
     }
@@ -101,8 +95,8 @@ export const generateTOTPSecret = async () => {
       return { secret: '', qrCodeUrl: '' };
     }
     
-    // Generate a new TOTP secret
-    const secret = generateRandomString(20);
+    // Generate a new TOTP secret - use base32 encoding which is standard for TOTP
+    const secret = generateRandomBase32(20);
     
     // Create a new TOTP object
     const totp = new otpauth.TOTP({
@@ -110,11 +104,14 @@ export const generateTOTPSecret = async () => {
       label: user.email || 'User',
       secret: otpauth.Secret.fromBase32(secret),
       digits: 6,
-      period: 30
+      period: 30,
+      algorithm: 'SHA1' // TOTP standard algorithm
     });
     
     // Generate the Auth URI to use in a QR code
     const qrCodeUrl = totp.toString();
+    
+    console.log("Generated TOTP secret:", secret, "QR code URL:", qrCodeUrl);
     
     return { secret, qrCodeUrl };
   } catch (error) {
@@ -123,21 +120,43 @@ export const generateTOTPSecret = async () => {
   }
 };
 
-// Validate a TOTP code
+// Validate a TOTP code with improved error handling and debugging
 export const validateTOTP = (code: string, secret: string) => {
   try {
+    if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
+      console.error("Invalid code format:", code);
+      return false;
+    }
+    
+    if (!secret || secret.length < 16) {
+      console.error("Invalid secret format:", secret);
+      return false;
+    }
+    
+    console.log("Validating TOTP code:", code, "with secret:", secret);
+    
+    // Clean up the secret - remove spaces and ensure proper base32 format
+    const cleanSecret = secret.replace(/\s+/g, '').toUpperCase();
+    
     const totp = new otpauth.TOTP({
       issuer: 'WillTank',
       label: 'User',
-      secret: otpauth.Secret.fromBase32(secret),
+      secret: otpauth.Secret.fromBase32(cleanSecret),
       digits: 6,
-      period: 30
+      period: 30,
+      algorithm: 'SHA1'
     });
     
-    // Verify the TOTP code
-    const delta = totp.validate({ token: code, window: 1 });
+    // Verify the TOTP code with a larger window to account for time drift
+    // This will check the current and adjacent time windows (-1, 0, +1)
+    const delta = totp.validate({
+      token: code,
+      window: 1
+    });
     
-    // Return true if the code is valid
+    console.log("TOTP validation result:", delta !== null ? "Valid" : "Invalid");
+    
+    // Return true if the code is valid (delta will be non-null if valid)
     return delta !== null;
   } catch (error) {
     console.error('Error validating TOTP:', error);
@@ -155,15 +174,29 @@ export const setup2FA = async (code: string) => {
       return { success: false };
     }
     
-    // Get the TOTP secret
-    const { secret } = await generateTOTPSecret();
+    // Get existing security record or create one
+    let securityRecord = await getUserSecurity();
+    if (!securityRecord) {
+      securityRecord = await createUserSecurity();
+      if (!securityRecord) {
+        console.error("Failed to create security record");
+        return { success: false };
+      }
+    }
+    
+    // Generate a new TOTP secret if one doesn't exist
+    let secret = securityRecord.google_auth_secret;
+    if (!secret) {
+      const { secret: newSecret } = await generateTOTPSecret();
+      secret = newSecret;
+    }
     
     // Validate the code against the secret
     const isValid = validateTOTP(code, secret);
     
     if (!isValid) {
       console.error('Invalid TOTP code');
-      return { success: false };
+      return { success: false, error: "Invalid verification code" };
     }
     
     // Update the user security record
@@ -178,7 +211,7 @@ export const setup2FA = async (code: string) => {
     
     if (error) {
       console.error('Error updating user security:', error);
-      return { success: false };
+      return { success: false, error: "Database error" };
     }
     
     // Generate recovery codes
@@ -202,18 +235,34 @@ export const setup2FA = async (code: string) => {
     return { success: true, recoveryCodes };
   } catch (error) {
     console.error('Error setting up 2FA:', error);
-    return { success: false };
+    return { success: false, error: "Unexpected error" };
   }
 };
 
 // Disable 2FA for the user
-export const disable2FA = async () => {
+export const disable2FA = async (code: string) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
       console.error("No authenticated user found");
-      return false;
+      return { success: false, error: "User not found" };
+    }
+    
+    // Get existing security record
+    const securityRecord = await getUserSecurity();
+    if (!securityRecord) {
+      return { success: false, error: "Security record not found" };
+    }
+    
+    // If 2FA is enabled, validate the code first
+    if (securityRecord.google_auth_enabled && securityRecord.google_auth_secret) {
+      const isValid = validateTOTP(code, securityRecord.google_auth_secret);
+      
+      if (!isValid) {
+        console.error('Invalid TOTP code when disabling 2FA');
+        return { success: false, error: "Invalid verification code" };
+      }
     }
     
     // Update the user security record
@@ -226,13 +275,13 @@ export const disable2FA = async () => {
     
     if (error) {
       console.error('Error disabling 2FA:', error);
-      return false;
+      return { success: false, error: "Database error" };
     }
     
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Error disabling 2FA:', error);
-    return false;
+    return { success: false, error: "Unexpected error" };
   }
 };
 
@@ -457,12 +506,28 @@ export const updateEncryptionKeyStatus = async (keyId: string, status: string): 
   }
 };
 
+// Helper function to generate a random base32 string (standard for TOTP)
+const generateRandomBase32 = (length: number) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; // Base32 character set
+  let result = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(randomValues[i] % chars.length);
+  }
+  return result;
+};
+
 // Helper function to generate a random string
 const generateRandomString = (length: number) => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(randomValues[i] % chars.length);
   }
   return result;
 };
@@ -472,8 +537,11 @@ const generateRecoveryCode = () => {
   const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const segments = Array.from({ length: 4 }, () => {
     let segment = '';
+    const randomValues = new Uint8Array(4);
+    crypto.getRandomValues(randomValues);
+    
     for (let i = 0; i < 4; i++) {
-      segment += chars.charAt(Math.floor(Math.random() * chars.length));
+      segment += chars.charAt(randomValues[i] % chars.length);
     }
     return segment;
   });

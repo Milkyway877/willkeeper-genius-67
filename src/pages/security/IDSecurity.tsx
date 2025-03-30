@@ -5,8 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { QRCode } from '@/components/ui/QRCode';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
@@ -18,7 +16,6 @@ import {
   AlertCircle, 
   CheckCircle, 
   RefreshCw, 
-  X,
   Lock,
   Unlock
 } from 'lucide-react';
@@ -31,6 +28,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 import {
   getUserSecurity,
@@ -39,9 +37,9 @@ import {
   disable2FA,
   validateTOTP
 } from '@/services/encryptionService';
-import { toast } from '@/hooks/use-toast';
 
 export default function IDSecurity() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("2fa");
   const [security, setSecurity] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,8 +87,13 @@ export default function IDSecurity() {
       // Clean up the code
       const cleanCode = otpCode.replace(/\s+/g, '');
       
+      console.log("Setting up 2FA with code:", cleanCode, "and secret:", totp.secret);
+      
       // Verify the code against the current secret
-      if (!validateTOTP(cleanCode, totp.secret)) {
+      const isValid = validateTOTP(cleanCode, totp.secret);
+      
+      if (!isValid) {
+        console.error("Invalid TOTP code during setup");
         setVerificationError('Invalid verification code. Please try again.');
         setSetting2FA(false);
         return;
@@ -111,7 +114,7 @@ export default function IDSecurity() {
           setActiveTab("recovery");
         }
       } else {
-        setVerificationError('Failed to set up 2FA. Please try again.');
+        setVerificationError(result.error || 'Failed to set up 2FA. Please try again.');
       }
     } catch (error) {
       console.error('Error setting up 2FA:', error);
@@ -129,16 +132,10 @@ export default function IDSecurity() {
       // Clean up the code
       const cleanCode = otpCode.replace(/\s+/g, '');
       
-      // Verify the code first
-      if (!security?.google_auth_secret || !validateTOTP(cleanCode, security.google_auth_secret)) {
-        setVerificationError('Invalid verification code');
-        setDisabling2FA(false);
-        return;
-      }
+      // Call the disable2FA function
+      const result = await disable2FA(cleanCode);
       
-      const success = await disable2FA();
-      
-      if (success) {
+      if (result.success) {
         setShowDisableDialog(false);
         await fetchSecurityData(); // Refresh security data
         
@@ -147,13 +144,25 @@ export default function IDSecurity() {
           description: 'Two-factor authentication has been disabled for your account.',
         });
       } else {
-        setVerificationError('Failed to disable 2FA. Please try again.');
+        setVerificationError(result.error || 'Failed to disable 2FA. Please try again.');
       }
     } catch (error) {
       console.error('Error disabling 2FA:', error);
-      setVerificationError('Failed to disable 2FA. Please try again.');
+      setVerificationError(
+        error instanceof Error 
+          ? error.message 
+          : 'Failed to disable 2FA. Please try again.'
+      );
     } finally {
       setDisabling2FA(false);
+    }
+  };
+
+  const toggleTwoFactor = (enabled: boolean) => {
+    if (!enabled && security?.google_auth_enabled) {
+      setShowDisableDialog(true);
+    } else if (enabled && !security?.google_auth_enabled) {
+      // Do nothing, the user needs to go through the setup flow
     }
   };
 
@@ -190,16 +199,23 @@ export default function IDSecurity() {
                     </CardDescription>
                   </div>
                   
-                  {!loading && security && (
-                    <Switch 
-                      checked={security?.google_auth_enabled} 
-                      disabled={loading || setting2FA}
-                      onCheckedChange={(checked) => {
-                        if (!checked && security?.google_auth_enabled) {
-                          setShowDisableDialog(true);
-                        }
-                      }}
-                    />
+                  {!loading && security !== null && (
+                    <div className="flex items-center gap-2">
+                      <Switch 
+                        checked={security?.google_auth_enabled || false} 
+                        disabled={loading || setting2FA}
+                        onCheckedChange={toggleTwoFactor}
+                      />
+                      {security?.google_auth_enabled ? (
+                        <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                          Enabled
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          Disabled
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -248,9 +264,9 @@ export default function IDSecurity() {
                               </AlertDescription>
                             </Alert>
                             
-                            <Label className="block mb-2">
+                            <p className="text-sm mb-2">
                               Enter the verification code from your authenticator app to confirm:
-                            </Label>
+                            </p>
                             
                             <TwoFactorInput 
                               onSubmit={handle2FADisable} 
@@ -263,6 +279,7 @@ export default function IDSecurity() {
                             <Button 
                               variant="outline" 
                               onClick={() => setShowDisableDialog(false)}
+                              disabled={disabling2FA}
                             >
                               Cancel
                             </Button>
@@ -325,6 +342,7 @@ export default function IDSecurity() {
                                 onSubmit={handle2FASetup} 
                                 loading={setting2FA}
                                 error={verificationError}
+                                autoSubmit={false}
                               />
                             </div>
                           </div>
@@ -377,7 +395,15 @@ export default function IDSecurity() {
                         <div>
                           <p className="font-medium">Current session</p>
                           <p className="text-sm text-gray-600">
-                            Chrome on Windows • Started 2 hours ago
+                            {navigator.userAgent.indexOf("Chrome") > -1 ? "Chrome" : 
+                             navigator.userAgent.indexOf("Firefox") > -1 ? "Firefox" : 
+                             navigator.userAgent.indexOf("Safari") > -1 ? "Safari" : 
+                             "Browser"} on {
+                              navigator.platform.indexOf("Win") > -1 ? "Windows" :
+                              navigator.platform.indexOf("Mac") > -1 ? "macOS" :
+                              navigator.platform.indexOf("Linux") > -1 ? "Linux" :
+                              "Unknown"
+                            } • Started recently
                           </p>
                         </div>
                         <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">

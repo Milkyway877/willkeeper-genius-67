@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { Button } from './button';
 import { ArrowRight, Loader2 } from 'lucide-react';
@@ -8,26 +8,57 @@ interface TwoFactorInputProps {
   onSubmit: (code: string) => void;
   loading?: boolean;
   error?: string | null;
+  autoSubmit?: boolean;
 }
 
-export function TwoFactorInput({ onSubmit, loading = false, error }: TwoFactorInputProps) {
+export function TwoFactorInput({ 
+  onSubmit, 
+  loading = false, 
+  error = null,
+  autoSubmit = true
+}: TwoFactorInputProps) {
   const [otp, setOtp] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  
+  // Clear local error when external error prop changes
+  useEffect(() => {
+    setLocalError(error);
+  }, [error]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length === 6) {
-      console.log("Submitting 2FA code:", otp);
+      console.log("Manually submitting 2FA code:", otp);
       onSubmit(otp);
+    } else {
+      setLocalError("Please enter a 6-digit code");
     }
   };
   
   const handleChange = (value: string) => {
+    // Clear error when user starts typing
+    if (localError) setLocalError(null);
+    
+    // Ensure only digits are entered
+    if (value && !/^\d*$/.test(value)) {
+      setLocalError("Code must contain only digits");
+      return;
+    }
+    
     setOtp(value);
     
-    // Auto-submit when code is complete
-    if (value.length === 6) {
+    // Auto-submit when code is complete (if enabled)
+    if (autoSubmit && value.length === 6) {
       console.log("Auto-submitting 2FA code:", value);
       onSubmit(value);
+    }
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Submit on Enter key
+    if (e.key === 'Enter' && otp.length === 6) {
+      e.preventDefault();
+      onSubmit(otp);
     }
   };
   
@@ -38,6 +69,7 @@ export function TwoFactorInput({ onSubmit, loading = false, error }: TwoFactorIn
           <InputOTP 
             value={otp} 
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             maxLength={6}
             disabled={loading}
           >
@@ -52,8 +84,8 @@ export function TwoFactorInput({ onSubmit, loading = false, error }: TwoFactorIn
           </InputOTP>
         </div>
         
-        {error && (
-          <div className="text-sm text-red-500 text-center">{error}</div>
+        {localError && (
+          <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
         )}
         
         <Button 

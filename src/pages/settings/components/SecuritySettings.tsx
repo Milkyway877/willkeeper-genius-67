@@ -4,14 +4,21 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from "@/components/ui/switch";
-import { Shield, Key, Save, Loader2 } from 'lucide-react';
+import { Shield, Key, Save, Loader2, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { getUserSecurity, createUserSecurity } from '@/services/encryptionService';
+import { getUserSecurity, createUserSecurity, disable2FA, validateTOTP } from '@/services/encryptionService';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export function SecuritySettings() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [disabling2FA, setDisabling2FA] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [showDisableDialog, setShowDisableDialog] = useState(false);
   
   // Security settings state
   const [security, setSecurity] = useState({
@@ -82,10 +89,17 @@ export function SecuritySettings() {
   // Toggle security setting
   const toggleSecurity = async (setting: keyof typeof security) => {
     if (setting === 'twoFactorEnabled') {
-      toast({
-        title: "2FA Settings",
-        description: "Please visit the ID & Security page to manage two-factor authentication.",
-      });
+      if (security.twoFactorEnabled) {
+        // Show confirmation dialog to disable 2FA
+        setShowDisableDialog(true);
+      } else {
+        // Redirect to ID & Security page to enable 2FA
+        toast({
+          title: "2FA Settings",
+          description: "Please visit the ID & Security page to enable two-factor authentication.",
+        });
+        window.location.href = '/security/IDSecurity';
+      }
       return;
     }
     
@@ -98,6 +112,48 @@ export function SecuritySettings() {
       title: "Security Setting Updated",
       description: `${security[setting] ? 'Disabled' : 'Enabled'} ${setting.replace(/([A-Z])/g, ' $1').toLowerCase()}.`
     });
+  };
+  
+  // Handle disabling 2FA
+  const handle2FADisable = async (code: string) => {
+    try {
+      setDisabling2FA(true);
+      setVerificationError(null);
+      
+      // Get user security settings
+      const userSecurity = await getUserSecurity();
+      
+      if (!userSecurity) {
+        throw new Error("Security settings not found");
+      }
+      
+      // Attempt to disable 2FA
+      const result = await disable2FA(code);
+      
+      if (result.success) {
+        setShowDisableDialog(false);
+        setSecurity(prev => ({
+          ...prev,
+          twoFactorEnabled: false
+        }));
+        
+        toast({
+          title: "2FA Disabled",
+          description: "Two-factor authentication has been successfully disabled for your account."
+        });
+      } else {
+        setVerificationError(result.error || "Failed to disable 2FA. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error disabling 2FA:", error);
+      setVerificationError(
+        error instanceof Error 
+          ? error.message 
+          : "An unexpected error occurred. Please try again."
+      );
+    } finally {
+      setDisabling2FA(false);
+    }
   };
   
   // Handle password change
@@ -169,11 +225,22 @@ export function SecuritySettings() {
                   Add an extra layer of security to your account
                 </p>
               </div>
-              <Switch 
-                checked={security.twoFactorEnabled} 
-                onCheckedChange={() => toggleSecurity('twoFactorEnabled')}
-                disabled={loading}
-              />
+              <div className="flex items-center gap-2">
+                <Switch 
+                  checked={security.twoFactorEnabled} 
+                  onCheckedChange={() => toggleSecurity('twoFactorEnabled')}
+                  disabled={loading}
+                />
+                {security.twoFactorEnabled ? (
+                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                    Enabled
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    Disabled
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="flex items-center justify-between">
@@ -217,6 +284,18 @@ export function SecuritySettings() {
                 disabled={loading}
               />
             </div>
+            
+            {security.twoFactorEnabled && (
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  className="text-sm w-full sm:w-auto"
+                  onClick={() => window.location.href = '/security/IDSecurity'}
+                >
+                  <Link className="h-4 w-4 mr-2" /> Manage 2FA Settings
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -263,6 +342,47 @@ export function SecuritySettings() {
           </Button>
         </div>
       </motion.div>
+      
+      {/* Dialog for disabling 2FA */}
+      <Dialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+            <DialogDescription>
+              This will reduce the security of your account. Are you sure you want to continue?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Security Warning</AlertTitle>
+              <AlertDescription>
+                Disabling two-factor authentication will make your account more vulnerable to unauthorized access.
+              </AlertDescription>
+            </Alert>
+            
+            <p className="text-sm mb-4">
+              Enter the verification code from your authenticator app to confirm:
+            </p>
+            
+            <TwoFactorInput 
+              onSubmit={handle2FADisable} 
+              loading={disabling2FA}
+              error={verificationError}
+            />
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDisableDialog(false)}
+              disabled={disabling2FA}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

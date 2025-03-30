@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
@@ -11,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { supabase } from '@/integrations/supabase/client';
-import { validateTOTP } from '@/services/encryptionService';
+import { validateTOTP, generateTOTPSecret } from '@/services/encryptionService';
 import { QRCode } from '@/components/ui/QRCode';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
@@ -26,7 +26,10 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   const [isLoading, setIsLoading] = useState(false);
   const [enableTwoFactor, setEnableTwoFactor] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [localKey, setLocalKey] = useState(authenticatorKey);
+  const [localQrCode, setLocalQrCode] = useState(qrCodeUrl);
 
+  // Use form for validation
   const form = useForm<AuthenticatorInputs>({
     resolver: zodResolver(authenticatorSchema),
     defaultValues: {
@@ -34,8 +37,35 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     },
   });
 
+  // Ensure we have a valid authenticator key
+  useEffect(() => {
+    if (!authenticatorKey || !qrCodeUrl) {
+      console.log("Generating new TOTP secret due to missing key or QR code");
+      generateNewSecretIfNeeded();
+    } else {
+      setLocalKey(authenticatorKey);
+      setLocalQrCode(qrCodeUrl);
+    }
+  }, [authenticatorKey, qrCodeUrl]);
+
+  const generateNewSecretIfNeeded = async () => {
+    try {
+      const { secret, qrCodeUrl } = await generateTOTPSecret();
+      if (secret && qrCodeUrl) {
+        console.log("Generated new TOTP secret and QR code");
+        setLocalKey(secret);
+        setLocalQrCode(qrCodeUrl);
+      } else {
+        console.error("Failed to generate TOTP secret");
+      }
+    } catch (error) {
+      console.error("Error generating TOTP secret:", error);
+    }
+  };
+
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(authenticatorKey.replace(/\s/g, ''));
+    const cleanKey = localKey.replace(/\s/g, '');
+    navigator.clipboard.writeText(cleanKey);
     setCopied(true);
     toast({
       title: "Key copied",
@@ -47,7 +77,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
   };
 
   const verifyOTP = async (code: string) => {
-    if (!code || code.length !== 6) {
+    if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
       setVerificationError("Please enter a valid 6-digit code");
       return;
     }
@@ -57,16 +87,17 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     
     try {
       const cleanCode = code.replace(/\s+/g, '');
+      const cleanKey = localKey.replace(/\s+/g, '');
       
-      if (!authenticatorKey) {
+      if (!cleanKey) {
         throw new Error("Missing authenticator key. Please refresh the page and try again.");
       }
       
       console.log("Verifying OTP:", cleanCode);
-      console.log("Using authenticator key:", authenticatorKey);
+      console.log("Using authenticator key:", cleanKey);
       
-      // Validate the OTP code with a larger window to account for time drift
-      const isValid = validateTOTP(cleanCode, authenticatorKey);
+      // Validate the OTP code
+      const isValid = validateTOTP(cleanCode, cleanKey);
       console.log("OTP validation result:", isValid);
       
       if (!isValid) {
@@ -90,15 +121,36 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
-      // Insert directly to user_security table - only include required fields
-      const { error: insertError } = await supabase
+      // Check if a security record already exists
+      const { data: existingRecord, error: checkError } = await supabase
         .from('user_security')
-        .upsert({
-          user_id: user.id,
-          google_auth_enabled: enableTwoFactor,
-          google_auth_secret: authenticatorKey.replace(/\s+/g, ''),
-          encryption_key: encryptionKey
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      let dbOperation;
+      if (existingRecord) {
+        // Update existing record
+        dbOperation = supabase
+          .from('user_security')
+          .update({
+            google_auth_enabled: enableTwoFactor,
+            google_auth_secret: cleanKey
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Insert new record
+        dbOperation = supabase
+          .from('user_security')
+          .insert({
+            user_id: user.id,
+            google_auth_enabled: enableTwoFactor,
+            google_auth_secret: cleanKey,
+            encryption_key: encryptionKey
+          });
+      }
+      
+      const { error: insertError } = await dbOperation;
         
       if (insertError) {
         console.error("Error updating security record:", insertError);
@@ -130,6 +182,10 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     verifyOTP(data.otp);
   };
 
+  const handleTwoFactorChange = (checked: boolean) => {
+    setEnableTwoFactor(checked);
+  };
+
   return (
     <motion.div key="step6" {...fadeInUp}>
       <Form {...form}>
@@ -153,7 +209,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
                 </p>
                 <div className="flex justify-center bg-white p-2 border border-slate-200 rounded-md">
                   <QRCode 
-                    value={qrCodeUrl} 
+                    value={localQrCode} 
                     size={200}
                   />
                 </div>
@@ -165,7 +221,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
                 </p>
                 <div className="relative">
                   <div className="p-2 bg-slate-50 border border-slate-200 rounded-md font-mono text-center break-all select-all text-sm">
-                    {authenticatorKey}
+                    {localKey}
                   </div>
                   <button
                     type="button"
@@ -192,7 +248,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
               <Checkbox 
                 id="enableTwoFactor"
                 checked={enableTwoFactor} 
-                onCheckedChange={(checked) => setEnableTwoFactor(checked === true)}
+                onCheckedChange={handleTwoFactorChange}
               />
               <div className="space-y-1 leading-none">
                 <label htmlFor="enableTwoFactor" className="text-sm font-normal">
@@ -210,6 +266,15 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
             <p className="text-sm text-blue-800">
               Two-factor authentication adds an extra layer of security by requiring a verification code in addition to your password when signing in.
             </p>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? "Verifying..." : "Continue"}
+            </Button>
           </div>
         </form>
       </Form>
