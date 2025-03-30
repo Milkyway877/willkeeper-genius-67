@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   LayoutDashboard,
@@ -77,7 +78,7 @@ export function Sidebar() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatar_url || ""} />
+                  <AvatarImage src={user?.user_metadata?.avatar_url || ""} />
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
                 {!isCollapsed && <span className="ml-2 font-medium">{user?.email}</span>}
