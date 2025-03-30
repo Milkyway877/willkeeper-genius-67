@@ -97,6 +97,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         mediaRecorder = new MediaRecorder(stream, options);
       } catch (e) {
         // Fallback if the specified options aren't supported
+        console.log('Falling back to default recorder options');
         mediaRecorder = new MediaRecorder(stream);
       }
       
@@ -108,6 +109,16 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       
       mediaRecorder.onstop = () => {
         // Process the recorded chunks
+        if (recordedChunksRef.current.length === 0) {
+          console.error('No video data recorded');
+          toast({
+            title: "Recording Error",
+            description: "No video data was captured. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         
@@ -121,6 +132,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
               clearInterval(processInterval);
               setTimeout(() => {
                 setIsProcessing(false);
+                // Send the completed recording to parent component
                 onRecordingComplete(blob);
               }, 500);
               return 100;
@@ -173,8 +185,16 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       videoRef.current.pause();
       setIsPlaying(false);
     } else {
-      videoRef.current.play();
-      setIsPlaying(true);
+      videoRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => {
+          console.error('Error playing video:', err);
+          toast({
+            title: "Playback Error",
+            description: "Could not play the recorded video.",
+            variant: "destructive"
+          });
+        });
     }
   };
   
@@ -242,6 +262,30 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     setIsPlaying(false);
   };
 
+  // Use this recorded video
+  const handleUseRecording = () => {
+    if (!videoUrl || !videoRef.current) return;
+    
+    // Get video element's video blob
+    fetch(videoUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        onRecordingComplete(blob);
+        toast({
+          title: "Video Saved",
+          description: "Your video testament has been successfully saved."
+        });
+      })
+      .catch(err => {
+        console.error('Error getting video blob:', err);
+        toast({
+          title: "Error Saving Video",
+          description: "Could not save the recorded video. Please try again.",
+          variant: "destructive"
+        });
+      });
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
@@ -291,7 +335,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                 muted={!videoUrl} 
                 playsInline
                 loop={false}
-                controls={!!videoUrl}
+                controls={false}
                 onEnded={handleVideoEnded}
               />
             )}
@@ -324,7 +368,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Record Again
                 </Button>
-                <Button disabled={isProcessing}>
+                <Button onClick={handleUseRecording} disabled={isProcessing}>
                   <Save className="h-4 w-4 mr-2" />
                   Use This Recording
                 </Button>

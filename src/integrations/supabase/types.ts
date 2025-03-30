@@ -54,6 +54,33 @@ export type Database = {
         }
         Relationships: []
       }
+      beneficiaries: {
+        Row: {
+          confirmation_token: string
+          created_at: string | null
+          email: string
+          id: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          confirmation_token: string
+          created_at?: string | null
+          email: string
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          confirmation_token?: string
+          created_at?: string | null
+          email?: string
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       death_verification_checkins: {
         Row: {
           checked_in_at: string
@@ -272,6 +299,33 @@ export type Database = {
         }
         Relationships: []
       }
+      executors: {
+        Row: {
+          confirmation_token: string
+          created_at: string | null
+          email: string
+          id: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          confirmation_token: string
+          created_at?: string | null
+          email: string
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          confirmation_token?: string
+          created_at?: string | null
+          email?: string
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       future_messages: {
         Row: {
           created_at: string | null
@@ -431,6 +485,30 @@ export type Database = {
           last_used?: string | null
           tan_key?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_checkins: {
+        Row: {
+          executor_email: string
+          id: string
+          last_checkin: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          executor_email: string
+          id?: string
+          last_checkin?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          executor_email?: string
+          id?: string
+          last_checkin?: string | null
+          status?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

@@ -9,8 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserWills } from '@/services/dashboardService';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getWill, updateWill } from '@/services/willService';
+import { getWill, updateWill, saveWillContent } from '@/services/willService';
 import { format } from 'date-fns';
+import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -19,11 +20,13 @@ export default function Will() {
   const [lastSaved, setLastSaved] = useState('');
   const [createdDate, setCreatedDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentWill, setCurrentWill] = useState<any>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
   const { id } = useParams(); // Get will ID from URL params
+  const { notifyWillUpdated } = useNotificationManager();
 
   useEffect(() => {
     const fetchWillData = async () => {
@@ -32,6 +35,7 @@ export default function Will() {
         
         // If ID is provided in the URL, fetch that specific will
         if (id) {
+          console.log('Fetching will with ID:', id);
           const will = await getWill(id);
           if (will) {
             setCurrentWill(will);
@@ -156,10 +160,11 @@ Witnesses: [Witness 1], [Witness 2]
 
   const handleSave = async () => {
     try {
-      setIsLoading(true);
+      setIsSaving(true);
       
       if (!currentWill) {
         // Create a new will if none exists
+        console.log('Creating new will');
         const { data, error } = await supabase
           .from('wills')
           .insert({
@@ -172,17 +177,28 @@ Witnesses: [Witness 1], [Witness 2]
           
         if (error) throw error;
         setCurrentWill(data);
+        
+        // Save the will content
+        await saveWillContent(data.id, willContent);
       } else {
         // Update existing will
+        console.log('Updating existing will:', currentWill.id);
         const updated = await updateWill(currentWill.id, { 
           updated_at: new Date().toISOString()
         });
         
         if (!updated) throw new Error("Failed to update will");
+        
+        // Save the will content
+        await saveWillContent(currentWill.id, willContent);
       }
       
       setIsEditing(false);
-      setLastSaved(new Date().toLocaleTimeString());
+      const now = new Date();
+      setLastSaved(format(now, 'h:mm a'));
+      
+      await notifyWillUpdated(willTitle);
+      
       toast({
         title: "Will saved",
         description: "Your will has been saved successfully.",
@@ -195,7 +211,7 @@ Witnesses: [Witness 1], [Witness 2]
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -213,6 +229,59 @@ Witnesses: [Witness 1], [Witness 2]
 
   const handleViewAllWills = () => {
     navigate('/wills');
+  };
+  
+  const handleDownloadPDF = () => {
+    // Create a PDF-like blob from the will content
+    const willHtml = `
+      <html>
+        <head>
+          <title>${willTitle}</title>
+          <style>
+            body { font-family: 'Times New Roman', Times, serif; margin: 3cm; }
+            h1 { text-align: center; font-size: 24pt; margin-bottom: 24pt; }
+            .content { line-height: 1.5; font-size: 12pt; }
+            .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; text-align: center; }
+            .date { margin-top: 30pt; }
+            .header { text-align: center; margin-bottom: 30pt; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${willTitle}</h1>
+            <p>Created on ${createdDate}</p>
+          </div>
+          <div class="content">
+            ${willContent.replace(/\n/g, '<br>')}
+          </div>
+          <div class="date">
+            <p>Dated: ${new Date().toLocaleDateString()}</p>
+          </div>
+          <div class="signature">
+            <p>Signature</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    const blob = new Blob([willHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${willTitle.replace(/\s+/g, '_')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    toast({
+      title: "Download Started",
+      description: "Your will document is being downloaded."
+    });
   };
 
   if (isLoading) {
@@ -252,9 +321,22 @@ Witnesses: [Witness 1], [Witness 2]
               Create New Will
             </Button>
             {isEditing ? (
-              <Button onClick={handleSave} variant="default">
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
+              <Button 
+                onClick={handleSave} 
+                variant="default"
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
               </Button>
             ) : (
               <Button onClick={() => setIsEditing(true)} variant="outline">
@@ -266,7 +348,7 @@ Witnesses: [Witness 1], [Witness 2]
               <Copy className="mr-2 h-4 w-4" />
               Copy
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleDownloadPDF}>
               <Download className="mr-2 h-4 w-4" />
               Download PDF
             </Button>

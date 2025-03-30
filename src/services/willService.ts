@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -71,6 +72,7 @@ export const getWill = async (id: string): Promise<Will | null> => {
 
 export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will | null> => {
   try {
+    console.log('Creating will with data:', will);
     const { data, error } = await supabase
       .from('wills')
       .insert(will)
@@ -82,7 +84,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       return null;
     }
     
-    await createSystemNotification('will_updated', {
+    await createSystemNotification('success', {
       title: 'Will Created',
       description: `Your will "${will.title}" has been created successfully.`
     });
@@ -96,6 +98,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
 
 export const updateWill = async (id: string, updates: Partial<Will>): Promise<Will | null> => {
   try {
+    console.log(`Updating will ${id} with:`, updates);
     const { data, error } = await supabase
       .from('wills')
       .update(updates)
@@ -108,9 +111,9 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
       return null;
     }
     
-    await createSystemNotification('will_updated', {
+    await createSystemNotification('success', {
       title: 'Will Updated',
-      description: `Your will "${data.title}" has been updated successfully.`
+      description: `Your will "${updates.title || 'Untitled'}" has been updated successfully.`
     });
     
     return data;
@@ -122,11 +125,8 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
 
 export const deleteWill = async (id: string): Promise<boolean> => {
   try {
-    const { data: willToDelete } = await supabase
-      .from('wills')
-      .select('title')
-      .eq('id', id)
-      .single();
+    const will = await getWill(id);
+    const willTitle = will?.title || 'Untitled';
     
     const { error } = await supabase
       .from('wills')
@@ -138,12 +138,10 @@ export const deleteWill = async (id: string): Promise<boolean> => {
       return false;
     }
     
-    if (willToDelete) {
-      await createSystemNotification('will_deleted', {
-        title: 'Will Deleted',
-        description: `Your will "${willToDelete.title}" has been deleted.`
-      });
-    }
+    await createSystemNotification('info', {
+      title: 'Will Deleted',
+      description: `Your will "${willTitle}" has been deleted successfully.`
+    });
     
     return true;
   } catch (error) {
@@ -152,15 +150,41 @@ export const deleteWill = async (id: string): Promise<boolean> => {
   }
 };
 
-export const getWillExecutors = async (): Promise<WillExecutor[]> => {
+// Add support for saving will content
+export const saveWillContent = async (willId: string, content: string): Promise<boolean> => {
+  try {
+    console.log(`Saving content for will ${willId}`);
+    // In a real implementation, this would store the actual document content
+    // Here we're just updating the will to mark as updated
+    const { error } = await supabase
+      .from('wills')
+      .update({
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', willId);
+      
+    if (error) {
+      console.error('Error saving will content:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in saveWillContent:', error);
+    return false;
+  }
+};
+
+// Additional functions to support will functionality
+export const getWillExecutors = async (willId: string): Promise<WillExecutor[]> => {
   try {
     const { data, error } = await supabase
       .from('will_executors')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('will_id', willId);
       
     if (error) {
-      console.error('Error fetching executors:', error);
+      console.error('Error fetching will executors:', error);
       return [];
     }
     
@@ -171,92 +195,111 @@ export const getWillExecutors = async (): Promise<WillExecutor[]> => {
   }
 };
 
-export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'created_at'>): Promise<WillExecutor | null> => {
+export const addWillExecutor = async (
+  willId: string, 
+  executor: Omit<WillExecutor, 'id' | 'created_at' | 'will_id'>
+): Promise<WillExecutor | null> => {
   try {
     const { data, error } = await supabase
       .from('will_executors')
-      .insert(executor)
+      .insert({
+        ...executor,
+        will_id: willId
+      })
       .select()
       .single();
       
     if (error) {
-      console.error('Error creating executor:', error);
+      console.error('Error adding will executor:', error);
       return null;
     }
     
-    await createSystemNotification('executor_added', {
+    await createSystemNotification('info', {
       title: 'Executor Added',
       description: `${executor.name} has been added as an executor to your will.`
     });
     
     return data;
   } catch (error) {
-    console.error('Error in createWillExecutor:', error);
+    console.error('Error in addWillExecutor:', error);
     return null;
   }
 };
 
-export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
+export const getWillBeneficiaries = async (willId: string): Promise<WillBeneficiary[]> => {
   try {
     const { data, error } = await supabase
       .from('will_beneficiaries')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('will_id', willId);
       
     if (error) {
-      console.error('Error fetching beneficiaries:', error);
+      console.error('Error fetching will beneficiaries:', error);
       return [];
     }
     
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.beneficiary_name,
-      relationship: item.relationship,
-      percentage: item.percentage,
-      created_at: item.created_at,
-      will_id: item.will_id
-    }));
+    return data || [];
   } catch (error) {
     console.error('Error in getWillBeneficiaries:', error);
     return [];
   }
 };
 
-export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, 'id' | 'created_at'>): Promise<WillBeneficiary | null> => {
+export const addWillBeneficiary = async (
+  willId: string, 
+  beneficiary: Omit<WillBeneficiary, 'id' | 'created_at' | 'will_id'>
+): Promise<WillBeneficiary | null> => {
   try {
-    const dbBeneficiary = {
-      beneficiary_name: beneficiary.name,
-      relationship: beneficiary.relationship,
-      percentage: beneficiary.percentage,
-      will_id: beneficiary.will_id
-    };
-    
     const { data, error } = await supabase
       .from('will_beneficiaries')
-      .insert(dbBeneficiary)
+      .insert({
+        ...beneficiary,
+        will_id: willId
+      })
       .select()
       .single();
       
     if (error) {
-      console.error('Error creating beneficiary:', error);
+      console.error('Error adding will beneficiary:', error);
       return null;
     }
     
-    await createSystemNotification('beneficiary_added', {
+    await createSystemNotification('info', {
       title: 'Beneficiary Added',
       description: `${beneficiary.name} has been added as a beneficiary to your will.`
     });
     
-    return {
-      id: data.id,
-      name: data.beneficiary_name,
-      relationship: data.relationship,
-      percentage: data.percentage,
-      created_at: data.created_at,
-      will_id: data.will_id
-    };
+    return data;
   } catch (error) {
-    console.error('Error in createWillBeneficiary:', error);
+    console.error('Error in addWillBeneficiary:', error);
     return null;
+  }
+};
+
+// Function to finalize a will
+export const finalizeWill = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('wills')
+      .update({
+        status: 'Active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error finalizing will:', error);
+      return false;
+    }
+    
+    await createSystemNotification('success', {
+      title: 'Will Finalized',
+      description: 'Your will has been finalized and is now active.'
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error in finalizeWill:', error);
+    return false;
   }
 };

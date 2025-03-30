@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -24,6 +24,13 @@ export function TemplatePreview({
   onSelect,
   popularTemplate = false
 }: TemplatePreviewProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleSelectInDialog = () => {
+    setIsDialogOpen(false);
+    onSelect();
+  };
+
   return (
     <Card className={`h-full flex flex-col relative overflow-hidden ${popularTemplate ? 'border-willtank-500' : ''}`}>
       {popularTemplate && (
@@ -49,7 +56,7 @@ export function TemplatePreview({
           ))}
         </ul>
         
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" className="w-full">
               <Eye className="h-4 w-4 mr-2" />
@@ -75,7 +82,7 @@ export function TemplatePreview({
             </div>
             
             <DialogFooter>
-              <Button onClick={onSelect} className="w-full md:w-auto">
+              <Button onClick={handleSelectInDialog} className="w-full md:w-auto">
                 Use This Template
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
