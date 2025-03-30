@@ -4,7 +4,7 @@ import Stripe from "https://esm.sh/stripe@12.9.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', // Consider restricting this to your actual domain in production
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json'
@@ -84,23 +84,24 @@ serve(async (req) => {
     if (!stripeCustomerId) {
       console.log("No Stripe customer ID found, creating new customer");
       
-      try {
-        // Call the create-stripe-customer function
-        const { data: customerData, error: customerError } = await supabase.functions.invoke(
-          'create-stripe-customer',
-          {
-            body: { user_id: user.id, email: user.email },
-          }
-        );
-        
-        if (customerError || !customerData?.customer_id) {
-          throw new Error("Failed to create Stripe customer");
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          user_id: user.id
         }
-        
-        stripeCustomerId = customerData.customer_id;
-      } catch (error) {
-        console.error("Error creating Stripe customer:", error);
-        throw new Error("Failed to create Stripe customer");
+      });
+      
+      stripeCustomerId = customer.id;
+      
+      // Update user profile with Stripe customer ID
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('id', user.id);
+      
+      if (updateError) {
+        console.error("Error updating user with Stripe customer ID:", updateError);
+        // Continue anyway as we have the customer ID
       }
     } else {
       console.log(`Found existing Stripe customer: ${stripeCustomerId}`);

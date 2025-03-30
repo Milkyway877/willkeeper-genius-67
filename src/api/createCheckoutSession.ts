@@ -12,9 +12,9 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: { plan, billingPeriod },
     });
-
+    
     if (error) {
-      console.error('Error creating checkout session:', error);
+      console.error('Error invoking create-checkout-session function:', error);
       toast.error('Payment error', {
         description: `Error creating checkout session: ${error.message}`,
         id: toastId
