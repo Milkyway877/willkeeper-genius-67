@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -118,6 +119,7 @@ export const createSystemNotification = async (
   });
 };
 
+// Make sure we explicitly export these functions used by tankService
 export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
   return createSystemNotification('vault_item_added', {
     title: `${itemType} Added to Vault`,
