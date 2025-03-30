@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -251,6 +252,7 @@ export const notifySecurityEvent = async (event: string, details: string): Promi
   });
 };
 
+// Add explicit exports for the functions that are causing the import error
 export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
   return createSystemNotification('vault_item_added', {
     title: `${itemType} Added to Vault`,
