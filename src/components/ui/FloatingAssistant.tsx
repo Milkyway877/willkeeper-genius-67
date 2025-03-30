@@ -1,10 +1,60 @@
 
 import React, { useState } from 'react';
-import { Bot, X } from 'lucide-react';
+import { Bot, X, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [response, setResponse] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    
+    try {
+      setIsLoading(true);
+      setResponse('');
+      
+      // Call the AI assistant edge function
+      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        body: { 
+          query: message,
+          conversation_history: []
+        }
+      });
+      
+      if (error) {
+        console.error('Error invoking AI assistant:', error);
+        toast({
+          title: 'Error',
+          description: 'Could not connect to AI assistant. Please try again later.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      setResponse(data?.response || 'I could not process your request. Please try again.');
+    } catch (err) {
+      console.error('Error with AI processing:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to process your request. Please try again later.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
+    }
+  };
 
   return (
     <div className="fixed right-4 bottom-4 z-30">
@@ -26,16 +76,37 @@ export function FloatingAssistant() {
                 <X size={18} />
               </button>
             </div>
+            
+            {response && (
+              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-4 text-sm">
+                <p className="text-gray-700 dark:text-gray-200">{response}</p>
+              </div>
+            )}
+            
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
               How can I help you today with your will or documents?
             </p>
+            
             <div className="flex">
               <input
                 type="text"
                 placeholder="Ask a question..."
                 className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
               />
-              <button className="bg-black text-white dark:bg-white dark:text-black px-3 py-2 rounded-r-md text-sm font-medium">
+              <button 
+                className={`bg-black text-white dark:bg-white dark:text-black px-3 py-2 rounded-r-md text-sm font-medium flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}
+                onClick={handleSendMessage}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="animate-spin h-4 w-4 border-2 border-white dark:border-black border-t-transparent rounded-full mr-1"></span>
+                ) : (
+                  <Send size={14} className="mr-1" />
+                )}
                 Send
               </button>
             </div>

@@ -204,7 +204,7 @@ export default function Dashboard() {
                   ? "Last updated recently" 
                   : "No wills created yet"}
               </span>
-              <Link to="/will">
+              <Link to="/dashboard/will">
                 <Button variant="ghost" size="sm">View</Button>
               </Link>
             </div>
@@ -228,7 +228,7 @@ export default function Dashboard() {
                   ? `${summary.executorCount} ${summary.executorCount === 1 ? 'executor' : 'executors'} added` 
                   : "None added yet"}
               </span>
-              <Link to="/executors">
+              <Link to="/pages/executors/Executors">
                 <Button variant="ghost" size="sm">Manage</Button>
               </Link>
             </div>
@@ -250,7 +250,7 @@ export default function Dashboard() {
               <span className="text-sm text-gray-500">
                 {isNewUser ? "Security setup pending" : "Your account is secure"}
               </span>
-              <Link to="/security">
+              <Link to="/pages/security/IDSecurity">
                 <Button variant="ghost" size="sm">Check</Button>
               </Link>
             </div>
@@ -278,7 +278,7 @@ export default function Dashboard() {
                     <span className="mt-2">Create New Will</span>
                   </Button>
                 </Link>
-                <Link to="/executors">
+                <Link to="/pages/executors/Executors">
                   <Button 
                     className="flex flex-col items-center justify-center h-auto py-6 w-full" 
                     variant="outline"
@@ -287,7 +287,7 @@ export default function Dashboard() {
                     <span className="mt-2">Add Executor</span>
                   </Button>
                 </Link>
-                <Link to="/security">
+                <Link to="/pages/security/IDSecurity">
                   <Button 
                     className="flex flex-col items-center justify-center h-auto py-6 w-full" 
                     variant="outline"
@@ -296,7 +296,7 @@ export default function Dashboard() {
                     <span className="mt-2">Security Check</span>
                   </Button>
                 </Link>
-                <Link to="/encryption">
+                <Link to="/pages/encryption/Encryption">
                   <Button 
                     className="flex flex-col items-center justify-center h-auto py-6 w-full" 
                     variant="outline"
@@ -305,7 +305,7 @@ export default function Dashboard() {
                     <span className="mt-2">Manage Keys</span>
                   </Button>
                 </Link>
-                <Link to="/notifications">
+                <Link to="/pages/notifications/Notifications">
                   <Button 
                     className="flex flex-col items-center justify-center h-auto py-6 w-full" 
                     variant="outline"
@@ -455,7 +455,7 @@ export default function Dashboard() {
               </div>
               
               <div className="mt-4">
-                <Link to="/ai-assistance">
+                <Link to="/pages/ai/AIAssistance">
                   <Button variant="outline" className="w-full" size="sm">
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Ask AI Assistant

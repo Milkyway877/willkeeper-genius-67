@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { Toaster } from '@/components/ui/toaster';
+import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 
 // Import pages
 import Home from './pages/Index';
@@ -65,6 +66,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <NotificationsProvider>
           <Toaster />
+          <FloatingAssistant />
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Home />} />
