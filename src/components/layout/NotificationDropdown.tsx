@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { BellRing, Check, X } from 'lucide-react';
 import {
@@ -92,7 +93,7 @@ export function NotificationDropdown() {
       <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto p-0">
         <div className="flex items-center justify-between p-3 border-b">
           <h3 className="font-medium">Notifications</h3>
-          <Link to="/notifications" className="text-sm text-willtank-600 hover:underline">
+          <Link to="/pages/notifications/Notifications" className="text-sm text-willtank-600 hover:underline">
             View all
           </Link>
         </div>

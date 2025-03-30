@@ -14,6 +14,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { Check, Loader2, Upload, Camera, User, Mail, Calendar, X, UserPlus, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function Profile() {
   const { toast } = useToast();
@@ -220,7 +221,10 @@ export default function Profile() {
                 className="hidden"
               />
               
-              <h3 className="text-xl font-semibold mb-1">{profile?.full_name || 'User'}</h3>
+              <h3 className="text-xl font-semibold mb-1">
+                {profile?.full_name || 'User'} 
+                {profile?.full_name && <Check className="inline-block ml-1 h-4 w-4 text-green-500" />}
+              </h3>
               <p className="text-gray-500 mb-4">{profile?.email || 'No email available'}</p>
               
               <div className="flex gap-2 mb-6">
@@ -252,7 +256,16 @@ export default function Profile() {
               <div className="w-full space-y-4">
                 <div className="flex items-center">
                   <User className="h-5 w-5 text-gray-400 mr-3" />
-                  <span className="text-sm">{profile?.full_name || 'Name not set'}</span>
+                  <span className="text-sm">
+                    {profile?.full_name ? (
+                      <span className="flex items-center">
+                        {profile.full_name}
+                        <Check className="ml-1 h-4 w-4 text-green-500" />
+                      </span>
+                    ) : (
+                      'Name not set'
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center">
                   <Mail className="h-5 w-5 text-gray-400 mr-3" />
@@ -366,18 +379,24 @@ export default function Profile() {
                 <div>
                   <h3 className="text-sm font-medium mb-3">Quick Access</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    <Button variant="outline" className="justify-start">
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Add Beneficiary
-                    </Button>
-                    <Button variant="outline" className="justify-start">
-                      <User className="mr-2 h-4 w-4" />
-                      Add Executor
-                    </Button>
-                    <Button variant="outline" className="justify-start">
-                      <Shield className="mr-2 h-4 w-4" />
-                      Security Settings
-                    </Button>
+                    <Link to="/executors">
+                      <Button variant="outline" className="justify-start w-full">
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add Beneficiary
+                      </Button>
+                    </Link>
+                    <Link to="/pages/executors/Executors">
+                      <Button variant="outline" className="justify-start w-full">
+                        <User className="mr-2 h-4 w-4" />
+                        Add Executor
+                      </Button>
+                    </Link>
+                    <Link to="/pages/security/IDSecurity">
+                      <Button variant="outline" className="justify-start w-full">
+                        <Shield className="mr-2 h-4 w-4" />
+                        Security Settings
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </div>

@@ -36,7 +36,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
         />
       )}
       <AvatarFallback className="bg-willtank-100 text-willtank-700 font-medium">
-        {initials}
+        {displayProfile?.full_name ? initials : 'U'}
       </AvatarFallback>
     </Avatar>
   );
