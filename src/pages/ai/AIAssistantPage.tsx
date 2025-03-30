@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, User, RefreshCw, Send, Sparkles, Copy, ThumbsUp, ThumbsDown, Search, MessageSquare, ArrowRight, PanelLeft } from 'lucide-react';
@@ -39,7 +40,7 @@ export default function AIAssistantPage() {
       {
         id: '1',
         role: 'assistant',
-        content: "Hello! I'm your WillTank AI assistant powered by GPT-4o Mini. How can I help you with your estate planning today?",
+        content: "Hello! I'm Skyler, your WillTank AI assistant. How can I help you with your estate planning today?",
         timestamp: new Date()
       }
     ]
@@ -58,67 +59,143 @@ export default function AIAssistantPage() {
   ];
 
   useEffect(() => {
-    const savedConversations: Conversation[] = [
-      {
-        id: 'conv-1',
-        title: 'Digital Assets Will',
-        lastUpdated: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        messages: [
-          {
-            id: '1',
-            role: 'assistant',
-            content: "Hello! How can I help you with your estate planning?",
-            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
-          },
-          {
-            id: '2',
-            role: 'user',
-            content: "I need help with my digital assets will",
-            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000 + 60000)
-          }
-        ]
-      },
-      {
-        id: 'conv-2',
-        title: 'Executor Questions',
-        lastUpdated: new Date(Date.now() - 48 * 60 * 60 * 1000),
-        messages: [
-          {
-            id: '1',
-            role: 'assistant',
-            content: "Hello! How can I help you with your estate planning?",
-            timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000)
-          },
-          {
-            id: '2',
-            role: 'user',
-            content: "How do I select an executor for my will?",
-            timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000 + 60000)
-          }
-        ]
-      }
-    ];
-    
-    const storedConversations = localStorage.getItem('ai-conversations');
-    if (storedConversations) {
+    // Load conversations from local storage or API
+    const loadConversations = async () => {
       try {
-        const parsed = JSON.parse(storedConversations);
-        const processedConversations = parsed.map((conv: any) => ({
-          ...conv,
-          lastUpdated: new Date(conv.lastUpdated),
-          messages: conv.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }))
-        }));
-        setConversations(processedConversations);
-      } catch (e) {
-        console.error('Error parsing stored conversations:', e);
-        setConversations(savedConversations);
+        // Try loading from Supabase first (if user is authenticated)
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Check if we have saved conversations in AI interactions
+          const { data, error } = await supabase
+            .from('ai_interactions')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false });
+            
+          if (!error && data && data.length > 0) {
+            // Convert AI interactions to conversation format
+            const processedConversations = data.reduce((acc: Conversation[], interaction) => {
+              // Try to extract conversation data from request_type
+              let conversationInfo: any = {};
+              try {
+                // This assumes request_type might contain JSON with conversation context
+                const parsed = JSON.parse(interaction.request_type);
+                if (parsed && typeof parsed === 'object') {
+                  conversationInfo = parsed;
+                }
+              } catch (e) {
+                // If not JSON, use as a plain title
+                conversationInfo = { title: interaction.request_type };
+              }
+              
+              // Create a conversation from this interaction
+              const conversation: Conversation = {
+                id: interaction.id,
+                title: conversationInfo.title || `Conversation ${acc.length + 1}`,
+                lastUpdated: new Date(interaction.created_at),
+                messages: [
+                  {
+                    id: `user-${interaction.id}`,
+                    role: 'user',
+                    content: conversationInfo.query || 'How can you help me?',
+                    timestamp: new Date(interaction.created_at),
+                  },
+                  {
+                    id: `assistant-${interaction.id}`,
+                    role: 'assistant',
+                    content: interaction.response,
+                    timestamp: new Date(interaction.created_at),
+                  }
+                ]
+              };
+              
+              acc.push(conversation);
+              return acc;
+            }, []);
+            
+            if (processedConversations.length > 0) {
+              setConversations(processedConversations);
+              return;
+            }
+          }
+        }
+        
+        // Fallback to localStorage if no supabase data
+        const storedConversations = localStorage.getItem('ai-conversations');
+        if (storedConversations) {
+          try {
+            const parsed = JSON.parse(storedConversations);
+            const processedConversations = parsed.map((conv: any) => ({
+              ...conv,
+              lastUpdated: new Date(conv.lastUpdated),
+              messages: conv.messages.map((msg: any) => ({
+                ...msg,
+                timestamp: new Date(msg.timestamp)
+              }))
+            }));
+            setConversations(processedConversations);
+          } catch (e) {
+            console.error('Error parsing stored conversations:', e);
+            // Create default conversations as fallback
+            createDefaultConversations();
+          }
+        } else {
+          // Create default conversations if nothing found
+          createDefaultConversations();
+        }
+      } catch (error) {
+        console.error('Error loading conversations:', error);
+        createDefaultConversations();
       }
-    } else {
-      setConversations(savedConversations);
-    }
+    };
+    
+    const createDefaultConversations = () => {
+      const defaultConversations: Conversation[] = [
+        {
+          id: 'conv-1',
+          title: 'Digital Assets Will',
+          lastUpdated: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          messages: [
+            {
+              id: '1',
+              role: 'assistant',
+              content: "Hello! How can I help you with your estate planning?",
+              timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000)
+            },
+            {
+              id: '2',
+              role: 'user',
+              content: "I need help with my digital assets will",
+              timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000 + 60000)
+            }
+          ]
+        },
+        {
+          id: 'conv-2',
+          title: 'Executor Questions',
+          lastUpdated: new Date(Date.now() - 48 * 60 * 60 * 1000),
+          messages: [
+            {
+              id: '1',
+              role: 'assistant',
+              content: "Hello! How can I help you with your estate planning?",
+              timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000)
+            },
+            {
+              id: '2',
+              role: 'user',
+              content: "How do I select an executor for my will?",
+              timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000 + 60000)
+            }
+          ]
+        }
+      ];
+      
+      setConversations(defaultConversations);
+    };
+    
+    loadConversations();
   }, []);
 
   useEffect(() => {
@@ -176,13 +253,17 @@ export default function AIAssistantPage() {
     setIsProcessing(true);
 
     try {
+      // Store conversation history format that AI can process
+      const conversationHistory = currentConversation.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+        
+      // Call the AI assistant edge function
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
         body: { 
           query: input,
-          conversation_history: currentConversation.messages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
+          conversation_history: conversationHistory
         }
       });
       
@@ -216,9 +297,26 @@ export default function AIAssistantPage() {
       }
       setConversations(finalConversations);
       
+      // Save interaction to Supabase if user is authenticated
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await supabase.from('ai_interactions').insert({
+            user_id: session.user.id,
+            request_type: JSON.stringify({
+              title: finalConversation.title,
+              query: input
+            }),
+            response: data.response
+          });
+        }
+      } catch (err) {
+        console.error('Error saving AI interaction:', err);
+      }
+      
       notifyWillUpdated({
         title: "AI Assistant",
-        description: "New response received from the assistant."
+        description: "New response received from Skyler."
       });
       
     } catch (error) {
@@ -346,14 +444,14 @@ export default function AIAssistantPage() {
         {
           id: '1',
           role: 'assistant',
-          content: "Hello! I'm your WillTank AI assistant powered by GPT-4o Mini. How can I help you with your estate planning today?",
+          content: "Hello! I'm Skyler, your WillTank AI assistant. How can I help you with your estate planning today?",
           timestamp: new Date()
         }
       ]
     });
     toast({
       title: "New Conversation",
-      description: "Started a new AI assistant conversation."
+      description: "Started a new conversation with Skyler."
     });
   };
 
@@ -380,6 +478,26 @@ export default function AIAssistantPage() {
     if (currentConversation.id === conversationId) {
       startNewConversation();
     }
+    
+    // Also delete from Supabase if it exists there
+    const deleteFromSupabase = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          // If the ID is in Supabase UUID format, try to delete it
+          if (conversationId.length === 36) {
+            await supabase
+              .from('ai_interactions')
+              .delete()
+              .eq('id', conversationId);
+          }
+        }
+      } catch (err) {
+        console.error('Error deleting AI interaction from Supabase:', err);
+      }
+    };
+    
+    deleteFromSupabase();
     
     toast({
       title: "Conversation deleted",
@@ -478,7 +596,7 @@ export default function AIAssistantPage() {
               </Button>
               <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-yellow-500" />
-                <h2 className="font-medium">AI Assistant (GPT-4o Mini)</h2>
+                <h2 className="font-medium">Skyler</h2>
               </div>
             </div>
             <Button 
@@ -605,7 +723,7 @@ export default function AIAssistantPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about will creation, estate planning, or legacy options..."
+                placeholder="Ask Skyler about estate planning or legacy options..."
                 className="flex-1"
               />
               <Button 

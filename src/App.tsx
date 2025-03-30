@@ -33,6 +33,7 @@ import WillEditor from './pages/will/WillCreation';
 import WillTemplates from './pages/templates/Templates';
 import WillTank from './pages/tank/Tank';
 import Settings from './pages/settings/Settings';
+import Profile from './pages/settings/Profile'; // New import for Profile page
 import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
@@ -101,6 +102,7 @@ function App() {
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/profile" element={<Profile />} /> {/* Add the Profile route */}
 
             {/* Routes for sidebar links */}
             <Route path="/pages/encryption/Encryption" element={<Encryption />} />

@@ -48,7 +48,7 @@ export function FloatingAssistant() {
       
       // Try to create a notification for this interaction, but don't block if it fails
       try {
-        notifyInfo('AI Assistant', 'You received a new response from the AI assistant.', 'low');
+        notifyInfo('Skyler', 'You received a new response from Skyler.', 'low');
       } catch (notifyError) {
         console.warn('Could not create notification:', notifyError);
       }
@@ -86,7 +86,7 @@ export function FloatingAssistant() {
       return "WillTank specializes in digital asset planning. Our platform helps you inventory digital assets (cryptocurrency, online accounts), assign specific executors, and create secure access instructions. Would you like help setting this up?";
     }
     
-    return "I'm your WillTank AI assistant. I can help with estate planning, will creation, digital assets management, and more. What specific aspect of legacy planning can I assist you with today?";
+    return "I'm Skyler, your WillTank AI assistant. I can help with estate planning, will creation, digital assets management, and more. What specific aspect of legacy planning can I assist you with today?";
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -107,7 +107,7 @@ export function FloatingAssistant() {
             className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-4 max-w-sm w-full border border-gray-200 dark:border-gray-700"
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium">AI Assistant</h3>
+              <h3 className="font-medium">Skyler</h3>
               <button
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
