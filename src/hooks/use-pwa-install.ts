@@ -14,7 +14,9 @@ export const usePwaInstall = () => {
     // Check if app is already installed
     const checkIfInstalled = () => {
       // For iOS (Safari)
-      if (navigator.standalone) {
+      // Use window.navigator with type assertion for standalone property
+      const nav = window.navigator as Navigator & { standalone?: boolean };
+      if (nav.standalone) {
         setIsInstalled(true);
         return;
       }

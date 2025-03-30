@@ -1,185 +1,165 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Bot, ChevronRight } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { motion } from 'framer-motion';
-
-interface QuestionOption {
-  id: string;
-  label: string;
-  value: string;
-}
-
-interface Question {
-  id: string;
-  text: string;
-  type: 'text' | 'textarea' | 'radio' | 'checkbox' | 'multiselect';
-  options?: QuestionOption[];
-  required?: boolean;
-}
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  PenTool, 
+  Brain,
+  MessageSquare,
+  CheckCircle2
+} from 'lucide-react';
 
 interface AIQuestionFlowProps {
-  questions: Question[];
-  onComplete: (answers: Record<string, any>) => void;
+  selectedTemplate: any;
+  responses: Record<string, any>;
+  setResponses: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+  onComplete: (answers: Record<string, any>, generatedWill: string) => void;
 }
 
-export function AIQuestionFlow({ questions, onComplete }: AIQuestionFlowProps) {
+export const AIQuestionFlow: React.FC<AIQuestionFlowProps> = ({ 
+  selectedTemplate, 
+  responses, 
+  setResponses, 
+  onComplete 
+}) => {
+  const [questions, setQuestions] = useState([
+    {
+      id: "willTitle",
+      text: "What would you like to name your will?",
+      type: "text",
+      defaultValue: responses.willTitle || `My ${selectedTemplate?.title || 'Custom'} Will`,
+      icon: <PenTool className="h-5 w-5 text-gray-500" />
+    },
+    {
+      id: "executorName",
+      text: "Who will be the executor of your will?",
+      type: "text",
+      defaultValue: responses.executorName || "",
+      icon: <UserCheck className="h-5 w-5 text-gray-500" />
+    },
+    {
+      id: "beneficiaryName",
+      text: "Who will be the primary beneficiary of your will?",
+      type: "text",
+      defaultValue: responses.beneficiaryName || "",
+      icon: <User className="h-5 w-5 text-gray-500" />
+    },
+    {
+      id: "specificRequests",
+      text: "Do you have any specific requests or instructions?",
+      type: "textarea",
+      defaultValue: responses.specificRequests || "",
+      icon: <MessageSquare className="h-5 w-5 text-gray-500" />
+    }
+  ]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
-  const [isCurrentQuestionAnswered, setIsCurrentQuestionAnswered] = useState(false);
-  
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [generatedWill, setGeneratedWill] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleAnswerChange = (questionId: string, value: string) => {
+    setAnswers(prevAnswers => ({
+      ...prevAnswers,
+      [questionId]: value
+    }));
+  };
+
+  const goToNextQuestion = () => {
+    setResponses({ ...responses, ...answers });
+    setCurrentQuestionIndex(currentQuestionIndex + 1);
+  };
+
+  const generateWillContent = async () => {
+    setIsGenerating(true);
+    
+    // Simulate AI will generation
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    let generatedContent = `
+      Last Will and Testament of ${answers.willTitle || selectedTemplate?.title || 'Unnamed Will'}
+      
+      I, ${answers.willTitle || 'the testator'}, being of sound mind, declare this to be my last will and testament.
+      
+      I appoint ${answers.executorName || 'an executor'} as the executor of this will.
+      
+      I bequeath my assets to ${answers.beneficiaryName || 'my beneficiary'}.
+      
+      Specific requests: ${answers.specificRequests || 'None'}.
+    `;
+    
+    setGeneratedWill(generatedContent);
+    setIsGenerating(false);
+    onComplete({ ...responses, ...answers }, generatedContent);
+  };
+
   const currentQuestion = questions[currentQuestionIndex];
-  
-  // Check if the current question is answered whenever the answers change
-  useEffect(() => {
-    if (!currentQuestion) return;
-    
-    const currentAnswer = answers[currentQuestion.id];
-    const isAnswered = currentQuestion.required 
-      ? !!currentAnswer && (
-          currentQuestion.type === 'checkbox' 
-          ? Array.isArray(currentAnswer) ? currentAnswer.length > 0 : !!currentAnswer
-          : true
-        )
-      : true;
-    
-    setIsCurrentQuestionAnswered(isAnswered);
-  }, [answers, currentQuestion]);
-  
-  const handleAnswer = (value: any) => {
-    setAnswers(prev => ({ ...prev, [currentQuestion.id]: value }));
-  };
-  
-  const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else {
-      onComplete(answers);
-    }
-  };
-  
-  const renderQuestionInput = () => {
-    if (!currentQuestion) return null;
-    
-    switch (currentQuestion.type) {
-      case 'text':
-        return (
-          <Input 
-            value={answers[currentQuestion.id] || ''} 
-            onChange={e => handleAnswer(e.target.value)} 
-            placeholder="Type your answer..."
-            className="w-full"
-          />
-        );
-      case 'textarea':
-        return (
-          <Textarea 
-            value={answers[currentQuestion.id] || ''} 
-            onChange={e => handleAnswer(e.target.value)} 
-            placeholder="Type your answer..."
-            className="w-full min-h-[100px]"
-          />
-        );
-      case 'radio':
-        return (
-          <RadioGroup 
-            value={answers[currentQuestion.id] || ''}
-            onValueChange={handleAnswer}
-            className="space-y-3"
-          >
-            {currentQuestion.options?.map(option => (
-              <div key={option.id} className="flex items-center space-x-2">
-                <RadioGroupItem value={option.value} id={option.id} />
-                <Label htmlFor={option.id}>{option.label}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        );
-      case 'checkbox':
-      case 'multiselect':
-        return (
-          <div className="space-y-3">
-            {currentQuestion.options?.map(option => (
-              <div key={option.id} className="flex items-center space-x-2">
-                <Checkbox 
-                  id={option.id} 
-                  checked={Array.isArray(answers[currentQuestion.id]) 
-                    ? answers[currentQuestion.id].includes(option.value)
-                    : false
-                  }
-                  onCheckedChange={(checked) => {
-                    const currentAnswers = Array.isArray(answers[currentQuestion.id]) 
-                      ? [...answers[currentQuestion.id]] 
-                      : [];
-                    
-                    if (checked) {
-                      handleAnswer([...currentAnswers, option.value]);
-                    } else {
-                      handleAnswer(currentAnswers.filter(val => val !== option.value));
-                    }
-                  }}
-                />
-                <Label htmlFor={option.id}>{option.label}</Label>
-              </div>
-            ))}
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-  
+
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center space-x-3">
-          <Avatar className="h-10 w-10 bg-primary/10">
-            <AvatarImage src="/lovable-uploads/b9cfd3bc-eebb-4e46-a3ef-2272fa3debc9.png" />
-            <AvatarFallback><Bot /></AvatarFallback>
-          </Avatar>
-          <div>
-            <CardTitle>AI-Assisted Will Creation</CardTitle>
-            <CardDescription>Step {currentQuestionIndex + 1} of {questions.length}</CardDescription>
-          </div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center mb-6">
+        <div className="h-12 w-12 rounded-full bg-willtank-100 flex items-center justify-center mr-4">
+          <Brain className="h-6 w-6 text-willtank-600" />
         </div>
-      </CardHeader>
-      <CardContent>
-        <motion.div
-          key={currentQuestion?.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-          className="space-y-4"
-        >
-          <div className="text-lg font-medium">{currentQuestion?.text}</div>
-          <div>{renderQuestionInput()}</div>
-        </motion.div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-          disabled={currentQuestionIndex === 0}
-        >
-          Back
-        </Button>
-        <Button 
-          onClick={handleNext} 
-          disabled={!isCurrentQuestionAnswered}
-          className="flex items-center"
-        >
-          {currentQuestionIndex < questions.length - 1 ? "Next Step" : "Complete"}
-          <ChevronRight className="ml-1 h-4 w-4" />
-        </Button>
-      </CardFooter>
-    </Card>
+        <div>
+          <h3 className="text-lg font-medium">AI-Guided Questions</h3>
+          <p className="text-gray-500">Answer a few questions to personalize your will</p>
+        </div>
+      </div>
+
+      {currentQuestion ? (
+        <div>
+          <div className="mb-4">
+            <div className="flex items-center text-gray-600 mb-1">
+              {currentQuestion.icon}
+              <label htmlFor={currentQuestion.id} className="ml-2 font-medium">
+                {currentQuestion.text}
+              </label>
+            </div>
+            {currentQuestion.type === "text" ? (
+              <Textarea
+                id={currentQuestion.id}
+                placeholder="Your answer"
+                className="w-full resize-none border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-willtank-500"
+                value={answers[currentQuestion.id] || currentQuestion.defaultValue || ''}
+                onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+              />
+            ) : (
+              <Textarea
+                id={currentQuestion.id}
+                placeholder="Your answer"
+                className="w-full resize-none border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-willtank-500"
+                value={answers[currentQuestion.id] || currentQuestion.defaultValue || ''}
+                onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+              />
+            )}
+          </div>
+          <Button onClick={goToNextQuestion} className="w-full">
+            Next Question
+          </Button>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          {isGenerating ? (
+            <>
+              <p className="text-willtank-700 font-medium mb-4">Generating Your Will...</p>
+              <svg className="animate-spin h-6 w-6 text-willtank-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </>
+          ) : (
+            <>
+              <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="h-8 w-8 text-green-600" />
+              </div>
+              <p className="text-green-700 font-medium mb-2">All Questions Answered!</p>
+              <p className="text-gray-500 mb-6">Click below to generate your will document.</p>
+              <Button onClick={generateWillContent}>
+                Generate Will
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
-}
+};
