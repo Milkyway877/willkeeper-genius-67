@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import * as UAParser from "ua-parser-js";
+import { UAParser } from "ua-parser-js";
 
 // Type for activity log data
 export interface ActivityLog {
@@ -17,7 +17,7 @@ export interface ActivityLog {
 export const logUserActivity = async (action: string, details?: any): Promise<boolean> => {
   try {
     // Get device info
-    const parser = new UAParser.UAParser();
+    const parser = new UAParser();
     const result = parser.getResult();
     const deviceInfo = {
       browser: `${result.browser.name || 'Unknown'} ${result.browser.version || ''}`,
