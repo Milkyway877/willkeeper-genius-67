@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -30,6 +31,10 @@ import Settings from './pages/settings/Settings';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
+import Business from './pages/Business';
+import HowItWorks from './pages/HowItWorks';
+import Security from './pages/Security';
+import Services from './pages/Services';
 
 // Import the Documentation pages
 import Documentation from './pages/corporate/Documentation';
@@ -66,6 +71,10 @@ function App() {
             <Route path="/blog/:id" element={<BlogArticle />} />
             <Route path="/help" element={<Help />} />
             <Route path="/search" element={<Search />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/security" element={<Security />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/business" element={<Business />} />
             
             {/* Auth routes - using our new secure components */}
             <Route path="/auth/signin" element={<SecureSignIn />} />

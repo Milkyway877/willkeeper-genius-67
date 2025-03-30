@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -44,53 +43,11 @@ export function SignUpForm() {
     },
   });
 
-  // Check if email is already in use
-  const checkEmailExists = async (email: string): Promise<boolean> => {
-    try {
-      // First check for existing user
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-        }
-      });
-      
-      // If there's no error during OTP request, email exists
-      if (!error) {
-        return true;
-      }
-      
-      // Check the specific error message for email not found
-      if (error.message.includes('Email not found')) {
-        return false;
-      }
-      
-      // If the error is of any other type, assume email exists to be safe
-      return true;
-    } catch (err) {
-      console.error("Error checking email:", err);
-      // Default to false in case of errors to avoid blocking valid signups
-      return false;
-    }
-  };
-
   const onSubmit = async (data: SignUpFormInputs) => {
     setIsLoading(true);
     
     try {
-      // First check if the email already exists
-      const emailExists = await checkEmailExists(data.email);
-      
-      if (emailExists) {
-        toast({
-          title: "Email already registered",
-          description: "This email address is already in use. Please use a different email or try to login.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
+      // Attempt to sign up directly without checking email existence first
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -106,7 +63,7 @@ export function SignUpForm() {
       
       if (error) {
         // Handle specific error cases
-        if (error.message.includes('already registered')) {
+        if (error.message.includes('already registered') || error.message.includes('already in use')) {
           toast({
             title: "Email already registered",
             description: "This email address is already in use. Please use a different email or try to login.",

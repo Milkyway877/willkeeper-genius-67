@@ -61,37 +61,43 @@ export function ServicesSection() {
               title: "Will Creation",
               description: "Generate legally-binding will documents with our advanced system, customized to your specific needs.",
               icon: <FileText className="h-6 w-6 text-black" />,
-              color: "bg-peach-gradient"
+              color: "bg-peach-gradient",
+              link: "/services"
             },
             {
               title: "Bank-Grade Security",
               description: "Rest easy knowing your sensitive information is protected with end-to-end encryption.",
               icon: <Shield className="h-6 w-6 text-black" />,
-              color: "bg-peach-gradient"
+              color: "bg-peach-gradient",
+              link: "/security"
             },
             {
               title: "Executor Management",
               description: "Assign trusted executors for your will and provide them with the appropriate level of access.",
               icon: <Users className="h-6 w-6 text-black" />,
-              color: "bg-peach-gradient"
+              color: "bg-peach-gradient",
+              link: "/services"
             },
             {
               title: "Asset Protection",
               description: "Secure your digital and physical assets with our comprehensive management system.",
               icon: <Key className="h-6 w-6 text-black" />,
-              color: "bg-peach-gradient"
+              color: "bg-peach-gradient",
+              link: "/services"
             },
             {
               title: "Multi-Device Access",
               description: "Access your will from any device with our responsive platform that works flawlessly everywhere.",
               icon: <Shield className="h-6 w-6 text-black" />,
-              color: "bg-peach-gradient"
+              color: "bg-peach-gradient",
+              link: "/services"
             },
             {
               title: "Document Vault",
               description: "Store additional important documents alongside your will in our highly secure vault system.",
               icon: <FileText className="h-6 w-6 text-black" />,
-              color: "bg-peach-gradient"
+              color: "bg-peach-gradient",
+              link: "/services"
             }
           ].map((service, index) => (
             <motion.div 
@@ -110,7 +116,7 @@ export function ServicesSection() {
                 <h3 className="text-xl font-bold mb-2 text-black">{service.title}</h3>
                 <p className="text-gray-700 mb-4">{service.description}</p>
               </div>
-              <Link to="/services">
+              <Link to={service.link}>
                 <Button variant="ghost" size="sm" className="text-black hover:text-black hover:bg-black/5 p-0 h-auto">
                   Learn more <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
