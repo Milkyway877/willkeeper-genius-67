@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { createSystemNotification } from '@/services/notificationService';
@@ -40,12 +39,20 @@ export function useNotificationManager() {
       console.log(`Creating ${type} notification: ${title}`);
       const result = await createSystemNotification(type, { title, description });
       console.log("Notification creation result:", result);
+      
+      // Force a refresh of the notifications list
+      if (notificationsContext?.fetchNotifications) {
+        setTimeout(() => {
+          notificationsContext.fetchNotifications();
+        }, 500);
+      }
+      
       return result;
     } catch (error) {
       console.error(`Failed to create ${type} notification:`, error);
       return null;
     }
-  }, []);
+  }, [notificationsContext]);
 
   // Convenience methods for different notification types
   const notifySuccess = useCallback((title: string, description: string, priority: NotificationPriority = 'medium') => {

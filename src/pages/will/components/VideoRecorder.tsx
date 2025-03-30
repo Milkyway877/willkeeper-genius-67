@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Video, X, Check, RefreshCw, Play, Pause, Save } from 'lucide-react';
@@ -44,11 +43,13 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           audio: true 
         });
         
+        console.log('Camera access granted:', mediaStream);
         setStream(mediaStream);
         
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           videoRef.current.onloadedmetadata = () => {
+            console.log('Video metadata loaded');
             setIsCameraReady(true);
             setIsPreparing(false);
           };
@@ -66,21 +67,33 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       }
     };
     
+    // Start camera initialization
     initCamera();
     
     // Cleanup function
     return () => {
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => {
+          console.log('Stopping track:', track.kind);
+          track.stop();
+        });
       }
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      
+      // Clear any video URLs to prevent memory leaks
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
       }
     };
   }, [toast]);
   
   const startRecording = () => {
-    if (!stream) return;
+    if (!stream) {
+      console.error('No stream available for recording');
+      return;
+    }
     
     recordedChunksRef.current = [];
     
@@ -95,20 +108,25 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       
       try {
         mediaRecorder = new MediaRecorder(stream, options);
+        console.log('Media recorder created with options:', options);
       } catch (e) {
         // Fallback if the specified options aren't supported
+        console.log('Failed with options, creating default media recorder');
         mediaRecorder = new MediaRecorder(stream);
       }
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
+          console.log('Recording data received, size:', event.data.size);
           recordedChunksRef.current.push(event.data);
         }
       };
       
       mediaRecorder.onstop = () => {
+        console.log('Media recorder stopped, processing chunks');
         // Process the recorded chunks
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        console.log('Created blob from chunks, size:', blob.size);
         const url = URL.createObjectURL(blob);
         
         setVideoUrl(url);
@@ -132,6 +150,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(1000); // Collect data every second
+      console.log('Media recorder started');
       setIsRecording(true);
       
       // Start timer

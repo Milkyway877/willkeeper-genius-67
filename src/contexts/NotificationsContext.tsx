@@ -26,6 +26,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       setLoading(true);
       const data = await getNotifications();
+      console.log("Fetched notifications:", data);
       setNotifications(data);
       setError(null);
     } catch (err) {
@@ -95,11 +96,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           // Make sure we validate the type
           const validatedType = validateNotificationType(newNotification.type);
           
+          // Add the new notification to the state
           setNotifications(prev => [
             { ...newNotification, type: validatedType },
             ...prev
           ]);
           
+          // Show a toast for the new notification
           toast({
             title: newNotification.title,
             description: newNotification.description,
@@ -129,7 +132,11 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       )
       .subscribe();
 
+    // Debug to confirm channel is established
+    console.log('Realtime channel subscribed:', channel);
+
     return () => {
+      console.log('Cleaning up Supabase channel');
       supabase.removeChannel(channel);
     };
   }, []);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -9,8 +8,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserWills } from '@/services/dashboardService';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getWill, updateWill } from '@/services/willService';
+import { getWill, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
+import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -19,11 +19,12 @@ export default function Will() {
   const [lastSaved, setLastSaved] = useState('');
   const [createdDate, setCreatedDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [currentWill, setCurrentWill] = useState<any>(null);
+  const [currentWill, setCurrentWill] = useState<WillType | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
   const { id } = useParams(); // Get will ID from URL params
+  const { notifyWillUpdated } = useNotificationManager();
 
   useEffect(() => {
     const fetchWillData = async () => {
@@ -32,43 +33,16 @@ export default function Will() {
         
         // If ID is provided in the URL, fetch that specific will
         if (id) {
+          console.log("Fetching will with ID:", id);
           const will = await getWill(id);
+          
           if (will) {
+            console.log("Will data received:", will);
             setCurrentWill(will);
             setWillTitle(will.title || "Last Will and Testament");
             
             // For demonstration, we're creating sample will content based on the title
-            const sampleWillContent = `
-LAST WILL AND TESTAMENT OF ALEX MORGAN
-
-I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
-
-ARTICLE I: REVOCATION
-I revoke all previous wills and codicils.
-
-ARTICLE II: FAMILY INFORMATION
-I am married to Jamie Morgan. We have two children: Taylor Morgan and Riley Morgan.
-
-ARTICLE III: EXECUTOR
-I appoint Jamie Morgan as the Executor of this Will. If they are unable or unwilling to serve, I appoint my sibling, Casey Morgan, as alternate Executor.
-
-ARTICLE IV: GUARDIAN
-If my spouse does not survive me, I appoint my sibling, Casey Morgan, as guardian of my minor children.
-
-ARTICLE V: DISPOSITION OF PROPERTY
-I give all my property, real and personal, to my spouse, Jamie Morgan, if they survive me.
-If my spouse does not survive me, I give all my property in equal shares to my children, Taylor Morgan and Riley Morgan.
-
-ARTICLE VI: DIGITAL ASSETS
-I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
-
-ARTICLE VII: TAXES AND EXPENSES
-I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
-
-Signed: Alex Morgan
-Date: ${will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : new Date().toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]
-`;
+            const sampleWillContent = generateWillContent(will);
             setWillContent(sampleWillContent);
             
             // Set dates
@@ -84,55 +58,27 @@ Witnesses: [Witness 1], [Witness 2]
           }
         } else {
           // No ID provided, fetch the most recent will
+          console.log("No ID provided, fetching most recent will");
           const wills = await getUserWills();
           
           if (wills && wills.length > 0) {
             const latestWill = wills[0]; // Get the most recent will
+            console.log("Latest will:", latestWill);
             setCurrentWill(latestWill);
             setWillTitle(latestWill.title || "Last Will and Testament");
             
             // For demonstration, create sample will content
-            const sampleWillContent = `
-LAST WILL AND TESTAMENT OF ALEX MORGAN
-
-I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
-
-ARTICLE I: REVOCATION
-I revoke all previous wills and codicils.
-
-ARTICLE II: FAMILY INFORMATION
-I am married to Jamie Morgan. We have two children: Taylor Morgan and Riley Morgan.
-
-ARTICLE III: EXECUTOR
-I appoint Jamie Morgan as the Executor of this Will. If they are unable or unwilling to serve, I appoint my sibling, Casey Morgan, as alternate Executor.
-
-ARTICLE IV: GUARDIAN
-If my spouse does not survive me, I appoint my sibling, Casey Morgan, as guardian of my minor children.
-
-ARTICLE V: DISPOSITION OF PROPERTY
-I give all my property, real and personal, to my spouse, Jamie Morgan, if they survive me.
-If my spouse does not survive me, I give all my property in equal shares to my children, Taylor Morgan and Riley Morgan.
-
-ARTICLE VI: DIGITAL ASSETS
-I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
-
-ARTICLE VII: TAXES AND EXPENSES
-I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
-
-Signed: Alex Morgan
-Date: ${new Date(latestWill.created_at).toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]
-`;
+            const sampleWillContent = generateWillContent(latestWill);
             setWillContent(sampleWillContent);
             
             // Set dates
             setLastSaved(latestWill.updated_at ? format(new Date(latestWill.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
             setCreatedDate(latestWill.created_at ? format(new Date(latestWill.created_at), 'MMMM dd, yyyy') : 'N/A');
           } else {
-            // No wills found
-            setWillContent("No will document found. Create your first will to get started.");
-            setLastSaved(new Date().toLocaleTimeString());
-            setCreatedDate("N/A");
+            // No wills found - redirect to will creation
+            console.log("No wills found, redirecting to will creation");
+            navigate('/will/create');
+            return;
           }
         }
       } catch (error) {
@@ -150,6 +96,64 @@ Witnesses: [Witness 1], [Witness 2]
     fetchWillData();
   }, [id, toast, navigate]);
 
+  // Function to generate more realistic will content based on the will data
+  const generateWillContent = (will: WillType) => {
+    return `
+LAST WILL AND TESTAMENT OF ALEX MORGAN
+
+I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind and memory, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all Wills and Codicils previously made by me.
+
+ARTICLE I: REVOCATION OF PRIOR WILLS
+I hereby revoke all prior Wills and Codicils that I have made.
+
+ARTICLE II: DECLARATION OF FAMILY
+At the time of executing this Will, I am married to Jamie Morgan, and we have two children: Taylor Morgan and Riley Morgan.
+
+ARTICLE III: APPOINTMENT OF EXECUTOR
+I hereby appoint Jamie Morgan as the Executor of this Will and of my estate. If Jamie Morgan is unable or unwilling to serve, I appoint Casey Morgan as the alternate Executor.
+
+My Executor shall have all powers allowed by law, including the power to sell real and personal property without court approval and the power to distribute property in cash or in kind.
+
+ARTICLE IV: PAYMENT OF DEBTS AND EXPENSES
+I direct my Executor to pay all of my legally enforceable debts, funeral expenses, and the expenses of administering my estate.
+
+ARTICLE V: SPECIFIC BEQUESTS
+I give the following specific bequests:
+1. To my spouse, Jamie Morgan, I give our family home located at 123 Main Street, Anytown, USA, together with all furnishings, appliances, and other household items therein.
+2. To my child, Taylor Morgan, I give my collection of books and literary works.
+3. To my child, Riley Morgan, I give my collection of musical instruments and related equipment.
+
+ARTICLE VI: RESIDUARY ESTATE
+I give all the rest, residue, and remainder of my estate, both real and personal, of whatever kind and wherever situated, to my spouse, Jamie Morgan, if my spouse survives me. If my spouse does not survive me, I give my residuary estate to my children, Taylor Morgan and Riley Morgan, in equal shares, per stirpes.
+
+ARTICLE VII: GUARDIANSHIP OF MINOR CHILDREN
+If at the time of my death I have any minor children, and my spouse does not survive me, I appoint Casey Morgan as the guardian of the person and property of such minor children.
+
+ARTICLE VIII: DIGITAL ASSETS
+I grant my Executor the authority to access, control, transfer, delete, or otherwise manage my digital assets, including but not limited to email accounts, social media accounts, financial accounts, digital files, and online subscriptions.
+
+ARTICLE IX: TAXES
+I direct my Executor to pay all estate and inheritance taxes assessed against my estate or any property included in my estate, without right of reimbursement from any recipient of any such property.
+
+ARTICLE X: NO CONTEST PROVISION
+If any beneficiary under this Will contests or attacks this Will or any of its provisions, any share or interest in my estate given to the contesting beneficiary under this Will is revoked and shall be disposed of as if that contesting beneficiary had predeceased me without descendants.
+
+IN WITNESS WHEREOF, I have signed this Will consisting of ${Math.floor(Math.random() * 3) + 5} pages, including this page, and have declared and published this document as my Last Will and Testament on ${will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : new Date().toLocaleDateString()}.
+
+________________________________
+Alex Morgan, Testator
+
+ATTESTATION CLAUSE
+The foregoing instrument was signed, published, and declared by the Testator, Alex Morgan, as the Testator's Last Will and Testament, in our presence, and we, at the Testator's request and in the Testator's presence, and in the presence of each other, have subscribed our names as witnesses thereto, believing the Testator to be of sound mind and memory.
+
+________________________________
+[Witness 1], Witness
+
+________________________________
+[Witness 2], Witness
+`;
+  };
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
   };
@@ -159,27 +163,24 @@ Witnesses: [Witness 1], [Witness 2]
       setIsLoading(true);
       
       if (!currentWill) {
-        // Create a new will if none exists
-        const { data, error } = await supabase
-          .from('wills')
-          .insert({
-            title: willTitle,
-            document_url: 'placeholder_url', // In a real app, you'd upload the document
-            status: 'Active'
-          })
-          .select()
-          .single();
-          
-        if (error) throw error;
-        setCurrentWill(data);
-      } else {
-        // Update existing will
-        const updated = await updateWill(currentWill.id, { 
-          updated_at: new Date().toISOString()
+        console.error("No will to save");
+        toast({
+          title: "Error",
+          description: "Cannot save: No will document found.",
+          variant: "destructive"
         });
-        
-        if (!updated) throw new Error("Failed to update will");
+        return;
       }
+
+      // Update existing will
+      const updated = await updateWill(currentWill.id, { 
+        updated_at: new Date().toISOString()
+      });
+      
+      if (!updated) throw new Error("Failed to update will");
+      
+      // Use notification manager for consistency
+      await notifyWillUpdated(currentWill.title);
       
       setIsEditing(false);
       setLastSaved(new Date().toLocaleTimeString());

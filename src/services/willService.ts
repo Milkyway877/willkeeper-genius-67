@@ -90,7 +90,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
     }
     
     // Create a notification for the user
-    const notificationResult = await createSystemNotification('will_updated', {
+    const notificationResult = await createSystemNotification('success', {
       title: 'Will Created',
       description: `Your will "${will.title}" has been created successfully.`
     });
@@ -130,7 +130,7 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
     }
     
     // Create a notification for the user
-    const notificationResult = await createSystemNotification('will_updated', {
+    const notificationResult = await createSystemNotification('success', {
       title: 'Will Updated',
       description: `Your will "${data.title}" has been updated successfully.`
     });
