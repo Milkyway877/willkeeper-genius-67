@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -11,6 +10,20 @@ export interface Notification {
   created_at: string;
   icon?: string;
 }
+
+export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
+  return createSystemNotification('vault_item_added', {
+    title: `${itemType} Added to Vault`,
+    description: `"${title}" has been added to your Legacy Vault.`
+  });
+};
+
+export const notifyVaultItemUpdated = async (itemType: string, title: string): Promise<Notification | null> => {
+  return createSystemNotification('vault_item_updated', {
+    title: `${itemType} Updated`,
+    description: `"${title}" in your Legacy Vault has been updated.`
+  });
+};
 
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
@@ -249,21 +262,6 @@ export const notifySecurityEvent = async (event: string, details: string): Promi
   return createSystemNotification('security', {
     title: event,
     description: details
-  });
-};
-
-// Add explicit exports for the functions that are causing the import error
-export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
-  return createSystemNotification('vault_item_added', {
-    title: `${itemType} Added to Vault`,
-    description: `"${title}" has been added to your Legacy Vault.`
-  });
-};
-
-export const notifyVaultItemUpdated = async (itemType: string, title: string): Promise<Notification | null> => {
-  return createSystemNotification('vault_item_updated', {
-    title: `${itemType} Updated`,
-    description: `"${title}" in your Legacy Vault has been updated.`
   });
 };
 
