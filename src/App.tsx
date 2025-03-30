@@ -108,6 +108,7 @@ function App() {
               <Route path="/tank" element={<WillTank />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/profile" element={<Profile />} />
+              <Route path="/settings/death-verification" element={<DeathVerification />} />
               <Route path="/activity" element={<Activity />} />
 
               {/* Routes for sidebar links */}
