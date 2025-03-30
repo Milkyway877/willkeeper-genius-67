@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -19,6 +20,10 @@ export interface WillExecutor {
   status: string;
   created_at: string;
   will_id?: string;
+  phone?: string;
+  relationship?: string;
+  address?: string;
+  notes?: string;
 }
 
 export interface WillBeneficiary {
@@ -32,9 +37,17 @@ export interface WillBeneficiary {
 
 export const getWills = async (): Promise<Will[]> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('No authenticated user found when fetching wills');
+      return [];
+    }
+    
     const { data, error } = await supabase
       .from('wills')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('updated_at', { ascending: false });
       
     if (error) {
@@ -71,9 +84,20 @@ export const getWill = async (id: string): Promise<Will | null> => {
 
 export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will | null> => {
   try {
+    // Get session to add user_id to the will
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('No authenticated user found when creating will');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('wills')
-      .insert(will)
+      .insert({
+        ...will,
+        user_id: session.user.id
+      })
       .select()
       .single();
       
@@ -152,12 +176,27 @@ export const deleteWill = async (id: string): Promise<boolean> => {
   }
 };
 
-export const getWillExecutors = async (): Promise<WillExecutor[]> => {
+export const getWillExecutors = async (willId?: string): Promise<WillExecutor[]> => {
   try {
-    const { data, error } = await supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('No authenticated user found when fetching executors');
+      return [];
+    }
+    
+    let query = supabase
       .from('will_executors')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('user_id', session.user.id);
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    query = query.order('created_at', { ascending: false });
+    
+    const { data, error } = await query;
       
     if (error) {
       console.error('Error fetching executors:', error);
@@ -173,9 +212,20 @@ export const getWillExecutors = async (): Promise<WillExecutor[]> => {
 
 export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'created_at'>): Promise<WillExecutor | null> => {
   try {
+    // Get session to add user_id
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('No authenticated user found when creating executor');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('will_executors')
-      .insert(executor)
+      .insert({
+        ...executor,
+        user_id: session.user.id
+      })
       .select()
       .single();
       
@@ -196,12 +246,85 @@ export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'cr
   }
 };
 
-export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
+export const updateWillExecutor = async (id: string, updates: Partial<WillExecutor>): Promise<WillExecutor | null> => {
   try {
     const { data, error } = await supabase
+      .from('will_executors')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating executor:', error);
+      return null;
+    }
+    
+    await createSystemNotification('will_updated', {
+      title: 'Executor Updated',
+      description: `The executor ${data.name} has been updated successfully.`
+    });
+    
+    return data;
+  } catch (error) {
+    console.error('Error in updateWillExecutor:', error);
+    return null;
+  }
+};
+
+export const deleteWillExecutor = async (id: string): Promise<boolean> => {
+  try {
+    const { data: executorToDelete } = await supabase
+      .from('will_executors')
+      .select('name')
+      .eq('id', id)
+      .single();
+    
+    const { error } = await supabase
+      .from('will_executors')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error deleting executor:', error);
+      return false;
+    }
+    
+    if (executorToDelete) {
+      await createSystemNotification('will_updated', {
+        title: 'Executor Removed',
+        description: `${executorToDelete.name} has been removed as an executor from your will.`
+      });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteWillExecutor:', error);
+    return false;
+  }
+};
+
+export const getWillBeneficiaries = async (willId?: string): Promise<WillBeneficiary[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('No authenticated user found when fetching beneficiaries');
+      return [];
+    }
+    
+    let query = supabase
       .from('will_beneficiaries')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('user_id', session.user.id);
+    
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    query = query.order('created_at', { ascending: false });
+    
+    const { data, error } = await query;
       
     if (error) {
       console.error('Error fetching beneficiaries:', error);
@@ -224,11 +347,20 @@ export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
 
 export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, 'id' | 'created_at'>): Promise<WillBeneficiary | null> => {
   try {
+    // Get session to add user_id
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('No authenticated user found when creating beneficiary');
+      return null;
+    }
+    
     const dbBeneficiary = {
       beneficiary_name: beneficiary.name,
       relationship: beneficiary.relationship,
       percentage: beneficiary.percentage,
-      will_id: beneficiary.will_id
+      will_id: beneficiary.will_id,
+      user_id: session.user.id
     };
     
     const { data, error } = await supabase

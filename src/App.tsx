@@ -56,6 +56,10 @@ import IDSecurity from './pages/security/IDSecurity';
 import Billing from './pages/billing/Billing';
 import Notifications from './pages/notifications/Notifications';
 import Activity from './pages/activity/Activity';
+import FutureMessage from './pages/FutureMessage';
+import Tank from './pages/Tank';
+import DeathVerification from './pages/settings/DeathVerification';
+import LegacyVault from './pages/LegacyVault';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
@@ -101,9 +105,12 @@ function App() {
             <Route path="/dashboard/will" element={<WillDashboard />} />
             <Route path="/will/:id" element={<WillEditor />} />
             <Route path="/templates" element={<WillTemplates />} />
-            <Route path="/tank" element={<WillTank />} />
+            <Route path="/tank" element={<Tank />} />
+            <Route path="/future-message" element={<FutureMessage />} />
+            <Route path="/legacy-vault" element={<LegacyVault />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/profile" element={<Profile />} />
+            <Route path="/settings/death-verification" element={<DeathVerification />} />
             <Route path="/activity" element={<Activity />} />
 
             {/* Routes for sidebar links */}

@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'lucide-react';
+import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getUserWills } from '@/services/dashboardService';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getWill, updateWill } from '@/services/willService';
+import { getWill, updateWill, getWills } from '@/services/willService';
 import { format } from 'date-fns';
 
 export default function Will() {
@@ -20,6 +20,7 @@ export default function Will() {
   const [createdDate, setCreatedDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [currentWill, setCurrentWill] = useState<any>(null);
+  const [noWillsFound, setNoWillsFound] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -80,11 +81,11 @@ Witnesses: [Witness 1], [Witness 2]
               description: "The requested will document could not be found.",
               variant: "destructive"
             });
-            navigate('/wills');
+            navigate('/dashboard/will');
           }
         } else {
-          // No ID provided, fetch the most recent will
-          const wills = await getUserWills();
+          // No ID provided, fetch user's wills
+          const wills = await getWills();
           
           if (wills && wills.length > 0) {
             const latestWill = wills[0]; // Get the most recent will
@@ -130,7 +131,8 @@ Witnesses: [Witness 1], [Witness 2]
             setCreatedDate(latestWill.created_at ? format(new Date(latestWill.created_at), 'MMMM dd, yyyy') : 'N/A');
           } else {
             // No wills found
-            setWillContent("No will document found. Create your first will to get started.");
+            setNoWillsFound(true);
+            setWillContent("No will documents found. Create your first will to get started.");
             setLastSaved(new Date().toLocaleTimeString());
             setCreatedDate("N/A");
           }
@@ -160,18 +162,36 @@ Witnesses: [Witness 1], [Witness 2]
       
       if (!currentWill) {
         // Create a new will if none exists
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          toast({
+            title: "Authentication required",
+            description: "Please sign in to save your will",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         const { data, error } = await supabase
           .from('wills')
           .insert({
             title: willTitle,
             document_url: 'placeholder_url', // In a real app, you'd upload the document
-            status: 'Active'
+            status: 'Active',
+            user_id: session.user.id
           })
           .select()
           .single();
           
         if (error) throw error;
         setCurrentWill(data);
+        
+        // Create a notification for will creation
+        await createSystemNotification('will_created', {
+          title: 'Will Created',
+          description: `Your will "${willTitle}" has been created successfully.`
+        });
       } else {
         // Update existing will
         const updated = await updateWill(currentWill.id, { 
@@ -208,7 +228,7 @@ Witnesses: [Witness 1], [Witness 2]
   };
 
   const handleCreateNewWill = () => {
-    navigate('/will/create');
+    navigate('/templates');
   };
 
   const handleViewAllWills = () => {
@@ -228,6 +248,41 @@ Witnesses: [Witness 1], [Witness 2]
           
           <div className="flex justify-center items-center py-16">
             <Loader2 className="w-10 h-10 text-willtank-600 animate-spin" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // If no wills are found, show a message and prompt to create a new will
+  if (noWillsFound) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Will</h1>
+              <p className="text-gray-600">You don't have any will documents yet.</p>
+            </div>
+            
+            <Button onClick={handleCreateNewWill} variant="default">
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Will
+            </Button>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <AlertCircle className="h-16 w-16 text-gray-300 mb-4" />
+              <h2 className="text-2xl font-medium text-gray-700 mb-2">No Will Documents</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                You haven't created any will documents yet. Get started by creating your first will.
+              </p>
+              <Button onClick={handleCreateNewWill} size="lg">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Your First Will
+              </Button>
+            </div>
           </div>
         </div>
       </Layout>
@@ -380,4 +435,22 @@ Witnesses: [Witness 1], [Witness 2]
       </div>
     </Layout>
   );
+}
+
+// Helper function to create a system notification
+async function createSystemNotification(type: string, details: { title: string, description: string }) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    
+    await supabase.from('notifications').insert({
+      user_id: session.user.id,
+      title: details.title,
+      description: details.description,
+      type: type === 'will_created' ? 'success' : 'info',
+      read: false
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+  }
 }
