@@ -1,7 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification, createNotificationForEvent } from "./notificationService";
+import { createSystemNotification } from "./notificationService";
 
+// Define the type that matches what our Supabase table returns
 interface WillExecutorRow {
   id: string;
   name: string;
@@ -16,6 +17,7 @@ interface WillExecutorRow {
   user_id?: string | null;
 }
 
+// Define the type that matches what our Supabase table returns
 interface WillBeneficiaryRow {
   id: string;
   beneficiary_name: string;
@@ -31,6 +33,7 @@ interface WillBeneficiaryRow {
   user_id?: string | null;
 }
 
+// These are our application models
 export interface Executor {
   id: string;
   name: string;
@@ -112,7 +115,7 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
       return null;
     }
     
-    await createNotificationForEvent('executor_added', {
+    await createSystemNotification('executor_added', {
       title: 'Executor Added',
       description: `${executor.name} has been added as an executor to your will.`
     });
@@ -257,7 +260,7 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'c
       return null;
     }
     
-    await createNotificationForEvent('beneficiary_added', {
+    await createSystemNotification('beneficiary_added', {
       title: 'Beneficiary Added',
       description: `${beneficiary.name} has been added as a beneficiary to your will.`
     });
@@ -347,9 +350,11 @@ export const deleteBeneficiary = async (id: string): Promise<boolean> => {
 
 export const sendVerificationRequest = async (email: string, name: string, type: 'executor' | 'beneficiary'): Promise<boolean> => {
   try {
+    // In a real implementation, you would send an email verification
+    // We'll simulate it by logging and creating a notification
     console.log(`Verification email sent to ${email} for ${type} ${name}`);
     
-    await createNotificationForEvent('will_updated', {
+    await createSystemNotification('will_updated', {
       title: 'Verification Email Sent',
       description: `A verification request has been sent to ${email}.`
     });

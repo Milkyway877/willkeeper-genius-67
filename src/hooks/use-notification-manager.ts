@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
-import { toast } from '@/components/ui/use-toast';
-import { createSystemNotification, createNotificationForEvent } from '@/services/notificationService';
+import { toast } from '@/hooks/use-toast';
+import { createSystemNotification } from '@/services/notificationService';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
 export type NotificationPriority = 'low' | 'medium' | 'high';
@@ -38,22 +38,12 @@ export function useNotificationManager() {
     // Create a persistent notification if priority is medium or high
     try {
       console.log(`Creating ${type} notification: ${title}`);
-      const result = await createSystemNotification(type, { title, description });
-      console.log("Notification creation result:", result);
-      
-      // Force a refresh of the notifications list
-      if (notificationsContext?.fetchNotifications) {
-        setTimeout(() => {
-          notificationsContext.fetchNotifications();
-        }, 500);
-      }
-      
-      return result;
+      return await createSystemNotification(type, { title, description });
     } catch (error) {
       console.error(`Failed to create ${type} notification:`, error);
       return null;
     }
-  }, [notificationsContext]);
+  }, []);
 
   // Convenience methods for different notification types
   const notifySuccess = useCallback((title: string, description: string, priority: NotificationPriority = 'medium') => {
@@ -87,10 +77,10 @@ export function useNotificationManager() {
     );
   }, [notifySuccess]);
 
-  const notifyDocumentUploaded = useCallback((details?: { title?: string, description?: string }) => {
+  const notifyDocumentUploaded = useCallback((docTitle?: string) => {
     return notifyInfo(
-      details?.title || 'Document Uploaded', 
-      details?.description || 'Your document has been successfully uploaded.'
+      'Document Uploaded', 
+      `"${docTitle || 'Your document'}" has been successfully uploaded.`
     );
   }, [notifyInfo]);
 
@@ -115,14 +105,6 @@ export function useNotificationManager() {
     );
   }, [notifyInfo]);
 
-  const notifyWillDeleted = useCallback((willTitle?: string) => {
-    return notifyWarning(
-      'Will Deleted', 
-      `Your will "${willTitle || 'Untitled'}" has been deleted.`
-    );
-  }, [notifyWarning]);
-
-  // Add the welcome notification method
   const notifyWelcome = useCallback(() => {
     return notifyInfo(
       'Welcome to WillTank', 
@@ -131,7 +113,6 @@ export function useNotificationManager() {
     );
   }, [notifyInfo]);
 
-  // Add the security alert method
   const notifySecurityAlert = useCallback((description: string) => {
     return notifySecurity(
       'Security Alert',
@@ -140,18 +121,20 @@ export function useNotificationManager() {
   }, [notifySecurity]);
 
   return {
+    // Generic notification methods
     notify,
     notifySuccess,
     notifyInfo,
     notifyWarning,
     notifySecurity,
+    
+    // Action-specific notification methods
     notifyWillCreated,
     notifyWillUpdated,
     notifyDocumentUploaded,
     notifySubscriptionChanged,
     notifyBeneficiaryAdded,
     notifyExecutorAdded,
-    notifyWillDeleted,
     notifyWelcome,
     notifySecurityAlert,
     

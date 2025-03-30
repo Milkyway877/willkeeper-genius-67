@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem, VaultItemType } from "../pages/tank/types";
-import { createNotificationForEvent } from "./notificationService";
+import { createSystemNotification } from "./notificationService";
 
 export interface FutureMessage {
   id: string;
@@ -16,6 +16,7 @@ export interface FutureMessage {
   created_at: string;
 }
 
+// Database functions remain the same
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
     const { data, error } = await supabase
@@ -48,7 +49,7 @@ export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'c
       return null;
     }
     
-    await createNotificationForEvent('item_saved', {
+    await createSystemNotification('item_saved', {
       title: 'Future Message Created',
       description: `Your message "${message.title || 'Untitled'}" has been scheduled for ${new Date(message.delivery_date).toLocaleDateString()}.`
     });
@@ -128,6 +129,7 @@ export const getLegacyVaultItems = async (): Promise<UILegacyVaultItem[]> => {
   }
 };
 
+// Helper function to map database category to UI type
 const mapCategoryToType = (category: string | null): VaultItemType => {
   const map: Record<string, VaultItemType> = {
     'story': 'story',
@@ -145,12 +147,13 @@ const mapCategoryToType = (category: string | null): VaultItemType => {
 
 export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' | 'createdAt' | 'created_at'>): Promise<UILegacyVaultItem | null> => {
   try {
+    // Convert from UI schema to database schema
     const dbItem = {
       title: item.title,
-      category: item.type,
+      category: item.type, // Map type to category
       preview: item.preview,
-      document_url: item.document_url || '',
-      is_encrypted: item.encryptionStatus || false
+      document_url: item.document_url || '', // Default empty string if not provided
+      is_encrypted: item.encryptionStatus || false // Include encryption status
     };
     
     const { data, error } = await supabase
@@ -164,11 +167,12 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
       return null;
     }
     
-    await createNotificationForEvent('document_uploaded', {
+    await createSystemNotification('document_uploaded', {
       title: 'Legacy Item Added',
       description: `Your legacy item "${item.title}" has been added to your vault.`
     });
     
+    // Convert back to UI schema
     return {
       id: data.id,
       title: data.title,
@@ -187,6 +191,7 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
 
 export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVaultItem>): Promise<UILegacyVaultItem | null> => {
   try {
+    // Convert from UI schema to database schema
     const dbItem: Record<string, any> = {};
     
     if (item.title !== undefined) dbItem.title = item.title;
@@ -207,11 +212,12 @@ export const updateLegacyVaultItem = async (id: string, item: Partial<UILegacyVa
       return null;
     }
     
-    await createNotificationForEvent('item_saved', {
+    await createSystemNotification('item_saved', {
       title: 'Legacy Item Updated',
       description: `Your legacy item "${data.title}" has been updated.`
     });
     
+    // Convert back to UI schema
     return {
       id: data.id,
       title: data.title,
@@ -242,11 +248,12 @@ export const toggleItemEncryption = async (id: string, encrypt: boolean): Promis
       return null;
     }
     
-    await createNotificationForEvent('item_saved', {
+    await createSystemNotification('item_saved', {
       title: encrypt ? 'Item Encrypted' : 'Item Decrypted',
       description: `Your legacy item "${data.title}" has been ${encrypt ? 'encrypted' : 'decrypted'}.`
     });
     
+    // Convert back to UI schema
     return {
       id: data.id,
       title: data.title,

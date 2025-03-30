@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { useNotificationManager } from '@/hooks/use-notification-manager';
+import { useSystemNotifications } from '@/hooks/use-system-notifications';
 import { 
   FileText, 
   Book, 
@@ -63,7 +64,7 @@ type Step = {
 export default function WillCreation() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { notifyWillCreated, notifyDocumentUploaded } = useNotificationManager();
+  const { notifyWillUpdated, notifyDocumentUploaded } = useSystemNotifications();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<WillTemplate | null>(null);
   const [willContent, setWillContent] = useState("");
@@ -77,8 +78,6 @@ export default function WillCreation() {
   const [legalIssues, setLegalIssues] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [willTitle, setWillTitle] = useState('My Will');
-  const [isGeneratingWill, setIsGeneratingWill] = useState(false);
-  const [videoRecordingComplete, setVideoRecordingComplete] = useState(false);
 
   const handleSelectTemplate = (template: WillTemplate) => {
     setSelectedTemplate(template);
@@ -97,8 +96,6 @@ export default function WillCreation() {
       setWillTitle(responses.willTitle);
     }
     setCurrentStep(currentStep + 1);
-    setIsGeneratingWill(false);
-    
     toast({
       title: "Questionnaire Completed",
       description: "Your will has been generated based on your answers."
@@ -222,8 +219,10 @@ export default function WillCreation() {
       });
       
       if (newWill) {
-        // Use notification manager to create notification
-        await notifyWillCreated(willTitle);
+        await notifyWillUpdated({
+          title: 'Will Created',
+          description: `Your will "${willTitle}" has been created successfully.`
+        });
         
         toast({
           title: "Will Created Successfully",
@@ -232,7 +231,7 @@ export default function WillCreation() {
         });
         
         // Navigate to the will dashboard
-        navigate("/wills");
+        navigate("/will");
       }
     } catch (error) {
       console.error('Error saving will:', error);
@@ -320,8 +319,7 @@ export default function WillCreation() {
       component: <AIQuestionFlow 
                   selectedTemplate={selectedTemplate} 
                   responses={userResponses} 
-                  setResponses={setUserResponses}
-                  onStartGeneration={() => setIsGeneratingWill(true)}
+                  setResponses={setUserResponses} 
                   onComplete={handleQuestionsComplete} 
                 />
     },
@@ -344,7 +342,6 @@ export default function WillCreation() {
                   onRecordingComplete={(blob) => {
                     setVideoBlob(blob);
                     setVideoRecorded(true);
-                    setVideoRecordingComplete(true);
                     toast({
                       title: "Video Recorded",
                       description: "Your video testament has been securely recorded."
@@ -537,24 +534,6 @@ export default function WillCreation() {
       return;
     }
     
-    if (currentStep === 1 && isGeneratingWill) {
-      toast({
-        title: "Please Wait",
-        description: "Your will is still being generated. Please wait for it to complete.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (currentStep === 3 && !videoRecordingComplete) {
-      toast({
-        title: "Video Required",
-        description: "Please record your video testament before proceeding.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     setCurrentStep(currentStep + 1);
   };
 
@@ -637,14 +616,7 @@ export default function WillCreation() {
           )}
           
           {currentStep < steps.length - 1 && (
-            <Button 
-              onClick={nextStep} 
-              className="ml-auto"
-              disabled={
-                (currentStep === 1 && isGeneratingWill) || 
-                (currentStep === 3 && !videoRecordingComplete)
-              }
-            >
+            <Button onClick={nextStep} className="ml-auto">
               Next Step
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -211,10 +210,10 @@ export default function Notifications() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={`p-6 rounded-xl border ${notification.is_read ? 'bg-white border-gray-200' : `${getTypeStyles(notification.type)} shadow-sm`} flex`}
+                className={`p-6 rounded-xl border ${notification.read ? 'bg-white border-gray-200' : `${getTypeStyles(notification.type)} shadow-sm`} flex`}
               >
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center mr-4 ${
-                  notification.is_read ? 'bg-gray-100' : getTypeStyles(notification.type)
+                  notification.read ? 'bg-gray-100' : getTypeStyles(notification.type)
                 }`}>
                   {getNotificationIcon(notification.type)}
                 </div>
@@ -226,7 +225,7 @@ export default function Notifications() {
                       <span className="text-xs text-gray-500 mr-3">
                         {new Date(notification.created_at).toLocaleDateString()}
                       </span>
-                      {!notification.is_read && (
+                      {!notification.read && (
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -238,9 +237,9 @@ export default function Notifications() {
                       )}
                     </div>
                   </div>
-                  <p className="text-gray-600 text-sm">{notification.message || ''}</p>
+                  <p className="text-gray-600 text-sm">{notification.description}</p>
                   
-                  {!notification.is_read && (
+                  {!notification.read && (
                     <div className="mt-4">
                       <Button variant="outline" size="sm">View Details</Button>
                     </div>

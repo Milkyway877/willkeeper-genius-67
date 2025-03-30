@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { createSystemNotification, notifyWelcome } from '@/services/notificationService';
+import { createWelcomeNotification, createSystemNotification } from '@/services/notificationService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -40,7 +40,7 @@ export default function AuthCallback() {
         console.log("Creating welcome notifications for new user");
         
         // Send welcome notification
-        notifyWelcome();
+        await createWelcomeNotification();
         
         // Send getting started instructions
         await createSystemNotification('info', {

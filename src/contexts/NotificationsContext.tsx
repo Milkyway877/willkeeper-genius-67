@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getNotifications, Notification, markNotificationAsRead, markAllNotificationsAsRead } from '@/services/notificationService';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationsContextType {
@@ -26,7 +26,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       setLoading(true);
       const data = await getNotifications();
-      console.log("Fetched notifications:", data);
       setNotifications(data);
       setError(null);
     } catch (err) {
@@ -45,7 +44,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
         // Update local state
         setNotifications(prev => 
           prev.map(notification => 
-            notification.id === id ? { ...notification, is_read: true } : notification
+            notification.id === id ? { ...notification, read: true } : notification
           )
         );
         return true;
@@ -64,7 +63,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (success) {
         // Update local state
         setNotifications(prev => 
-          prev.map(notification => ({ ...notification, is_read: true }))
+          prev.map(notification => ({ ...notification, read: true }))
         );
         return true;
       }
@@ -91,21 +90,18 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           table: 'notifications'
         },
         (payload) => {
-          console.log('New notification received:', payload);
           const newNotification = payload.new as Notification;
           // Make sure we validate the type
           const validatedType = validateNotificationType(newNotification.type);
           
-          // Add the new notification to the state
           setNotifications(prev => [
             { ...newNotification, type: validatedType },
             ...prev
           ]);
           
-          // Show a toast for the new notification
           toast({
             title: newNotification.title,
-            description: newNotification.message || '',
+            description: newNotification.description,
             // Map notification types to valid toast variants
             variant: getToastVariant(validatedType)
           });
@@ -119,7 +115,6 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
           table: 'notifications'
         },
         (payload) => {
-          console.log('Notification updated:', payload);
           const updatedNotification = payload.new as Notification;
           setNotifications(prev => 
             prev.map(notification => 
@@ -132,16 +127,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       )
       .subscribe();
 
-    // Debug to confirm channel is established
-    console.log('Realtime channel subscribed:', channel);
-
     return () => {
-      console.log('Cleaning up Supabase channel');
       supabase.removeChannel(channel);
     };
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter(n => !n.read).length;
   const hasUnread = unreadCount > 0;
 
   // Helper function to validate notification types
