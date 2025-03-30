@@ -1,6 +1,6 @@
 
 import { useCallback } from 'react';
-import { createSystemNotification } from '@/services/notificationService';
+import { createSystemNotification, createNotificationForEvent } from '@/services/notificationService';
 import { toast } from '@/components/ui/use-toast';
 
 // Define the supported event types for better TypeScript support
@@ -86,49 +86,49 @@ export function useSystemNotifications() {
   const notifyWillUpdated = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Will Updated';
     const description = details?.description || 'Your will has been successfully updated.';
-    return notifySuccess(title, description);
-  }, [notifySuccess]);
+    return await createNotificationForEvent('will_updated', { title, description });
+  }, []);
 
   const notifyDocumentUploaded = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Document Uploaded';
     const description = details?.description || 'A new document has been uploaded to your account.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createNotificationForEvent('document_uploaded', { title, description });
+  }, []);
 
   const notifySecurityKeyGenerated = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Security Key Generated';
     const description = details?.description || 'A new security key has been generated for your account.';
-    return notifySecurity(title, description);
-  }, [notifySecurity]);
+    return await createNotificationForEvent('security_key_generated', { title, description });
+  }, []);
 
   const notifyBeneficiaryAdded = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Beneficiary Added';
     const description = details?.description || 'A new beneficiary has been added to your will.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createNotificationForEvent('beneficiary_added', { title, description });
+  }, []);
 
   const notifyExecutorAdded = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Executor Added';
     const description = details?.description || 'A new executor has been added to your will.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createNotificationForEvent('executor_added', { title, description });
+  }, []);
 
   const notifyItemSaved = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Item Saved';
     const description = details?.description || 'Your item has been saved successfully.';
-    return notifySuccess(title, description);
-  }, [notifySuccess]);
+    return await createNotificationForEvent('item_saved', { title, description });
+  }, []);
   
   const notifyWillDeleted = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Will Deleted';
     const description = details?.description || 'Your will has been deleted.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createNotificationForEvent('will_deleted', { title, description });
+  }, []);
 
   // Create a generic method to notify by event type
   const notifyByEventType = useCallback(async (eventType: NotificationEventType, details?: { title?: string, description?: string, itemId?: string }) => {
     try {
-      return await createSystemNotification(eventType, { 
+      return await createNotificationForEvent(eventType, { 
         title: details?.title || `Event: ${eventType}`, 
         description: details?.description || 'An event has occurred in your account.' 
       });

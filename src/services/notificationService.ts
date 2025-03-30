@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -48,6 +49,69 @@ export const createSystemNotification = async (
     console.error('Error in createSystemNotification:', error);
     return null;
   }
+};
+
+/**
+ * Create welcome notifications for new users
+ */
+export const createWelcomeNotification = async (): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({
+        type: 'success',
+        title: 'Welcome to WillTank!',
+        description: 'Thank you for joining. Get started by creating your first will and securing your legacy.',
+        read: false
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating welcome notification:', error);
+      return null;
+    }
+    
+    console.log("Welcome notification created:", data);
+    return data.id;
+  } catch (error) {
+    console.error('Error in createWelcomeNotification:', error);
+    return null;
+  }
+};
+
+/**
+ * Create a notification for a specific event type
+ * This is a compatibility function to map event types to notification types
+ */
+export const createNotificationForEvent = async (
+  eventType: string,
+  payload: NotificationPayload
+): Promise<string | null> => {
+  // Map event types to notification types
+  let notificationType: 'success' | 'warning' | 'info' | 'security' = 'info';
+  
+  // Map common event types to appropriate notification types
+  switch (eventType) {
+    case 'will_created':
+    case 'will_updated':
+    case 'item_saved':
+      notificationType = 'success';
+      break;
+    case 'security_key_generated':
+      notificationType = 'security';
+      break;
+    case 'will_deleted':
+    case 'document_uploaded':
+    case 'executor_added':
+    case 'beneficiary_added':
+      notificationType = 'info';
+      break;
+    default:
+      notificationType = 'info';
+  }
+  
+  return createSystemNotification(notificationType, payload);
 };
 
 /**
