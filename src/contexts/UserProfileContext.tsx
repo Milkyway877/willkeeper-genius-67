@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './AuthContext';
 import { getUserProfile as fetchUserProfile } from '@/services/profileService';
+import { getInitials } from '@/services/profileService';
 
 interface UserProfile {
   id: string;
@@ -13,6 +14,7 @@ interface UserProfile {
   subscription_plan: string | null;
   activation_date: string | null;
   email_verified: boolean | null;
+  created_at?: string | null;
   metadata?: {
     location?: string;
     bio?: string;
@@ -26,6 +28,7 @@ interface UserProfileContextType {
   loading: boolean;
   user: any;
   refreshProfile: () => Promise<void>;
+  initials: string; // Add this missing property
 }
 
 const UserProfileContext = createContext<UserProfileContextType>({
@@ -34,12 +37,16 @@ const UserProfileContext = createContext<UserProfileContextType>({
   loading: true,
   user: null,
   refreshProfile: async () => {},
+  initials: 'U' // Set a default value
 });
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useUser();
+
+  // Calculate initials from profile name
+  const initials = profile?.full_name ? getInitials(profile.full_name) : 'U';
 
   const refreshProfile = async () => {
     if (!user) {
@@ -87,7 +94,14 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <UserProfileContext.Provider value={{ profile, setProfile, loading, user, refreshProfile }}>
+    <UserProfileContext.Provider value={{ 
+      profile, 
+      setProfile, 
+      loading, 
+      user, 
+      refreshProfile,
+      initials // Pass the calculated initials
+    }}>
       {children}
     </UserProfileContext.Provider>
   );
