@@ -208,7 +208,7 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
     
     toast({
       title: "Warning",
-      description: "Your will may have issues. Please review the AI recommendations.",
+      description: "The AI detected potential legal issues in your document that should be addressed.",
       variant: "destructive",
     });
   };

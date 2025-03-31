@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export enum VaultItemType {
@@ -23,6 +22,12 @@ export type LegacyVaultItem = {
   createdAt: string;
   created_at: string;
   user_id?: string;
+  item_name?: string;
+  item_description?: string;
+  item_type?: string;
+  item_content?: string;
+  is_encrypted?: boolean;
+  updated_at?: string;
 };
 
 export enum MessageType {
@@ -46,7 +51,6 @@ export type FutureMessageItem = {
   createdAt: string;
 };
 
-// Fixing the MessageStatus enum to match the string literals used in the codebase
 export enum MessageStatus {
   Scheduled = 'Scheduled',
   Delivered = 'Delivered',
@@ -55,7 +59,6 @@ export enum MessageStatus {
   Verified = 'Verified'
 }
 
-// Adding BillingPeriod type
 export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
 
 export type PlanDetails = {
@@ -78,7 +81,6 @@ export type PlanDetails = {
 
 export type SubscriptionPlan = 'free' | 'starter' | 'gold' | 'platinum' | 'enterprise';
 
-// Complete Message type definition
 export type Message = {
   id: string;
   title: string;
@@ -94,8 +96,6 @@ export type Message = {
   createdAt: string;
 };
 
-// Adding DeliveryTrigger type
 export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
 
-// Ensure CreationType matches MessageType enum
 export type CreationType = MessageType;

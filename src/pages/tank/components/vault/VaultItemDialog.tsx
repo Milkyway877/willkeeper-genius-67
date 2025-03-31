@@ -31,6 +31,7 @@ export interface LegacyVaultItem {
   item_type: string;
   item_content: string;
   is_encrypted: boolean;
+  document_url: string;
   created_at: string;
   updated_at: string;
   // Additional properties for UI compatibility
@@ -58,10 +59,10 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
 
   useEffect(() => {
     if (item) {
-      setItemName(item.item_name);
-      setItemDescription(item.item_description);
-      setItemContent(item.item_content);
-      setIsEncrypted(item.is_encrypted);
+      setItemName(item.item_name || item.title || '');
+      setItemDescription(item.item_description || item.preview || '');
+      setItemContent(item.item_content || '');
+      setIsEncrypted(item.is_encrypted || item.encryptionStatus || false);
     } else {
       setItemName('');
       setItemDescription('');

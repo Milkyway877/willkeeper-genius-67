@@ -15,19 +15,20 @@ export const getLegacyVaultItems = async () => {
     return (data || []).map(item => ({
       id: item.id,
       user_id: item.user_id,
-      item_name: item.item_name,
-      item_description: item.item_description,
-      item_type: item.item_type,
-      item_content: item.item_content,
-      is_encrypted: item.is_encrypted,
+      item_name: item.item_name || item.title, // Fallback to title
+      item_description: item.item_description || item.preview, // Fallback to preview
+      item_type: item.item_type || item.type, // Fallback to type
+      item_content: item.item_content || '',
+      is_encrypted: item.is_encrypted || item.encryptionStatus || false,
+      document_url: item.document_url || '',
       created_at: item.created_at,
       updated_at: item.updated_at,
       // Add these properties for compatibility with the components
-      title: item.item_name,
-      preview: item.item_description,
-      type: item.item_type,
+      title: item.item_name || item.title,
+      preview: item.item_description || item.preview,
+      type: item.item_type || item.type,
       createdAt: item.created_at,
-      encryptionStatus: item.is_encrypted
+      encryptionStatus: item.is_encrypted || item.encryptionStatus || false
     }));
   } catch (error) {
     console.error('Error fetching vault items:', error);
@@ -37,9 +38,21 @@ export const getLegacyVaultItems = async () => {
 
 export const createLegacyVaultItem = async (item: any) => {
   try {
+    // Make sure we have the required fields for database insertion
+    const dbItem = {
+      item_name: item.item_name || item.title,
+      item_description: item.item_description || item.preview,
+      item_type: item.item_type || item.type,
+      item_content: item.item_content || '',
+      is_encrypted: item.is_encrypted || item.encryptionStatus || false,
+      document_url: item.document_url || '',
+      // Include other fields that might be directly provided
+      ...item,
+    };
+
     const { data, error } = await supabase
       .from('legacy_vault')
-      .insert([item])
+      .insert([dbItem])
       .select()
       .single();
 
@@ -54,6 +67,7 @@ export const createLegacyVaultItem = async (item: any) => {
       item_type: data.item_type,
       item_content: data.item_content,
       is_encrypted: data.is_encrypted,
+      document_url: data.document_url || '',
       created_at: data.created_at,
       updated_at: data.updated_at,
       // Add these properties for compatibility with the components
@@ -89,6 +103,7 @@ export const updateLegacyVaultItem = async (id: string, updates: any) => {
       item_type: data.item_type,
       item_content: data.item_content,
       is_encrypted: data.is_encrypted,
+      document_url: data.document_url || '',
       created_at: data.created_at,
       updated_at: data.updated_at,
       // Add these properties for compatibility with the components
