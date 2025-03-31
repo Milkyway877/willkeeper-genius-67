@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export enum VaultItemType {
@@ -14,6 +15,7 @@ export enum VaultItemType {
 
 export type LegacyVaultItem = {
   id: string;
+  user_id: string;
   title: string;
   type: VaultItemType;
   preview: string;
@@ -21,13 +23,12 @@ export type LegacyVaultItem = {
   encryptionStatus: boolean;
   createdAt: string;
   created_at: string;
-  user_id?: string;
+  updated_at?: string;
   item_name?: string;
   item_description?: string;
   item_type?: string;
   item_content?: string;
   is_encrypted?: boolean;
-  updated_at?: string;
 };
 
 export enum MessageType {

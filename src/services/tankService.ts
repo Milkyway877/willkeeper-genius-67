@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { LegacyVaultItem, VaultItemType } from '@/pages/tank/types';
 
 // Add the missing functions or create aliases for existing ones
 export const getLegacyVaultItems = async () => {
@@ -14,10 +15,10 @@ export const getLegacyVaultItems = async () => {
     // Transform the data to match the expected LegacyVaultItem interface
     return (data || []).map(item => ({
       id: item.id,
-      user_id: item.user_id,
-      item_name: item.item_name || item.title, // Fallback to title
-      item_description: item.item_description || item.preview, // Fallback to preview
-      item_type: item.item_type || item.type, // Fallback to type
+      user_id: item.user_id || '',
+      item_name: item.item_name || item.title, 
+      item_description: item.item_description || item.preview, 
+      item_type: item.item_type || item.type, 
       item_content: item.item_content || '',
       is_encrypted: item.is_encrypted || item.encryptionStatus || false,
       document_url: item.document_url || '',
@@ -29,7 +30,7 @@ export const getLegacyVaultItems = async () => {
       type: item.item_type || item.type,
       createdAt: item.created_at,
       encryptionStatus: item.is_encrypted || item.encryptionStatus || false
-    }));
+    })) as LegacyVaultItem[];
   } catch (error) {
     console.error('Error fetching vault items:', error);
     return [];
@@ -61,7 +62,7 @@ export const createLegacyVaultItem = async (item: any) => {
     // Transform the data to match the expected LegacyVaultItem interface
     return {
       id: data.id,
-      user_id: data.user_id,
+      user_id: data.user_id || '',
       item_name: data.item_name,
       item_description: data.item_description,
       item_type: data.item_type,
@@ -76,7 +77,7 @@ export const createLegacyVaultItem = async (item: any) => {
       type: data.item_type,
       createdAt: data.created_at,
       encryptionStatus: data.is_encrypted
-    };
+    } as LegacyVaultItem;
   } catch (error) {
     console.error('Error creating vault item:', error);
     return null;
@@ -97,7 +98,7 @@ export const updateLegacyVaultItem = async (id: string, updates: any) => {
     // Transform the data to match the expected LegacyVaultItem interface
     return {
       id: data.id,
-      user_id: data.user_id,
+      user_id: data.user_id || '',
       item_name: data.item_name,
       item_description: data.item_description,
       item_type: data.item_type,
@@ -112,7 +113,7 @@ export const updateLegacyVaultItem = async (id: string, updates: any) => {
       type: data.item_type,
       createdAt: data.created_at,
       encryptionStatus: data.is_encrypted
-    };
+    } as LegacyVaultItem;
   } catch (error) {
     console.error('Error updating vault item:', error);
     return null;

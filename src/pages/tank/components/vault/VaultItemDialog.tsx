@@ -22,25 +22,7 @@ import {
   deleteLegacyVaultItem,
   toggleItemEncryption
 } from '@/services/tankService';
-
-export interface LegacyVaultItem {
-  id: string;
-  user_id: string;
-  item_name: string;
-  item_description: string;
-  item_type: string;
-  item_content: string;
-  is_encrypted: boolean;
-  document_url: string;
-  created_at: string;
-  updated_at: string;
-  // Additional properties for UI compatibility
-  title?: string;
-  preview?: string;
-  type?: string;
-  createdAt?: string;
-  encryptionStatus?: boolean;
-}
+import { LegacyVaultItem } from '../../types';
 
 interface VaultItemDialogProps {
   open: boolean;
@@ -115,14 +97,14 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
     if (!item) return;
     
     try {
-      const success = await toggleItemEncryption(item.id, !item.is_encrypted);
+      const success = await toggleItemEncryption(item.id, !isEncrypted);
       
       if (success) {
         // Create a proper updated item object
         const updatedItem: LegacyVaultItem = {
           ...item,
-          is_encrypted: !item.is_encrypted,
-          encryptionStatus: !item.is_encrypted
+          is_encrypted: !isEncrypted,
+          encryptionStatus: !isEncrypted
         };
         
         onItemUpdate(updatedItem);
@@ -196,10 +178,10 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
             <div className="col-span-3 flex items-center justify-between">
               <Switch
                 id="encryption"
-                checked={item ? item.is_encrypted : false}
+                checked={isEncrypted}
                 onCheckedChange={toggleEncryption}
               />
-              {item?.is_encrypted ? (
+              {isEncrypted ? (
                 <Lock className="h-5 w-5 text-green-500" />
               ) : (
                 <Unlock className="h-5 w-5 text-amber-500" />
