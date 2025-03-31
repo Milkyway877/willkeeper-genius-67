@@ -1,220 +1,242 @@
-
 import React, { useState, useEffect } from 'react';
+import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { UserAvatar } from '@/components/UserAvatar';
-import { Check, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Edit, Check, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { updateUserProfile, getUserProfile, UserProfile, getInitials } from '@/services/profileService';
+import { useUser } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-interface ProfileFormValues {
-  email: string;
-  fullName: string;
-  avatarUrl: string | null;
+function updateUserMetadata(fields: Record<string, any>) {
+  // We need to update this to use the proper fields
+  const profile: Partial<UserProfile> = {
+    full_name: fields.fullName,
+    // Remove user_metadata field as it doesn't exist in the UserProfile type
+    // Update avatar_url without using "xl" size
+    avatar_url: fields.avatar ? fields.avatar : null
+  };
+  return profile;
 }
 
 export default function Profile() {
-  const [profile, setProfile] = useState<ProfileFormValues>({
-    email: '',
-    fullName: '',
-    avatarUrl: null
-  });
-  
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-  const [success, setSuccess] = useState(false);
   const { toast } = useToast();
-
+  const { user, updateUser } = useUser();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [newAvatar, setNewAvatar] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
+  
   useEffect(() => {
-    async function loadProfile() {
+    const loadProfile = async () => {
+      setIsLoading(true);
       try {
-        setLoading(true);
-        
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          throw new Error('No user found');
+        const userProfile = await getUserProfile();
+        if (userProfile) {
+          setProfile(userProfile);
+          setFullName(userProfile.full_name || '');
+          setAvatarUrl(userProfile.avatar_url || null);
         }
-        
-        // Get profile data
-        const { data: profileData, error } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (error) throw error;
-        
-        setProfile({
-          email: user.email || '',
-          fullName: profileData.full_name || '',
-          avatarUrl: profileData.avatar_url
-        });
-      } catch (error: any) {
-        console.error('Error loading profile:', error);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
         toast({
-          title: 'Error loading profile',
-          description: error.message || 'Failed to load profile data',
-          variant: 'destructive'
+          title: "Error",
+          description: "Failed to load profile. Please try again.",
+          variant: "destructive"
         });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
-    }
+    };
     
     loadProfile();
-  }, [toast]);
+  }, []);
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setProfile(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleEditClick = () => {
+    setIsEditing(true);
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleCancelClick = () => {
+    setIsEditing(false);
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setAvatarUrl(profile.avatar_url || null);
+    }
+    setNewAvatar(null);
+  };
+  
+  const handleSaveClick = async () => {
+    setIsLoading(true);
     try {
-      setUpdating(true);
-      
-      // Get user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('User not authenticated');
+      const updates: Record<string, any> = {};
+      if (fullName !== profile?.full_name) {
+        updates.fullName = fullName;
       }
       
-      // Update user profile
-      const { error: updateError } = await supabase
-        .from('user_profiles')
-        .update({
-          full_name: profile.fullName,
-          avatar_url: profile.avatarUrl
-        })
-        .eq('id', user.id);
+      if (newAvatar) {
+        updates.avatar = URL.createObjectURL(newAvatar);
+      }
       
-      if (updateError) throw updateError;
+      if (Object.keys(updates).length > 0) {
+        const profileUpdates = updateUserMetadata(updates);
+        const updatedProfile = await updateUserProfile(profileUpdates);
+        
+        if (updatedProfile) {
+          setProfile(updatedProfile);
+          setFullName(updatedProfile.full_name || '');
+          setAvatarUrl(updatedProfile.avatar_url || null);
+          toast({
+            title: "Profile updated",
+            description: "Your profile has been updated successfully."
+          });
+        } else {
+          throw new Error("Failed to update profile");
+        }
+      }
       
+      setIsEditing(false);
+      setNewAvatar(null);
+    } catch (error) {
+      console.error("Error updating profile:", error);
       toast({
-        title: 'Profile updated',
-        description: 'Your profile has been successfully updated'
-      });
-      
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: 'Update failed',
-        description: error.message || 'Failed to update profile',
-        variant: 'destructive'
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setUpdating(false);
+      setIsLoading(false);
     }
   };
   
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setNewAvatar(file);
+    if (file) {
+      setAvatarUrl(URL.createObjectURL(file));
+    }
+  };
+  
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-full">
+          Loading profile...
+        </div>
+      </Layout>
+    );
+  }
+  
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Profile Settings</h2>
-        <p className="text-gray-500">Manage your account information and preferences.</p>
-      </div>
-      
-      {success && (
-        <Alert className="bg-green-50 text-green-800 border-green-200">
-          <Check className="h-4 w-4" />
-          <AlertTitle>Success!</AlertTitle>
-          <AlertDescription>Your profile has been updated successfully.</AlertDescription>
-        </Alert>
-      )}
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>Update your personal details and profile picture.</CardDescription>
-        </CardHeader>
+    <Layout>
+      <div className="container mx-auto py-10">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Profile Settings</h1>
+          <p className="text-gray-500">Manage your personal information and settings.</p>
+        </div>
         
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <div className="flex justify-center">
-                <UserAvatar 
-                  user={{ 
-                    id: 'current-user',
-                    email: profile.email,
-                    user_metadata: { full_name: profile.fullName }
-                  }} 
-                  size="xl" 
-                />
+        <div className="bg-white shadow rounded-lg p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">Personal Information</h2>
+            {isEditing ? (
+              <div>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleCancelClick} 
+                  disabled={isLoading}
+                  className="mr-2"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveClick} 
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Saving...' : 'Save'}
+                </Button>
               </div>
-              
-              <div className="flex-grow">
-                <div className="space-y-1">
-                  <Label htmlFor="avatarUrl">Profile Picture URL</Label>
-                  <Input 
-                    id="avatarUrl"
-                    name="avatarUrl"
-                    type="text"
-                    placeholder="https://example.com/avatar.jpg"
-                    value={profile.avatarUrl || ''}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Enter a URL to your profile picture. Leave blank to use your initials.
-                  </p>
-                </div>
+            ) : (
+              <Button onClick={handleEditClick}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Button>
+            )}
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="avatar">Avatar</Label>
+              <div className="mt-2 flex items-center space-x-4">
+                <Avatar className="h-12 w-12">
+                  {avatarUrl ? (
+                    <AvatarImage src={avatarUrl} alt="Avatar" />
+                  ) : (
+                    <AvatarFallback>{getInitials(fullName)}</AvatarFallback>
+                  )}
+                </Avatar>
+                {isEditing && (
+                  <div>
+                    <Input 
+                      type="file" 
+                      id="avatar" 
+                      accept="image/*" 
+                      onChange={handleAvatarChange} 
+                      className="hidden" 
+                    />
+                    <Label htmlFor="avatar" className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded px-3 py-2 cursor-pointer">
+                      {newAvatar ? 'Change Avatar' : 'Upload Avatar'}
+                    </Label>
+                  </div>
+                )}
               </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={profile.email}
-                  disabled
-                  className="bg-gray-100"
-                />
-                <p className="text-xs text-gray-500">
-                  Your email cannot be changed. Contact support if you need to use a different email.
-                </p>
-              </div>
-              
-              <div className="space-y-1">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  value={profile.fullName}
-                  onChange={handleChange}
-                  disabled={loading}
-                  placeholder="Your full name"
-                />
+            <div>
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                type="text"
+                id="fullName"
+                placeholder="Enter your full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                disabled={!isEditing}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                type="email"
+                id="email"
+                placeholder="Enter your email address"
+                value={user?.email || ''}
+                disabled
+              />
+            </div>
+            
+            <div>
+              <Label>Email Verified</Label>
+              <div className="mt-2">
+                {user?.email_verified ? (
+                  <div className="flex items-center text-green-500">
+                    <Check className="mr-2 h-4 w-4" />
+                    Verified
+                  </div>
+                ) : (
+                  <div className="flex items-center text-red-500">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    Not Verified
+                  </div>
+                )}
               </div>
             </div>
-          </CardContent>
-          
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" type="button" disabled={updating}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading || updating}>
-              {updating ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
-    </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
   );
 }

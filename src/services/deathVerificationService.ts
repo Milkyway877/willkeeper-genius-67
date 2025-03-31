@@ -117,7 +117,7 @@ export async function updateDeathVerificationSettings(
   }
 }
 
-// Add these missing functions that components are trying to use
+// Get latest check-in
 export const getLatestCheckIn = async (): Promise<DeathVerificationCheckin | null> => {
   try {
     const { data: userData } = await supabase.auth.getUser();
@@ -145,11 +145,8 @@ export const getLatestCheckIn = async (): Promise<DeathVerificationCheckin | nul
   }
 };
 
-// Add this alias for backwards compatibility
-export const getLatestCheckin = getLatestCheckIn;
-
-// Add the missing process check-in function
-export const processCheckin = async (): Promise<boolean> => {
+// Process check-in
+export const processCheckin = async (): Promise<DeathVerificationCheckin | null> => {
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -164,7 +161,7 @@ export const processCheckin = async (): Promise<boolean> => {
     const nextCheckIn = new Date();
     nextCheckIn.setDate(nextCheckIn.getDate() + settings.check_in_frequency);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('death_verification_checkins')
       .insert([
         {
@@ -173,13 +170,17 @@ export const processCheckin = async (): Promise<boolean> => {
           next_check_in: nextCheckIn.toISOString(),
           status: 'alive',
         },
-      ]);
+      ])
+      .select();
 
     if (error) throw error;
 
-    return true;
+    return data[0] || null;
   } catch (error) {
     console.error('Error processing check-in:', error);
-    return false;
+    return null;
   }
 };
+
+// Add this alias for backwards compatibility
+export const getLatestCheckin = getLatestCheckIn;

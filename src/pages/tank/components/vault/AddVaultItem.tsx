@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -94,14 +93,15 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
       
       const newItem = await createLegacyVaultItem({
         title,
-        type,
+        category: type,
         preview,
         document_url: finalDocumentUrl,
-        encryptionStatus
+        is_encrypted: encryptionStatus
       });
 
       if (newItem) {
-        onItemAdded(newItem);
+        const legacyItem = convertToLegacyVaultItem(newItem);
+        onItemAdded(legacyItem);
         handleClose();
         toast({
           title: "Item created",

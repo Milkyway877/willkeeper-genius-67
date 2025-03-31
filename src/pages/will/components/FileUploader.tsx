@@ -102,14 +102,14 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
   
   const addFileToLegacyVault = async (file: File) => {
     try {
-      const documentUrl = `https://example.com/documents/${encodeURIComponent(file.name)}`;
+      const url = `https://example.com/documents/${encodeURIComponent(file.name)}`;
       
-      await createLegacyVaultItem({
+      const vaultItem = await createLegacyVaultItem({
         title: file.name,
-        type: getVaultItemType(file),
-        preview: `File: ${file.name} (${formatFileSize(file.size)})`,
-        document_url: documentUrl,
-        encryptionStatus: false
+        document_url: url,
+        preview: `Document uploaded: ${file.name}`,
+        category: 'document',
+        is_encrypted: false
       });
     } catch (error) {
       console.error('Error adding file to legacy vault:', error);

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -70,12 +69,13 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
     try {
       const updatedItem = await updateLegacyVaultItem(item.id, {
         title,
-        type,
+        category: type,
         preview
       });
 
       if (updatedItem) {
-        onSave(updatedItem);
+        const legacyItem = convertToLegacyVaultItem(updatedItem);
+        onSave(legacyItem);
         setIsEditing(false);
         toast({
           title: "Item updated",
@@ -129,10 +129,11 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
     try {
       const updatedItem = await toggleItemEncryption(item.id, !item.encryptionStatus);
       if (updatedItem) {
-        onSave(updatedItem);
+        const legacyItem = convertToLegacyVaultItem(updatedItem);
+        onSave(legacyItem);
         toast({
-          title: updatedItem.encryptionStatus ? "Item encrypted" : "Item decrypted",
-          description: `Your legacy item has been ${updatedItem.encryptionStatus ? "encrypted" : "decrypted"}.`
+          title: legacyItem.encryptionStatus ? "Item encrypted" : "Item decrypted",
+          description: `Your legacy item has been ${legacyItem.encryptionStatus ? "encrypted" : "decrypted"}.`
         });
       } else {
         throw new Error(`Failed to ${item.encryptionStatus ? "decrypt" : "encrypt"} item`);
