@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { createLegacyVaultItem } from '@/services/tankService';
 import { VaultItemType } from '@/pages/tank/types';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 type VideoRecorderProps = {
   onRecordingComplete: (blob: Blob) => void;
@@ -14,6 +15,7 @@ type VideoRecorderProps = {
 
 export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const { toast } = useToast();
+  const { user } = useUserProfile();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -25,92 +27,29 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [initAttempted, setInitAttempted] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Check if browser supports getUserMedia
+  const hasGetUserMedia = () => {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  };
+
   useEffect(() => {
-    const initCamera = async () => {
-      try {
-        setIsPreparing(true);
-        setCameraError(null);
-        setPermissionDenied(false);
-        
-        const constraints = {
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: 'user'
-          }, 
-          audio: true
-        };
-        
-        let mediaStream;
-        try {
-          console.log("Attempting to get user media with ideal constraints");
-          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-          console.log("Camera initialized with ideal constraints");
-        } catch (err) {
-          console.warn('Failed with ideal constraints, trying fallback:', err);
-          try {
-            console.log("Attempting with fallback constraints");
-            mediaStream = await navigator.mediaDevices.getUserMedia({ 
-              video: true, 
-              audio: true 
-            });
-            console.log("Camera initialized with fallback constraints");
-          } catch (fallbackErr) {
-            console.error('Failed with fallback constraints:', fallbackErr);
-            throw fallbackErr;
-          }
-        }
-        
-        setStream(mediaStream);
-        
-        if (videoRef.current) {
-          console.log("Setting video source to media stream");
-          videoRef.current.srcObject = mediaStream;
-          videoRef.current.onloadedmetadata = () => {
-            try {
-              if (videoRef.current) {
-                console.log("Video metadata loaded, attempting to play");
-                videoRef.current.play()
-                  .then(() => {
-                    console.log("Video preview started successfully");
-                    setIsCameraReady(true);
-                    setIsPreparing(false);
-                  })
-                  .catch(e => {
-                    console.error("Error playing video:", e);
-                    setCameraError("Could not play video stream. Please check your browser permissions.");
-                    setIsPreparing(false);
-                  });
-              }
-            } catch (playError) {
-              console.error("Error in play:", playError);
-              setCameraError("Could not start video preview. Please check your browser settings.");
-              setIsPreparing(false);
-            }
-          };
-        }
-      } catch (err) {
-        console.error('Error accessing camera:', err);
-        setPermissionDenied(true);
-        setCameraError("Unable to access your camera and microphone. Please check your browser permissions.");
-        setIsPreparing(false);
-        
-        toast({
-          title: "Camera Access Error",
-          description: "Unable to access your camera or microphone. Please check permissions.",
-          variant: "destructive"
-        });
-      }
-    };
-    
-    // Initialize camera when component mounts
-    initCamera();
+    if (!hasGetUserMedia()) {
+      setCameraError("Your browser doesn't support camera access. Please try a different browser.");
+      setIsPreparing(false);
+      return;
+    }
+
+    // Only initialize camera if we haven't tried yet
+    if (!initAttempted) {
+      initCamera();
+    }
     
     // Cleanup function
     return () => {
@@ -125,9 +64,106 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         clearInterval(timerRef.current);
       }
     };
-  }, [toast]);
+  }, [initAttempted]);
+  
+  const initCamera = async () => {
+    try {
+      setInitAttempted(true);
+      setIsPreparing(true);
+      setCameraError(null);
+      setPermissionDenied(false);
+      
+      console.log("Attempting to get user media with ideal constraints");
+      
+      const constraints = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        }, 
+        audio: true
+      };
+      
+      let mediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("Camera initialized with ideal constraints");
+      } catch (err) {
+        console.warn('Failed with ideal constraints, trying fallback:', err);
+        try {
+          console.log("Attempting with fallback constraints");
+          mediaStream = await navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: true 
+          });
+          console.log("Camera initialized with fallback constraints");
+        } catch (fallbackErr) {
+          console.error('Failed with fallback constraints:', fallbackErr);
+          throw fallbackErr;
+        }
+      }
+      
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        console.log("Setting video source to media stream");
+        videoRef.current.srcObject = mediaStream;
+        
+        // Use a promise-based approach for handling the loadedmetadata event
+        const playVideo = async () => {
+          return new Promise<void>((resolve, reject) => {
+            if (videoRef.current) {
+              videoRef.current.onloadedmetadata = async () => {
+                try {
+                  await videoRef.current?.play();
+                  resolve();
+                } catch (e) {
+                  reject(e);
+                }
+              };
+            } else {
+              reject(new Error("Video element not available"));
+            }
+          });
+        };
+        
+        try {
+          await playVideo();
+          console.log("Video preview started successfully");
+          setIsCameraReady(true);
+        } catch (playError) {
+          console.error("Error playing video:", playError);
+          setCameraError("Could not play video stream. Please check your browser permissions.");
+        } finally {
+          setIsPreparing(false);
+        }
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setPermissionDenied(true);
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        setCameraError("Camera access denied. Please grant permission in your browser settings.");
+      } else if (err instanceof DOMException && err.name === 'NotFoundError') {
+        setCameraError("No camera device found. Please connect a camera and try again.");
+      } else {
+        setCameraError("Unable to access your camera and microphone. Please check your browser permissions.");
+      }
+      setIsPreparing(false);
+      
+      toast({
+        title: "Camera Access Error",
+        description: "Unable to access your camera or microphone. Please check permissions.",
+        variant: "destructive"
+      });
+    }
+  };
   
   const addVideoToLegacyVault = async (blob: Blob) => {
+    if (!user) {
+      console.error('User not authenticated, cannot add to legacy vault');
+      return false;
+    }
+    
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const title = `Video Testament (${timestamp})`;
@@ -367,47 +403,21 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     setPermissionDenied(false);
     setIsPreparing(true);
     setCameraError(null);
+    setInitAttempted(false);
     
     try {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
       
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
-      
-      setStream(mediaStream);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        try {
-          await videoRef.current.play();
-          setIsCameraReady(true);
-          setIsPreparing(false);
-          
-          toast({
-            title: "Camera Connected",
-            description: "Camera and microphone access granted."
-          });
-        } catch (playError) {
-          console.error('Error playing video after retry:', playError);
-          setCameraError("Could not play video after reconnecting. Please check your browser settings.");
-          setIsPreparing(false);
-        }
-      }
-    } catch (err) {
-      console.error('Error accessing camera on retry:', err);
-      setPermissionDenied(true);
-      setCameraError("Still unable to access your camera. Please check browser settings.");
-      setIsPreparing(false);
+      await initCamera();
       
       toast({
-        title: "Camera Access Error",
-        description: "Still unable to access your camera. Please check browser settings.",
-        variant: "destructive"
+        title: "Camera Reconnection",
+        description: "Attempting to reconnect to your camera.",
       });
+    } catch (err) {
+      console.error('Error during camera retry:', err);
     }
   };
   

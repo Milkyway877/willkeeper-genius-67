@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -221,7 +220,7 @@ export default function WillCreation() {
       console.log("Template type:", selectedTemplate?.id || 'custom');
       console.log("AI generated:", userResponses && Object.keys(userResponses).length > 0);
 
-      // Prepare templateType to match the database constraints (from the error we saw)
+      // Prepare templateType to match the database constraints
       // Ensure template_type is one of the accepted values
       const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
       let templateType = 'custom'; // Default fallback
@@ -231,38 +230,62 @@ export default function WillCreation() {
       }
 
       // Save the will to the database with proper error handling
-      const newWill = await createWill({
-        title: willTitle,
-        status: 'Draft',
-        document_url: '', // In a real app, you'd upload to storage and get URL
-        template_type: templateType,
-        ai_generated: userResponses && Object.keys(userResponses).length > 0
-      });
-      
-      if (!newWill) {
-        throw new Error("Failed to create will - no response from server");
-      }
-      
-      // We successfully created the will
       try {
-        await notifyWillCreated(willTitle);
-      } catch (notificationError) {
-        console.error("Error sending notification:", notificationError);
-        // Continue even if notification fails
+        const newWill = await createWill({
+          title: willTitle,
+          status: 'Draft',
+          document_url: '', // In a real app, you'd upload to storage and get URL
+          template_type: templateType,
+          ai_generated: userResponses && Object.keys(userResponses).length > 0
+        });
+        
+        if (!newWill) {
+          throw new Error("Failed to create will - no response from server");
+        }
+        
+        // We successfully created the will
+        try {
+          await notifyWillCreated(willTitle);
+        } catch (notificationError) {
+          console.error("Error sending notification:", notificationError);
+          // Continue even if notification fails
+        }
+        
+        toast({
+          title: "Will Created Successfully",
+          description: "Your will has been saved and is now available in your dashboard.",
+          variant: "default"
+        });
+        
+        // Navigate to the will dashboard
+        setTimeout(() => {
+          navigate("/will");
+        }, 500);
+      } catch (saveError) {
+        console.error('Error from createWill:', saveError);
+        
+        if (saveError.message && saveError.message.includes('Not authenticated')) {
+          toast({
+            title: "Authentication Error",
+            description: "You must be logged in to save a will. Please sign in and try again.",
+            variant: "destructive"
+          });
+        } else if (saveError.code === '23514' || saveError.message?.includes('check constraint')) {
+          toast({
+            title: "Template Format Error",
+            description: "The will template format is not valid. Please select a valid template type.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Error Creating Will",
+            description: "There was a problem saving your will. Please try again.",
+            variant: "destructive"
+          });
+        }
       }
-      
-      toast({
-        title: "Will Created Successfully",
-        description: "Your will has been saved and is now available in your dashboard.",
-        variant: "default"
-      });
-      
-      // Navigate to the will dashboard
-      setTimeout(() => {
-        navigate("/will");
-      }, 500);
     } catch (error) {
-      console.error('Error saving will:', error);
+      console.error('Outer error saving will:', error);
       toast({
         title: "Error Creating Will",
         description: "There was a problem saving your will. Please try again.",

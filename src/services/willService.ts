@@ -64,8 +64,12 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
   try {
     console.log("Creating will with data:", will);
     
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
+    // Check authentication
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user?.id) {
+      console.error("Authentication error: Not authenticated");
+      throw new Error('Not authenticated');
+    }
     
     // Ensure the status is capitalized precisely as required by the database constraint
     // Database likely has an enum or check constraint for 'Draft', 'Active', or 'Archived'
@@ -78,28 +82,37 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
     
     // Handle template_type validation - based on the error, we need to ensure it matches the constraint
     // The valid template types appear to be checked by the database
-    // Let's ensure it's one of the accepted values or set to a default
     const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
     let templateType = 'custom'; // Default to custom
     
     if (will.template_type && validTemplateTypes.includes(will.template_type)) {
       templateType = will.template_type;
     }
+
+    console.log("Using template type:", templateType);
+    console.log("User ID:", userData.user.id);
     
+    const willData = {
+      ...will,
+      user_id: userData.user.id,
+      status: status,
+      template_type: templateType
+    };
+    
+    // Create the will in the database
     const { data, error } = await supabase
       .from('wills')
-      .insert({
-        ...will,
-        user_id: user.user.id,
-        status: status,
-        template_type: templateType
-      })
+      .insert([willData])
       .select()
       .single();
       
     if (error) {
       console.error("Supabase error creating will:", error);
       throw error;
+    }
+    
+    if (!data) {
+      throw new Error("No data returned from will creation");
     }
     
     try {
@@ -127,7 +140,7 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
     return data;
   } catch (error) {
     console.error('Error creating will:', error);
-    return null;
+    throw error; // Re-throw the error so it can be caught by the caller
   }
 };
 
@@ -144,6 +157,14 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
       const validStatuses = ['Draft', 'Active', 'Archived'];
       if (!validStatuses.includes(updates.status)) {
         updates.status = 'Draft';
+      }
+    }
+    
+    // Validate template_type if it's being updated
+    if (updates.template_type) {
+      const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
+      if (!validTemplateTypes.includes(updates.template_type)) {
+        updates.template_type = 'custom';
       }
     }
     
