@@ -273,31 +273,12 @@ export default function Executors() {
       if (isEditMode && editItemId) {
         // Update existing item
         if (activeTab === "executors") {
-          const executorData: Partial<Executor> = {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            relationship: formData.relationship,
-            address: formData.address,
-            notes: formData.notes
-          };
-          
-          result = await updateExecutor(editItemId, executorData);
+          result = await updateExecutor(editItemId, formData as Partial<Executor>);
           if (result) {
             setExecutors(executors.map(item => item.id === editItemId ? result as Executor : item));
           }
         } else {
-          const beneficiaryData: Partial<Beneficiary> = {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            relationship: formData.relationship,
-            address: formData.address,
-            notes: formData.notes,
-            percentage: formData.percentage
-          };
-          
-          result = await updateBeneficiary(editItemId, beneficiaryData);
+          result = await updateBeneficiary(editItemId, formData as Partial<Beneficiary>);
           if (result) {
             setBeneficiaries(beneficiaries.map(item => item.id === editItemId ? result as Beneficiary : item));
           }
@@ -319,7 +300,7 @@ export default function Executors() {
           const newExecutor = {
             name: formData.name,
             email: formData.email,
-            phone: formData.phone || '',
+            phone: formData.phone,
             relationship: formData.relationship,
             address: formData.address,
             notes: formData.notes
@@ -333,7 +314,7 @@ export default function Executors() {
           const newBeneficiary = {
             name: formData.name,
             email: formData.email,
-            phone: formData.phone || '',
+            phone: formData.phone,
             relationship: formData.relationship,
             address: formData.address,
             notes: formData.notes,

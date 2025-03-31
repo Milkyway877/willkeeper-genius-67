@@ -7,8 +7,8 @@ import { Logo } from '@/components/ui/logo/Logo';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
-  LayoutDashboard, Lock, Users, Brain, 
-  ShieldCheck, CreditCard, Settings, HelpCircle, ChevronRight, 
+  LayoutDashboard, FileText, PackageOpen, Lock, Users, Brain, 
+  ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, 
   Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle
 } from 'lucide-react';
 
@@ -41,6 +41,16 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       href: '/dashboard',
     },
     {
+      title: 'My Will',
+      icon: FileText,
+      href: '/dashboard/will',
+    },
+    {
+      title: 'Will Templates',
+      icon: PackageOpen,
+      href: '/templates',
+    },
+    {
       title: 'Encryption',
       icon: Lock,
       href: '/pages/encryption/Encryption',
@@ -69,6 +79,11 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       title: 'Billing',
       icon: CreditCard,
       href: '/pages/billing/Billing',
+    },
+    {
+      title: 'Notifications',
+      icon: Bell,
+      href: '/pages/notifications/Notifications',
     },
     {
       title: 'Settings',

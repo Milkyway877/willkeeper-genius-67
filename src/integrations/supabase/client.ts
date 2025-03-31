@@ -14,21 +14,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    storage: localStorage,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
-  },
-  global: {
-    fetch: (...args: [RequestInfo | URL, RequestInit?]) => {
-      return fetch(...args).catch(error => {
-        console.error('Fetch error in Supabase client:', error);
-        throw error;
-      });
-    }
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
+    storage: localStorage
   }
 });

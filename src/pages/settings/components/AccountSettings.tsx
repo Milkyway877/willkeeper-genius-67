@@ -108,9 +108,6 @@ export function AccountSettings() {
                     disabled={!isEditing || isSaving}
                     className="max-w-md"
                   />
-                  {formData.fullName && !isEditing && (
-                    <Check className="h-4 w-4 text-green-500" />
-                  )}
                 </div>
               </div>
               
@@ -120,7 +117,7 @@ export function AccountSettings() {
                   <Input
                     id="email"
                     name="email"
-                    value={formData.email || profile?.email || ''}
+                    value={formData.email}
                     disabled={true} // Email should not be edited here
                     className="max-w-md"
                   />

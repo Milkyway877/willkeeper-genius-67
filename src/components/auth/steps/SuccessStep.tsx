@@ -1,13 +1,38 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, BadgeCheck, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { fadeInUp } from '../animations';
+import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 export function SuccessStep() {
   const navigate = useNavigate();
+  const { notifyWelcome, notifyInfo, notifySecurity } = useNotificationManager();
+  
+  useEffect(() => {
+    // Send welcome notifications when this component mounts
+    const sendWelcomeNotifications = async () => {
+      // Main welcome notification
+      await notifyWelcome();
+      
+      // Getting started notification
+      await notifyInfo(
+        "Getting Started with WillTank",
+        "Follow our quick guide to set up your account and create your first will.",
+        "high"
+      );
+      
+      // Security reminder notification
+      await notifySecurity(
+        "Secure Your Account",
+        "For maximum security, we recommend enabling two-factor authentication in settings."
+      );
+    };
+    
+    sendWelcomeNotifications();
+  }, [notifyWelcome, notifyInfo, notifySecurity]);
   
   return (
     <motion.div key="success" {...fadeInUp} className="text-center py-8">

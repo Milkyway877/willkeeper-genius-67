@@ -34,13 +34,13 @@ type SecurityEvent = {
 
 const getTypeIcon = (type: MessageType) => {
   switch (type) {
-    case MessageType.letter:
+    case 'letter':
       return <FileText size={16} className="text-blue-500" />;
-    case MessageType.video:
+    case 'video':
       return <Video size={16} className="text-red-500" />;
-    case MessageType.audio:
+    case 'audio':
       return <FileAudio size={16} className="text-purple-500" />;
-    case MessageType.document:
+    case 'document':
       return <File size={16} className="text-green-500" />;
     default:
       return <FileText size={16} />;
@@ -58,10 +58,6 @@ const getStatusBadge = (status: string) => {
     default:
       return <Badge variant="outline">Unknown</Badge>;
   }
-};
-
-const handleCreateMessage = (type: MessageType) => {
-  // implementation details
 };
 
 export const TankAnalytics: React.FC = () => {
@@ -306,7 +302,7 @@ export const TankAnalytics: React.FC = () => {
                   {upcomingDeliveries.map((delivery) => (
                     <div key={delivery.id} className="flex items-center p-3 border rounded-lg">
                       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
-                        {getTypeIcon(delivery.message_type as MessageType || MessageType.letter)}
+                        {getTypeIcon((delivery.message_type as MessageType) || 'letter')}
                       </div>
                       
                       <div className="flex-grow">

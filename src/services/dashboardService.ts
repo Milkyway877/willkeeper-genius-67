@@ -1,132 +1,159 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { getUserProfile } from './userService';
+import { supabase } from "@/integrations/supabase/client";
+import { createUserSecurity, getUserSecurity } from "@/services/encryptionService";
+import { Notification } from "@/services/notificationService";
 
-export async function getProfile() {
-  return await getUserProfile();
+export interface DashboardSummary {
+  willCount: number;
+  executorCount: number;
+  notificationCount: number;
+  securityStatus: string;
 }
 
-export async function getDashboardSummary() {
+export const getDashboardSummary = async (): Promise<DashboardSummary> => {
   try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      return null;
+    // Get user session first
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      throw new Error('No authenticated user');
     }
-
-    // Get counts of various items
-    const [wills, vault, messages, executors] = await Promise.all([
-      supabase.from('wills').select('id', { count: 'exact' }).eq('user_id', userData.user.id),
-      supabase.from('legacy_vault').select('id', { count: 'exact' }).eq('user_id', userData.user.id),
-      supabase.from('future_messages').select('id', { count: 'exact' }).eq('user_id', userData.user.id),
-      supabase.from('will_executors').select('id', { count: 'exact' }).eq('user_id', userData.user.id)
-    ]);
-
+    
+    // Initialize results with defaults in case any query fails
+    let willsCount = 0;
+    let executorsCount = 0;
+    let notificationsCount = 0;
+    let securityResult = null;
+    
+    try {
+      // Run all queries in parallel with individual error handling
+      const [willsResult, executorsResult, notificationsResult] = await Promise.all([
+        supabase.from('wills').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+        supabase.from('will_executors').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+        supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('read', false)
+      ]);
+      
+      // Extract counts, handling potential errors
+      willsCount = willsResult.error ? 0 : willsResult.count || 0;
+      executorsCount = executorsResult.error ? 0 : executorsResult.count || 0;
+      notificationsCount = notificationsResult.error ? 0 : notificationsResult.count || 0;
+    } catch (e) {
+      console.error('Error fetching dashboard counts:', e);
+    }
+    
+    // Get security info with separate error handling
+    try {
+      securityResult = await getUserSecurity();
+    } catch (e) {
+      console.error('Error getting user security:', e);
+    }
+    
+    // If security doesn't exist, try to create it
+    if (!securityResult) {
+      try {
+        await createUserSecurity();
+      } catch (e) {
+        console.error('Error creating user security:', e);
+      }
+    }
+    
+    // Determine security status based on various factors
+    let securityStatus = 'Good';
+    
+    if (!securityResult) {
+      securityStatus = 'Needs Setup';
+    } else if (!securityResult.encryption_key) {
+      securityStatus = 'Incomplete';
+    } else if (securityResult.google_auth_enabled) {
+      securityStatus = 'Strong';
+    }
+    
     return {
-      wills: wills.count || 0,
-      vaultItems: vault.count || 0,
-      messages: messages.count || 0,
-      executors: executors.count || 0
+      willCount: willsCount,
+      executorCount: executorsCount,
+      notificationCount: notificationsCount,
+      securityStatus: securityStatus
     };
   } catch (error) {
     console.error('Error fetching dashboard summary:', error);
-    return null;
+    return {
+      willCount: 0,
+      executorCount: 0,
+      notificationCount: 0,
+      securityStatus: 'Unknown'
+    };
   }
-}
+};
 
-export async function getUserNotifications() {
+export const getUserWills = async () => {
   try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      return [];
-    }
-
-    // Placeholder for real notifications
-    // In a real implementation, you would fetch from a notifications table
-    return [
-      {
-        id: '1',
-        title: 'Welcome to Skyler',
-        description: 'Thank you for joining our platform. Get started by creating your first will.',
-        date: new Date().toISOString(),
-        read: false
-      }
-    ];
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    return [];
-  }
-}
-
-export async function getUserWills() {
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      return [];
-    }
-
     const { data, error } = await supabase
       .from('wills')
       .select('*')
-      .eq('user_id', userData.user.id)
-      .order('created_at', { ascending: false });
-
+      .order('updated_at', { ascending: false });
+      
     if (error) throw error;
+    
     return data || [];
   } catch (error) {
     console.error('Error fetching user wills:', error);
     return [];
   }
-}
+};
 
-export async function getUserExecutors() {
+export const getUserNotifications = async (): Promise<Notification[]> => {
   try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      return [];
-    }
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5);
+      
+    if (error) throw error;
+    
+    return data as Notification[] || [];
+  } catch (error) {
+    console.error('Error fetching user notifications:', error);
+    return [];
+  }
+};
 
+export const getUserExecutors = async () => {
+  try {
     const { data, error } = await supabase
       .from('will_executors')
       .select('*')
-      .eq('user_id', userData.user.id);
-
+      .order('created_at', { ascending: false });
+      
     if (error) throw error;
+    
     return data || [];
   } catch (error) {
     console.error('Error fetching user executors:', error);
     return [];
   }
-}
+};
 
-export async function getUserSubscription() {
+export const getUserSubscription = async () => {
   try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      return null;
-    }
-
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('user_id', userData.user.id)
-      .eq('status', 'Active')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
-
+      
     if (error) {
+      // If no subscription is found, this is expected
       if (error.code === 'PGRST116') {
-        // No subscription found
-        return {
-          plan: 'free',
-          start_date: new Date().toISOString(),
-          status: 'Active'
-        };
+        return null;
       }
       throw error;
     }
-
+    
     return data;
   } catch (error) {
     console.error('Error fetching user subscription:', error);
     return null;
   }
-}
+};

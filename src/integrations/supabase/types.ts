@@ -54,33 +54,6 @@ export type Database = {
         }
         Relationships: []
       }
-      beneficiaries: {
-        Row: {
-          confirmation_token: string
-          created_at: string | null
-          email: string
-          id: string
-          status: string | null
-          user_id: string | null
-        }
-        Insert: {
-          confirmation_token: string
-          created_at?: string | null
-          email: string
-          id?: string
-          status?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          confirmation_token?: string
-          created_at?: string | null
-          email?: string
-          id?: string
-          status?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       death_verification_checkins: {
         Row: {
           checked_in_at: string
@@ -299,33 +272,6 @@ export type Database = {
         }
         Relationships: []
       }
-      executors: {
-        Row: {
-          confirmation_token: string
-          created_at: string | null
-          email: string
-          id: string
-          status: string | null
-          user_id: string | null
-        }
-        Insert: {
-          confirmation_token: string
-          created_at?: string | null
-          email: string
-          id?: string
-          status?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          confirmation_token?: string
-          created_at?: string | null
-          email?: string
-          id?: string
-          status?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       future_messages: {
         Row: {
           created_at: string | null
@@ -401,6 +347,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          description: string
+          icon: string | null
+          id: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          icon?: string | null
+          id?: string
+          read?: boolean
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          icon?: string | null
+          id?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string | null
@@ -455,30 +434,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_checkins: {
-        Row: {
-          executor_email: string
-          id: string
-          last_checkin: string | null
-          status: string | null
-          user_id: string | null
-        }
-        Insert: {
-          executor_email: string
-          id?: string
-          last_checkin?: string | null
-          status?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          executor_email?: string
-          id?: string
-          last_checkin?: string | null
-          status?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       user_identity_verification: {
         Row: {
           created_at: string | null
@@ -513,6 +468,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          notification_settings: Json | null
           privacy_settings: Json | null
           updated_at: string | null
           user_id: string
@@ -520,6 +476,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          notification_settings?: Json | null
           privacy_settings?: Json | null
           updated_at?: string | null
           user_id: string
@@ -527,6 +484,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          notification_settings?: Json | null
           privacy_settings?: Json | null
           updated_at?: string | null
           user_id?: string

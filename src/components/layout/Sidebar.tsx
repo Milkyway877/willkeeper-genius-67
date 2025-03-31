@@ -12,7 +12,6 @@ import {
   LogOut,
   Menu,
   X,
-  FileText,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -67,7 +66,8 @@ export function Sidebar() {
         
         <nav className="space-y-1.5 mt-6">
           <SidebarLink to="/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} label="Dashboard" />
-          <SidebarLink to="/wills" icon={<FileText className="h-5 w-5" />} label="Wills" />
+          <SidebarLink to="/dashboard/will" icon={<Scroll className="h-5 w-5" />} label="My Will" />
+          <SidebarLink to="/templates" icon={<BookTemplate className="h-5 w-5" />} label="Templates" />
           <SidebarLink to="/tank" icon={<Vault className="h-5 w-5" />} label="Will Tank" />
           <SidebarLink to="/pages/ai/AIAssistance" icon={<Bot className="h-5 w-5" />} label="Skyler" />
           <SidebarLink to="/activity" icon={<Activity className="h-5 w-5" />} label="Activity" />
@@ -94,7 +94,7 @@ export function Sidebar() {
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              {!isCollapsed && "Logout"}
+              Logout
             </Button>
           </div>
         </div>
@@ -111,8 +111,6 @@ interface SidebarLinkProps {
 
 function SidebarLink({ to, icon, label }: SidebarLinkProps) {
   const location = useLocation();
-  const { isCollapsed } = useSidebar();
-  
   const isActive = location.pathname === to;
   
   return (
@@ -125,7 +123,7 @@ function SidebarLink({ to, icon, label }: SidebarLinkProps) {
       `}
     >
       {icon}
-      {!isCollapsed && <span className="ml-3">{label}</span>}
+      <span className="ml-3">{label}</span>
     </Link>
   );
 }

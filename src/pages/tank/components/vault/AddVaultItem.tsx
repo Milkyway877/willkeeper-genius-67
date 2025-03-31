@@ -20,7 +20,7 @@ interface AddVaultItemProps {
 
 export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onItemAdded }) => {
   const [title, setTitle] = useState('');
-  const [type, setType] = useState<VaultItemType>(VaultItemType.story);
+  const [type, setType] = useState<VaultItemType>('story');
   const [preview, setPreview] = useState('');
   const [encryptionStatus, setEncryptionStatus] = useState(false);
   const [documentUrl, setDocumentUrl] = useState('');
@@ -29,7 +29,7 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
 
   const resetForm = () => {
     setTitle('');
-    setType(VaultItemType.story);
+    setType('story');
     setPreview('');
     setEncryptionStatus(false);
     setDocumentUrl('');
@@ -152,10 +152,10 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={VaultItemType.story}>Personal Story</SelectItem>
-                  <SelectItem value={VaultItemType.confession}>Confession</SelectItem>
-                  <SelectItem value={VaultItemType.wishes}>Special Wishes</SelectItem>
-                  <SelectItem value={VaultItemType.advice}>Life Advice</SelectItem>
+                  <SelectItem value="story">Personal Story</SelectItem>
+                  <SelectItem value="confession">Confession</SelectItem>
+                  <SelectItem value="wishes">Special Wishes</SelectItem>
+                  <SelectItem value="advice">Life Advice</SelectItem>
                 </SelectContent>
               </Select>
             </div>

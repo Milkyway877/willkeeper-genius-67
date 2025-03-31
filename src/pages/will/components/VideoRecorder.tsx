@@ -1,357 +1,385 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Camera, Video, X, Check, RefreshCw, Play, Pause, Save } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { Camera, Video, RefreshCw, Play, Square, Download, Check } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
-interface VideoRecorderProps {
-  onRecordingComplete: (videoBlob: Blob) => void;
-}
+type VideoRecorderProps = {
+  onRecordingComplete: (blob: Blob) => void;
+};
 
-export const VideoRecorder: React.FC<VideoRecorderProps> = ({ 
-  onRecordingComplete 
-}) => {
-  const [status, setStatus] = useState<'idle' | 'preparing' | 'ready' | 'recording' | 'recorded'>('idle');
-  const [error, setError] = useState<string | null>(null);
+export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
+  const { toast } = useToast();
+  const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [downloadURL, setDownloadURL] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const recordedChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  const { toast } = useToast();
-  
+  // Initialize camera when component mounts
   useEffect(() => {
-    // Cleanup function to properly release camera resources
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      
-      if (downloadURL) {
-        URL.revokeObjectURL(downloadURL);
-      }
-    };
-  }, [downloadURL]);
-  
-  const initializeCamera = async () => {
-    // Don't initialize if we're already preparing or ready
-    if (status === 'preparing' || status === 'ready') {
-      return;
-    }
-    
-    try {
-      setStatus('preparing');
-      setError(null);
-      
-      // Reset any previous recording
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      
-      // Ensure we only request video (no audio) to increase chances of success
-      const constraints = { video: true };
-      console.log("Attempting to get user media with ideal constraints", constraints);
-      
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log("Camera initialized with ideal constraints");
-      
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
-      setStatus('ready');
-    } catch (err: any) {
-      console.error("Error initializing camera:", err);
-      
-      // Try a fallback with less demanding constraints
+    const initCamera = async () => {
       try {
-        const fallbackConstraints = { 
-          video: { 
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-            frameRate: { ideal: 15 }
-          } 
-        };
+        setIsPreparing(true);
         
-        console.log("Attempting with fallback constraints:", fallbackConstraints);
-        const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+        // Request camera and microphone permissions
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          }, 
+          audio: true 
+        });
         
-        streamRef.current = fallbackStream;
+        setStream(mediaStream);
         
         if (videoRef.current) {
-          videoRef.current.srcObject = fallbackStream;
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.onloadedmetadata = () => {
+            setIsCameraReady(true);
+            setIsPreparing(false);
+          };
         }
-        
-        setStatus('ready');
-        console.log("Camera initialized with fallback constraints");
-      } catch (fallbackErr: any) {
-        console.error("Camera failed with fallback constraints too:", fallbackErr);
-        setError(`Cannot access camera: ${fallbackErr.message || 'Unknown error'}. Please ensure camera permissions are enabled.`);
-        setStatus('idle');
+      } catch (err) {
+        console.error('Error accessing camera:', err);
+        setPermissionDenied(true);
+        setIsPreparing(false);
         
         toast({
           title: "Camera Access Error",
-          description: "Could not access your camera. Please check your browser settings and permissions.",
+          description: "Unable to access your camera or microphone. Please check permissions.",
           variant: "destructive"
         });
       }
-    }
-  };
+    };
+    
+    initCamera();
+    
+    // Cleanup function
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [toast]);
   
   const startRecording = () => {
-    if (!streamRef.current) {
-      setError("Camera not initialized");
-      return;
-    }
+    if (!stream) return;
+    
+    recordedChunksRef.current = [];
     
     try {
-      chunksRef.current = [];
+      // Create media recorder with specific MIME type and bitrate
+      const options = { 
+        mimeType: 'video/webm;codecs=vp9,opus',
+        videoBitsPerSecond: 2500000 // 2.5 Mbps
+      };
       
-      // Create a MediaRecorder instance
-      const mediaRecorder = new MediaRecorder(streamRef.current, {
-        mimeType: 'video/webm;codecs=vp9,opus'
-      });
+      let mediaRecorder: MediaRecorder;
       
-      mediaRecorderRef.current = mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        // Fallback if the specified options aren't supported
+        mediaRecorder = new MediaRecorder(stream);
+      }
       
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
         }
       };
       
       mediaRecorder.onstop = () => {
-        const videoBlob = new Blob(chunksRef.current, { type: 'video/webm' });
-        const url = URL.createObjectURL(videoBlob);
+        // Process the recorded chunks
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
         
-        setDownloadURL(url);
+        setVideoUrl(url);
         
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-          videoRef.current.src = url;
-          videoRef.current.controls = true;
-        }
-        
-        onRecordingComplete(videoBlob);
+        // Simulate processing (in a real app, this might involve compression or uploading)
+        setIsProcessing(true);
+        const processInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 100) {
+              clearInterval(processInterval);
+              setTimeout(() => {
+                setIsProcessing(false);
+                onRecordingComplete(blob);
+              }, 500);
+              return 100;
+            }
+            return prev + 5;
+          });
+        }, 100);
       };
       
-      // Start recording
+      mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start(1000); // Collect data every second
-      setStatus('recording');
-      setRecordingTime(0);
+      setIsRecording(true);
       
-      // Start a timer to track recording duration
+      // Start timer
+      setRecordingTime(0);
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
       
-    } catch (err: any) {
-      console.error("Error starting recording:", err);
-      setError(`Failed to start recording: ${err.message}`);
-    }
-  };
-  
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setStatus('recorded');
-      
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      
-      // Stop all tracks
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      
       toast({
-        title: "Recording Saved",
-        description: "Your video testament has been saved successfully."
+        title: "Recording Started",
+        description: "You are now recording your video testament."
+      });
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      toast({
+        title: "Recording Error",
+        description: "There was a problem starting the recording. Please try again.",
+        variant: "destructive"
       });
     }
   };
   
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Stop timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+  };
+  
+  const handlePlayPause = () => {
+    if (!videoRef.current) return;
+    
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+  
   const resetRecording = () => {
-    if (downloadURL) {
-      URL.revokeObjectURL(downloadURL);
-      setDownloadURL(null);
+    setVideoUrl(null);
+    setUploadProgress(0);
+    
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(err => console.error('Error playing video:', err));
+      setIsCameraReady(true);
     }
     
-    setStatus('idle');
-    setRecordingTime(0);
+    toast({
+      title: "Recording Reset",
+      description: "You can now record a new video testament."
+    });
+  };
+  
+  const retryCamera = async () => {
+    setPermissionDenied(false);
+    setIsPreparing(true);
     
-    if (videoRef.current) {
-      videoRef.current.controls = false;
+    try {
+      // Try to get camera and microphone permissions again
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      
+      setIsCameraReady(true);
+      setIsPreparing(false);
+      
+      toast({
+        title: "Camera Connected",
+        description: "Camera and microphone access granted."
+      });
+    } catch (err) {
+      console.error('Error accessing camera on retry:', err);
+      setPermissionDenied(true);
+      setIsPreparing(false);
+      
+      toast({
+        title: "Camera Access Error",
+        description: "Still unable to access your camera. Please check browser settings.",
+        variant: "destructive"
+      });
     }
   };
   
-  const downloadVideo = () => {
-    if (downloadURL) {
-      const a = document.createElement('a');
-      a.href = downloadURL;
-      a.download = `video-testament-${new Date().toISOString()}.webm`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  };
-  
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  useEffect(() => {
-    // Auto-initialize camera when component mounts
-    initializeCamera();
-  }, []);
-  
+  // Handle video end event
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
+  };
+
   return (
-    <div className="flex flex-col items-center">
-      <div className="w-full max-w-2xl aspect-video bg-gray-900 rounded-lg overflow-hidden relative mb-4">
-        {status === 'preparing' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white">
-            <div className="flex flex-col items-center">
-              <RefreshCw className="h-8 w-8 animate-spin mb-2" />
-              <p>Preparing camera...</p>
-            </div>
-          </div>
-        )}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <div className="flex items-center">
+          <Video className="text-willtank-700 mr-2" size={18} />
+          <h3 className="font-medium">Video Testament</h3>
+        </div>
         
-        {status === 'recording' && (
-          <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full flex items-center">
-            <div className="w-3 h-3 rounded-full bg-white mr-2 animate-pulse"></div>
-            <span>{formatTime(recordingTime)}</span>
-          </div>
-        )}
-        
-        <video 
-          ref={videoRef}
-          autoPlay 
-          playsInline
-          muted 
-          className="w-full h-full object-cover"
-        ></video>
-        
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 text-white p-4 text-center">
-            <div>
-              <AlertCircleIcon className="h-10 w-10 text-red-500 mx-auto mb-2" />
-              <p>{error}</p>
-              <Button 
-                onClick={() => initializeCamera()} 
-                variant="outline" 
-                className="mt-4 bg-white text-black hover:bg-gray-200"
-              >
-                Try Again
-              </Button>
-            </div>
+        {isRecording && (
+          <div className="flex items-center text-red-500">
+            <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse mr-2"></span>
+            <span className="text-sm">{formatTime(recordingTime)}</span>
           </div>
         )}
       </div>
       
-      <div className="flex gap-3 mt-4">
-        {status === 'ready' && (
-          <Button 
-            onClick={startRecording}
-            className="flex items-center"
-            size="lg"
-          >
-            <Play className="h-5 w-5 mr-2" />
-            Start Recording
-          </Button>
-        )}
-        
-        {status === 'recording' && (
-          <Button 
-            onClick={stopRecording}
-            variant="destructive"
-            className="flex items-center"
-            size="lg"
-          >
-            <Square className="h-5 w-5 mr-2" />
-            Stop Recording
-          </Button>
-        )}
-        
-        {status === 'recorded' && (
-          <>
-            <Button 
-              onClick={resetRecording}
-              variant="outline"
-              className="flex items-center"
-            >
-              <RefreshCw className="h-5 w-5 mr-2" />
-              Record Again
-            </Button>
+      <div className="p-6">
+        <div className="mb-6">
+          <div className="bg-black aspect-video rounded-lg overflow-hidden relative">
+            {isPreparing ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                <RefreshCw className="h-10 w-10 text-white animate-spin" />
+                <p className="text-white ml-3">Preparing camera...</p>
+              </div>
+            ) : isProcessing ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                <RefreshCw className="h-10 w-10 text-white animate-spin mb-3" />
+                <p className="text-white mb-4">Processing video...</p>
+                <div className="w-64">
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              </div>
+            ) : permissionDenied ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-center p-6">
+                <Video className="h-12 w-12 text-red-400 mb-3" />
+                <p className="text-white mb-4">Camera or microphone access denied</p>
+                <Button size="sm" onClick={retryCamera}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Camera Access
+                </Button>
+              </div>
+            ) : (
+              <video 
+                ref={videoRef} 
+                className="w-full h-full object-cover"
+                autoPlay={isCameraReady && !videoUrl} 
+                muted={!videoUrl} 
+                playsInline
+                loop={false}
+                controls={!!videoUrl}
+                onEnded={handleVideoEnded}
+              />
+            )}
             
-            <Button 
-              onClick={downloadVideo}
-              className="flex items-center"
-            >
-              <Download className="h-5 w-5 mr-2" />
-              Download Video
-            </Button>
-          </>
-        )}
-        
-        {status === 'idle' && (
-          <Button 
-            onClick={() => initializeCamera()}
-            className="flex items-center"
-            size="lg"
-          >
-            <Camera className="h-5 w-5 mr-2" />
-            Enable Camera
-          </Button>
-        )}
-      </div>
-      
-      {status === 'recorded' && (
-        <div className="mt-6 bg-green-50 text-green-700 p-4 rounded-lg border border-green-200 flex items-start w-full">
-          <Check className="h-5 w-5 mr-3 mt-0.5 text-green-600 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Video Testament Recorded</p>
-            <p className="text-green-600 text-sm mt-1">
-              Your video testament has been successfully recorded and will be securely stored with your will. You can download a copy for your records.
-            </p>
+            {isRecording && (
+              <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center">
+                <span className="h-2 w-2 bg-white rounded-full animate-pulse mr-2"></span>
+                REC
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-center gap-4 mt-4">
+            {videoUrl ? (
+              <>
+                <Button variant="outline" onClick={handlePlayPause} disabled={isProcessing}>
+                  {isPlaying ? (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Play
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={resetRecording} disabled={isProcessing}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Record Again
+                </Button>
+                <Button disabled={isProcessing}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Use This Recording
+                </Button>
+              </>
+            ) : (
+              <>
+                {isRecording ? (
+                  <Button 
+                    variant="destructive" 
+                    onClick={stopRecording}
+                    disabled={isPreparing || isProcessing || permissionDenied}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Stop Recording
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={startRecording}
+                    disabled={!isCameraReady || isPreparing || isProcessing || permissionDenied}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Start Recording
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         </div>
-      )}
+        
+        <div className="bg-willtank-50 rounded-lg p-4 border border-willtank-100">
+          <h4 className="font-medium text-willtank-700 mb-2">Video Testament Instructions</h4>
+          <ul className="space-y-2 text-sm text-gray-700">
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Begin by stating your full name, the date, and that this is your video testament
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Confirm that you are of sound mind and creating this will voluntarily
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Briefly summarize your main wishes as documented in your written will
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Add any personal messages to loved ones you would like to include
+            </li>
+            <li className="flex items-start">
+              <Check className="h-4 w-4 text-willtank-500 mr-2 mt-1" />
+              Keep your recording under 5 minutes for optimal quality
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
-  );
-};
-
-// Export the AlertCircle icon for error handling
-function AlertCircleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
   );
 }

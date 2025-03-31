@@ -1,206 +1,140 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useToast } from '@/hooks/use-toast';
-import { getUserProfile, updateUserProfile, UserProfile } from '@/services/userService';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Loader2, Save, Check } from 'lucide-react';
-
-const profileFormSchema = z.object({
-  fullName: z.string().min(2, {
-    message: "Full name must be at least 2 characters.",
-  }),
-  location: z.string().optional(),
-  bio: z.string().optional(),
-})
-
-type ProfileFormValues = z.infer<typeof profileFormSchema>
+import { useUserProfile } from '@/contexts/UserProfileContext';
+import { updateUserProfile } from '@/services/profileService';
+import { Check, Loader2 } from 'lucide-react';
 
 export default function Profile() {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
+  const { profile, refreshProfile } = useUserProfile();
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      fullName: "",
-      location: "",
-      bio: "",
-    },
-  })
+  const [fullName, setFullName] = useState('');
   
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setIsLoading(true);
-        const userProfile = await getUserProfile();
-        if (userProfile) {
-          setProfile(userProfile);
-          form.reset({
-            fullName: userProfile.full_name || "",
-            location: userProfile.metadata?.location || "",
-            bio: userProfile.metadata?.bio || "",
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        toast({
-          title: 'Error',
-          description: 'Could not load profile information.',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchProfile();
-  }, [toast, form]);
+    if (profile?.full_name) {
+      setFullName(profile.full_name);
+    }
+  }, [profile]);
   
-  const onSave = async (values: ProfileFormValues) => {
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+  
+  const handleCancel = () => {
+    // Reset to original values
+    if (profile?.full_name) {
+      setFullName(profile.full_name);
+    }
+    setIsEditing(false);
+  };
+  
+  const handleSave = async () => {
     try {
       setIsSaving(true);
       
-      const updatedProfile: Partial<UserProfile> = {
-        full_name: values.fullName,
-        metadata: {
-          location: values.location,
-          bio: values.bio
-        }
-      };
+      const updatedProfile = await updateUserProfile({
+        full_name: fullName
+      });
       
-      const result = await updateUserProfile(updatedProfile);
-      
-      if (result) {
-        setProfile(result);
+      if (updatedProfile) {
+        await refreshProfile();
+        setIsEditing(false);
+        
         toast({
-          title: 'Profile Updated',
-          description: 'Your profile has been updated successfully.',
+          title: "Profile Updated",
+          description: "Your profile information has been successfully updated.",
+          variant: "default"
         });
       } else {
-        throw new Error('Failed to update profile');
+        throw new Error("Failed to update profile");
       }
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      console.error("Error updating profile:", error);
+      
       toast({
-        title: 'Error',
-        description: 'Could not update profile information.',
-        variant: 'destructive'
+        title: "Update Failed",
+        description: "There was an error updating your profile. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsSaving(false);
     }
   };
   
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="max-w-4xl mx-auto p-4">
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-willtank-600" />
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-  
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto p-4">
-        <h1 className="text-3xl font-bold mb-2">Profile Settings</h1>
-        <p className="text-gray-600 mb-6">
-          Manage your personal information and profile details.
-        </p>
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Your Profile</h1>
+          <p className="text-gray-600 mt-1">Manage your personal information</p>
+        </div>
         
         <Card>
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
             <CardDescription>
-              Update your profile details
+              Update your personal details and how others see you on the platform
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4">
-              <div className="flex items-center space-x-4">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={profile?.avatar_url || '/assets/avatar-placeholder.png'} alt="Profile" />
-                  <AvatarFallback>{profile?.full_name?.substring(0, 2).toUpperCase() || "XX"}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h2 className="text-lg font-semibold">{profile?.full_name || "No Name"}</h2>
-                  <p className="text-sm text-gray-500">{profile?.id}</p>
-                </div>
+          <CardContent>
+            <div className="flex items-center gap-4 mb-6">
+              <UserAvatar size="lg" />
+              <div>
+                <h3 className="font-medium text-lg">{profile?.full_name || 'User'}</h3>
+                <p className="text-sm text-gray-500">{profile?.email || 'No email available'}</p>
               </div>
             </div>
             
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="New York" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bio</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Tell us a little about yourself" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
+            <Separator className="my-6" />
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="fullName">Full Name</Label>
+                <div className="flex gap-4 mt-1.5">
+                  <Input 
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    disabled={!isEditing || isSaving}
+                    className="max-w-md"
+                  />
+                  
+                  {!isEditing ? (
+                    <Button onClick={handleEdit}>
+                      Edit
+                    </Button>
                   ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Changes
-                    </>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving
+                          </>
+                        ) : (
+                          <>
+                            <Check className="mr-2 h-4 w-4" />
+                            Save
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
-                </Button>
-              </form>
-            </Form>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

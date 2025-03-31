@@ -1,238 +1,381 @@
 
-import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Edit, Lock, Unlock, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import {
-  getLegacyVaultItems,
-  createLegacyVaultItem,
-  updateLegacyVaultItem,
-  deleteLegacyVaultItem,
-  toggleItemEncryption
-} from '@/services/tankService';
-import { LegacyVaultItem } from '../../types';
+import { LegacyVaultItem, VaultItemType } from '../../types';
+import { FileText, Lock, Unlock, Eye, Edit, Trash2, Save, XCircle, Sparkles } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
+import { toggleItemEncryption, updateLegacyVaultItem, deleteLegacyVaultItem } from '@/services/tankService';
 
 interface VaultItemDialogProps {
-  open?: boolean;
-  isOpen?: boolean; // Added for compatibility with calling components
-  setOpen?: (open: boolean) => void;
-  onClose?: () => void; // Added for compatibility with calling components
   item: LegacyVaultItem | null;
-  onItemUpdate?: (item: LegacyVaultItem) => void;
-  onSave?: (item: LegacyVaultItem) => void; // Added for compatibility with calling components
-  onDelete?: (id: string) => Promise<void>; // Added for compatibility with calling components
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (item: LegacyVaultItem) => void;
+  onDelete: (id: string) => void;
 }
 
-export function VaultItemDialog({ 
-  open, 
-  isOpen, 
-  setOpen, 
-  onClose, 
+export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({ 
   item, 
-  onItemUpdate,
-  onSave,
+  isOpen, 
+  onClose, 
+  onSave, 
   onDelete 
-}: VaultItemDialogProps) {
-  const { toast } = useToast();
-  const [itemName, setItemName] = useState('');
-  const [itemDescription, setItemDescription] = useState('');
-  const [itemContent, setItemContent] = useState('');
-  const [isEncrypted, setIsEncrypted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  
-  // Handle both open and isOpen props
-  const isDialogOpen = open !== undefined ? open : isOpen;
-  const setDialogOpen = setOpen || (onClose ? (val: boolean) => {
-    if (!val) onClose();
-  } : undefined);
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [title, setTitle] = useState(item?.title || '');
+  const [type, setType] = useState<VaultItemType>(item?.type || 'story');
+  const [preview, setPreview] = useState(item?.preview || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUsingAI, setIsUsingAI] = useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (item) {
-      setItemName(item.item_name || item.title || '');
-      setItemDescription(item.item_description || item.preview || '');
-      setItemContent(item.item_content || '');
-      setIsEncrypted(item.is_encrypted || item.encryptionStatus || false);
-    } else {
-      setItemName('');
-      setItemDescription('');
-      setItemContent('');
-      setIsEncrypted(false);
+      setTitle(item.title);
+      setType(item.type);
+      setPreview(item.preview);
+      setIsEditing(false);
+      setIsUsingAI(false);
     }
   }, [item]);
 
   const handleClose = () => {
-    if (setOpen) setOpen(false);
-    if (onClose) onClose();
+    setIsEditing(false);
+    setIsUsingAI(false);
+    onClose();
   };
 
-  const handleSubmit = async () => {
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    if (item) {
+      setTitle(item.title);
+      setType(item.type);
+      setPreview(item.preview);
+    }
+    setIsEditing(false);
+    setIsUsingAI(false);
+  };
+
+  const handleSave = async () => {
     if (!item) return;
 
-    setLoading(true);
+    setIsLoading(true);
     try {
-      const updates = {
-        item_name: itemName,
-        item_description: itemDescription,
-        item_content: itemContent,
-        is_encrypted: isEncrypted,
-      };
-
-      const updatedItem = await updateLegacyVaultItem(item.id, updates);
+      const updatedItem = await updateLegacyVaultItem(item.id, {
+        title,
+        type,
+        preview
+      });
 
       if (updatedItem) {
-        if (onItemUpdate) onItemUpdate(updatedItem);
-        if (onSave) onSave(updatedItem);
-        
+        onSave(updatedItem);
+        setIsEditing(false);
         toast({
-          title: "Vault Item Updated",
-          description: "Your vault item has been successfully updated.",
+          title: "Item updated",
+          description: "Your legacy item has been successfully updated."
         });
-        handleClose();
       } else {
-        throw new Error('Failed to update vault item');
+        throw new Error("Failed to update item");
       }
     } catch (error) {
-      console.error('Error updating vault item:', error);
       toast({
-        title: "Error",
-        description: "Failed to update vault item. Please try again.",
-        variant: "destructive",
+        title: "Update failed",
+        description: "There was an error updating your item. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const toggleEncryption = async () => {
+  const handleDelete = async () => {
     if (!item) return;
-    
+
+    setIsLoading(true);
     try {
-      const success = await toggleItemEncryption(item.id, !isEncrypted);
-      
+      const success = await deleteLegacyVaultItem(item.id);
       if (success) {
-        // Create a proper updated item object
-        const updatedItem: LegacyVaultItem = {
-          ...item,
-          is_encrypted: !isEncrypted,
-          encryptionStatus: !isEncrypted
-        };
-        
-        if (onItemUpdate) onItemUpdate(updatedItem);
-        if (onSave) onSave(updatedItem);
-        
-        setIsEncrypted(!isEncrypted);
-        
+        onDelete(item.id);
+        onClose();
         toast({
-          title: !isEncrypted ? "Item Encrypted" : "Item Decrypted",
-          description: !isEncrypted 
-            ? "Your item is now encrypted and secure." 
-            : "Your item is now decrypted and accessible.",
+          title: "Item deleted",
+          description: "Your legacy item has been successfully deleted."
         });
       } else {
-        throw new Error('Failed to toggle encryption');
+        throw new Error("Failed to delete item");
       }
     } catch (error) {
-      console.error('Error toggling encryption:', error);
       toast({
-        title: "Error",
-        description: "Failed to change encryption status. Please try again.",
-        variant: "destructive",
+        title: "Delete failed",
+        description: "There was an error deleting your item. Please try again.",
+        variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleEncryptToggle = async () => {
+    if (!item) return;
+
+    setIsLoading(true);
+    try {
+      const updatedItem = await toggleItemEncryption(item.id, !item.encryptionStatus);
+      if (updatedItem) {
+        onSave(updatedItem);
+        toast({
+          title: updatedItem.encryptionStatus ? "Item encrypted" : "Item decrypted",
+          description: `Your legacy item has been ${updatedItem.encryptionStatus ? "encrypted" : "decrypted"}.`
+        });
+      } else {
+        throw new Error(`Failed to ${item.encryptionStatus ? "decrypt" : "encrypt"} item`);
+      }
+    } catch (error) {
+      toast({
+        title: "Encryption toggle failed",
+        description: "There was an error changing the encryption status. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const enhanceWithAI = () => {
+    setIsLoading(true);
+    // Simulate AI enhancement
+    setTimeout(() => {
+      const enhancedPreview = `${preview}\n\nEnhanced by AI: This ${type} represents an important part of your legacy. It contains valuable information that future generations will appreciate.`;
+      setPreview(enhancedPreview);
+      toast({
+        title: "AI enhancement applied",
+        description: "Your content has been enhanced with AI suggestions."
+      });
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  const getItemTypeIcon = () => {
+    switch (item?.type) {
+      case 'story':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'confession':
+        return <FileText className="h-5 w-5 text-red-500" />;
+      case 'wishes':
+        return <FileText className="h-5 w-5 text-purple-500" />;
+      case 'advice':
+        return <FileText className="h-5 w-5 text-green-500" />;
+      default:
+        return <FileText className="h-5 w-5" />;
+    }
+  };
+
+  const getItemTypeName = (itemType: string) => {
+    const types = {
+      'story': 'Personal Story',
+      'confession': 'Confession',
+      'wishes': 'Special Wishes',
+      'advice': 'Life Advice'
+    };
+    return types[itemType as keyof typeof types] || 'Document';
+  };
+
+  if (!item) return null;
+
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Edit Vault Item</DialogTitle>
-          <DialogDescription>
-            Make changes to your secure vault item here.
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            {getItemTypeIcon()}
+            {isEditing ? 'Edit Legacy Item' : item.title}
+          </DialogTitle>
+          {!isEditing && (
+            <DialogDescription>
+              {getItemTypeName(item.type)} • Created on {new Date(item.createdAt).toLocaleDateString()}
+            </DialogDescription>
+          )}
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
-            <Input
-              id="name"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
-              Description
-            </Label>
-            <Textarea
-              id="description"
-              value={itemDescription}
-              onChange={(e) => setItemDescription(e.target.value)}
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="content" className="text-right">
-              Content
-            </Label>
-            <Textarea
-              id="content"
-              value={itemContent}
-              onChange={(e) => setItemContent(e.target.value)}
-              className="col-span-3 min-h-[100px]"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="encryption" className="text-right">
-              Encryption
-            </Label>
-            <div className="col-span-3 flex items-center justify-between">
-              <Switch
-                id="encryption"
-                checked={isEncrypted}
-                onCheckedChange={toggleEncryption}
+
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input 
+                id="title" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                placeholder="Enter item title" 
               />
-              {isEncrypted ? (
-                <Lock className="h-5 w-5 text-green-500" />
-              ) : (
-                <Unlock className="h-5 w-5 text-amber-500" />
-              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="type">Type</Label>
+              <Select 
+                value={type} 
+                onValueChange={(value: string) => setType(value as VaultItemType)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="story">Personal Story</SelectItem>
+                  <SelectItem value="confession">Confession</SelectItem>
+                  <SelectItem value="wishes">Special Wishes</SelectItem>
+                  <SelectItem value="advice">Life Advice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="preview">Preview / Summary</Label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={enhanceWithAI}
+                  disabled={isLoading}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Enhance with AI
+                </Button>
+              </div>
+              <Textarea 
+                id="preview" 
+                value={preview} 
+                onChange={(e) => setPreview(e.target.value)} 
+                placeholder="Enter a brief summary" 
+                className="min-h-[100px]"
+              />
             </div>
           </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button type="submit" onClick={handleSubmit} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Edit className="mr-2 h-4 w-4" />
-                Update Item
-              </>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium">Encryption Status</div>
+              <div className="flex items-center">
+                {item.encryptionStatus ? (
+                  <Lock className="w-4 h-4 mr-1 text-green-600" />
+                ) : (
+                  <Unlock className="w-4 h-4 mr-1 text-orange-500" />
+                )}
+                <span className={item.encryptionStatus ? "text-green-600" : "text-orange-500"}>
+                  {item.encryptionStatus ? "Encrypted" : "Not Encrypted"}
+                </span>
+              </div>
+            </div>
+            
+            <div className="border rounded-md p-4 bg-gray-50">
+              <div className="text-sm text-gray-500 mb-1">Preview</div>
+              <p className="text-sm whitespace-pre-line">{item.preview || "No preview available."}</p>
+            </div>
+            
+            {item.document_url && (
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-500" />
+                <a 
+                  href={item.document_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-willtank-600 hover:underline"
+                >
+                  View Document
+                </a>
+              </div>
             )}
-          </Button>
+          </div>
+        )}
+
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          {isEditing ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={!title.trim() || isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center">
+                    <span className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </span>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="sm:mr-auto"
+                onClick={handleEncryptToggle}
+                disabled={isLoading}
+              >
+                {item.encryptionStatus ? (
+                  <>
+                    <Unlock className="mr-2 h-4 w-4" />
+                    Decrypt
+                  </>
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Encrypt
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleEdit}
+                disabled={isLoading}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center">
+                    <span className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};
