@@ -1,23 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
-import { Avatar } from '@/components/ui/avatar';
+import { AvatarImage, AvatarFallback, Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { useUser } from '@/contexts/AuthContext';
-import { updateUserProfile, getUserProfile } from '@/services/userService';
+import { useUserProfile } from '@/contexts/UserProfileContext';
+import { updateUserProfile, getUserProfile as fetchUserProfile } from '@/services/userService';
 import { useToast } from '@/hooks/use-toast';
+import { Layout } from '@/components/layout/Layout';
 
 interface UserProfile {
   id: string;
-  full_name: string;
-  avatar_url: string;
-  email: string;
-  metadata: any;
+  full_name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  metadata?: any;
 }
 
 export default function Profile() {
-  const { user } = useUser();
+  const { user } = useUserProfile();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,9 +31,19 @@ export default function Profile() {
       if (user) {
         try {
           setLoading(true);
-          const profile = await getUserProfile(user.id);
-          setUserProfile(profile);
-          setFormData(profile);
+          const profile = await fetchUserProfile();
+          if (profile) {
+            // Create a profile object with the structure we need
+            const formattedProfile: UserProfile = {
+              id: profile.id,
+              full_name: profile.full_name,
+              avatar_url: profile.avatar_url,
+              email: user.email,
+              metadata: profile.metadata || {}
+            };
+            setUserProfile(formattedProfile);
+            setFormData(formattedProfile);
+          }
         } catch (error) {
           console.error("Failed to load profile:", error);
           toast({
@@ -81,7 +93,7 @@ export default function Profile() {
     }
   };
   
-  const handleProfileUpdate = async (formData: UserProfile) => {
+  const handleProfileUpdate = async (formData: Partial<UserProfile>) => {
     setIsEditing(false);
     setLoading(true);
     
@@ -90,17 +102,25 @@ export default function Profile() {
         throw new Error("Not authenticated.");
       }
       
-      // Update the formData structure - Fix email_verified reference
-      await updateUserProfile({
-        ...formData,
-        metadata: formData.metadata
-      });
+      // Update the profile
+      const updatedProfile = await updateUserProfile(formData);
       
-      setUserProfile(formData);
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully."
-      });
+      if (updatedProfile) {
+        // Format the updated profile to match our component's expected structure
+        const formattedProfile: UserProfile = {
+          id: updatedProfile.id,
+          full_name: updatedProfile.full_name,
+          avatar_url: updatedProfile.avatar_url,
+          email: user.email,
+          metadata: formData.metadata || {}
+        };
+        
+        setUserProfile(formattedProfile);
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully."
+        });
+      }
     } catch (error) {
       console.error("Profile update failed:", error);
       toast({
@@ -126,11 +146,13 @@ export default function Profile() {
           <CardContent className="p-6">
             <div className="grid gap-4">
               <div className="flex flex-col items-center justify-center space-y-2">
-                <Avatar
-                  src={userProfile?.avatar_url || '/assets/avatar-placeholder.png'}
-                  alt={`${userProfile?.full_name || 'User'}'s avatar`}
-                  size="lg" // Changed from "xl" to "lg"
-                />
+                <Avatar className="h-20 w-20">
+                  <AvatarImage 
+                    src={userProfile?.avatar_url || '/assets/avatar-placeholder.png'} 
+                    alt={`${userProfile?.full_name || 'User'}'s avatar`} 
+                  />
+                  <AvatarFallback>{userProfile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
                 <Label htmlFor="avatar">Update Avatar</Label>
                 <Input type="file" id="avatar" accept="image/*" onChange={handleAvatarChange} className="hidden" />
                 <Button variant="secondary" size="sm" asChild>
@@ -191,11 +213,11 @@ export default function Profile() {
                   <div className="space-x-2">
                     <Button variant="outline" onClick={() => {
                       setIsEditing(false);
-                      setFormData(userProfile); // Revert changes
+                      setFormData(userProfile || {}); // Revert changes
                     }}>
                       Cancel
                     </Button>
-                    <Button onClick={() => handleProfileUpdate(formData as UserProfile)}>
+                    <Button onClick={() => handleProfileUpdate(formData)}>
                       Save Changes
                     </Button>
                   </div>
