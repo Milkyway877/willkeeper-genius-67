@@ -8,7 +8,7 @@ import { differenceInDays, format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { 
   getDeathVerificationSettings, 
-  getLatestCheckin, 
+  getLatestCheckIn, 
   processCheckin, 
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
@@ -37,7 +37,7 @@ export function DeathVerificationWidget() {
         setCheckinEnabled(settings.check_in_enabled);
         
         if (settings.check_in_enabled) {
-          const latestCheckin = await getLatestCheckin();
+          const latestCheckin = await getLatestCheckIn();
           
           if (latestCheckin) {
             setCheckin(latestCheckin);

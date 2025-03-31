@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UserProfile {
@@ -183,3 +184,6 @@ export async function getUserSecurity(): Promise<any | null> {
     return null;
   }
 }
+
+// Get death verification settings from the deathVerificationService 
+export { getDeathVerificationSettings, updateDeathVerificationSettings } from '@/services/deathVerificationService';

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -215,7 +214,8 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
     
     toast({
       title: "Legal Check Complete",
-      description: "The AI has completed its analysis of your will.",
+      description: "We've found some potential issues that may need revision.",
+      variant: "destructive"
     });
   };
 

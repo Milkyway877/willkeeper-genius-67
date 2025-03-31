@@ -20,6 +20,15 @@ export interface DeathVerificationSettings {
   updated_at?: string;
 }
 
+export interface DeathVerificationCheckin {
+  id: string;
+  user_id: string;
+  checked_in_at: string;
+  next_check_in: string;
+  status: string;
+  created_at?: string;
+}
+
 // Get death verification settings for current user
 export async function getDeathVerificationSettings(): Promise<DeathVerificationSettings | null> {
   try {
@@ -111,7 +120,7 @@ export async function updateDeathVerificationSettings(
 }
 
 // Record a check-in
-export async function recordCheckIn(): Promise<boolean> {
+export async function processCheckin(status: string): Promise<DeathVerificationCheckin | null> {
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -127,28 +136,30 @@ export async function recordCheckIn(): Promise<boolean> {
     const nextCheckIn = new Date();
     nextCheckIn.setDate(nextCheckIn.getDate() + settings.check_in_frequency);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('death_verification_checkins')
       .insert([
         {
           user_id: userData.user.id,
           checked_in_at: new Date().toISOString(),
           next_check_in: nextCheckIn.toISOString(),
-          status: 'alive',
+          status: status,
         },
-      ]);
+      ])
+      .select()
+      .single();
 
     if (error) throw error;
 
-    return true;
+    return data;
   } catch (error) {
     console.error('Error recording check-in:', error);
-    return false;
+    return null;
   }
 }
 
 // Get latest check-in
-export async function getLatestCheckIn(): Promise<any> {
+export async function getLatestCheckIn(): Promise<DeathVerificationCheckin | null> {
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
