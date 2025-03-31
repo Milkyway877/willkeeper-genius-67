@@ -1,14 +1,16 @@
+
 import React, { useState } from 'react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LayoutProps {
   children: React.ReactNode;
-  isAuthenticated: boolean;
+  isAuthenticated?: boolean;
 }
 
-export function Layout({ children, isAuthenticated }: LayoutProps) {
+export function Layout({ children, isAuthenticated = false }: LayoutProps) {
   const { isCollapsed } = useSidebar();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 

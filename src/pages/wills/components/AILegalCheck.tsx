@@ -213,9 +213,9 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
     setResult(result);
     
     toast({
-      title: "Legal Check Complete",
-      description: "We've found some potential issues that may need revision.",
-      variant: "destructive"
+      title: "Warning",
+      description: "Your will may have issues. Please review the AI recommendations.",
+      variant: "destructive",
     });
   };
 

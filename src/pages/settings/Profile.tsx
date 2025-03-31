@@ -131,8 +131,8 @@ export default function Profile() {
           <CardContent className="space-y-6">
             <div className="grid gap-4">
               <div className="flex items-center space-x-4">
-                <Avatar size="lg">
-                  <AvatarImage src={profile?.avatar_url || ""} />
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profile?.avatar_url || '/assets/avatar-placeholder.png'} alt="Profile" />
                   <AvatarFallback>{profile?.full_name?.substring(0, 2).toUpperCase() || "XX"}</AvatarFallback>
                 </Avatar>
                 <div>
