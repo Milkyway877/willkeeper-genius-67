@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import type {
@@ -187,8 +186,9 @@ export function useToast() {
 
 export type Toast = ReturnType<typeof useToast>
 
-// Define the toast function with its methods
-type ToastFunction = ((props: Omit<ToasterToast, "id">) => ReturnType<Toast["toast"]>) & {
+// First create the type for our toast function
+type ToastFunction = {
+  (props: Omit<ToasterToast, "id">): ReturnType<Toast["toast"]>;
   custom: (props: Omit<ToasterToast, "id">) => ReturnType<Toast["toast"]>;
   success: (props: Omit<ToasterToast, "id" | "variant">) => ReturnType<Toast["toast"]>;
   error: (props: Omit<ToasterToast, "id" | "variant">) => ReturnType<Toast["toast"]>;
@@ -196,34 +196,32 @@ type ToastFunction = ((props: Omit<ToasterToast, "id">) => ReturnType<Toast["toa
   destructive: (props: Omit<ToasterToast, "id" | "variant">) => ReturnType<Toast["toast"]>;
 }
 
-// Create the toast function that can be called directly
-export const toast: ToastFunction = Object.assign(
-  // Main function
-  (props: Omit<ToasterToast, "id">) => {
-    const { toast: toastFn } = useToast();
-    return toastFn(props);
+// Now initialize a function to handle the base case
+const baseToast = (props: Omit<ToasterToast, "id">) => {
+  const { toast } = useToast();
+  return toast(props);
+};
+
+// Create the enhanced toast function with all methods
+export const toast = Object.assign(baseToast, {
+  custom: (props: Omit<ToasterToast, "id">) => {
+    const { toast } = useToast();
+    return toast(props);
   },
-  // Methods
-  {
-    custom: (props: Omit<ToasterToast, "id">) => {
-      const { toast: toastFn } = useToast();
-      return toastFn(props);
-    },
-    success: (props: Omit<ToasterToast, "id" | "variant">) => {
-      const { toast: toastFn } = useToast();
-      return toastFn({ ...props, variant: "default" });
-    },
-    error: (props: Omit<ToasterToast, "id" | "variant">) => {
-      const { toast: toastFn } = useToast();
-      return toastFn({ ...props, variant: "destructive" });
-    },
-    default: (props: Omit<ToasterToast, "id" | "variant">) => {
-      const { toast: toastFn } = useToast();
-      return toastFn({ ...props, variant: "default" });
-    },
-    destructive: (props: Omit<ToasterToast, "id" | "variant">) => {
-      const { toast: toastFn } = useToast();
-      return toastFn({ ...props, variant: "destructive" });
-    }
+  success: (props: Omit<ToasterToast, "id" | "variant">) => {
+    const { toast } = useToast();
+    return toast({ ...props, variant: "default" });
+  },
+  error: (props: Omit<ToasterToast, "id" | "variant">) => {
+    const { toast } = useToast();
+    return toast({ ...props, variant: "destructive" });
+  },
+  default: (props: Omit<ToasterToast, "id" | "variant">) => {
+    const { toast } = useToast();
+    return toast({ ...props, variant: "default" });
+  },
+  destructive: (props: Omit<ToasterToast, "id" | "variant">) => {
+    const { toast } = useToast();
+    return toast({ ...props, variant: "destructive" });
   }
-);
+}) as ToastFunction;
