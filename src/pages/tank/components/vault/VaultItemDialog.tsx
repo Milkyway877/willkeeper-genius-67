@@ -7,8 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { LegacyVaultItem, VaultItemType } from '../../types';
 import { FileText, Lock, Unlock, Eye, Edit, Trash2, Save, XCircle, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
-import { toggleItemEncryption, updateLegacyVaultItem, deleteLegacyVaultItem } from '@/services/tankService';
+import { useToast } from '@/hooks/use-toast';
+import { toggleItemEncryption, updateVaultItem, deleteVaultItem, convertToLegacyVaultItem } from '@/services/tankService';
 
 interface VaultItemDialogProps {
   item: LegacyVaultItem | null;
@@ -67,7 +67,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
 
     setIsLoading(true);
     try {
-      const updatedItem = await updateLegacyVaultItem(item.id, {
+      const updatedItem = await updateVaultItem(item.id, {
         title,
         category: type,
         preview
@@ -75,7 +75,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
 
       if (updatedItem) {
         const legacyItem = convertToLegacyVaultItem(updatedItem);
-        onSave(legacyItem);
+        onSave(legacyItem as unknown as LegacyVaultItem);
         setIsEditing(false);
         toast({
           title: "Item updated",
@@ -100,7 +100,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
 
     setIsLoading(true);
     try {
-      const success = await deleteLegacyVaultItem(item.id);
+      const success = await deleteVaultItem(item.id);
       if (success) {
         onDelete(item.id);
         onClose();
@@ -130,7 +130,7 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
       const updatedItem = await toggleItemEncryption(item.id, !item.encryptionStatus);
       if (updatedItem) {
         const legacyItem = convertToLegacyVaultItem(updatedItem);
-        onSave(legacyItem);
+        onSave(legacyItem as unknown as LegacyVaultItem);
         toast({
           title: legacyItem.encryptionStatus ? "Item encrypted" : "Item decrypted",
           description: `Your legacy item has been ${legacyItem.encryptionStatus ? "encrypted" : "decrypted"}.`

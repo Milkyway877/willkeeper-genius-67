@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { VaultItemType } from '@/pages/tank/types';
 
 export interface VaultItem {
   id: string;
@@ -167,16 +167,6 @@ export async function deleteVaultItem(id: string): Promise<boolean> {
   }
 }
 
-// Toggle encryption for a vault item
-export async function toggleItemEncryption(id: string, encryptionState: boolean): Promise<VaultItem | null> {
-  try {
-    return await updateVaultItem(id, { is_encrypted: encryptionState });
-  } catch (error) {
-    console.error('Error toggling encryption:', error);
-    return null;
-  }
-}
-
 // Get future messages
 export async function getFutureMessages(): Promise<FutureMessage[]> {
   try {
@@ -279,3 +269,13 @@ export const getLegacyVaultItems = getVaultItems;
 export const createLegacyVaultItem = createVaultItem;
 export const updateLegacyVaultItem = updateVaultItem;
 export const deleteLegacyVaultItem = deleteVaultItem;
+
+// Update function to toggle encryption status
+export async function toggleItemEncryption(id: string, encryptionState: boolean): Promise<VaultItem | null> {
+  try {
+    return await updateVaultItem(id, { is_encrypted: encryptionState });
+  } catch (error) {
+    console.error('Error toggling encryption:', error);
+    return null;
+  }
+}

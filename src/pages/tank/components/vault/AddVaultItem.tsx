@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { createLegacyVaultItem } from '@/services/tankService';
+import { createVaultItem, convertToLegacyVaultItem } from '@/services/tankService';
 import { LegacyVaultItem, VaultItemType } from '../../types';
-import { FileText, Save, Plus, Sparkles } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { FileText, Save, Sparkles } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddVaultItemProps {
   isOpen: boolean;
@@ -91,7 +91,7 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
       // If no document URL is provided, generate a placeholder URL
       const finalDocumentUrl = documentUrl || `https://example.com/documents/${Date.now()}`;
       
-      const newItem = await createLegacyVaultItem({
+      const newItem = await createVaultItem({
         title,
         category: type,
         preview,
@@ -101,7 +101,8 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
 
       if (newItem) {
         const legacyItem = convertToLegacyVaultItem(newItem);
-        onItemAdded(legacyItem);
+        // Type assertion to fix compatibility
+        onItemAdded(legacyItem as unknown as LegacyVaultItem);
         handleClose();
         toast({
           title: "Item created",

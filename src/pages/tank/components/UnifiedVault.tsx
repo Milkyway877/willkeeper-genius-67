@@ -4,10 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
 import { LegacyVaultItem, VaultItemType } from '../types';
 import { AddVaultItem } from './vault/AddVaultItem';
 import { VaultItemDialog } from './vault/VaultItemDialog';
@@ -16,6 +13,7 @@ import {
   deleteVaultItem,
   convertToLegacyVaultItem
 } from '@/services/tankService';
+import { useToast } from '@/hooks/use-toast';
 
 const getTypeIcon = (type: string) => {
   switch (type) {
@@ -43,7 +41,6 @@ const getTypeIcon = (type: string) => {
 };
 
 export const UnifiedVault: React.FC = () => {
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [vaultItems, setVaultItems] = useState<LegacyVaultItem[]>([]);
@@ -52,13 +49,14 @@ export const UnifiedVault: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<LegacyVaultItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Fix the function that fetches vault items
   const loadVaultItems = async () => {
     setIsLoading(true);
     try {
       const items = await getVaultItems();
-      // Convert VaultItem to LegacyVaultItem
-      const legacyItems = items.map(item => convertToLegacyVaultItem(item));
+      const legacyItems = items.map(item => {
+        const converted = convertToLegacyVaultItem(item);
+        return converted as unknown as LegacyVaultItem;
+      });
       setVaultItems(legacyItems);
     } catch (error) {
       console.error('Error loading vault items:', error);

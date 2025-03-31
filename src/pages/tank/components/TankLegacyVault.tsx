@@ -1,8 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LegacyVaultItem } from '../types';
 import { VaultItem } from '@/services/tankService';
 import { VaultItem as VaultItemComponent } from './vault/VaultItem';
@@ -26,7 +25,11 @@ export const TankLegacyVault: React.FC = () => {
       try {
         const items = await getVaultItems();
         // Convert VaultItem to LegacyVaultItem
-        const legacyItems = items.map(item => convertToLegacyVaultItem(item));
+        const legacyItems = items.map(item => {
+          // Ensure type compatibility by converting type to VaultItemType
+          const converted = convertToLegacyVaultItem(item);
+          return converted as unknown as LegacyVaultItem;
+        });
         setVaultItems(legacyItems);
       } catch (error) {
         console.error('Error fetching vault items:', error);
