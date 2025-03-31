@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { LegacyVaultItem, VaultItemType } from '../../types';
-import { FileText, Lock, Unlock, Eye, Edit, Trash2, Save, XCircle, Sparkles } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { LegacyVaultItem } from '@/pages/tank/types';
 import { useToast } from '@/hooks/use-toast';
 import { toggleItemEncryption, updateVaultItem, deleteVaultItem, convertToLegacyVaultItem } from '@/services/tankService';
+import { Lock, Unlock, Eye, File, ExternalLink } from 'lucide-react';
 
 interface VaultItemDialogProps {
   item: LegacyVaultItem | null;
@@ -25,358 +28,283 @@ export const VaultItemDialog: React.FC<VaultItemDialogProps> = ({
   onSave, 
   onDelete 
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState(item?.title || '');
-  const [type, setType] = useState<VaultItemType>(item?.type || VaultItemType.story);
-  const [preview, setPreview] = useState(item?.preview || '');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUsingAI, setIsUsingAI] = useState(false);
+  const [title, setTitle] = useState('');
+  const [itemType, setItemType] = useState('');
+  const [preview, setPreview] = useState('');
+  const [documentUrl, setDocumentUrl] = useState('');
+  const [isEncrypted, setIsEncrypted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState(true);
+  const { toast } = useToast();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (item) {
       setTitle(item.title);
-      setType(item.type);
+      setItemType(item.type);
       setPreview(item.preview);
-      setIsEditing(false);
-      setIsUsingAI(false);
+      setDocumentUrl(item.document_url);
+      setIsEncrypted(item.encryptionStatus);
     }
   }, [item]);
 
-  const handleClose = () => {
-    setIsEditing(false);
-    setIsUsingAI(false);
-    onClose();
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancel = () => {
-    if (item) {
-      setTitle(item.title);
-      setType(item.type);
-      setPreview(item.preview);
-    }
-    setIsEditing(false);
-    setIsUsingAI(false);
-  };
-
   const handleSave = async () => {
     if (!item) return;
-
-    setIsLoading(true);
+    
+    setIsSubmitting(true);
+    
     try {
       const updatedItem = await updateVaultItem(item.id, {
         title,
-        category: type,
-        preview
+        category: itemType,
+        preview,
+        document_url: documentUrl,
+        is_encrypted: isEncrypted
       });
-
+      
       if (updatedItem) {
+        // Convert to legacy format for compatibility
         const legacyItem = convertToLegacyVaultItem(updatedItem);
-        onSave(legacyItem as unknown as LegacyVaultItem);
-        setIsEditing(false);
+        
         toast({
           title: "Item updated",
-          description: "Your legacy item has been successfully updated."
+          description: "Your vault item has been successfully updated."
         });
+        
+        onSave(legacyItem as unknown as LegacyVaultItem);
       } else {
         throw new Error("Failed to update item");
       }
     } catch (error) {
+      console.error("Error updating vault item:", error);
       toast({
         title: "Update failed",
-        description: "There was an error updating your item. Please try again.",
+        description: "There was an error updating your vault item. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
     if (!item) return;
-
-    setIsLoading(true);
+    
+    setIsSubmitting(true);
+    
     try {
       const success = await deleteVaultItem(item.id);
+      
       if (success) {
-        onDelete(item.id);
-        onClose();
         toast({
           title: "Item deleted",
-          description: "Your legacy item has been successfully deleted."
+          description: "Your vault item has been successfully deleted."
         });
+        
+        onDelete(item.id);
+        onClose();
       } else {
         throw new Error("Failed to delete item");
       }
     } catch (error) {
+      console.error("Error deleting vault item:", error);
       toast({
         title: "Delete failed",
-        description: "There was an error deleting your item. Please try again.",
+        description: "There was an error deleting your vault item. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
-  const handleEncryptToggle = async () => {
+  const handleToggleEncryption = async () => {
     if (!item) return;
-
-    setIsLoading(true);
+    
     try {
-      const updatedItem = await toggleItemEncryption(item.id, !item.encryptionStatus);
+      const updatedItem = await toggleItemEncryption(item.id, !isEncrypted);
+      
       if (updatedItem) {
         const legacyItem = convertToLegacyVaultItem(updatedItem);
-        onSave(legacyItem as unknown as LegacyVaultItem);
+        
         toast({
-          title: legacyItem.encryptionStatus ? "Item encrypted" : "Item decrypted",
-          description: `Your legacy item has been ${legacyItem.encryptionStatus ? "encrypted" : "decrypted"}.`
+          title: isEncrypted ? "Item decrypted" : "Item encrypted",
+          description: `Your vault item is now ${isEncrypted ? 'decrypted' : 'encrypted'}.`
         });
-      } else {
-        throw new Error(`Failed to ${item.encryptionStatus ? "decrypt" : "encrypt"} item`);
+        
+        setIsEncrypted(!isEncrypted);
+        onSave(legacyItem as unknown as LegacyVaultItem);
       }
     } catch (error) {
+      console.error("Error toggling encryption:", error);
       toast({
-        title: "Encryption toggle failed",
+        title: "Action failed",
         description: "There was an error changing the encryption status. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const enhanceWithAI = () => {
-    setIsLoading(true);
-    // Simulate AI enhancement
-    setTimeout(() => {
-      const enhancedPreview = `${preview}\n\nEnhanced by AI: This ${type} represents an important part of your legacy. It contains valuable information that future generations will appreciate.`;
-      setPreview(enhancedPreview);
-      toast({
-        title: "AI enhancement applied",
-        description: "Your content has been enhanced with AI suggestions."
-      });
-      setIsLoading(false);
-    }, 1000);
+  const openDeleteDialog = () => {
+    setIsDeleteDialogOpen(true);
   };
-
-  const getItemTypeIcon = () => {
-    switch (item?.type) {
-      case 'story':
-        return <FileText className="h-5 w-5 text-blue-500" />;
-      case 'confession':
-        return <FileText className="h-5 w-5 text-red-500" />;
-      case 'wishes':
-        return <FileText className="h-5 w-5 text-purple-500" />;
-      case 'advice':
-        return <FileText className="h-5 w-5 text-green-500" />;
-      default:
-        return <FileText className="h-5 w-5" />;
-    }
-  };
-
-  const getItemTypeName = (itemType: string) => {
-    const types = {
-      'story': 'Personal Story',
-      'confession': 'Confession',
-      'wishes': 'Special Wishes',
-      'advice': 'Life Advice'
-    };
-    return types[itemType as keyof typeof types] || 'Document';
-  };
-
-  if (!item) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {getItemTypeIcon()}
-            {isEditing ? 'Edit Legacy Item' : item.title}
-          </DialogTitle>
-          {!isEditing && (
-            <DialogDescription>
-              {getItemTypeName(item.type)} • Created on {new Date(item.createdAt).toLocaleDateString()}
-            </DialogDescription>
-          )}
-        </DialogHeader>
-
-        {isEditing ? (
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{viewMode ? 'View Vault Item' : 'Edit Vault Item'}</DialogTitle>
+          </DialogHeader>
+          
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="title">Title</Label>
               <Input 
                 id="title" 
                 value={title} 
                 onChange={(e) => setTitle(e.target.value)} 
-                placeholder="Enter item title" 
+                readOnly={viewMode}
               />
             </div>
             
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="type">Type</Label>
-              <Select 
-                value={type} 
-                onValueChange={(value: string) => setType(value as VaultItemType)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="story">Personal Story</SelectItem>
-                  <SelectItem value="confession">Confession</SelectItem>
-                  <SelectItem value="wishes">Special Wishes</SelectItem>
-                  <SelectItem value="advice">Life Advice</SelectItem>
-                </SelectContent>
-              </Select>
+              {viewMode ? (
+                <div className="flex items-center gap-2 p-2 border rounded-md text-sm">
+                  <File size={16} />
+                  {itemType}
+                </div>
+              ) : (
+                <Select value={itemType} onValueChange={setItemType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="document">Document</SelectItem>
+                    <SelectItem value="story">Story</SelectItem>
+                    <SelectItem value="confession">Confession</SelectItem>
+                    <SelectItem value="wishes">Wishes</SelectItem>
+                    <SelectItem value="advice">Advice</SelectItem>
+                    <SelectItem value="will">Will</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="preview">Preview / Summary</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={enhanceWithAI}
-                  disabled={isLoading}
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Enhance with AI
-                </Button>
-              </div>
+            <div>
+              <Label htmlFor="preview">Description</Label>
               <Textarea 
                 id="preview" 
                 value={preview} 
                 onChange={(e) => setPreview(e.target.value)} 
-                placeholder="Enter a brief summary" 
-                className="min-h-[100px]"
+                readOnly={viewMode}
+                rows={3}
               />
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">Encryption Status</div>
-              <div className="flex items-center">
-                {item.encryptionStatus ? (
-                  <Lock className="w-4 h-4 mr-1 text-green-600" />
-                ) : (
-                  <Unlock className="w-4 h-4 mr-1 text-orange-500" />
-                )}
-                <span className={item.encryptionStatus ? "text-green-600" : "text-orange-500"}>
-                  {item.encryptionStatus ? "Encrypted" : "Not Encrypted"}
-                </span>
-              </div>
-            </div>
             
-            <div className="border rounded-md p-4 bg-gray-50">
-              <div className="text-sm text-gray-500 mb-1">Preview</div>
-              <p className="text-sm whitespace-pre-line">{item.preview || "No preview available."}</p>
-            </div>
-            
-            {item.document_url && (
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-gray-500" />
-                <a 
-                  href={item.document_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-willtank-600 hover:underline"
-                >
-                  View Document
-                </a>
+            {documentUrl && (
+              <div>
+                <Label>Document</Label>
+                <div className="flex items-center justify-between p-2 border rounded-md text-sm">
+                  <span className="truncate flex-1">{documentUrl.split('/').pop()}</span>
+                  <a 
+                    href={documentUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <ExternalLink size={14} />
+                    View
+                  </a>
+                </div>
               </div>
             )}
-          </div>
-        )}
-
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          {isEditing ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isLoading}
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={!title.trim() || isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <span className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Saving...
-                  </span>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="sm:mr-auto"
-                onClick={handleEncryptToggle}
-                disabled={isLoading}
-              >
-                {item.encryptionStatus ? (
-                  <>
-                    <Unlock className="mr-2 h-4 w-4" />
-                    Decrypt
-                  </>
-                ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Encrypt
-                  </>
-                )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleEdit}
-                disabled={isLoading}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <span className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Processing...
-                  </span>
-                ) : (
-                  <>
-                    <Trash2 className="mr-2 h-4 w-4" />
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="encryption" 
+                  checked={isEncrypted} 
+                  onCheckedChange={setIsEncrypted}
+                  disabled={viewMode}
+                />
+                <Label htmlFor="encryption" className="flex items-center gap-2 cursor-pointer">
+                  {isEncrypted ? (
+                    <>
+                      <Lock size={16} /> Encrypted
+                    </>
+                  ) : (
+                    <>
+                      <Unlock size={16} /> Not encrypted
+                    </>
+                  )}
+                </Label>
+              </div>
+              
+              {viewMode && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleToggleEncryption}
+                >
+                  {isEncrypted ? 'Decrypt' : 'Encrypt'}
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex justify-between mt-4">
+              {viewMode ? (
+                <>
+                  <Button type="button" variant="destructive" onClick={openDeleteDialog}>
                     Delete
-                  </>
-                )}
-              </Button>
-            </>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                  </Button>
+                  <div className="space-x-2">
+                    <Button type="button" variant="outline" onClick={onClose}>
+                      Close
+                    </Button>
+                    <Button type="button" onClick={() => setViewMode(false)}>
+                      Edit
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setViewMode(true)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleSave}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your vault item.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
