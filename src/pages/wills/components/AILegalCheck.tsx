@@ -98,7 +98,6 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
   const { toast } = useToast();
 
   useEffect(() => {
-    // Automatically start the analysis when the component mounts
     startAnalysis();
   }, []);
 
@@ -109,19 +108,16 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
     setProgress(0);
     setResult(null);
     
-    // Reset check items status
     setCheckItems(prev => prev.map(item => ({
       ...item,
       status: 'pending',
       details: undefined
     })));
     
-    // Simulate the analysis process
     simulateAnalysis();
   };
 
   const simulateAnalysis = () => {
-    // Set up interval to update progress
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         const newProgress = prev + 1;
@@ -134,7 +130,6 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
       });
     }, 50);
     
-    // Simulate the check items being processed
     setTimeout(() => updateCheckStatus('legal-validity', 'checking'), 500);
     setTimeout(() => updateCheckStatus('legal-validity', 'passed', 'This will meets all legal requirements for validity.'), 2000);
     
@@ -157,9 +152,8 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
   const completeAnalysis = () => {
     setIsAnalyzing(false);
     
-    // Create the final analysis result
     const result: LegalCheckResult = {
-      passed: true, // Overall pass
+      passed: true,
       score: 85,
       categories: {
         legal: {
@@ -240,7 +234,6 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
     );
   };
 
-  // Helper function to get status badge
   const getStatusBadge = (status: CheckItem['status']) => {
     switch (status) {
       case 'pending':
@@ -276,9 +269,8 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
     }
   };
 
-  // Get alert variant based on issue type
   const getAlertVariant = (type: 'critical' | 'warning') => {
-    return type === 'critical' ? 'destructive' : 'warning';
+    return type === 'critical' ? 'destructive' : 'default';
   };
 
   return (
@@ -436,18 +428,16 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
                     </Card>
                   </div>
                   
-                  {/* Issues & Recommendations */}
                   <div className="space-y-4">
                     <h3 className="font-medium">Issues & Recommendations</h3>
                     
-                    {/* Clarity Warnings */}
                     {result.categories.clarity.issues.warnings.length > 0 && (
                       <div className="space-y-3">
                         {result.categories.clarity.issues.warnings.map((issue, index) => (
                           <Alert
                             key={`clarity-warning-${index}`}
-                            variant="warning"
-                            className="cursor-pointer"
+                            variant="default"
+                            className="cursor-pointer bg-yellow-50 border-yellow-200 text-yellow-800"
                             onClick={() => toggleAlert(`clarity-warning-${index}`)}
                           >
                             <div className="flex justify-between items-center">
@@ -480,14 +470,13 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
                       </div>
                     )}
                     
-                    {/* Dispute Warnings */}
                     {result.categories.disputes.issues.warnings.length > 0 && (
                       <div className="space-y-3">
                         {result.categories.disputes.issues.warnings.map((issue, index) => (
                           <Alert
                             key={`dispute-warning-${index}`}
-                            variant="warning"
-                            className="cursor-pointer"
+                            variant="default"
+                            className="cursor-pointer bg-yellow-50 border-yellow-200 text-yellow-800"
                             onClick={() => toggleAlert(`dispute-warning-${index}`)}
                           >
                             <div className="flex justify-between items-center">
@@ -520,7 +509,6 @@ export default function AILegalCheck({ willData, onComplete }: AILegalCheckProps
                       </div>
                     )}
                     
-                    {/* When no issues */}
                     {result.categories.legal.issues.warnings.length === 0 &&
                      result.categories.legal.issues.critical.length === 0 &&
                      result.categories.clarity.issues.warnings.length === 0 &&

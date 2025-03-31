@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
@@ -45,7 +44,7 @@ export function Header({ isAuthenticated, onToggleSidebar }: HeaderProps) {
       <div className="flex flex-1 items-center justify-between">
         <div className="flex items-center">
           <Link to="/" className="mr-6 flex items-center">
-            <Logo color="dark" className="h-8 w-auto" />
+            <Logo color="primary" className="h-8 w-auto" />
           </Link>
           
           <nav className="hidden md:flex items-center space-x-4">

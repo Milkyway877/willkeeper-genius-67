@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -32,6 +33,12 @@ export interface LegacyVaultItem {
   is_encrypted: boolean;
   created_at: string;
   updated_at: string;
+  // Additional properties for UI compatibility
+  title?: string;
+  preview?: string;
+  type?: string;
+  createdAt?: string;
+  encryptionStatus?: boolean;
 }
 
 interface VaultItemDialogProps {
@@ -104,12 +111,19 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
   };
 
   const toggleEncryption = async () => {
+    if (!item) return;
+    
     try {
       const success = await toggleItemEncryption(item.id, !item.is_encrypted);
       
       if (success) {
-        // Update the local state
-        const updatedItem = { ...item, is_encrypted: !item.is_encrypted };
+        // Create a proper updated item object
+        const updatedItem: LegacyVaultItem = {
+          ...item,
+          is_encrypted: !item.is_encrypted,
+          encryptionStatus: !item.is_encrypted
+        };
+        
         onItemUpdate(updatedItem);
         
         toast({

@@ -10,7 +10,25 @@ export const getLegacyVaultItems = async () => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    // Transform the data to match the expected LegacyVaultItem interface
+    return (data || []).map(item => ({
+      id: item.id,
+      user_id: item.user_id,
+      item_name: item.item_name,
+      item_description: item.item_description,
+      item_type: item.item_type,
+      item_content: item.item_content,
+      is_encrypted: item.is_encrypted,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      // Add these properties for compatibility with the components
+      title: item.item_name,
+      preview: item.item_description,
+      type: item.item_type,
+      createdAt: item.created_at,
+      encryptionStatus: item.is_encrypted
+    }));
   } catch (error) {
     console.error('Error fetching vault items:', error);
     return [];
@@ -26,7 +44,25 @@ export const createLegacyVaultItem = async (item: any) => {
       .single();
 
     if (error) throw error;
-    return data;
+    
+    // Transform the data to match the expected LegacyVaultItem interface
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      item_name: data.item_name,
+      item_description: data.item_description,
+      item_type: data.item_type,
+      item_content: data.item_content,
+      is_encrypted: data.is_encrypted,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      // Add these properties for compatibility with the components
+      title: data.item_name,
+      preview: data.item_description,
+      type: data.item_type,
+      createdAt: data.created_at,
+      encryptionStatus: data.is_encrypted
+    };
   } catch (error) {
     console.error('Error creating vault item:', error);
     return null;
@@ -43,7 +79,25 @@ export const updateLegacyVaultItem = async (id: string, updates: any) => {
       .single();
 
     if (error) throw error;
-    return data;
+    
+    // Transform the data to match the expected LegacyVaultItem interface
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      item_name: data.item_name,
+      item_description: data.item_description,
+      item_type: data.item_type,
+      item_content: data.item_content,
+      is_encrypted: data.is_encrypted,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      // Add these properties for compatibility with the components
+      title: data.item_name,
+      preview: data.item_description,
+      type: data.item_type,
+      createdAt: data.created_at,
+      encryptionStatus: data.is_encrypted
+    };
   } catch (error) {
     console.error('Error updating vault item:', error);
     return null;
