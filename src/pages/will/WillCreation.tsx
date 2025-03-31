@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,6 +44,7 @@ import { FileUploader } from './components/FileUploader';
 import { DigitalSignature } from './components/DigitalSignature';
 import { Progress } from "@/components/ui/progress";
 import { createWill } from '@/services/willService';
+import { supabase } from '@/integrations/supabase/client';
 
 type WillTemplate = {
   id: string;
@@ -78,6 +80,30 @@ export default function WillCreation() {
   const [progress, setProgress] = useState(0);
   const [willTitle, setWillTitle] = useState('My Will');
   const [isCreatingWill, setIsCreatingWill] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // Check authentication status when component loads
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        setIsAuthenticated(!!data.user);
+        
+        if (!data.user) {
+          toast({
+            title: "Authentication Required",
+            description: "You need to be logged in to create a will. Please sign in to continue.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, [toast]);
 
   const handleSelectTemplate = (template: WillTemplate) => {
     setSelectedTemplate(template);
@@ -208,6 +234,16 @@ export default function WillCreation() {
   };
   
   const handleCompleteWill = async () => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to save a will. Please sign in and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       // Show loading state
       setIsCreatingWill(true);
@@ -220,13 +256,12 @@ export default function WillCreation() {
       console.log("Template type:", selectedTemplate?.id || 'custom');
       console.log("AI generated:", userResponses && Object.keys(userResponses).length > 0);
 
-      // Prepare templateType to match the database constraints
-      // Ensure template_type is one of the accepted values
-      const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
+      // Ensure the template type is normalized to match what the database expects
       let templateType = 'custom'; // Default fallback
       
-      if (selectedTemplate?.id && validTemplateTypes.includes(selectedTemplate.id)) {
-        templateType = selectedTemplate.id;
+      if (selectedTemplate?.id) {
+        // Convert to lowercase to ensure it matches the expected format
+        templateType = selectedTemplate.id.toLowerCase();
       }
 
       // Save the will to the database with proper error handling
@@ -261,7 +296,7 @@ export default function WillCreation() {
         setTimeout(() => {
           navigate("/will");
         }, 500);
-      } catch (saveError) {
+      } catch (saveError: any) {
         console.error('Error from createWill:', saveError);
         
         if (saveError.message && saveError.message.includes('Not authenticated')) {
@@ -270,7 +305,7 @@ export default function WillCreation() {
             description: "You must be logged in to save a will. Please sign in and try again.",
             variant: "destructive"
           });
-        } else if (saveError.code === '23514' || saveError.message?.includes('check constraint')) {
+        } else if (saveError.code === '23514' || (saveError.message && saveError.message.includes('check constraint'))) {
           toast({
             title: "Template Format Error",
             description: "The will template format is not valid. Please select a valid template type.",
@@ -346,6 +381,29 @@ export default function WillCreation() {
       tags: ["Pets", "Care", "Trust"]
     }
   ];
+
+  // If authentication is checked and user is not authenticated, show a login prompt
+  if (isAuthenticated === false) {
+    return (
+      <Layout>
+        <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow-md border border-gray-200 text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-6">
+            You need to be logged in to create and save wills. Please sign in to your account to continue.
+          </p>
+          <div className="flex flex-col space-y-2">
+            <Button onClick={() => navigate('/auth/signin')} className="w-full">
+              Sign In
+            </Button>
+            <Button onClick={() => navigate('/auth/signup')} variant="outline" className="w-full">
+              Create Account
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   const steps: Step[] = [
     {
@@ -607,6 +665,18 @@ export default function WillCreation() {
   };
 
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
+
+  // Show loading state while checking authentication
+  if (isAuthenticated === null) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center py-20">
+          <RefreshCw className="h-10 w-10 text-willtank-600 animate-spin" />
+          <span className="ml-2 text-lg text-gray-600">Loading...</span>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

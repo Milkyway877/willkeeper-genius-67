@@ -71,8 +71,7 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       throw new Error('Not authenticated');
     }
     
-    // Ensure the status is capitalized precisely as required by the database constraint
-    // Database likely has an enum or check constraint for 'Draft', 'Active', or 'Archived'
+    // Validate status
     const validStatuses = ['Draft', 'Active', 'Archived'];
     let status = 'Draft'; // Default to Draft
     
@@ -80,13 +79,12 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       status = will.status;
     }
     
-    // Handle template_type validation - based on the error, we need to ensure it matches the constraint
-    // The valid template types appear to be checked by the database
+    // Validate template_type - must match exactly what's accepted by the database constraint
     const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
     let templateType = 'custom'; // Default to custom
     
-    if (will.template_type && validTemplateTypes.includes(will.template_type)) {
-      templateType = will.template_type;
+    if (will.template_type && validTemplateTypes.includes(will.template_type.toLowerCase())) {
+      templateType = will.template_type.toLowerCase();
     }
 
     console.log("Using template type:", templateType);
@@ -163,8 +161,10 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
     // Validate template_type if it's being updated
     if (updates.template_type) {
       const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
-      if (!validTemplateTypes.includes(updates.template_type)) {
+      if (!validTemplateTypes.includes(updates.template_type.toLowerCase())) {
         updates.template_type = 'custom';
+      } else {
+        updates.template_type = updates.template_type.toLowerCase();
       }
     }
     
