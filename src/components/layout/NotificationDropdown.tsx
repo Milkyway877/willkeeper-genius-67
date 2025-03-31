@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { useNotifications } from '@/contexts/NotificationsContext';
+import { useNotificationsContext } from '@/contexts/NotificationsContext';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,7 @@ export function NotificationDropdown() {
   // Try to use the notifications context, but gracefully handle cases where it might not be available
   let notificationsState;
   try {
-    notificationsState = useNotifications();
+    notificationsState = useNotificationsContext();
   } catch (error) {
     // If NotificationsProvider is not available, use default values
     console.warn("NotificationsContext not available, using default values");

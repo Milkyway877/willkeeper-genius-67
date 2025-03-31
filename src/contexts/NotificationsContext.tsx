@@ -11,6 +11,7 @@ interface Notification {
   created_at: string;
   read: boolean;
   icon?: string;
+  user_id?: string; // Added user_id property that was missing
 }
 
 interface NotificationsContextType {
@@ -241,3 +242,7 @@ export function useNotificationsContext() {
   }
   return context;
 }
+
+// Add a new alias export to maintain backward compatibility 
+// This is key to fix the import errors without breaking existing code
+export const useNotifications = useNotificationsContext;

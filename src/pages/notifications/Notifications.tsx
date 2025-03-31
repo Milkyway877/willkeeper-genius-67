@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { motion } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { useNotifications } from '@/contexts/NotificationsContext';
+import { useNotificationsContext } from '@/contexts/NotificationsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 

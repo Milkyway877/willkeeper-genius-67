@@ -13,7 +13,7 @@ import {
   notifyMessageScheduled,
   createFeatureTipNotification
 } from '@/services/notificationService';
-import { useNotifications as useNotificationsContext } from '@/contexts/NotificationsContext';
+import { useNotificationsContext } from '@/contexts/NotificationsContext';
 
 export type NotificationPriority = 'low' | 'medium' | 'high';
 

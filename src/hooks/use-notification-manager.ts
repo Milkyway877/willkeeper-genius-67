@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { createSystemNotification } from '@/services/notificationService';
-import { useNotifications } from '@/contexts/NotificationsContext';
+import { useNotificationsContext } from '@/contexts/NotificationsContext';
 
 export type NotificationPriority = 'low' | 'medium' | 'high';
 
@@ -10,7 +10,7 @@ export function useNotificationManager() {
   // Try to use the notifications context if available
   let notificationsContext;
   try {
-    notificationsContext = useNotifications();
+    notificationsContext = useNotificationsContext();
   } catch (error) {
     console.warn("NotificationsContext not available, some features may be limited");
     notificationsContext = null;
