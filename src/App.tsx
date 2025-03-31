@@ -60,7 +60,6 @@ import IDSecurity from './pages/security/IDSecurity';
 import Billing from './pages/billing/Billing';
 import Notifications from './pages/notifications/Notifications';
 import Activity from './pages/activity/Activity';
-import Wills from './pages/wills/Wills';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
@@ -108,7 +107,6 @@ function App() {
                 <Route path="/will/new" element={<WillEditor />} />
                 <Route path="/will/:id" element={<WillEditor />} />
                 <Route path="/will/create" element={<WillEditor />} />
-                <Route path="/wills" element={<Wills />} />
                 <Route path="/tank" element={<WillTank />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/settings/profile" element={<Profile />} />
