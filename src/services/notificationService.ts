@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -11,11 +12,13 @@ export interface Notification {
   icon?: string;
 }
 
-function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
+// Type validation helper
+export function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
   const validTypes = ['success', 'warning', 'info', 'security'];
   return validTypes.includes(type) ? type as 'success' | 'warning' | 'info' | 'security' : 'info';
 }
 
+// Map event types to notification types
 export const eventTypeToNotificationType = (
   eventType: string
 ): 'success' | 'warning' | 'info' | 'security' => {
@@ -59,6 +62,7 @@ export const eventTypeToNotificationType = (
   return typeMap[eventType] || 'info';
 };
 
+// Core function to create a notification
 export const createNotification = async (notification: Omit<Notification, 'id' | 'user_id' | 'created_at'>): Promise<Notification | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -95,6 +99,7 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
   }
 };
 
+// Create a system notification with a specific type and details
 export const createSystemNotification = async (
   type: 'success' | 'warning' | 'info' | 'security' | string,
   details: { title: string, description: string }
@@ -118,6 +123,7 @@ export const createSystemNotification = async (
   });
 };
 
+// Specific notification functions for vault items
 export const notifyVaultItemAdded = async (itemType: string, title: string): Promise<Notification | null> => {
   return createSystemNotification('vault_item_added', {
     title: `${itemType} Added to Vault`,
@@ -132,6 +138,7 @@ export const notifyVaultItemUpdated = async (itemType: string, title: string): P
   });
 };
 
+// Specific notification functions for will management
 export const notifyWillCreated = async (title: string): Promise<Notification | null> => {
   return createSystemNotification('will_created', {
     title: "Will Created",
@@ -146,6 +153,7 @@ export const notifyWillUpdated = async (title: string): Promise<Notification | n
   });
 };
 
+// Specific notification functions for document management
 export const notifyDocumentUploaded = async (details: { title?: string, description?: string, itemId?: string }): Promise<Notification | null> => {
   return createSystemNotification('document_uploaded', {
     title: details.title || "Document Uploaded",
@@ -153,6 +161,7 @@ export const notifyDocumentUploaded = async (details: { title?: string, descript
   });
 };
 
+// Specific notification functions for profile updates
 export const notifyProfileUpdated = async (field?: string): Promise<Notification | null> => {
   return createSystemNotification('profile_updated', {
     title: "Profile Updated",
@@ -162,6 +171,7 @@ export const notifyProfileUpdated = async (field?: string): Promise<Notification
   });
 };
 
+// Specific notification functions for security events
 export const notifySecurityEvent = async (event: string, details: string): Promise<Notification | null> => {
   return createSystemNotification('security', {
     title: event,
@@ -169,6 +179,7 @@ export const notifySecurityEvent = async (event: string, details: string): Promi
   });
 };
 
+// Specific notification functions for message scheduling
 export const notifyMessageScheduled = async (recipient: string, date: string): Promise<Notification | null> => {
   return createSystemNotification('message_scheduled', {
     title: "Future Message Scheduled",
@@ -176,6 +187,7 @@ export const notifyMessageScheduled = async (recipient: string, date: string): P
   });
 };
 
+// Feature tip notification
 export const createFeatureTipNotification = async (
   feature: string,
   description: string
@@ -186,6 +198,7 @@ export const createFeatureTipNotification = async (
   });
 };
 
+// Welcome notification
 export const createWelcomeNotification = async (): Promise<Notification | null> => {
   return createNotification({
     title: "Welcome to WillTank",
@@ -195,6 +208,7 @@ export const createWelcomeNotification = async (): Promise<Notification | null> 
   });
 };
 
+// Welcome notification pack
 export const createWelcomeNotificationPack = async (): Promise<boolean> => {
   try {
     await createSystemNotification('welcome', {
@@ -229,6 +243,7 @@ export const createWelcomeNotificationPack = async (): Promise<boolean> => {
   }
 };
 
+// Alternative system notification function with predefined templates
 export const createSystemNotification2 = async (
   event: 'will_updated' | 'document_uploaded' | 'security_key_generated' | 'beneficiary_added' | 'executor_added' | 'item_saved' | 'will_deleted',
   details?: { title?: string, description?: string, itemId?: string }
@@ -293,6 +308,7 @@ export const createSystemNotification2 = async (
   });
 };
 
+// Get all notifications for the current user
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -322,6 +338,7 @@ export const getNotifications = async (): Promise<Notification[]> => {
   }
 };
 
+// Mark a notification as read
 export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -349,6 +366,7 @@ export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   }
 };
 
+// Mark all notifications as read
 export const markAllNotificationsAsRead = async (): Promise<boolean> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -376,6 +394,7 @@ export const markAllNotificationsAsRead = async (): Promise<boolean> => {
   }
 };
 
+// Delete all notifications for the current user
 export const deleteAllNotifications = async (): Promise<boolean> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
