@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UserProfile {
@@ -8,6 +7,12 @@ export interface UserProfile {
   activation_complete: boolean | null;
   created_at: string;
   updated_at: string;
+  metadata?: {
+    location?: string;
+    bio?: string;
+    preferences?: Record<string, any>;
+    [key: string]: any;
+  };
 }
 
 // Get the current user's profile

@@ -29,6 +29,8 @@ import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import Dashboard from './pages/Dashboard';
 import WillEditor from './pages/will/WillCreation';
+import WillsPage from './pages/wills/WillsPage';
+import Wills from './pages/wills/Wills';
 import WillTank from './pages/tank/Tank';
 import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
@@ -104,6 +106,8 @@ function App() {
               <Route path="/will/new" element={<WillEditor />} />
               <Route path="/will/:id" element={<WillEditor />} />
               <Route path="/will/create" element={<WillEditor />} />
+              <Route path="/wills" element={<Wills />} />
+              <Route path="/wills/create" element={<WillsPage />} />
               <Route path="/tank" element={<WillTank />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/profile" element={<Profile />} />
