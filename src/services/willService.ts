@@ -67,8 +67,21 @@ export const validateTemplateType = (templateType: string | undefined): string =
   // Default to 'custom' if no template type is provided
   if (!templateType) return 'custom';
   
-  // Normalize the template type (convert to lowercase)
-  const normalizedType = templateType.toLowerCase();
+  // Normalize the template type (convert to lowercase, replace spaces with hyphens)
+  const normalizedType = templateType.toLowerCase().replace(/\s+/g, '-');
+  
+  // Map common template types to valid ones in the database
+  const templateMap: Record<string, string> = {
+    'standard': 'traditional',
+    'digital': 'digital-assets',
+    'living': 'living-trust',
+    'pet': 'pet-care',
+  };
+  
+  // If there's a direct mapping, use it
+  if (templateMap[normalizedType]) {
+    return templateMap[normalizedType];
+  }
   
   // Return the template type if valid, otherwise default to 'custom'
   return validTemplateTypes.includes(normalizedType) ? normalizedType : 'custom';

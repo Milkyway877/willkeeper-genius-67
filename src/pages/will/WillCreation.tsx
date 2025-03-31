@@ -80,6 +80,7 @@ export default function WillCreation() {
   const [willTitle, setWillTitle] = useState('My Will');
   const [isCreatingWill, setIsCreatingWill] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [userData, setUserData] = useState<any | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -93,6 +94,11 @@ export default function WillCreation() {
             description: "You need to be logged in to create a will. Please sign in to continue.",
             variant: "destructive"
           });
+          
+          setUserData(data);
+        } else {
+          setUserData(data);
+          console.log("User is authenticated, ID:", data.user.id);
         }
       } catch (error) {
         console.error("Error checking authentication:", error);
@@ -251,7 +257,8 @@ export default function WillCreation() {
       
       const templateType = validateTemplateType(selectedTemplate.id);
       console.log("Using validated template type:", templateType);
-
+      console.log("User ID:", userData?.user?.id);
+      
       try {
         const newWill = await createWill({
           title: willTitle,

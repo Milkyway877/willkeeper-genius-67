@@ -1,8 +1,6 @@
 
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { TemplatePreview } from './TemplatePreview';
@@ -197,7 +195,18 @@ export default function Templates() {
     });
     
     // Navigate to will creation page with template type
-    navigate('/will/new?template=' + templateType);
+    // Make sure we use the correct template IDs that match the database constraints
+    const templateMap: Record<string, string> = {
+      'standard': 'traditional',
+      'digital': 'digital-assets',
+      'living-trust': 'living-trust',
+      'charitable': 'charitable',
+      'business': 'business',
+      'pet': 'pet-care'
+    };
+    
+    const dbTemplateType = templateMap[templateType] || templateType;
+    navigate('/will/new?template=' + dbTemplateType);
   };
   
   return (

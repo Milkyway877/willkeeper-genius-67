@@ -106,7 +106,8 @@ function App() {
                 
                 {/* Dashboard routes */}
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/dashboard/will" element={<WillDashboard />} />
+                <Route path="/will" element={<WillDashboard />} />
+                <Route path="/will/new" element={<WillEditor />} />
                 <Route path="/will/:id" element={<WillEditor />} />
                 <Route path="/templates" element={<WillTemplates />} />
                 <Route path="/tank" element={<WillTank />} />
