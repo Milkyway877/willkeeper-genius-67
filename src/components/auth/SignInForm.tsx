@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -32,21 +31,25 @@ export function SignInForm() {
       const searchParams = new URLSearchParams(location.search);
       const verified = searchParams.get('verified');
       
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (data?.session && !error) {
-        if (verified === 'true') {
-          toast({
-            title: "Email verified!",
-            description: "Your email has been verified and you are now signed in.",
-          });
-        } else {
-          toast({
-            title: "Welcome back!",
-            description: "You are now signed in.",
-          });
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (data?.session && !error) {
+          if (verified === 'true') {
+            toast({
+              title: "Email verified!",
+              description: "Your email has been verified and you are now signed in.",
+            });
+          } else {
+            toast({
+              title: "Welcome back!",
+              description: "You are now signed in.",
+            });
+          }
+          navigate('/dashboard');
         }
-        navigate('/dashboard');
+      } catch (err) {
+        console.error("Error checking session:", err);
       }
     };
     
@@ -77,27 +80,64 @@ export function SignInForm() {
         return;
       }
       
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
+      // Add retry mechanism for Supabase auth
+      let retryCount = 0;
+      const maxRetries = 3;
+      let authData;
+      let authError;
+
+      while (retryCount < maxRetries) {
+        try {
+          const result = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+          });
+          
+          authData = result.data;
+          authError = result.error;
+          
+          if (!authError) break; // Success - exit retry loop
+          
+          if (authError.message.toLowerCase().includes('network') || 
+              authError.message.toLowerCase().includes('timeout') ||
+              authError.message.toLowerCase().includes('failed to fetch')) {
+            // Network error - retry
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+            continue;
+          } else {
+            // Other error - don't retry
+            break;
+          }
+        } catch (error) {
+          authError = error;
+          break;
+        }
+      }
       
       if (authError) {
-        if (authError.message.toLowerCase().includes('email not confirmed')) {
+        if (authError.message?.toLowerCase().includes('email not confirmed')) {
           toast({
             title: "Email not verified",
             description: "Please check your inbox and click the verification link before signing in.",
             variant: "destructive",
           });
-          setIsLoading(false);
-          return;
+        } else if (authError.message?.toLowerCase().includes('network') || 
+                  authError.message?.toLowerCase().includes('timeout') ||
+                  authError.message?.toLowerCase().includes('failed to fetch')) {
+          toast({
+            title: "Connection error",
+            description: "Could not connect to authentication service. Please check your internet connection and try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Authentication failed",
+            description: authError.message || "Invalid email or password",
+            variant: "destructive",
+          });
         }
         
-        toast({
-          title: "Authentication failed",
-          description: authError.message,
-          variant: "destructive",
-        });
         setIsLoading(false);
         return;
       }
