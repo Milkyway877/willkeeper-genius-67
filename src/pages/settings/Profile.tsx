@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { updateUserProfile, getUserProfile as fetchUserProfile } from '@/services/userService';
+import { updateUserProfile, getUserProfile } from '@/services/userService';
 import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/layout/Layout';
 
@@ -35,7 +35,7 @@ export default function Profile() {
       if (user) {
         try {
           setLoading(true);
-          const profile = await fetchUserProfile();
+          const profile = await getUserProfile();
           if (profile) {
             // Create a profile object with the structure we need
             const formattedProfile: UserProfile = {

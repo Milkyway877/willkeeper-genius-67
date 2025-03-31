@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { AnimatePresence } from 'framer-motion';
+import { UserProfileProvider } from '@/contexts/UserProfileContext';
 
 // Import pages
 import Home from './pages/Index';
@@ -43,6 +44,7 @@ import Business from './pages/Business';
 import HowItWorks from './pages/HowItWorks';
 import Security from './pages/Security';
 import Services from './pages/Services';
+import AuthCallback from './pages/auth/AuthCallback';
 
 // Import the Documentation pages
 import Documentation from './pages/corporate/Documentation';
@@ -66,8 +68,8 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <UserProfileProvider>
         <Toaster />
         <FloatingAssistant />
         <Router>
@@ -90,7 +92,7 @@ function App() {
               <Route path="/terms" element={<Terms />} />
               <Route path="/cookies" element={<Cookies />} />
               
-              {/* Auth routes - using our new secure components */}
+              {/* Auth routes - using our secure components */}
               <Route path="/auth/signin" element={<SecureSignIn />} />
               <Route path="/auth/signup" element={<SecureSignUp />} />
               <Route path="/auth/forgot-password" element={<SecureRecover />} />
@@ -98,6 +100,7 @@ function App() {
               <Route path="/auth/activate" element={<AccountActivation />} />
               <Route path="/auth/verify-email" element={<EmailVerification />} />
               <Route path="/auth/verification-banner" element={<VerifyEmailBanner />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               
               {/* Dashboard routes */}
               <Route path="/dashboard" element={<Dashboard />} />
@@ -138,8 +141,8 @@ function App() {
           </AnimatePresence>
           <ReactQueryDevtools initialIsOpen={false} />
         </Router>
-      </QueryClientProvider>
-    </React.StrictMode>
+      </UserProfileProvider>
+    </QueryClientProvider>
   );
 }
 
