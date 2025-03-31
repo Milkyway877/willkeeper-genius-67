@@ -48,7 +48,7 @@ export default function Notifications() {
   // Try to use the notifications context, but handle cases where it might not be available
   let notificationsContext;
   try {
-    notificationsContext = useNotifications();
+    notificationsContext = useNotificationsContext();
   } catch (error) {
     // Show a loading state if the context is not available
     return (
