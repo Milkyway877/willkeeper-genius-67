@@ -66,8 +66,6 @@ export function Sidebar() {
         
         <nav className="space-y-1.5 mt-6">
           <SidebarLink to="/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} label="Dashboard" />
-          <SidebarLink to="/dashboard/will" icon={<Scroll className="h-5 w-5" />} label="My Will" />
-          <SidebarLink to="/templates" icon={<BookTemplate className="h-5 w-5" />} label="Templates" />
           <SidebarLink to="/tank" icon={<Vault className="h-5 w-5" />} label="Will Tank" />
           <SidebarLink to="/pages/ai/AIAssistance" icon={<Bot className="h-5 w-5" />} label="Skyler" />
           <SidebarLink to="/activity" icon={<Activity className="h-5 w-5" />} label="Activity" />

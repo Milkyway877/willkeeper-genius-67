@@ -7,7 +7,7 @@ import { Logo } from '@/components/ui/logo/Logo';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
-  LayoutDashboard, FileText, PackageOpen, Lock, Users, Brain, 
+  LayoutDashboard, FileText, Lock, Users, Brain, 
   ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, 
   Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle
 } from 'lucide-react';
@@ -41,14 +41,9 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       href: '/dashboard',
     },
     {
-      title: 'My Will',
+      title: 'My Wills',
       icon: FileText,
-      href: '/dashboard/will',
-    },
-    {
-      title: 'Will Templates',
-      icon: PackageOpen,
-      href: '/templates',
+      href: '/wills',
     },
     {
       title: 'Encryption',
