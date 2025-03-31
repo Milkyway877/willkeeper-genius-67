@@ -1,9 +1,6 @@
 
-import { toast as toastFunction } from '@/components/ui/use-toast';
+import { toast as toastPrimitive } from "@/components/ui/toast";
+import { useToast as useToastPrimitive } from "@/components/ui/toast";
 
-export const useToast = () => {
-  return { toast: toastFunction };
-};
-
-// Export the toast function directly for convenience
-export const toast = toastFunction;
+export const useToast = useToastPrimitive;
+export const toast = toastPrimitive;

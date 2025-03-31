@@ -1,5 +1,3 @@
 
-import { useToast as useToastHook, toast as toastFunction } from "@/hooks/use-toast";
-
-export const useToast = useToastHook;
-export const toast = toastFunction;
+// Re-export from the hooks folder to maintain backward compatibility
+export { useToast, toast } from "@/hooks/use-toast";
