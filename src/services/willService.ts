@@ -76,12 +76,23 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       status = will.status;
     }
     
+    // Handle template_type validation - based on the error, we need to ensure it matches the constraint
+    // The valid template types appear to be checked by the database
+    // Let's ensure it's one of the accepted values or set to a default
+    const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
+    let templateType = 'custom'; // Default to custom
+    
+    if (will.template_type && validTemplateTypes.includes(will.template_type)) {
+      templateType = will.template_type;
+    }
+    
     const { data, error } = await supabase
       .from('wills')
       .insert({
         ...will,
         user_id: user.user.id,
-        status: status
+        status: status,
+        template_type: templateType
       })
       .select()
       .single();

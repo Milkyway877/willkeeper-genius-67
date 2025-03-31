@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { useSystemNotifications } from '@/hooks/use-system-notifications';
+import { useNotifications } from '@/hooks/use-notifications';
 import { 
   FileText, 
   Book, 
@@ -63,7 +64,7 @@ type Step = {
 export default function WillCreation() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { notifyWillUpdated, notifyDocumentUploaded } = useSystemNotifications();
+  const { notifyWillCreated, notifyDocumentUploaded } = useNotifications();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<WillTemplate | null>(null);
   const [willContent, setWillContent] = useState("");
@@ -77,6 +78,7 @@ export default function WillCreation() {
   const [legalIssues, setLegalIssues] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [willTitle, setWillTitle] = useState('My Will');
+  const [isCreatingWill, setIsCreatingWill] = useState(false);
 
   const handleSelectTemplate = (template: WillTemplate) => {
     setSelectedTemplate(template);
@@ -209,6 +211,7 @@ export default function WillCreation() {
   const handleCompleteWill = async () => {
     try {
       // Show loading state
+      setIsCreatingWill(true);
       toast({
         title: "Saving your will",
         description: "Please wait while we save your will...",
@@ -218,12 +221,21 @@ export default function WillCreation() {
       console.log("Template type:", selectedTemplate?.id || 'custom');
       console.log("AI generated:", userResponses && Object.keys(userResponses).length > 0);
 
+      // Prepare templateType to match the database constraints (from the error we saw)
+      // Ensure template_type is one of the accepted values
+      const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
+      let templateType = 'custom'; // Default fallback
+      
+      if (selectedTemplate?.id && validTemplateTypes.includes(selectedTemplate.id)) {
+        templateType = selectedTemplate.id;
+      }
+
       // Save the will to the database with proper error handling
       const newWill = await createWill({
         title: willTitle,
         status: 'Draft',
         document_url: '', // In a real app, you'd upload to storage and get URL
-        template_type: selectedTemplate?.id || 'custom',
+        template_type: templateType,
         ai_generated: userResponses && Object.keys(userResponses).length > 0
       });
       
@@ -232,13 +244,11 @@ export default function WillCreation() {
       }
       
       // We successfully created the will
-      if (typeof notifyWillUpdated === 'function') {
-        try {
-          await notifyWillUpdated(willTitle);
-        } catch (notificationError) {
-          console.error("Error sending notification:", notificationError);
-          // Continue even if notification fails
-        }
+      try {
+        await notifyWillCreated(willTitle);
+      } catch (notificationError) {
+        console.error("Error sending notification:", notificationError);
+        // Continue even if notification fails
       }
       
       toast({
@@ -258,6 +268,8 @@ export default function WillCreation() {
         description: "There was a problem saving your will. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsCreatingWill(false);
     }
   };
 
@@ -531,9 +543,21 @@ export default function WillCreation() {
                 Download Will
               </Button>
               
-              <Button onClick={handleCompleteWill}>
-                <Save className="h-4 w-4 mr-2" />
-                Save & Finish
+              <Button 
+                onClick={handleCompleteWill} 
+                disabled={isCreatingWill}
+              >
+                {isCreatingWill ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save & Finish
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -604,8 +628,8 @@ export default function WillCreation() {
                     )}
                   </div>
                   <div>
-                    <p className={`font-medium ${
-                      index <= currentStep ? 'text-gray-900' : 'text-gray-500'
+                    <p className={`text-sm font-medium ${
+                      index <= currentStep ? 'text-willtank-700' : 'text-gray-400'
                     }`}>{step.title}</p>
                     <p className="text-xs text-gray-500">{step.description}</p>
                   </div>
@@ -615,30 +639,26 @@ export default function WillCreation() {
           </div>
         </div>
         
-        <motion.div 
-          key={currentStep}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="mb-8"
-        >
+        <div>
           {steps[currentStep].component}
-        </motion.div>
+        </div>
         
-        <div className="flex justify-between mt-8">
-          {currentStep > 0 && (
-            <Button onClick={prevStep} variant="outline">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Previous Step
-            </Button>
-          )}
+        <div className="mt-8 flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={prevStep}
+            disabled={currentStep === 0}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Previous
+          </Button>
           
-          {currentStep < steps.length - 1 && (
-            <Button onClick={nextStep} className="ml-auto">
-              Next Step
-              <ArrowRight className="ml-2 h-4 w-4" />
+          {currentStep < steps.length - 1 ? (
+            <Button onClick={nextStep}>
+              Next
+              <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
     </Layout>

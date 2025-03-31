@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Camera, Video, X, Check, RefreshCw, Play, Pause, Save } from 'lucide-react';
@@ -108,8 +109,10 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       }
     };
     
+    // Initialize camera when component mounts
     initCamera();
     
+    // Cleanup function
     return () => {
       console.log("Cleaning up camera resources");
       if (stream) {
