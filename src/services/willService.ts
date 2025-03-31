@@ -19,14 +19,14 @@ export type Will = {
 // Get will by ID
 export const getWill = async (willId: string): Promise<Will | null> => {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user?.id) throw new Error('Not authenticated');
     
     const { data, error } = await supabase
       .from('wills')
       .select('*')
       .eq('id', willId)
-      .eq('user_id', user.user.id)
+      .eq('user_id', userData.user.id)
       .single();
       
     if (error) throw error;
@@ -41,13 +41,13 @@ export const getWill = async (willId: string): Promise<Will | null> => {
 // Get all wills for the current user
 export const getUserWills = async (): Promise<Will[]> => {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user?.id) throw new Error('Not authenticated');
     
     const { data, error } = await supabase
       .from('wills')
       .select('*')
-      .eq('user_id', user.user.id)
+      .eq('user_id', userData.user.id)
       .order('created_at', { ascending: false });
       
     if (error) throw error;
@@ -57,6 +57,21 @@ export const getUserWills = async (): Promise<Will[]> => {
     console.error('Error fetching wills:', error);
     return [];
   }
+};
+
+// Validate template type to ensure it matches the database constraint
+export const validateTemplateType = (templateType: string | undefined): string => {
+  // Define allowed template types - this must match exactly what's defined in the database constraint
+  const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
+  
+  // Default to 'custom' if no template type is provided
+  if (!templateType) return 'custom';
+  
+  // Normalize the template type (convert to lowercase)
+  const normalizedType = templateType.toLowerCase();
+  
+  // Return the template type if valid, otherwise default to 'custom'
+  return validTemplateTypes.includes(normalizedType) ? normalizedType : 'custom';
 };
 
 // Create a new will
@@ -79,20 +94,8 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
       status = will.status;
     }
     
-    // Validate template_type - must match exactly what's accepted by the database constraint
-    // Convert template_type to lowercase and ensure it's one of the allowed values
-    const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
-    let templateType = 'custom'; // Default to custom
-    
-    if (will.template_type) {
-      const normalizedTemplateType = will.template_type.toLowerCase();
-      if (validTemplateTypes.includes(normalizedTemplateType)) {
-        templateType = normalizedTemplateType;
-      } else {
-        console.warn(`Invalid template type '${will.template_type}', defaulting to 'custom'`);
-      }
-    }
-
+    // Validate template_type using the separate validation function
+    const templateType = validateTemplateType(will.template_type);
     console.log("Using validated template type:", templateType);
     console.log("User ID:", userData.user.id);
     
@@ -153,8 +156,8 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
   try {
     console.log("Updating will with ID:", willId, "and updates:", updates);
     
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user?.id) throw new Error('Not authenticated');
     
     // Validate status to ensure it matches the constraints in the database
     if (updates.status) {
@@ -166,21 +169,14 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
     
     // Validate template_type if it's being updated
     if (updates.template_type) {
-      const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
-      const normalizedTemplateType = updates.template_type.toLowerCase();
-      
-      if (!validTemplateTypes.includes(normalizedTemplateType)) {
-        updates.template_type = 'custom';
-      } else {
-        updates.template_type = normalizedTemplateType;
-      }
+      updates.template_type = validateTemplateType(updates.template_type);
     }
     
     const { data, error } = await supabase
       .from('wills')
       .update(updates)
       .eq('id', willId)
-      .eq('user_id', user.user.id)
+      .eq('user_id', userData.user.id)
       .select()
       .single();
       
@@ -204,7 +200,7 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
         const { data: vaultItems } = await supabase
           .from('legacy_vault')
           .select('*')
-          .eq('user_id', user.user.id)
+          .eq('user_id', userData.user.id)
           .ilike('preview', `Will document: ${data.title}%`);
           
         if (vaultItems && vaultItems.length > 0) {
@@ -245,14 +241,14 @@ export const deleteWill = async (willId: string) => {
     // Get the will details before deleting
     const will = await getWill(willId);
     
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user?.id) throw new Error('Not authenticated');
     
     const { error } = await supabase
       .from('wills')
       .delete()
       .eq('id', willId)
-      .eq('user_id', user.user.id);
+      .eq('user_id', userData.user.id);
       
     if (error) throw error;
     
@@ -262,7 +258,7 @@ export const deleteWill = async (willId: string) => {
         const { data: vaultItems } = await supabase
           .from('legacy_vault')
           .select('*')
-          .eq('user_id', user.user.id)
+          .eq('user_id', userData.user.id)
           .ilike('preview', `Will document: ${will.title}%`);
           
         if (vaultItems && vaultItems.length > 0) {

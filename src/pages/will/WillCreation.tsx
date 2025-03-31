@@ -42,7 +42,7 @@ import { VideoRecorder } from './components/VideoRecorder';
 import { FileUploader } from './components/FileUploader';
 import { DigitalSignature } from './components/DigitalSignature';
 import { Progress } from "@/components/ui/progress";
-import { createWill } from '@/services/willService';
+import { createWill, validateTemplateType } from '@/services/willService';
 import { supabase } from '@/integrations/supabase/client';
 
 type WillTemplate = {
@@ -244,22 +244,12 @@ export default function WillCreation() {
       });
 
       console.log("Creating will with title:", willTitle);
-      console.log("Template type:", selectedTemplate?.id || 'custom');
-      console.log("AI generated:", userResponses && Object.keys(userResponses).length > 0);
-
-      let templateType = 'custom';
       
-      if (selectedTemplate?.id) {
-        const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
-        const normalizedTemplateType = selectedTemplate.id.toLowerCase();
-        
-        if (validTemplateTypes.includes(normalizedTemplateType)) {
-          templateType = normalizedTemplateType;
-        } else {
-          console.warn(`Invalid template type '${selectedTemplate.id}', defaulting to 'custom'`);
-        }
+      if (!selectedTemplate) {
+        throw new Error("Please select a template before saving");
       }
-
+      
+      const templateType = validateTemplateType(selectedTemplate.id);
       console.log("Using validated template type:", templateType);
 
       try {
