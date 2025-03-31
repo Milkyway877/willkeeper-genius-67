@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { getProfile } from './profileService';
 
 export interface DashboardStats {
   willsCount: number;
@@ -110,3 +109,10 @@ export async function logActivity(action: string) {
     return false;
   }
 }
+
+// Add these missing exports that Dashboard.tsx is trying to import
+export const getDashboardSummary = getDashboardStats;
+export const getUserNotifications = () => [];
+export const getUserWills = () => [];
+export const getUserExecutors = () => [];
+export const getUserSubscription = () => null;

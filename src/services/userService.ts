@@ -178,3 +178,77 @@ export async function getUserSecurity(): Promise<any | null> {
     return null;
   }
 }
+
+// Add these missing methods that DeathVerification.tsx is looking for
+export const getDeathVerificationSettings = async () => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
+    }
+
+    const { data, error } = await supabase
+      .from('death_verification_settings')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Create default settings
+        const defaultSettings = {
+          user_id: userData.user.id,
+          check_in_frequency: 30,
+          check_in_enabled: true,
+          unlock_mode: 'pin',
+          beneficiary_verification_interval: 48,
+          notification_preferences: {
+            email: true,
+            sms: false,
+            push: false,
+          },
+          failsafe_enabled: true,
+        };
+
+        const { data: newData, error: createError } = await supabase
+          .from('death_verification_settings')
+          .insert([defaultSettings])
+          .select();
+
+        if (createError) throw createError;
+        return newData[0];
+      }
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching death verification settings:', error);
+    return null;
+  }
+};
+
+export const updateDeathVerificationSettings = async (settings: any): Promise<boolean> => {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
+    }
+
+    const currentSettings = await getDeathVerificationSettings();
+    if (!currentSettings) {
+      throw new Error('No settings found');
+    }
+
+    const { error } = await supabase
+      .from('death_verification_settings')
+      .update(settings)
+      .eq('id', currentSettings.id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating death verification settings:', error);
+    return false;
+  }
+};
