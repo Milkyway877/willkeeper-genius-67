@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 
 import { AccountSettings } from './components/AccountSettings';
 import { SecuritySettings } from './components/SecuritySettings';
-import { NotificationSettings } from './components/NotificationSettings';
 import { PrivacySettings } from './components/PrivacySettings';
 import DeathVerification from './DeathVerification';
 
@@ -52,8 +51,6 @@ export default function Settings() {
         return <AccountSettings />;
       case 'security':
         return <SecuritySettings />;
-      case 'notifications':
-        return <NotificationSettings />;
       case 'privacy':
         return <PrivacySettings />;
       case 'death-verification':
@@ -94,13 +91,6 @@ export default function Settings() {
                   >
                     <div className="h-4 w-4 mr-2">🔒</div>
                     Security
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('notifications')} 
-                    className={`flex items-center justify-start mb-1 rounded-lg px-3 py-2 text-sm ${activeTab === 'notifications' ? 'bg-willtank-50 text-willtank-700' : 'hover:bg-gray-100'}`}
-                  >
-                    <div className="h-4 w-4 mr-2">🔔</div>
-                    Notifications
                   </button>
                   <button 
                     onClick={() => setActiveTab('privacy')} 

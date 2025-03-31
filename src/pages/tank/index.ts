@@ -1,4 +1,12 @@
 
-export { default as Tank } from './Tank';
-export { default as TankCreation } from './TankCreation';
-export { default as TankMessageCreation } from './TankMessageCreation';
+import { TankDashboard } from './components/TankDashboard';
+import { TankAnalytics } from './components/TankAnalytics';
+import { TankLegacyVault } from './components/TankLegacyVault';
+import { UnifiedVault } from './components/UnifiedVault';
+
+export {
+  TankDashboard,
+  TankAnalytics,
+  TankLegacyVault,
+  UnifiedVault
+};

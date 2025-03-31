@@ -401,39 +401,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notifications: {
-        Row: {
-          created_at: string
-          description: string
-          icon: string | null
-          id: string
-          read: boolean
-          title: string
-          type: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          icon?: string | null
-          id?: string
-          read?: boolean
-          title: string
-          type: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          icon?: string | null
-          id?: string
-          read?: boolean
-          title?: string
-          type?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       subscriptions: {
         Row: {
           created_at: string | null
@@ -546,7 +513,6 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          notification_settings: Json | null
           privacy_settings: Json | null
           updated_at: string | null
           user_id: string
@@ -554,7 +520,6 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
-          notification_settings?: Json | null
           privacy_settings?: Json | null
           updated_at?: string | null
           user_id: string
@@ -562,7 +527,6 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
-          notification_settings?: Json | null
           privacy_settings?: Json | null
           updated_at?: string | null
           user_id?: string

@@ -1,371 +1,230 @@
-import { supabase } from '@/integrations/supabase/client';
-import { VaultItemType } from '@/pages/tank/types';
-import { notifyVaultItemAdded, notifyVaultItemUpdated } from '@/services/notificationService';
 
-export type FutureMessage = {
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export interface FutureMessage {
   id: string;
-  title: string;
+  user_id: string;
+  title?: string;
   recipient_name: string;
   recipient_email: string;
-  message_type: string;
-  preview: string;
-  message_url: string | null;
-  status: string;
+  message_type?: string;
+  message_url?: string;
+  status?: string;
   delivery_date: string;
   created_at?: string;
-  user_id?: string;
-};
+  preview?: string;
+}
 
-export type LegacyVaultItem = {
+export interface VaultItem {
   id: string;
+  user_id: string;
   title: string;
-  type: VaultItemType;
-  preview: string;
   document_url: string;
-  encryptionStatus: boolean;
-  createdAt: string;
-  created_at: string;
-  user_id?: string;
-};
+  category?: string;
+  created_at?: string;
+  is_encrypted?: boolean;
+  preview?: string;
+}
 
-export const getFutureMessages = async (): Promise<FutureMessage[]> => {
+// Get all future messages for current user
+export async function getFutureMessages(): Promise<FutureMessage[]> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
+    }
+
     const { data, error } = await supabase
       .from('future_messages')
       .select('*')
-      .eq('user_id', user.user.id)
+      .eq('user_id', userData.user.id)
       .order('delivery_date', { ascending: true });
-      
+
     if (error) throw error;
-    
-    return data;
+
+    return data || [];
   } catch (error) {
     console.error('Error fetching future messages:', error);
-    return [];
+    throw error;
   }
-};
+}
 
-export const getFutureMessage = async (messageId: string): Promise<FutureMessage | null> => {
+// Get a single future message by ID
+export async function getFutureMessage(id: string): Promise<FutureMessage | null> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
     const { data, error } = await supabase
       .from('future_messages')
       .select('*')
-      .eq('id', messageId)
-      .eq('user_id', user.user.id)
+      .eq('id', id)
       .single();
-      
+
     if (error) throw error;
-    
+
     return data;
   } catch (error) {
-    console.error('Error fetching future message:', error);
+    console.error(`Error fetching future message with ID ${id}:`, error);
     return null;
   }
-};
+}
 
-export const createFutureMessage = async (message: Omit<FutureMessage, 'id'>): Promise<FutureMessage | null> => {
+// Create a new future message
+export async function createFutureMessage(message: Omit<FutureMessage, 'id' | 'user_id' | 'created_at'>): Promise<FutureMessage | null> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
+    }
+
     const { data, error } = await supabase
       .from('future_messages')
-      .insert({
+      .insert([{
         ...message,
-        user_id: user.user.id
-      })
-      .select()
-      .single();
-      
+        user_id: userData.user.id,
+      }])
+      .select();
+
     if (error) throw error;
-    
-    return data;
+
+    return data[0] || null;
   } catch (error) {
     console.error('Error creating future message:', error);
     return null;
   }
-};
+}
 
-export const updateFutureMessage = async (
-  messageId: string, 
-  updates: Partial<FutureMessage>
-): Promise<FutureMessage | null> => {
+// Update a future message
+export async function updateFutureMessage(id: string, updates: Partial<FutureMessage>): Promise<FutureMessage | null> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
     const { data, error } = await supabase
       .from('future_messages')
       .update(updates)
-      .eq('id', messageId)
-      .eq('user_id', user.user.id)
-      .select()
-      .single();
-      
+      .eq('id', id)
+      .select();
+
     if (error) throw error;
-    
-    return data;
+
+    return data[0] || null;
   } catch (error) {
-    console.error('Error updating future message:', error);
+    console.error(`Error updating future message with ID ${id}:`, error);
     return null;
   }
-};
+}
 
-export const deleteFutureMessage = async (messageId: string): Promise<boolean> => {
+// Delete a future message
+export async function deleteFutureMessage(id: string): Promise<boolean> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
     const { error } = await supabase
       .from('future_messages')
       .delete()
-      .eq('id', messageId)
-      .eq('user_id', user.user.id);
-      
+      .eq('id', id);
+
     if (error) throw error;
-    
+
     return true;
   } catch (error) {
-    console.error('Error deleting future message:', error);
+    console.error(`Error deleting future message with ID ${id}:`, error);
     return false;
   }
-};
+}
 
-export const updateMessageContent = async (messageId: string, content: string): Promise<boolean> => {
+// Get all vault items for current user
+export async function getVaultItems(): Promise<VaultItem[]> {
   try {
-    console.log(`Updating content for message ${messageId}`);
-    
-    const result = await updateFutureMessage(messageId, {
-      preview: content.length > 100 ? content.substring(0, 97) + '...' : content
-    });
-    
-    return !!result;
-  } catch (error) {
-    console.error('Error updating message content:', error);
-    return false;
-  }
-};
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
+    }
 
-export const getLegacyVaultItems = async (): Promise<LegacyVaultItem[]> => {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
     const { data, error } = await supabase
       .from('legacy_vault')
       .select('*')
-      .eq('user_id', user.user.id)
+      .eq('user_id', userData.user.id)
       .order('created_at', { ascending: false });
-      
-    if (error) throw error;
-    
-    const { data: wills, error: willsError } = await supabase
-      .from('wills')
-      .select('*')
-      .eq('user_id', user.user.id);
-      
-    if (willsError) throw willsError;
-    
-    const legacyItems = data.map(item => ({
-      id: item.id,
-      title: item.title,
-      type: (item.category || 'story') as VaultItemType,
-      preview: item.preview || '',
-      document_url: item.document_url,
-      encryptionStatus: item.is_encrypted || false,
-      createdAt: item.created_at || new Date().toISOString(),
-      created_at: item.created_at || new Date().toISOString(),
-      user_id: item.user_id
-    }));
-    
-    const willsNotInVault = wills.filter(will => {
-      return !legacyItems.some(item => 
-        item.preview.includes(`Will document: ${will.title}`)
-      );
-    });
-    
-    for (const will of willsNotInVault) {
-      const newVaultItem = await createLegacyVaultItem({
-        title: will.title,
-        type: VaultItemType.will,
-        preview: `Will document: ${will.title} (${will.status})`,
-        document_url: will.document_url,
-        encryptionStatus: false
-      });
-      
-      if (newVaultItem) {
-        legacyItems.push({
-          ...newVaultItem,
-          user_id: newVaultItem.user_id || ''
-        });
-      }
-    }
-    
-    return legacyItems;
-  } catch (error) {
-    console.error('Error fetching legacy vault items:', error);
-    return [];
-  }
-};
 
-export const getLegacyVaultItem = async (itemId: string): Promise<LegacyVaultItem | null> => {
+    if (error) throw error;
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching vault items:', error);
+    throw error;
+  }
+}
+
+// Get a single vault item by ID
+export async function getVaultItem(id: string): Promise<VaultItem | null> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
     const { data, error } = await supabase
       .from('legacy_vault')
       .select('*')
-      .eq('id', itemId)
-      .eq('user_id', user.user.id)
+      .eq('id', id)
       .single();
-      
+
     if (error) throw error;
-    
-    return {
-      id: data.id,
-      title: data.title,
-      type: (data.category || 'story') as VaultItemType,
-      preview: data.preview || '',
-      document_url: data.document_url,
-      encryptionStatus: data.is_encrypted || false,
-      createdAt: data.created_at || new Date().toISOString(),
-      created_at: data.created_at || new Date().toISOString(),
-      user_id: data.user_id
-    };
+
+    return data;
   } catch (error) {
-    console.error('Error fetching legacy vault item:', error);
+    console.error(`Error fetching vault item with ID ${id}:`, error);
     return null;
   }
-};
+}
 
-export const createLegacyVaultItem = async (
-  item: Omit<LegacyVaultItem, 'id' | 'createdAt' | 'created_at' | 'user_id'>
-): Promise<LegacyVaultItem | null> => {
+// Create a new vault item
+export async function createVaultItem(item: Omit<VaultItem, 'id' | 'user_id' | 'created_at'>): Promise<VaultItem | null> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
-    const validCategories = ['story', 'confession', 'wishes', 'advice', 'will', 'video', 'audio', 'document'];
-    let category = 'story'; // Default
-    
-    const itemTypeStr = item.type.toString();
-    if (validCategories.includes(itemTypeStr)) {
-      category = itemTypeStr;
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
     }
-    
-    console.log(`Creating legacy vault item with category: ${category}`);
-    
+
     const { data, error } = await supabase
       .from('legacy_vault')
-      .insert({
-        title: item.title,
-        category: category,
-        preview: item.preview,
-        document_url: item.document_url,
-        is_encrypted: item.encryptionStatus,
-        user_id: user.user.id
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error creating legacy vault item:', error);
-      throw error;
-    }
-    
-    await notifyVaultItemAdded(category, item.title);
-    
-    return {
-      id: data.id,
-      title: data.title,
-      type: (data.category || 'story') as VaultItemType,
-      preview: data.preview || '',
-      document_url: data.document_url,
-      encryptionStatus: data.is_encrypted || false,
-      createdAt: data.created_at || new Date().toISOString(),
-      created_at: data.created_at || new Date().toISOString(),
-      user_id: data.user_id
-    };
+      .insert([{
+        ...item,
+        user_id: userData.user.id,
+      }])
+      .select();
+
+    if (error) throw error;
+
+    return data[0] || null;
   } catch (error) {
-    console.error('Error creating legacy vault item:', error);
+    console.error('Error creating vault item:', error);
     return null;
   }
-};
+}
 
-export const updateLegacyVaultItem = async (
-  itemId: string,
-  updates: Partial<LegacyVaultItem>
-): Promise<LegacyVaultItem | null> => {
+// Update a vault item
+export async function updateVaultItem(id: string, updates: Partial<VaultItem>): Promise<VaultItem | null> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
-    const dbUpdates: any = {};
-    if (updates.title) dbUpdates.title = updates.title;
-    if (updates.type) dbUpdates.category = updates.type;
-    if (updates.preview) dbUpdates.preview = updates.preview;
-    if (updates.document_url) dbUpdates.document_url = updates.document_url;
-    if (updates.encryptionStatus !== undefined) dbUpdates.is_encrypted = updates.encryptionStatus;
-    
     const { data, error } = await supabase
       .from('legacy_vault')
-      .update(dbUpdates)
-      .eq('id', itemId)
-      .eq('user_id', user.user.id)
-      .select()
-      .single();
-      
+      .update(updates)
+      .eq('id', id)
+      .select();
+
     if (error) throw error;
-    
-    await notifyVaultItemUpdated(data.category || 'item', data.title);
-    
-    return {
-      id: data.id,
-      title: data.title,
-      type: (data.category || 'story') as VaultItemType,
-      preview: data.preview || '',
-      document_url: data.document_url,
-      encryptionStatus: data.is_encrypted || false,
-      createdAt: data.created_at || new Date().toISOString(),
-      created_at: data.created_at || new Date().toISOString(),
-      user_id: data.user_id
-    };
+
+    return data[0] || null;
   } catch (error) {
-    console.error('Error updating legacy vault item:', error);
+    console.error(`Error updating vault item with ID ${id}:`, error);
     return null;
   }
-};
+}
 
-export const deleteLegacyVaultItem = async (itemId: string): Promise<boolean> => {
+// Delete a vault item
+export async function deleteVaultItem(id: string): Promise<boolean> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user?.id) throw new Error('Not authenticated');
-    
     const { error } = await supabase
       .from('legacy_vault')
       .delete()
-      .eq('id', itemId)
-      .eq('user_id', user.user.id);
-      
+      .eq('id', id);
+
     if (error) throw error;
-    
+
     return true;
   } catch (error) {
-    console.error('Error deleting legacy vault item:', error);
+    console.error(`Error deleting vault item with ID ${id}:`, error);
     return false;
   }
-};
-
-export const toggleItemEncryption = async (
-  itemId: string,
-  encryptionStatus: boolean
-): Promise<LegacyVaultItem | null> => {
-  return updateLegacyVaultItem(itemId, { encryptionStatus });
-};
+}

@@ -1,159 +1,112 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { createUserSecurity, getUserSecurity } from "@/services/encryptionService";
-import { Notification } from "@/services/notificationService";
+import { supabase } from '@/integrations/supabase/client';
+import { getProfile } from './profileService';
 
-export interface DashboardSummary {
-  willCount: number;
-  executorCount: number;
-  notificationCount: number;
-  securityStatus: string;
+export interface DashboardStats {
+  willsCount: number;
+  documentsCount: number;
+  messagesCount: number;
+  executorsCount: number;
 }
 
-export const getDashboardSummary = async (): Promise<DashboardSummary> => {
+export async function getDashboardStats(): Promise<DashboardStats> {
   try {
-    // Get user session first
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      throw new Error('No authenticated user');
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
     }
-    
-    // Initialize results with defaults in case any query fails
-    let willsCount = 0;
-    let executorsCount = 0;
-    let notificationsCount = 0;
-    let securityResult = null;
-    
-    try {
-      // Run all queries in parallel with individual error handling
-      const [willsResult, executorsResult, notificationsResult] = await Promise.all([
-        supabase.from('wills').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-        supabase.from('will_executors').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
-        supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id).eq('read', false)
-      ]);
-      
-      // Extract counts, handling potential errors
-      willsCount = willsResult.error ? 0 : willsResult.count || 0;
-      executorsCount = executorsResult.error ? 0 : executorsResult.count || 0;
-      notificationsCount = notificationsResult.error ? 0 : notificationsResult.count || 0;
-    } catch (e) {
-      console.error('Error fetching dashboard counts:', e);
-    }
-    
-    // Get security info with separate error handling
-    try {
-      securityResult = await getUserSecurity();
-    } catch (e) {
-      console.error('Error getting user security:', e);
-    }
-    
-    // If security doesn't exist, try to create it
-    if (!securityResult) {
-      try {
-        await createUserSecurity();
-      } catch (e) {
-        console.error('Error creating user security:', e);
-      }
-    }
-    
-    // Determine security status based on various factors
-    let securityStatus = 'Good';
-    
-    if (!securityResult) {
-      securityStatus = 'Needs Setup';
-    } else if (!securityResult.encryption_key) {
-      securityStatus = 'Incomplete';
-    } else if (securityResult.google_auth_enabled) {
-      securityStatus = 'Strong';
-    }
-    
-    return {
-      willCount: willsCount,
-      executorCount: executorsCount,
-      notificationCount: notificationsCount,
-      securityStatus: securityStatus
-    };
-  } catch (error) {
-    console.error('Error fetching dashboard summary:', error);
-    return {
-      willCount: 0,
-      executorCount: 0,
-      notificationCount: 0,
-      securityStatus: 'Unknown'
-    };
-  }
-};
 
-export const getUserWills = async () => {
-  try {
-    const { data, error } = await supabase
+    const userId = userData.user.id;
+
+    // Get count of wills
+    const { count: willsCount, error: willsError } = await supabase
       .from('wills')
-      .select('*')
-      .order('updated_at', { ascending: false });
-      
-    if (error) throw error;
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching user wills:', error);
-    return [];
-  }
-};
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
 
-export const getUserNotifications = async (): Promise<Notification[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5);
-      
-    if (error) throw error;
-    
-    return data as Notification[] || [];
-  } catch (error) {
-    console.error('Error fetching user notifications:', error);
-    return [];
-  }
-};
+    if (willsError) throw willsError;
 
-export const getUserExecutors = async () => {
-  try {
-    const { data, error } = await supabase
+    // Get count of vault documents
+    const { count: documentsCount, error: docsError } = await supabase
+      .from('legacy_vault')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (docsError) throw docsError;
+
+    // Get count of future messages
+    const { count: messagesCount, error: messagesError } = await supabase
+      .from('future_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (messagesError) throw messagesError;
+
+    // Get count of executors
+    const { count: executorsCount, error: executorsError } = await supabase
       .from('will_executors')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (executorsError) throw executorsError;
+
+    return {
+      willsCount: willsCount || 0,
+      documentsCount: documentsCount || 0,
+      messagesCount: messagesCount || 0,
+      executorsCount: executorsCount || 0,
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    throw error;
+  }
+}
+
+export async function getUserActivity(limit: number = 5) {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
+    }
+
+    const { data, error } = await supabase
+      .from('activity_logs')
       .select('*')
-      .order('created_at', { ascending: false });
-      
+      .eq('user_id', userData.user.id)
+      .order('timestamp', { ascending: false })
+      .limit(limit);
+
     if (error) throw error;
     
     return data || [];
   } catch (error) {
-    console.error('Error fetching user executors:', error);
-    return [];
+    console.error('Error fetching user activity:', error);
+    throw error;
   }
-};
+}
 
-export const getUserSubscription = async () => {
+export async function logActivity(action: string) {
   try {
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-      
-    if (error) {
-      // If no subscription is found, this is expected
-      if (error.code === 'PGRST116') {
-        return null;
-      }
-      throw error;
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
     }
+
+    const { error } = await supabase
+      .from('activity_logs')
+      .insert([
+        {
+          user_id: userData.user.id,
+          action,
+          timestamp: new Date(),
+        },
+      ]);
+
+    if (error) throw error;
     
-    return data;
+    return true;
   } catch (error) {
-    console.error('Error fetching user subscription:', error);
-    return null;
+    console.error('Error logging activity:', error);
+    return false;
   }
-};
+}

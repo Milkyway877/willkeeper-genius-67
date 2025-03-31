@@ -1,164 +1,152 @@
 
 import React, { useState } from 'react';
-import { Bot, X, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useNotificationManager } from '@/hooks/use-notification-manager';
+import { AlertCircle, BrainCircuit, X, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export function FloatingAssistant() {
   const [isOpen, setIsOpen] = useState(false);
-  const [message, setMessage] = useState('');
-  const [response, setResponse] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const { notifyInfo } = useNotificationManager();
-
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
-    
-    try {
-      setIsLoading(true);
-      setResponse('');
-      
-      // Call the AI assistant edge function
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: { 
-          query: message,
-          conversation_history: []
-        }
-      });
-      
-      if (error) {
-        console.error('Error invoking AI assistant:', error);
-        
-        // Fallback response if there's an error
-        const fallbackResponse = generateFallbackResponse(message);
-        setResponse(fallbackResponse);
-        
-        toast({
-          title: 'Connection Issue',
-          description: 'Using offline response mode. Some features may be limited.',
-          variant: 'default'
-        });
-        return;
-      }
-      
-      setResponse(data?.response || 'I could not process your request. Please try again.');
-      
-      // Try to create a notification for this interaction, but don't block if it fails
-      try {
-        notifyInfo('Skyler', 'You received a new response from Skyler.', 'low');
-      } catch (notifyError) {
-        console.warn('Could not create notification:', notifyError);
-      }
-    } catch (err) {
-      console.error('Error with AI processing:', err);
-      
-      // Fallback response
-      const fallbackResponse = generateFallbackResponse(message);
-      setResponse(fallbackResponse);
-      
-      toast({
-        title: 'Offline Mode',
-        description: 'Using AI assistant in offline mode.',
-        variant: 'default'
-      });
-    } finally {
-      setIsLoading(false);
+  const [step, setStep] = useState(1);
+  const totalSteps = 3;
+  
+  const toggleOpen = () => setIsOpen(!isOpen);
+  
+  const nextStep = () => {
+    if (step < totalSteps) {
+      setStep(step + 1);
+    } else {
+      setIsOpen(false);
+      setStep(1);
     }
   };
-
-  // Generate a fallback response when the edge function fails
-  const generateFallbackResponse = (query: string) => {
-    const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('will') && 
-        (lowerQuery.includes('create') || lowerQuery.includes('make'))) {
-      return "Creating a will with WillTank is simple. Our platform guides you through selecting a template, answering questions, and finalizing your document. Would you like me to help you get started?";
-    } 
-    
-    if (lowerQuery.includes('executor') || lowerQuery.includes('trustee')) {
-      return "An executor is responsible for administering your estate after your passing. WillTank makes it easy to designate executors and provide them with necessary instructions. Would you like to know more about choosing the right executor?";
-    }
-    
-    if (lowerQuery.includes('digital') && lowerQuery.includes('assets')) {
-      return "WillTank specializes in digital asset planning. Our platform helps you inventory digital assets (cryptocurrency, online accounts), assign specific executors, and create secure access instructions. Would you like help setting this up?";
-    }
-    
-    return "I'm Skyler, your WillTank AI assistant. I can help with estate planning, will creation, digital assets management, and more. What specific aspect of legacy planning can I assist you with today?";
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSendMessage();
+  
+  const prevStep = () => {
+    if (step > 1) {
+      setStep(step - 1);
     }
   };
-
+  
+  // Step content
+  const stepContent = [
+    {
+      title: "Welcome to WillTank",
+      description: "I'm your AI assistant. I'll help you navigate the app and set up your digital legacy.",
+      icon: <BrainCircuit className="h-6 w-6 text-primary" />,
+    },
+    {
+      title: "Create Your Will",
+      description: "I can help you craft a legally sound will based on your needs and preferences.",
+      icon: <BrainCircuit className="h-6 w-6 text-purple-500" />,
+    },
+    {
+      title: "Need Help?",
+      description: "Ask me any questions about the app features or how to secure your digital legacy.",
+      icon: <BrainCircuit className="h-6 w-6 text-blue-500" />,
+    },
+  ];
+  
   return (
-    <div className="fixed right-4 bottom-4 z-30">
+    <>
+      {/* Assistant button */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+            className="fixed right-4 bottom-4 z-50"
+          >
+            <Button
+              size="lg"
+              className="w-12 h-12 rounded-full shadow-lg"
+              onClick={toggleOpen}
+            >
+              <BrainCircuit className="h-6 w-6" />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Assistant panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.8 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-4 max-w-sm w-full border border-gray-200 dark:border-gray-700"
+            className="fixed right-4 bottom-4 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden z-50 border border-gray-200 dark:border-gray-800"
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium">Skyler</h3>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
+              <h3 className="font-semibold flex items-center">
+                <BrainCircuit className="h-5 w-5 mr-2 text-primary" />
+                WillTank Assistant
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-full"
+                onClick={toggleOpen}
               >
-                <X size={18} />
-              </button>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
             
-            {response && (
-              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-4 text-sm">
-                <p className="text-gray-700 dark:text-gray-200">{response}</p>
+            {/* Content */}
+            <div className="p-4">
+              <div className="flex justify-center mb-4">
+                {stepContent[step - 1].icon}
               </div>
-            )}
-            
-            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-              How can I help you today with your will or documents?
-            </p>
-            
-            <div className="flex">
-              <input
-                type="text"
-                placeholder="Ask a question..."
-                className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-              />
-              <button 
-                className={`bg-black text-white dark:bg-white dark:text-black px-3 py-2 rounded-r-md text-sm font-medium flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}
-                onClick={handleSendMessage}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="animate-spin h-4 w-4 border-2 border-white dark:border-black border-t-transparent rounded-full mr-1"></span>
-                ) : (
-                  <Send size={14} className="mr-1" />
-                )}
-                Send
-              </button>
+              
+              <h4 className="text-lg font-semibold text-center mb-2">
+                {stepContent[step - 1].title}
+              </h4>
+              
+              <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6">
+                {stepContent[step - 1].description}
+              </p>
+              
+              {/* Pagination dots */}
+              <div className="flex justify-center space-x-2 mb-4">
+                {Array.from({ length: totalSteps }).map((_, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      index + 1 === step ? "bg-primary" : "bg-gray-300 dark:bg-gray-700"
+                    )}
+                  />
+                ))}
+              </div>
+              
+              {/* Navigation buttons */}
+              <div className="flex justify-between">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={prevStep}
+                  disabled={step === 1}
+                  className={step === 1 ? "invisible" : ""}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                
+                <Button
+                  size="sm"
+                  onClick={nextStep}
+                >
+                  {step === totalSteps ? "Got it" : "Next"}
+                  {step !== totalSteps && <ChevronRight className="h-4 w-4 ml-2" />}
+                </Button>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="bg-black text-white dark:bg-white dark:text-black p-3 rounded-full shadow-lg hover:opacity-90 transition-opacity"
-      >
-        <Bot size={24} />
-      </button>
-    </div>
+    </>
   );
 }
