@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -7,7 +8,7 @@ import { ModeToggle } from '@/components/ui/mode-toggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, Lock, Users, Brain, 
-  ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, 
+  ShieldCheck, CreditCard, Settings, HelpCircle, ChevronRight, 
   Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle
 } from 'lucide-react';
 
@@ -68,11 +69,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       title: 'Billing',
       icon: CreditCard,
       href: '/pages/billing/Billing',
-    },
-    {
-      title: 'Notifications',
-      icon: Bell,
-      href: '/pages/notifications/Notifications',
     },
     {
       title: 'Settings',
