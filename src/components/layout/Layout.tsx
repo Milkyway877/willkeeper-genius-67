@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -26,6 +27,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
   
+  // Check if mobile notification has been dismissed before
   useEffect(() => {
     const dismissedNotification = localStorage.getItem('dismissedMobileNotification');
     if (dismissedNotification === 'true') {
@@ -33,17 +35,20 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, []);
   
+  // Handle notification dismissal
   const handleDismissMobileNotification = () => {
     setShowMobileNotification(false);
     localStorage.setItem('dismissedMobileNotification', 'true');
   };
   
+  // Auto-collapse sidebar on mobile
   useEffect(() => {
     if (isMobile) {
       setShowSidebar(false);
     }
   }, [isMobile]);
   
+  // Check authentication status if required
   useEffect(() => {
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
@@ -52,9 +57,11 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         if (!data.session) {
           navigate('/auth/signin', { replace: true });
         } else if (profile && !profile.is_activated) {
+          // If the user is logged in but email is not verified and they're trying to access protected routes
           const isEmailVerified = profile.email_verified;
           
           if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
+            // Redirect to email verification with email as a parameter
             navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
           }
         }
@@ -68,9 +75,11 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     setShowSidebar(!showSidebar);
   };
   
+  // Don't show sidebar on auth pages
   const isAuthPage = location.pathname.includes('/auth/');
   const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
   
+  // Check for URL parameters on Help page
   useEffect(() => {
     if (location.pathname === '/help' && location.search) {
       const params = new URLSearchParams(location.search);
@@ -80,12 +89,15 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       }
     }
   }, [location]);
-  
+
+  // Pass the selected topic to the Help page through the URL
   useEffect(() => {
     if (selectedTopic && location.pathname === '/help') {
+      // This is handled by the Help component
     }
   }, [selectedTopic, location.pathname]);
   
+  // Determine if we're on a page that should have the cream accent background
   const shouldHaveCreamBackground = !isAuthPage && 
     !location.pathname.includes('/dashboard') && 
     !location.pathname.includes('/will') && 
@@ -115,7 +127,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <Navbar onToggleSidebar={toggleSidebar} />
+        <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
         
         {isMobile && showAuthenticatedLayout && showMobileNotification && (
           <MobileNotification onDismiss={handleDismissMobileNotification} />

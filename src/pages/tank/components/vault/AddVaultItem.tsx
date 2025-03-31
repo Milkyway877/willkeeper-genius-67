@@ -1,16 +1,16 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { LegacyVaultItem } from '@/pages/tank/types';
-import { createVaultItem, convertToLegacyVaultItem } from '@/services/tankService';
-import { FileUp, Lock, Unlock } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { createLegacyVaultItem } from '@/services/tankService';
+import { LegacyVaultItem, VaultItemType } from '../../types';
+import { FileText, Save, Plus, Sparkles } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface AddVaultItemProps {
   isOpen: boolean;
@@ -20,19 +20,20 @@ interface AddVaultItemProps {
 
 export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onItemAdded }) => {
   const [title, setTitle] = useState('');
-  const [itemType, setItemType] = useState('document');
+  const [type, setType] = useState<VaultItemType>(VaultItemType.story);
   const [preview, setPreview] = useState('');
+  const [encryptionStatus, setEncryptionStatus] = useState(false);
   const [documentUrl, setDocumentUrl] = useState('');
-  const [isEncrypted, setIsEncrypted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [useAI, setUseAI] = useState(false);
 
   const resetForm = () => {
     setTitle('');
-    setItemType('document');
+    setType(VaultItemType.story);
     setPreview('');
+    setEncryptionStatus(false);
     setDocumentUrl('');
-    setIsEncrypted(false);
+    setUseAI(false);
   };
 
   const handleClose = () => {
@@ -40,168 +41,206 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
     onClose();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const generateWithAI = async () => {
+    if (!title.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please provide a title before generating content with AI.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    // For a real implementation, you would upload this file to a storage service
-    // and get a URL back. Here we'll simulate that.
-    const fileSize = (file.size / 1024).toFixed(2); // Convert to KB
-    
-    setTitle(file.name);
-    setPreview(`${file.name} (${fileSize} KB)`);
-    
-    // Simulate a document URL
-    const simulatedUrl = `https://example.com/documents/${Date.now()}-${file.name}`;
-    setDocumentUrl(simulatedUrl);
-    
-    toast({
-      title: "File selected",
-      description: `${file.name} is ready to be added to your legacy vault.`
-    });
+    setIsLoading(true);
+    try {
+      // Simulate AI generation (in a real app, this would call an AI service)
+      setTimeout(() => {
+        const aiPreview = `This is an AI-generated preview for "${title}". It's a ${type} that contains important information to be preserved for future generations.`;
+        setPreview(aiPreview);
+        setDocumentUrl('https://example.com/ai-generated-document');
+        
+        toast({
+          title: "AI content generated",
+          description: "Content has been created based on your title and type."
+        });
+        setIsLoading(false);
+      }, 1000);
+    } catch (error) {
+      toast({
+        title: "AI generation failed",
+        description: "There was an error generating content. Please try again or create manually.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title) {
+    if (!title.trim()) {
       toast({
         title: "Missing information",
-        description: "Please provide a title for your legacy item.",
+        description: "Please provide a title for your item.",
         variant: "destructive"
       });
       return;
     }
-    
-    setIsSubmitting(true);
-    
+
+    setIsLoading(true);
     try {
-      const vaultItem = await createVaultItem({
-        title,
-        category: itemType,
-        preview,
-        document_url: documentUrl,
-        is_encrypted: isEncrypted
-      });
+      // If no document URL is provided, generate a placeholder URL
+      const finalDocumentUrl = documentUrl || `https://example.com/documents/${Date.now()}`;
       
-      if (vaultItem) {
-        // Convert to legacy format for compatibility with existing code
-        const legacyItem = convertToLegacyVaultItem(vaultItem);
-        
+      const newItem = await createLegacyVaultItem({
+        title,
+        type,
+        preview,
+        document_url: finalDocumentUrl,
+        encryptionStatus
+      });
+
+      if (newItem) {
+        onItemAdded(newItem);
+        handleClose();
         toast({
-          title: "Item added",
+          title: "Item created",
           description: "Your legacy item has been successfully added to the vault."
         });
-        
-        onItemAdded(legacyItem as unknown as LegacyVaultItem);
-        handleClose();
       } else {
-        throw new Error("Failed to create vault item");
+        throw new Error("Failed to create item");
       }
     } catch (error) {
-      console.error("Error creating vault item:", error);
+      console.error("Error creating item:", error);
       toast({
-        title: "Error",
-        description: "There was a problem adding your item to the vault. Please try again.",
+        title: "Creation failed",
+        description: "There was an error adding your item. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add Legacy Vault Item</DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="file">Upload File (Optional)</Label>
-            <div className="mt-1 flex items-center">
-              <label className="flex items-center gap-2 cursor-pointer text-sm border rounded-md px-3 py-2 text-gray-600 hover:bg-gray-50">
-                <FileUp size={16} />
-                Choose File
-                <input 
-                  type="file" 
-                  id="file" 
-                  className="hidden" 
-                  onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+      <DialogContent className="sm:max-w-[500px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Add Legacy Item
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input 
+                id="title" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                placeholder="Enter item title"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="type">Type</Label>
+              <Select value={type} onValueChange={(value) => setType(value as VaultItemType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={VaultItemType.story}>Personal Story</SelectItem>
+                  <SelectItem value={VaultItemType.confession}>Confession</SelectItem>
+                  <SelectItem value={VaultItemType.wishes}>Special Wishes</SelectItem>
+                  <SelectItem value={VaultItemType.advice}>Life Advice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ai-assist" className="cursor-pointer">Use AI assistance</Label>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="ai-assist" 
+                  checked={useAI} 
+                  onCheckedChange={setUseAI} 
                 />
-              </label>
-              {preview && <span className="ml-2 text-sm text-gray-500">{preview}</span>}
+                {useAI && (
+                  <Button 
+                    type="button" 
+                    size="sm"
+                    variant="outline"
+                    onClick={generateWithAI}
+                    disabled={isLoading || !title.trim()}
+                    className="ml-2"
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="preview">Preview / Summary</Label>
+              <Textarea 
+                id="preview" 
+                value={preview} 
+                onChange={(e) => setPreview(e.target.value)} 
+                placeholder="Enter a brief summary or let AI generate it"
+                className="min-h-[100px]"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="documentUrl">Document URL (optional)</Label>
+              <Input 
+                id="documentUrl" 
+                value={documentUrl} 
+                onChange={(e) => setDocumentUrl(e.target.value)} 
+                placeholder="Enter URL to the document or leave blank"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="encrypt" className="cursor-pointer">Encrypt this item</Label>
+              <Switch 
+                id="encrypt" 
+                checked={encryptionStatus} 
+                onCheckedChange={setEncryptionStatus} 
+              />
             </div>
           </div>
           
-          <div>
-            <Label htmlFor="title">Title</Label>
-            <Input 
-              id="title" 
-              value={title} 
-              onChange={(e) => setTitle(e.target.value)} 
-              placeholder="Enter title"
-              required
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="type">Type</Label>
-            <Select value={itemType} onValueChange={setItemType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="document">Document</SelectItem>
-                <SelectItem value="story">Story</SelectItem>
-                <SelectItem value="confession">Confession</SelectItem>
-                <SelectItem value="wishes">Wishes</SelectItem>
-                <SelectItem value="advice">Advice</SelectItem>
-                <SelectItem value="will">Will</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
-            <Label htmlFor="preview">Description</Label>
-            <Textarea 
-              id="preview" 
-              value={preview} 
-              onChange={(e) => setPreview(e.target.value)} 
-              placeholder="Enter a brief description"
-              rows={3}
-            />
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="encryption" 
-              checked={isEncrypted} 
-              onCheckedChange={setIsEncrypted}
-            />
-            <Label htmlFor="encryption" className="flex items-center gap-2 cursor-pointer">
-              {isEncrypted ? (
-                <>
-                  <Lock size={16} /> Encrypt this item
-                </>
-              ) : (
-                <>
-                  <Unlock size={16} /> Not encrypted
-                </>
-              )}
-            </Label>
-          </div>
-          
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={handleClose}>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isLoading}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Adding...' : 'Add Item'}
+            <Button
+              type="submit"
+              disabled={!title.trim() || isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <span className="h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </span>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Item
+                </>
+              )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

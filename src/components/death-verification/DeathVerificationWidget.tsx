@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { differenceInDays, format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { 
   getDeathVerificationSettings, 
-  getLatestCheckIn, 
+  getLatestCheckin, 
   processCheckin, 
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
@@ -36,7 +37,7 @@ export function DeathVerificationWidget() {
         setCheckinEnabled(settings.check_in_enabled);
         
         if (settings.check_in_enabled) {
-          const latestCheckin = await getLatestCheckIn();
+          const latestCheckin = await getLatestCheckin();
           
           if (latestCheckin) {
             setCheckin(latestCheckin);
@@ -60,7 +61,7 @@ export function DeathVerificationWidget() {
     try {
       setCheckinLoading(true);
       
-      const updatedCheckin = await processCheckin();
+      const updatedCheckin = await processCheckin('alive');
       
       if (updatedCheckin) {
         setCheckin(updatedCheckin);

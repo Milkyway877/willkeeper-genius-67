@@ -1,8 +1,6 @@
 
-import { toast as toastImpl } from '@/components/ui/use-toast';
-
-export const toast = toastImpl;
+import { toast } from '@/components/ui/use-toast';
 
 export const useToast = () => {
-  return { toast: toastImpl };
+  return { toast };
 };

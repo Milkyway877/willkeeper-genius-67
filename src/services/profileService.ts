@@ -146,6 +146,3 @@ export const getCurrentUser = async (): Promise<User | null> => {
     return null;
   }
 };
-
-// Add this alias for backward compatibility
-export const getProfile = getUserProfile;

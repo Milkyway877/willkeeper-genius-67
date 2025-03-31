@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export interface DeathVerificationSettings {
   id: string;
@@ -17,14 +18,6 @@ export interface DeathVerificationSettings {
   failsafe_enabled?: boolean;
   created_at?: string;
   updated_at?: string;
-}
-
-export interface DeathVerificationCheckin {
-  id: string;
-  user_id: string;
-  checked_in_at: string;
-  next_check_in: string;
-  status: string;
 }
 
 // Get death verification settings for current user
@@ -117,8 +110,45 @@ export async function updateDeathVerificationSettings(
   }
 }
 
+// Record a check-in
+export async function recordCheckIn(): Promise<boolean> {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      throw new Error('Not authenticated');
+    }
+
+    // Get settings to calculate next check-in date
+    const settings = await getDeathVerificationSettings();
+    if (!settings) {
+      throw new Error('No settings found');
+    }
+
+    const nextCheckIn = new Date();
+    nextCheckIn.setDate(nextCheckIn.getDate() + settings.check_in_frequency);
+
+    const { error } = await supabase
+      .from('death_verification_checkins')
+      .insert([
+        {
+          user_id: userData.user.id,
+          checked_in_at: new Date().toISOString(),
+          next_check_in: nextCheckIn.toISOString(),
+          status: 'alive',
+        },
+      ]);
+
+    if (error) throw error;
+
+    return true;
+  } catch (error) {
+    console.error('Error recording check-in:', error);
+    return false;
+  }
+}
+
 // Get latest check-in
-export const getLatestCheckIn = async (): Promise<DeathVerificationCheckin | null> => {
+export async function getLatestCheckIn(): Promise<any> {
   try {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -134,7 +164,10 @@ export const getLatestCheckIn = async (): Promise<DeathVerificationCheckin | nul
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
+      if (error.code === 'PGRST116') {
+        // No check-ins found
+        return null;
+      }
       throw error;
     }
 
@@ -143,44 +176,4 @@ export const getLatestCheckIn = async (): Promise<DeathVerificationCheckin | nul
     console.error('Error fetching latest check-in:', error);
     return null;
   }
-};
-
-// Process check-in
-export const processCheckin = async (): Promise<DeathVerificationCheckin | null> => {
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      throw new Error('Not authenticated');
-    }
-
-    const settings = await getDeathVerificationSettings();
-    if (!settings) {
-      throw new Error('No settings found');
-    }
-
-    const nextCheckIn = new Date();
-    nextCheckIn.setDate(nextCheckIn.getDate() + settings.check_in_frequency);
-
-    const { data, error } = await supabase
-      .from('death_verification_checkins')
-      .insert([
-        {
-          user_id: userData.user.id,
-          checked_in_at: new Date().toISOString(),
-          next_check_in: nextCheckIn.toISOString(),
-          status: 'alive',
-        },
-      ])
-      .select();
-
-    if (error) throw error;
-
-    return data[0] || null;
-  } catch (error) {
-    console.error('Error processing check-in:', error);
-    return null;
-  }
-};
-
-// Add this alias for backwards compatibility
-export const getLatestCheckin = getLatestCheckIn;
+}

@@ -110,10 +110,3 @@ export async function logActivity(action: string) {
     return false;
   }
 }
-
-// Add these exports for Dashboard.tsx that's trying to import them
-export const getDashboardSummary = getDashboardStats;
-export const getUserNotifications = () => [];
-export const getUserWills = () => [];
-export const getUserExecutors = () => [];
-export const getUserSubscription = () => null;
