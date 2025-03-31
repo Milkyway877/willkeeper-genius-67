@@ -206,7 +206,7 @@ export default function Templates() {
     };
     
     const dbTemplateType = templateMap[templateType] || templateType;
-    navigate('/will/new?template=' + dbTemplateType);
+    navigate('/will/create?template=' + dbTemplateType);
   };
   
   return (

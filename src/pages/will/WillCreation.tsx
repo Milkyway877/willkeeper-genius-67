@@ -33,7 +33,7 @@ import {
   MoveRight,
   Heart
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { TemplateCard } from './components/TemplateCard';
 import { WillEditor } from './components/WillEditor';
 import { WillPreview } from './components/WillPreview';
@@ -64,6 +64,7 @@ type Step = {
 export default function WillCreation() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const { notifyWillCreated, notifyDocumentUploaded } = useNotifications();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<WillTemplate | null>(null);
@@ -83,20 +84,37 @@ export default function WillCreation() {
   const [userData, setUserData] = useState<any | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const templateParam = params.get('template');
+    
+    if (templateParam) {
+      const template = templates.find(t => 
+        t.id === templateParam || 
+        t.id === validateTemplateType(templateParam)
+      );
+      
+      if (template) {
+        handleSelectTemplate(template);
+      }
+    }
+  }, [location]);
+
+  useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data } = await supabase.auth.getUser();
-        setIsAuthenticated(!!data.user);
+        const { data, error } = await supabase.auth.getUser();
         
-        if (!data.user) {
+        if (error || !data.user) {
+          console.error("Authentication error:", error);
+          setIsAuthenticated(false);
+          
           toast({
             title: "Authentication Required",
             description: "You need to be logged in to create a will. Please sign in to continue.",
             variant: "destructive"
           });
-          
-          setUserData(data);
         } else {
+          setIsAuthenticated(true);
           setUserData(data);
           console.log("User is authenticated, ID:", data.user.id);
         }
@@ -239,6 +257,8 @@ export default function WillCreation() {
         description: "You must be logged in to save a will. Please sign in and try again.",
         variant: "destructive"
       });
+      
+      navigate('/auth/signin?redirect=/will/create');
       return;
     }
     
@@ -296,6 +316,7 @@ export default function WillCreation() {
             description: "You must be logged in to save a will. Please sign in and try again.",
             variant: "destructive"
           });
+          navigate('/auth/signin?redirect=/will/create');
         } else if (saveError.code === '23514' || (saveError.message && saveError.message.includes('check constraint'))) {
           toast({
             title: "Template Format Error",
@@ -383,7 +404,7 @@ export default function WillCreation() {
             You need to be logged in to create and save wills. Please sign in to your account to continue.
           </p>
           <div className="flex flex-col space-y-2">
-            <Button onClick={() => navigate('/auth/signin')} className="w-full">
+            <Button onClick={() => navigate('/auth/signin?redirect=/will/create')} className="w-full">
               Sign In
             </Button>
             <Button onClick={() => navigate('/auth/signup')} variant="outline" className="w-full">
