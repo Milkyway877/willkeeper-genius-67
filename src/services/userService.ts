@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UserProfile {
@@ -8,6 +7,11 @@ export interface UserProfile {
   activation_complete: boolean | null;
   created_at: string;
   updated_at: string;
+  metadata?: {
+    location?: string;
+    bio?: string;
+    [key: string]: any;
+  };
 }
 
 // Get the current user's profile
@@ -44,9 +48,19 @@ export async function updateUserProfile(updates: Partial<UserProfile>): Promise<
       throw new Error('Not authenticated');
     }
 
+    // Extract metadata from updates if it exists
+    const { metadata, ...otherUpdates } = updates;
+    
+    let updateData = { ...otherUpdates };
+    
+    // If metadata exists, we need to handle it separately
+    if (metadata) {
+      updateData.metadata = metadata;
+    }
+
     const { data, error } = await supabase
       .from('user_profiles')
-      .update(updates)
+      .update(updateData)
       .eq('id', userData.user.id)
       .select();
 

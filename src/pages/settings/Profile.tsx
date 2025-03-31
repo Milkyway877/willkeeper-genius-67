@@ -15,7 +15,11 @@ interface UserProfile {
   full_name: string | null;
   avatar_url: string | null;
   email: string | null;
-  metadata?: any;
+  metadata?: {
+    location?: string;
+    bio?: string;
+    [key: string]: any;
+  };
 }
 
 export default function Profile() {
