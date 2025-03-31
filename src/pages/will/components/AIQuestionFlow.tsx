@@ -319,7 +319,8 @@ export function AIQuestionFlow({
     }
   }, [selectedTemplate]);
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Add a safe way to access the current question that checks if it exists
+  const currentQuestion = questions.length > currentQuestionIndex ? questions[currentQuestionIndex] : null;
   
   const shouldShowQuestion = (question: Question): boolean => {
     if (!question.dependsOn) return true;
@@ -342,6 +343,8 @@ export function AIQuestionFlow({
   };
 
   const handleAnswer = async () => {
+    if (!currentQuestion) return;
+    
     if (!currentAnswer.trim()) {
       toast({
         title: "Answer Required",
@@ -488,7 +491,7 @@ Witnesses: [Witness 1], [Witness 2]`;
     }
   };
 
-  if (!currentQuestion && !allQuestionsAnswered) {
+  if (questions.length === 0) {
     return (
       <div className="text-center py-10">
         <Loader2 className="h-10 w-10 animate-spin mx-auto text-willtank-500" />
