@@ -25,19 +25,38 @@ import {
 import { LegacyVaultItem } from '../../types';
 
 interface VaultItemDialogProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
+  open?: boolean;
+  isOpen?: boolean; // Added for compatibility with calling components
+  setOpen?: (open: boolean) => void;
+  onClose?: () => void; // Added for compatibility with calling components
   item: LegacyVaultItem | null;
-  onItemUpdate: (item: LegacyVaultItem) => void;
+  onItemUpdate?: (item: LegacyVaultItem) => void;
+  onSave?: (item: LegacyVaultItem) => void; // Added for compatibility with calling components
+  onDelete?: (id: string) => Promise<void>; // Added for compatibility with calling components
 }
 
-export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItemDialogProps) {
+export function VaultItemDialog({ 
+  open, 
+  isOpen, 
+  setOpen, 
+  onClose, 
+  item, 
+  onItemUpdate,
+  onSave,
+  onDelete 
+}: VaultItemDialogProps) {
   const { toast } = useToast();
   const [itemName, setItemName] = useState('');
   const [itemDescription, setItemDescription] = useState('');
   const [itemContent, setItemContent] = useState('');
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Handle both open and isOpen props
+  const isDialogOpen = open !== undefined ? open : isOpen;
+  const setDialogOpen = setOpen || (onClose ? (val: boolean) => {
+    if (!val) onClose();
+  } : undefined);
 
   useEffect(() => {
     if (item) {
@@ -54,7 +73,8 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
   }, [item]);
 
   const handleClose = () => {
-    setOpen(false);
+    if (setOpen) setOpen(false);
+    if (onClose) onClose();
   };
 
   const handleSubmit = async () => {
@@ -72,7 +92,9 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
       const updatedItem = await updateLegacyVaultItem(item.id, updates);
 
       if (updatedItem) {
-        onItemUpdate(updatedItem);
+        if (onItemUpdate) onItemUpdate(updatedItem);
+        if (onSave) onSave(updatedItem);
+        
         toast({
           title: "Vault Item Updated",
           description: "Your vault item has been successfully updated.",
@@ -107,11 +129,14 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
           encryptionStatus: !isEncrypted
         };
         
-        onItemUpdate(updatedItem);
+        if (onItemUpdate) onItemUpdate(updatedItem);
+        if (onSave) onSave(updatedItem);
+        
+        setIsEncrypted(!isEncrypted);
         
         toast({
-          title: updatedItem.is_encrypted ? "Item Encrypted" : "Item Decrypted",
-          description: updatedItem.is_encrypted 
+          title: !isEncrypted ? "Item Encrypted" : "Item Decrypted",
+          description: !isEncrypted 
             ? "Your item is now encrypted and secure." 
             : "Your item is now decrypted and accessible.",
         });
@@ -129,7 +154,7 @@ export function VaultItemDialog({ open, setOpen, item, onItemUpdate }: VaultItem
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit Vault Item</DialogTitle>
