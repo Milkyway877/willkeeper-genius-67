@@ -80,14 +80,20 @@ export const createWill = async (will: Omit<Will, 'id'>) => {
     }
     
     // Validate template_type - must match exactly what's accepted by the database constraint
+    // Convert template_type to lowercase and ensure it's one of the allowed values
     const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
     let templateType = 'custom'; // Default to custom
     
-    if (will.template_type && validTemplateTypes.includes(will.template_type.toLowerCase())) {
-      templateType = will.template_type.toLowerCase();
+    if (will.template_type) {
+      const normalizedTemplateType = will.template_type.toLowerCase();
+      if (validTemplateTypes.includes(normalizedTemplateType)) {
+        templateType = normalizedTemplateType;
+      } else {
+        console.warn(`Invalid template type '${will.template_type}', defaulting to 'custom'`);
+      }
     }
 
-    console.log("Using template type:", templateType);
+    console.log("Using validated template type:", templateType);
     console.log("User ID:", userData.user.id);
     
     const willData = {
@@ -161,10 +167,12 @@ export const updateWill = async (willId: string, updates: Partial<Will>) => {
     // Validate template_type if it's being updated
     if (updates.template_type) {
       const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
-      if (!validTemplateTypes.includes(updates.template_type.toLowerCase())) {
+      const normalizedTemplateType = updates.template_type.toLowerCase();
+      
+      if (!validTemplateTypes.includes(normalizedTemplateType)) {
         updates.template_type = 'custom';
       } else {
-        updates.template_type = updates.template_type.toLowerCase();
+        updates.template_type = normalizedTemplateType;
       }
     }
     

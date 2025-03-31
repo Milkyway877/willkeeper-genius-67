@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -82,7 +81,6 @@ export default function WillCreation() {
   const [isCreatingWill, setIsCreatingWill] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  // Check authentication status when component loads
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -131,7 +129,6 @@ export default function WillCreation() {
   const handleAnalyzeWill = () => {
     setIsAnalyzing(true);
     
-    // Simulating progress updates
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
@@ -142,14 +139,12 @@ export default function WillCreation() {
       });
     }, 500);
     
-    // Simulate analysis with timeout
     setTimeout(() => {
       clearInterval(progressInterval);
       setProgress(100);
       setIsAnalyzing(false);
       setAnalyzeComplete(true);
       
-      // For demonstration, randomly decide if there are issues
       if (Math.random() > 0.5) {
         setLegalIssues([
           "The executor appointment lacks an alternative in case your primary executor is unavailable.",
@@ -178,7 +173,6 @@ export default function WillCreation() {
       return;
     }
     
-    // Create a PDF-like blob from the will content
     const willHtml = `
       <html>
         <head>
@@ -221,7 +215,6 @@ export default function WillCreation() {
     document.body.appendChild(a);
     a.click();
     
-    // Clean up
     setTimeout(() => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
@@ -232,9 +225,8 @@ export default function WillCreation() {
       description: "Your will document is being downloaded."
     });
   };
-  
+
   const handleCompleteWill = async () => {
-    // Check if user is authenticated
     if (!isAuthenticated) {
       toast({
         title: "Authentication Required",
@@ -245,7 +237,6 @@ export default function WillCreation() {
     }
     
     try {
-      // Show loading state
       setIsCreatingWill(true);
       toast({
         title: "Saving your will",
@@ -256,20 +247,26 @@ export default function WillCreation() {
       console.log("Template type:", selectedTemplate?.id || 'custom');
       console.log("AI generated:", userResponses && Object.keys(userResponses).length > 0);
 
-      // Ensure the template type is normalized to match what the database expects
-      let templateType = 'custom'; // Default fallback
+      let templateType = 'custom';
       
       if (selectedTemplate?.id) {
-        // Convert to lowercase to ensure it matches the expected format
-        templateType = selectedTemplate.id.toLowerCase();
+        const validTemplateTypes = ['traditional', 'living-trust', 'digital-assets', 'charitable', 'business', 'pet-care', 'custom'];
+        const normalizedTemplateType = selectedTemplate.id.toLowerCase();
+        
+        if (validTemplateTypes.includes(normalizedTemplateType)) {
+          templateType = normalizedTemplateType;
+        } else {
+          console.warn(`Invalid template type '${selectedTemplate.id}', defaulting to 'custom'`);
+        }
       }
 
-      // Save the will to the database with proper error handling
+      console.log("Using validated template type:", templateType);
+
       try {
         const newWill = await createWill({
           title: willTitle,
           status: 'Draft',
-          document_url: '', // In a real app, you'd upload to storage and get URL
+          document_url: '',
           template_type: templateType,
           ai_generated: userResponses && Object.keys(userResponses).length > 0
         });
@@ -278,12 +275,10 @@ export default function WillCreation() {
           throw new Error("Failed to create will - no response from server");
         }
         
-        // We successfully created the will
         try {
           await notifyWillCreated(willTitle);
         } catch (notificationError) {
           console.error("Error sending notification:", notificationError);
-          // Continue even if notification fails
         }
         
         toast({
@@ -292,7 +287,6 @@ export default function WillCreation() {
           variant: "default"
         });
         
-        // Navigate to the will dashboard
         setTimeout(() => {
           navigate("/will");
         }, 500);
@@ -314,16 +308,16 @@ export default function WillCreation() {
         } else {
           toast({
             title: "Error Creating Will",
-            description: "There was a problem saving your will. Please try again.",
+            description: `There was a problem saving your will: ${saveError.message || 'Unknown error'}`,
             variant: "destructive"
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Outer error saving will:', error);
       toast({
         title: "Error Creating Will",
-        description: "There was a problem saving your will. Please try again.",
+        description: `There was a problem saving your will: ${error.message || 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {
@@ -382,7 +376,6 @@ export default function WillCreation() {
     }
   ];
 
-  // If authentication is checked and user is not authenticated, show a login prompt
   if (isAuthenticated === false) {
     return (
       <Layout>
@@ -468,7 +461,6 @@ export default function WillCreation() {
                   onFilesUploaded={(files) => {
                     setUploadedFiles(prev => [...prev, ...files]);
                     
-                    // Updated to use the correct object parameter format
                     if (files.length > 0) {
                       notifyDocumentUploaded({
                         title: "Documents Uploaded",
@@ -666,7 +658,6 @@ export default function WillCreation() {
 
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
-  // Show loading state while checking authentication
   if (isAuthenticated === null) {
     return (
       <Layout>
