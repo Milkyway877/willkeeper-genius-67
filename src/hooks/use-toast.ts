@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -186,25 +187,40 @@ export function useToast() {
 
 export type Toast = ReturnType<typeof useToast>
 
-export const toast = {
-  custom: (props: React.ComponentProps<typeof Toast["toast"]>) => {
+// Correctly define a toast function object that can be directly called
+// Fix the 'Toast' type being used as a value issue
+export const toast = (() => {
+  // Create a function that can be called directly
+  const toastFn = (props: Omit<ToasterToast, "id">) => {
     const { toast } = useToast()
     return toast(props)
-  },
-  success: (props: Omit<React.ComponentProps<typeof Toast["toast"]>, "variant">) => {
+  }
+
+  // Add methods to the function
+  toastFn.custom = (props: Omit<ToasterToast, "id">) => {
+    const { toast } = useToast()
+    return toast(props)
+  }
+
+  toastFn.success = (props: Omit<ToasterToast, "id" | "variant">) => {
     const { toast } = useToast()
     return toast({ ...props, variant: "default" })
-  },
-  error: (props: Omit<React.ComponentProps<typeof Toast["toast"]>, "variant">) => {
+  }
+
+  toastFn.error = (props: Omit<ToasterToast, "id" | "variant">) => {
     const { toast } = useToast()
     return toast({ ...props, variant: "destructive" })
-  },
-  default: (props: Omit<React.ComponentProps<typeof Toast["toast"]>, "variant">) => {
+  }
+
+  toastFn.default = (props: Omit<ToasterToast, "id" | "variant">) => {
     const { toast } = useToast()
     return toast({ ...props, variant: "default" })
-  },
-  destructive: (props: Omit<React.ComponentProps<typeof Toast["toast"]>, "variant">) => {
+  }
+
+  toastFn.destructive = (props: Omit<ToasterToast, "id" | "variant">) => {
     const { toast } = useToast()
     return toast({ ...props, variant: "destructive" })
-  },
-}
+  }
+
+  return toastFn
+})()
