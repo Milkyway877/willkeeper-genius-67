@@ -19,7 +19,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     flowType: 'pkce'
   },
   global: {
-    fetch: (...args) => {
+    fetch: (...args: [RequestInfo | URL, RequestInit?]) => {
       return fetch(...args).catch(error => {
         console.error('Fetch error in Supabase client:', error);
         throw error;
