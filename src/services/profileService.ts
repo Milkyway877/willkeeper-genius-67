@@ -9,7 +9,7 @@ export interface UserProfile {
   created_at: string;
   updated_at: string;
   is_activated: boolean | null;
-  subscription_plan: string | null;
+  subscription_plan: string | null; // Added this property
   activation_date: string | null;
   email: string | null;
   email_verified: boolean | null;

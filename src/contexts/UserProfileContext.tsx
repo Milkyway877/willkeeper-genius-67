@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { getUserProfile } from '@/services/profileService';
+import { getUserProfile, getInitials } from '@/services/profileService';
 
 export type Profile = {
   id: string;
@@ -17,6 +17,7 @@ export type Profile = {
   updated_at?: string | null;
   email_verified?: boolean;
   is_activated?: boolean;
+  subscription_plan?: string | null; // Added this property
 };
 
 type UserProfileContextType = {
@@ -25,6 +26,7 @@ type UserProfileContextType = {
   isLoading: boolean;
   error: string | null;
   refreshProfile: () => Promise<void>;
+  initials: string; // Added initials property
 };
 
 const UserProfileContext = createContext<UserProfileContextType | undefined>(undefined);
@@ -44,7 +46,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         const userId = sessionData.session.user.id;
         console.log("Fetching updated profile for user:", userId);
         
-        const userProfile = await getUserProfile(userId);
+        const userProfile = await getUserProfile(); // Removed the userId parameter
         
         if (userProfile) {
           console.log("Profile refreshed successfully:", userProfile);
@@ -58,6 +60,15 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     } catch (error) {
       console.error("Error refreshing profile:", error);
     }
+  };
+
+  // Compute initials from the user's full name
+  const getUserInitials = (): string => {
+    if (!profile || !profile.full_name) {
+      return 'U';
+    }
+    
+    return getInitials(profile.full_name);
   };
 
   useEffect(() => {
@@ -86,7 +97,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         setUser(sessionData.session.user);
         
         try {
-          const userProfile = await getUserProfile(sessionData.session.user.id);
+          const userProfile = await getUserProfile(); // Removed the userId parameter
           
           if (userProfile) {
             setProfile({
@@ -130,8 +141,11 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     };
   }, []);
 
+  // Calculate initials from the profile name
+  const initials = getUserInitials();
+
   return (
-    <UserProfileContext.Provider value={{ profile, user, isLoading, error, refreshProfile }}>
+    <UserProfileContext.Provider value={{ profile, user, isLoading, error, refreshProfile, initials }}>
       {children}
     </UserProfileContext.Provider>
   );
