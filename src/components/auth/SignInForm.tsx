@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
+import { sendVerificationEmail } from '@/utils/email';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -23,6 +24,7 @@ type SignInFormInputs = z.infer<typeof signInSchema>;
 export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
@@ -52,6 +54,18 @@ export function SignInForm() {
     
     handleAuthRedirect();
   }, [navigate, location]);
+  
+  // Check for verified email from EmailVerification page
+  useEffect(() => {
+    const locationState = location.state as { verifiedEmail?: string } | null;
+    if (locationState?.verifiedEmail) {
+      form.setValue('email', locationState.verifiedEmail);
+      toast({
+        title: "Email verified",
+        description: "Your email has been verified. You can now sign in.",
+      });
+    }
+  }, [location.state]);
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
@@ -86,7 +100,7 @@ export function SignInForm() {
         if (authError.message.toLowerCase().includes('email not confirmed')) {
           toast({
             title: "Email not verified",
-            description: "Please check your inbox and click the verification link before signing in.",
+            description: "Please verify your email before signing in. Check your inbox or request a new verification code.",
             variant: "destructive",
           });
           setIsLoading(false);
@@ -142,31 +156,18 @@ export function SignInForm() {
       return;
     }
     
-    setIsLoading(true);
+    setResendLoading(true);
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        toast({
-          title: "Failed to resend verification",
-          description: error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
+      await sendVerificationEmail(email, 'signup');
       
       toast({
         title: "Verification email sent",
-        description: "Please check your inbox for the verification link.",
+        description: "Please check your inbox for the verification code.",
       });
+      
+      // Redirect to verification page
+      navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`);
     } catch (error) {
       console.error("Error resending verification:", error);
       toast({
@@ -175,7 +176,7 @@ export function SignInForm() {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setResendLoading(false);
     }
   };
 
@@ -256,9 +257,13 @@ export function SignInForm() {
               type="button"
               onClick={handleResendVerification}
               className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
-              disabled={isLoading}
+              disabled={resendLoading}
             >
-              Resend verification email
+              {resendLoading ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin inline" /> Sending...
+                </>
+              ) : "Resend verification email"}
             </button>
           </div>
           
