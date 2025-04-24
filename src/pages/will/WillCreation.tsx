@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +7,6 @@ import { motion } from 'framer-motion';
 import { useSystemNotifications } from '@/hooks/use-system-notifications';
 import { createDocumentUrl, downloadDocument } from '@/utils/documentUtils';
 import { FileText, Book, PenTool, Video, Upload, Check, ArrowRight, ArrowLeft, Camera, File, Key, Lock, Briefcase, Share2, Download, Save, AlertCircle, Info, Trash2, RefreshCw, User, UserCheck, Edit, MoveRight, Heart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { TemplateCard } from './components/TemplateCard';
 import { WillEditor } from './components/WillEditor';
 import { WillPreview } from './components/WillPreview';
@@ -18,6 +16,7 @@ import { FileUploader } from './components/FileUploader';
 import { DigitalSignature } from './components/DigitalSignature';
 import { Progress } from "@/components/ui/progress";
 import { createWill } from '@/services/willService';
+import { Button } from '@/components/ui/button';
 
 type WillTemplate = {
   id: string;
