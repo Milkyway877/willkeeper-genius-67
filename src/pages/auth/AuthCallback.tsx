@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
@@ -20,7 +21,7 @@ export default function AuthCallback() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownTimer);
-            navigate('/dashboard?activated=true');
+            navigate('/dashboard');
             return 0;
           }
           return prev - 1;
@@ -81,29 +82,14 @@ export default function AuthCallback() {
             console.log("Welcome notifications created successfully");
           }
           
-          // Update user profile to mark as activated if needed
-          try {
-            const { error: updateError } = await supabase
-              .from('user_profiles')
-              .update({ is_activated: true })
-              .eq('id', data.session.user.id);
-              
-            if (updateError) {
-              console.error("Failed to update user activation status:", updateError);
-            } else {
-              console.log("User account marked as activated successfully");
-            }
-          } catch (updateError) {
-            console.error("Error updating activation status:", updateError);
-          }
-          
           toast({
             title: "Email Verified Successfully!",
             description: "Welcome to WillTank. Your secure will management journey begins now.",
           });
           
-          // Set verified state and redirect with activation success parameter
+          // Set verified state and let countdown handle redirect
           setIsVerified(true);
+          setIsProcessing(false);
         } else {
           // Handle any params from the URL
           const params = new URLSearchParams(window.location.hash.substring(1));
@@ -112,7 +98,7 @@ export default function AuthCallback() {
           
           if (accessToken) {
             // If we have tokens in the URL, try to exchange them for a session
-            const { data: sessionData, error: setSessionError } = await supabase.auth.setSession({
+            const { error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || '',
             });
@@ -122,24 +108,6 @@ export default function AuthCallback() {
               setError("Failed to verify your email. Please try signing in again.");
               setIsProcessing(false);
               return;
-            }
-            
-            // Update user profile to mark as activated
-            if (sessionData?.user) {
-              try {
-                const { error: updateError } = await supabase
-                  .from('user_profiles')
-                  .update({ is_activated: true })
-                  .eq('id', sessionData.user.id);
-                  
-                if (updateError) {
-                  console.error("Failed to update user activation status:", updateError);
-                } else {
-                  console.log("User account marked as activated successfully");
-                }
-              } catch (updateError) {
-                console.error("Error updating activation status:", updateError);
-              }
             }
             
             // Create notifications for the user
@@ -154,8 +122,9 @@ export default function AuthCallback() {
               description: "Welcome to WillTank. Your secure will management journey begins now.",
             });
             
-            // Set verified state and redirect with activation success parameter
+            // Set verified state and let countdown handle redirect
             setIsVerified(true);
+            setIsProcessing(false);
           } else {
             // No session, no tokens - something went wrong
             setError("Authentication failed. Please try signing in again.");
@@ -167,8 +136,8 @@ export default function AuthCallback() {
             }, 3000);
           }
         }
-      } catch (error) {
-        console.error("Authentication callback error:", error);
+      } catch (e) {
+        console.error("Authentication callback error:", e);
         setError("An unexpected error occurred. Please try signing in again.");
         setIsProcessing(false);
         
