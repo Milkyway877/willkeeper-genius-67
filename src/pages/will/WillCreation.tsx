@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { WillEditor } from './components/WillEditor';
 import { getWill } from '@/services/willService';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +13,7 @@ interface WillCreationProps {
 
 export default function WillCreation({ readOnly = false }: WillCreationProps) {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(!!id);
   const [error, setError] = useState<string | null>(null);
   const [willData, setWillData] = useState<any>(null);

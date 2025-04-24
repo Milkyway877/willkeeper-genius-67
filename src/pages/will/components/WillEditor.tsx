@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File, AlertCircle, CheckCircle2, Clock, Lightbulb, Loader2 } from 'lucide-react';
@@ -7,6 +8,16 @@ import { createWill, updateWill } from '@/services/willService';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GuidedWillEditor } from './GuidedWillEditor';
+import { useNavigate } from 'react-router-dom';
+import { Progress } from '@/components/ui/progress';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   useWillProgress, 
   saveWillProgress, 
