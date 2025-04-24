@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
@@ -87,9 +86,11 @@ export default function AuthCallback() {
             description: "Welcome to WillTank. Your secure will management journey begins now.",
           });
           
-          // Set verified state and let countdown handle redirect
+          // Set verified state and redirect with activation success parameter
           setIsVerified(true);
-          setIsProcessing(false);
+          setTimeout(() => {
+            navigate('/dashboard?activated=true');
+          }, 2000);
         } else {
           // Handle any params from the URL
           const params = new URLSearchParams(window.location.hash.substring(1));
@@ -122,9 +123,11 @@ export default function AuthCallback() {
               description: "Welcome to WillTank. Your secure will management journey begins now.",
             });
             
-            // Set verified state and let countdown handle redirect
+            // Set verified state and redirect with activation success parameter
             setIsVerified(true);
-            setIsProcessing(false);
+            setTimeout(() => {
+              navigate('/dashboard?activated=true');
+            }, 2000);
           } else {
             // No session, no tokens - something went wrong
             setError("Authentication failed. Please try signing in again.");
@@ -136,8 +139,8 @@ export default function AuthCallback() {
             }, 3000);
           }
         }
-      } catch (e) {
-        console.error("Authentication callback error:", e);
+      } catch (error) {
+        console.error("Authentication callback error:", error);
         setError("An unexpected error occurred. Please try signing in again.");
         setIsProcessing(false);
         

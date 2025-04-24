@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 import { AccountActivationBar } from '@/components/auth/AccountActivationBar';
+import { AccountActivationSuccessBanner } from '@/components/auth/AccountActivationSuccessBanner';
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -26,13 +26,13 @@ export default function Dashboard() {
   const [activities, setActivities] = useState<any[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [showActivationSuccess, setShowActivationSuccess] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setIsLoading(true);
         
-        // Load dashboard summary with error handling
         let summaryData;
         try {
           summaryData = await getDashboardSummary();
@@ -47,7 +47,6 @@ export default function Dashboard() {
         }
         setSummary(summaryData);
         
-        // Load all other data with individual error handling
         let notifications = [], wills = [], executors = [], subscription = null;
         
         try {
@@ -80,7 +79,6 @@ export default function Dashboard() {
         
         setSubscription(subscription);
         
-        // Create activities from different data sources
         const recentActivities = [
           ...wills.slice(0, 1).map(will => ({
             id: `will-${will.id}`,
@@ -98,7 +96,6 @@ export default function Dashboard() {
           }))
         ];
         
-        // Check if this appears to be a new user (no wills, no notifications, no executors)
         if (wills.length === 0 && notifications.length === 0 && executors.length === 0) {
           setIsNewUser(true);
         }
@@ -119,11 +116,18 @@ export default function Dashboard() {
     loadDashboardData();
   }, [toast]);
   
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('activated') === 'true') {
+      setShowActivationSuccess(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const handleActivateAccount = () => {
     navigate('/auth/activate');
   };
 
-  // New user welcome component
   const NewUserWelcome = () => (
     <div className="bg-willtank-50 p-6 rounded-xl border border-willtank-100 mb-6">
       <h3 className="text-lg font-medium mb-3">Welcome to WillTank</h3>
@@ -162,6 +166,7 @@ export default function Dashboard() {
       {profile && !profile.is_activated && (
         <AccountActivationBar onActivateClick={handleActivateAccount} />
       )}
+      {showActivationSuccess && <AccountActivationSuccessBanner />}
       
       <div className="max-w-6xl mx-auto">
         <motion.div 
