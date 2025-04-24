@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { motion } from 'framer-motion';
-import { verifyCode } from '@/utils/email';
+import { verifyCode, sendVerificationEmail } from '@/utils/email';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -63,6 +63,38 @@ export default function EmailVerification() {
         return;
       }
       
+      // If successful, create a session
+      const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: form.getValues('code') // We need to implement a better way to handle this
+      });
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        navigate('/auth/signin', { state: { verifiedEmail: email } });
+        
+        toast({
+          title: "Email verified",
+          description: "Your email has been successfully verified. You can now sign in.",
+          variant: "default",
+        });
+        
+        setIsLoading(false);
+        return;
+      }
+      
+      // Mark user as verified in the profile
+      if (sessionData.user) {
+        try {
+          await supabase
+            .from('user_profiles')
+            .update({ activation_complete: true })
+            .eq('id', sessionData.user.id);
+        } catch (profileError) {
+          console.error("Error updating profile:", profileError);
+        }
+      }
+      
       // If successful
       toast({
         title: "Email verified",
@@ -91,19 +123,8 @@ export default function EmailVerification() {
     setResendLoading(true);
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email
-      });
-      
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
+      // Use our custom verification email sending
+      await sendVerificationEmail(email, 'signup');
       
       toast({
         title: "Code sent",

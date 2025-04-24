@@ -1,142 +1,127 @@
-
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { NotificationsProvider } from '@/contexts/NotificationsContext';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
-import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/use-auth';
 
-// Import pages
-import Home from './pages/Index';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Pricing from './pages/Pricing';
-import NotFound from './pages/NotFound';
-import Blog from './pages/Blog';
-import BlogArticle from './pages/BlogArticle';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
-import Cookies from './pages/Cookies';
+// Public Pages
+import Index from '@/pages/Index';
+import SignUp from '@/pages/auth/SignUp';
+import SignIn from '@/pages/auth/SignIn';
+import Recover from '@/pages/auth/Recover';
+import ResetPassword from '@/pages/auth/ResetPassword';
+import EmailVerification from '@/pages/auth/EmailVerification';
+import AuthCallback from '@/pages/auth/AuthCallback';
+import VerifyEmailBanner from '@/pages/auth/VerifyEmailBanner';
 
-// Import secure auth components
-import SecureSignIn from './pages/auth/SecureSignIn';
-import SecureSignUp from './pages/auth/SecureSignUp';
-import SecureRecover from './pages/auth/SecureRecover';
-import AuthResetPassword from './pages/auth/ResetPassword';
-import AccountActivation from './pages/auth/AccountActivation';
-import EmailVerification from './pages/auth/EmailVerification';
-import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
-import Dashboard from './pages/Dashboard';
-import WillDashboard from './pages/will/Will';
-import WillCreation from './pages/will/WillCreation';
-import WillTemplates from './pages/templates/Templates';
-import WillTank from './pages/tank/Tank';
-import Settings from './pages/settings/Settings';
-import Profile from './pages/settings/Profile';
-import Help from './pages/Help';
-import Search from './pages/search/Search';
-import Corporate from './pages/Corporate';
-import Business from './pages/Business';
-import HowItWorks from './pages/HowItWorks';
-import Security from './pages/Security';
-import Services from './pages/Services';
+// Protected Pages
+import Dashboard from '@/pages/dashboard/Dashboard';
+import Profile from '@/pages/dashboard/Profile';
+import Settings from '@/pages/dashboard/Settings';
+import Security from '@/pages/dashboard/Security';
+import Notifications from '@/pages/dashboard/Notifications';
+import Wills from '@/pages/dashboard/Wills';
+import CreateWill from '@/pages/dashboard/CreateWill';
+import EditWill from '@/pages/dashboard/EditWill';
+import ViewWill from '@/pages/dashboard/ViewWill';
+import FutureMessages from '@/pages/dashboard/FutureMessages';
+import CreateMessage from '@/pages/dashboard/CreateMessage';
+import EditMessage from '@/pages/dashboard/EditMessage';
+import ViewMessage from '@/pages/dashboard/ViewMessage';
+import LegacyVault from '@/pages/dashboard/LegacyVault';
+import CreateVaultItem from '@/pages/dashboard/CreateVaultItem';
+import EditVaultItem from '@/pages/dashboard/EditVaultItem';
+import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 
-// Add the Will List page import
-import Wills from './pages/wills/Wills';
-
-// Import the Documentation pages
-import Documentation from './pages/corporate/Documentation';
-import GettingStarted from './pages/corporate/documentation/GettingStarted';
-import UserGuides from './pages/corporate/documentation/UserGuides';
-import API from './pages/corporate/documentation/API';
-
-// Import pages for sidebar links
-import Encryption from './pages/encryption/Encryption';
-import Executors from './pages/executors/Executors';
-import AIAssistance from './pages/ai/AIAssistance';
-import IDSecurity from './pages/security/IDSecurity';
-import Billing from './pages/billing/Billing';
-import Notifications from './pages/notifications/Notifications';
-import Activity from './pages/activity/Activity';
-
-// Add global mobile responsive styles
-import './MobileStyles.css';
-
-const queryClient = new QueryClient();
+// Layout Components
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 function App() {
+  const { user, isLoading } = useAuth();
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSessionChecked(true);
+    };
+
+    checkSession();
+  }, []);
+
+  if (!sessionChecked && isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-willtank-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <NotificationsProvider>
+    <ThemeProvider defaultTheme="light" storageKey="willtank-theme">
+      <Router>
+        <div className="min-h-screen bg-background">
+          <main>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              
+              {/* Auth Routes */}
+              <Route path="/auth">
+                <Route path="signup" element={<SignUp />} />
+                <Route path="signin" element={<SignIn />} />
+                <Route path="recover" element={<Recover />} />
+                <Route path="reset-password" element={<ResetPassword />} />
+                <Route path="verify-email" element={<EmailVerification />} />
+                <Route path="auth-callback" element={<AuthCallback />} />
+              </Route>
+              
+              {/* Protected Dashboard Routes */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Dashboard />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="security" element={<Security />} />
+                <Route path="notifications" element={<Notifications />} />
+                
+                {/* Will Management */}
+                <Route path="wills">
+                  <Route index element={<Wills />} />
+                  <Route path="create" element={<CreateWill />} />
+                  <Route path="edit/:id" element={<EditWill />} />
+                  <Route path="view/:id" element={<ViewWill />} />
+                </Route>
+                
+                {/* Future Messages */}
+                <Route path="messages">
+                  <Route index element={<FutureMessages />} />
+                  <Route path="create" element={<CreateMessage />} />
+                  <Route path="edit/:id" element={<EditMessage />} />
+                  <Route path="view/:id" element={<ViewMessage />} />
+                </Route>
+                
+                {/* Legacy Vault */}
+                <Route path="vault">
+                  <Route index element={<LegacyVault />} />
+                  <Route path="create" element={<CreateVaultItem />} />
+                  <Route path="edit/:id" element={<EditVaultItem />} />
+                  <Route path="view/:id" element={<ViewVaultItem />} />
+                </Route>
+              </Route>
+              
+              {/* Catch-all route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
           <Toaster />
-          <FloatingAssistant />
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:id" element={<BlogArticle />} />
-            <Route path="/help" element={<Help />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/security" element={<Security />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/business" element={<Business />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/cookies" element={<Cookies />} />
-            
-            {/* Auth routes - using our new secure components */}
-            <Route path="/auth/signin" element={<SecureSignIn />} />
-            <Route path="/auth/signup" element={<SecureSignUp />} />
-            <Route path="/auth/forgot-password" element={<SecureRecover />} />
-            <Route path="/auth/reset-password" element={<AuthResetPassword />} />
-            <Route path="/auth/activate" element={<AccountActivation />} />
-            <Route path="/auth/verify-email" element={<EmailVerification />} />
-            <Route path="/auth/verification-banner" element={<VerifyEmailBanner />} />
-            
-            {/* Dashboard routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/will" element={<WillDashboard />} />
-            <Route path="/will/:id" element={<WillDashboard />} />
-            <Route path="/will/view/:id" element={<WillCreation readOnly={true} />} />
-            <Route path="/will/edit/:id" element={<WillCreation />} />
-            <Route path="/will/create" element={<WillCreation />} />
-            <Route path="/wills" element={<Wills />} />
-            <Route path="/templates" element={<WillTemplates />} />
-            <Route path="/tank" element={<WillTank />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/profile" element={<Profile />} />
-            <Route path="/activity" element={<Activity />} />
-
-            {/* Routes for sidebar links */}
-            <Route path="/pages/encryption/Encryption" element={<Encryption />} />
-            <Route path="/pages/executors/Executors" element={<Executors />} />
-            <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
-            <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
-            <Route path="/billing" element={<Billing />} />
-            <Route path="/pages/billing/Billing" element={<Billing />} />
-            <Route path="/pages/notifications/Notifications" element={<Notifications />} />
-
-            {/* Corporate routes */}
-            <Route path="/corporate" element={<Corporate />} />
-            <Route path="/corporate/documentation" element={<Documentation />} />
-            
-            {/* Documentation sub-pages */}
-            <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
-            <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
-            <Route path="/corporate/documentation/api" element={<API />} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </NotificationsProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+        </div>
+      </Router>
+    </ThemeProvider>
   );
 }
 
