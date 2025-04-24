@@ -3,12 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { createWelcomeNotification, createSystemNotification } from '@/services/notificationService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,45 +35,34 @@ export default function AuthCallback() {
   }, [isVerified, navigate]);
 
   useEffect(() => {
-    console.log("AuthCallback: Initializing");
-
     const createWelcomeNotifications = async () => {
       try {
         console.log("Creating welcome notifications for new user");
         
-        try {
-          // Send welcome notification
-          await createWelcomeNotification();
-          
-          // Send getting started instructions
-          await createSystemNotification('info', {
-            title: "Getting Started with WillTank",
-            description: "Follow our quick guide to set up your account and create your first will."
-          });
-          
-          // Send a security reminder
-          await createSystemNotification('security', {
-            title: "Secure Your Account",
-            description: "For maximum security, we recommend enabling two-factor authentication in settings."
-          });
-          
-          console.log("Successfully created welcome notifications");
-        } catch (notificationError) {
-          console.error("Error creating notifications:", notificationError);
-          // Continue anyway - notifications are not critical for authentication
-        }
+        // Send welcome notification
+        await createWelcomeNotification();
+        
+        // Send getting started instructions
+        await createSystemNotification('info', {
+          title: "Getting Started with WillTank",
+          description: "Follow our quick guide to set up your account and create your first will."
+        });
+        
+        // Send a security reminder
+        await createSystemNotification('security', {
+          title: "Secure Your Account",
+          description: "For maximum security, we recommend enabling two-factor authentication in settings."
+        });
         
         return true;
       } catch (notifError) {
-        console.error("Error in createWelcomeNotifications:", notifError);
+        console.error("Error creating welcome notifications:", notifError);
         return false;
       }
     };
 
     const handleEmailVerification = async () => {
       try {
-        console.log("AuthCallback: Checking authentication state");
-        
         // Check if this is coming from an email verification link
         const { data, error: sessionError } = await supabase.auth.getSession();
         
@@ -87,18 +75,15 @@ export default function AuthCallback() {
 
         // If session exists, the email has been verified
         if (data?.session) {
-          console.log("User is authenticated with session:", data.session.user.id);
-          
           // Create notifications for the user
-          try {
-            await createWelcomeNotifications();
-          } catch (notificationError) {
-            console.error("Error with notifications:", notificationError);
-            // Continue anyway - notifications are not critical
+          const notificationsCreated = await createWelcomeNotifications();
+          
+          if (notificationsCreated) {
+            console.log("Welcome notifications created successfully");
           }
           
           toast({
-            title: "Authentication Successful!",
+            title: "Email Verified Successfully!",
             description: "Welcome to WillTank. Your secure will management journey begins now.",
           });
           
@@ -106,16 +91,12 @@ export default function AuthCallback() {
           setIsVerified(true);
           setIsProcessing(false);
         } else {
-          console.log("No active session found, checking URL parameters");
-          
           // Handle any params from the URL
           const params = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           
           if (accessToken) {
-            console.log("Found access token in URL, attempting to set session");
-            
             // If we have tokens in the URL, try to exchange them for a session
             const { error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
@@ -124,30 +105,20 @@ export default function AuthCallback() {
             
             if (setSessionError) {
               console.error("Set session error:", setSessionError);
-              setError("Failed to verify your authentication. Please try signing in again.");
-              setIsProcessing(false);
-              return;
-            }
-            
-            // Check if session was successfully set
-            const { data: newSession } = await supabase.auth.getSession();
-            if (!newSession?.session) {
-              console.error("Failed to establish session after setSession");
-              setError("Authentication failed. Please try signing in again.");
+              setError("Failed to verify your email. Please try signing in again.");
               setIsProcessing(false);
               return;
             }
             
             // Create notifications for the user
-            try {
-              await createWelcomeNotifications();
-            } catch (notificationError) {
-              console.error("Error with notifications:", notificationError);
-              // Continue anyway - notifications are not critical
+            const notificationsCreated = await createWelcomeNotifications();
+            
+            if (notificationsCreated) {
+              console.log("Welcome notifications created successfully");
             }
             
             toast({
-              title: "Authentication Successful!",
+              title: "Email Verified Successfully!",
               description: "Welcome to WillTank. Your secure will management journey begins now.",
             });
             
@@ -155,7 +126,6 @@ export default function AuthCallback() {
             setIsVerified(true);
             setIsProcessing(false);
           } else {
-            console.log("No authentication tokens found in URL");
             // No session, no tokens - something went wrong
             setError("Authentication failed. Please try signing in again.");
             setIsProcessing(false);
@@ -179,7 +149,7 @@ export default function AuthCallback() {
     };
 
     handleEmailVerification();
-  }, [navigate, toast]);
+  }, [navigate]);
 
   if (isProcessing) {
     return (
@@ -187,7 +157,7 @@ export default function AuthCallback() {
         <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-md">
           <div className="text-center">
             <Loader2 className="mx-auto h-12 w-12 text-willtank-600 animate-spin" />
-            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verifying your authentication...</h1>
+            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verifying your email...</h1>
             <p className="mt-2 text-gray-600">Please wait while we complete the process.</p>
           </div>
         </div>
@@ -203,7 +173,7 @@ export default function AuthCallback() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-gray-900">Authentication Successful!</h1>
+            <h1 className="mt-4 text-2xl font-bold text-gray-900">Email Verified!</h1>
             <p className="mt-2 text-gray-600">Welcome to WillTank. Your secure will management journey begins now.</p>
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-700">Redirecting you to your dashboard in <span className="font-bold text-black">{countdown}</span> seconds...</p>
@@ -224,7 +194,7 @@ export default function AuthCallback() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h1 className="mt-4 text-xl font-semibold text-gray-900">Authentication Failed</h1>
+            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verification Failed</h1>
             <p className="mt-2 text-gray-600">{error}</p>
             <p className="mt-4 text-gray-600">Redirecting you to the sign in page...</p>
           </div>
