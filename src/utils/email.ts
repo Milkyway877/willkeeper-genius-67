@@ -24,6 +24,8 @@ export const sendVerificationEmail = async (email: string, type: 'signup' | 'log
 
 export const verifyCode = async (email: string, code: string, type: 'signup' | 'login') => {
   try {
+    console.log('Verifying code for email:', email, 'type:', type);
+    
     const { data, error } = await supabase
       .from('email_verification_codes')
       .select('*')
@@ -34,14 +36,27 @@ export const verifyCode = async (email: string, code: string, type: 'signup' | '
       .gte('expires_at', new Date().toISOString())
       .maybeSingle();
 
-    if (error) throw error;
-    if (!data) return { valid: false, message: 'Invalid or expired code' };
+    if (error) {
+      console.error('Error querying verification code:', error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.log('Invalid or expired verification code');
+      return { valid: false, message: 'Invalid or expired code' };
+    }
 
+    console.log('Valid verification code found:', data.id);
+    
     // Mark the code as used
-    await supabase
+    const { error: updateError } = await supabase
       .from('email_verification_codes')
       .update({ used: true })
       .eq('id', data.id);
+
+    if (updateError) {
+      console.error('Error marking code as used:', updateError);
+    }
 
     return { valid: true };
   } catch (error) {

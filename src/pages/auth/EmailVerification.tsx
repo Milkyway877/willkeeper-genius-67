@@ -47,6 +47,7 @@ export default function EmailVerification() {
     setVerificationAttempts(prev => prev + 1);
     
     try {
+      console.log(`Verifying code for ${email}: ${values.code}`);
       const { valid, message } = await verifyCode(email, values.code, 'signup');
       
       if (!valid) {
@@ -69,6 +70,8 @@ export default function EmailVerification() {
         return;
       }
       
+      console.log("Code verified successfully, updating user profile");
+      
       // If successful, mark user as verified in user_profiles
       try {
         // Get session to verify user
@@ -80,10 +83,17 @@ export default function EmailVerification() {
         }
         
         if (sessionData?.session?.user) {
-          await supabase
+          console.log("Updating user profile with activated status");
+          const { error: updateError } = await supabase
             .from('user_profiles')
             .update({ activation_complete: true, email_verified: true })
             .eq('id', sessionData.session.user.id);
+            
+          if (updateError) {
+            console.error("Error updating profile:", updateError);
+          } else {
+            console.log("Profile updated successfully");
+          }
         } else {
           console.log("No active session found, continuing without updating profile");
         }
@@ -99,8 +109,15 @@ export default function EmailVerification() {
         variant: "default",
       });
       
-      // Navigate to sign in
-      navigate('/auth/signin', { state: { verifiedEmail: email } });
+      // Navigate to dashboard or signin
+      const { data: currentSession } = await supabase.auth.getSession();
+      if (currentSession?.session) {
+        console.log("User is authenticated, redirecting to dashboard");
+        navigate('/dashboard');
+      } else {
+        console.log("User not authenticated, redirecting to signin");
+        navigate('/auth/signin', { state: { verifiedEmail: email } });
+      }
       
     } catch (error: any) {
       console.error("Error during email verification:", error);
@@ -123,6 +140,7 @@ export default function EmailVerification() {
       // Reset verification attempts
       setVerificationAttempts(0);
       
+      console.log(`Resending verification email to ${email}`);
       // Use our custom verification email sending
       await sendVerificationEmail(email, 'signup');
       

@@ -16,6 +16,7 @@ import Captcha from './Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
 import { signUpSchema } from './SignUpSchemas';
 import { sendVerificationEmail } from '@/utils/email';
+import { Loader2 } from 'lucide-react';
 
 export function SignUpForm() {
   const navigate = useNavigate();
@@ -84,6 +85,8 @@ export function SignUpForm() {
         return;
       }
 
+      console.log("User signed up successfully, sending verification email");
+      
       // Send our custom verification email
       await sendVerificationEmail(
         values.email,
@@ -94,7 +97,7 @@ export function SignUpForm() {
       // Success! Redirect to verification page
       toast({
         title: "Account created",
-        description: "Please check your email to verify your account.",
+        description: "Please check your email for your verification code.",
       });
       
       // Redirect to the email verification page
@@ -227,7 +230,11 @@ export function SignUpForm() {
           className="w-full" 
           disabled={isLoading}
         >
-          {isLoading ? "Creating Account..." : "Create Account"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...
+            </>
+          ) : "Create Account"}
         </Button>
       </form>
     </Form>

@@ -16,7 +16,12 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(
   supabaseUrl || '',
-  supabaseServiceKey || ''
+  supabaseServiceKey || '',
+  {
+    auth: {
+      persistSession: false,
+    }
+  }
 );
 
 const corsHeaders = {

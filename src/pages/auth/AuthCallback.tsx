@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { createWelcomeNotification, createSystemNotification } from '@/services/notificationService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,6 @@ export default function AuthCallback() {
       try {
         console.log("Creating welcome notifications for new user");
         
-        // Handle potential errors from notification creation more gracefully
         try {
           // Send welcome notification
           await createWelcomeNotification();
@@ -69,6 +69,7 @@ export default function AuthCallback() {
 
     const handleEmailVerification = async () => {
       try {
+        console.log("AuthCallback: Checking authentication state");
         // Check if this is coming from an email verification link
         const { data, error: sessionError } = await supabase.auth.getSession();
         
@@ -96,7 +97,7 @@ export default function AuthCallback() {
           }
           
           toast({
-            title: "Email Verified Successfully!",
+            title: "Authentication Successful!",
             description: "Welcome to WillTank. Your secure will management journey begins now.",
           });
           
@@ -122,7 +123,7 @@ export default function AuthCallback() {
             
             if (setSessionError) {
               console.error("Set session error:", setSessionError);
-              setError("Failed to verify your email. Please try signing in again.");
+              setError("Failed to verify your authentication. Please try signing in again.");
               setIsProcessing(false);
               return;
             }
@@ -140,7 +141,7 @@ export default function AuthCallback() {
             }
             
             toast({
-              title: "Email Verified Successfully!",
+              title: "Authentication Successful!",
               description: "Welcome to WillTank. Your secure will management journey begins now.",
             });
             
@@ -172,7 +173,7 @@ export default function AuthCallback() {
     };
 
     handleEmailVerification();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   if (isProcessing) {
     return (
@@ -180,7 +181,7 @@ export default function AuthCallback() {
         <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-md">
           <div className="text-center">
             <Loader2 className="mx-auto h-12 w-12 text-willtank-600 animate-spin" />
-            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verifying your email...</h1>
+            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verifying your authentication...</h1>
             <p className="mt-2 text-gray-600">Please wait while we complete the process.</p>
           </div>
         </div>
@@ -196,7 +197,7 @@ export default function AuthCallback() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-gray-900">Email Verified!</h1>
+            <h1 className="mt-4 text-2xl font-bold text-gray-900">Authentication Successful!</h1>
             <p className="mt-2 text-gray-600">Welcome to WillTank. Your secure will management journey begins now.</p>
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-700">Redirecting you to your dashboard in <span className="font-bold text-black">{countdown}</span> seconds...</p>
@@ -217,7 +218,7 @@ export default function AuthCallback() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h1 className="mt-4 text-xl font-semibold text-gray-900">Verification Failed</h1>
+            <h1 className="mt-4 text-xl font-semibold text-gray-900">Authentication Failed</h1>
             <p className="mt-2 text-gray-600">{error}</p>
             <p className="mt-4 text-gray-600">Redirecting you to the sign in page...</p>
           </div>
