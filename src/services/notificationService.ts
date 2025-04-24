@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Notification {
@@ -182,6 +181,7 @@ const eventTypeToNotificationType = (
 ): 'success' | 'warning' | 'info' | 'security' => {
   const typeMap: Record<string, 'success' | 'warning' | 'info' | 'security'> = {
     'will_updated': 'success',
+    'will_created': 'success',
     'document_uploaded': 'info',
     'security_key_generated': 'security',
     'beneficiary_added': 'info',
@@ -197,25 +197,30 @@ export const createSystemNotification = async (
   type: 'success' | 'warning' | 'info' | 'security' | string,
   details: { title: string, description: string }
 ): Promise<Notification | null> => {
-  // Check if user is authenticated first
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.user) {
-    console.warn('No user logged in, skipping system notification creation');
+  try {
+    // Check if user is authenticated first
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('No user logged in, skipping system notification creation');
+      return null;
+    }
+    
+    // Convert event-based type to notification type if needed
+    const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
+      ? type as 'success' | 'warning' | 'info' | 'security'
+      : eventTypeToNotificationType(type);
+    
+    return createNotification({
+      title: details.title,
+      description: details.description,
+      type: notificationType,
+      read: false
+    });
+  } catch (error) {
+    console.error('Error in createSystemNotification:', error);
     return null;
   }
-  
-  // Convert event-based type to notification type if needed
-  const notificationType = ['success', 'warning', 'info', 'security'].includes(type) 
-    ? type as 'success' | 'warning' | 'info' | 'security'
-    : eventTypeToNotificationType(type);
-  
-  return createNotification({
-    title: details.title,
-    description: details.description,
-    type: notificationType,
-    read: false
-  });
 };
 
 // Legacy function - keeping for backward compatibility

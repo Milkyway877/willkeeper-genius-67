@@ -6,33 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { useSystemNotifications } from '@/hooks/use-system-notifications';
-import { 
-  FileText, 
-  Book, 
-  PenTool, 
-  Video, 
-  Upload, 
-  Check, 
-  ArrowRight, 
-  ArrowLeft, 
-  Camera,
-  File,
-  Key,
-  Lock,
-  Briefcase,
-  Share2,
-  Download,
-  Save,
-  AlertCircle,
-  Info,
-  Trash2,
-  RefreshCw,
-  User,
-  UserCheck,
-  Edit,
-  MoveRight,
-  Heart
-} from 'lucide-react';
+import { createDocumentUrl, downloadDocument } from '@/utils/documentUtils';
+import { FileText, Book, PenTool, Video, Upload, Check, ArrowRight, ArrowLeft, Camera, File, Key, Lock, Briefcase, Share2, Download, Save, AlertCircle, Info, Trash2, RefreshCw, User, UserCheck, Edit, MoveRight, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TemplateCard } from './components/TemplateCard';
 import { WillEditor } from './components/WillEditor';
@@ -105,7 +80,6 @@ export default function WillCreation() {
   const handleAnalyzeWill = () => {
     setIsAnalyzing(true);
     
-    // Simulating progress updates
     const progressInterval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
@@ -116,14 +90,12 @@ export default function WillCreation() {
       });
     }, 500);
     
-    // Simulate analysis with timeout
     setTimeout(() => {
       clearInterval(progressInterval);
       setProgress(100);
       setIsAnalyzing(false);
       setAnalyzeComplete(true);
       
-      // For demonstration, randomly decide if there are issues
       if (Math.random() > 0.5) {
         setLegalIssues([
           "The executor appointment lacks an alternative in case your primary executor is unavailable.",
@@ -152,77 +124,52 @@ export default function WillCreation() {
       return;
     }
     
-    // Create a PDF-like blob from the will content
-    const willHtml = `
-      <html>
-        <head>
-          <title>${willTitle}</title>
-          <style>
-            body { font-family: 'Times New Roman', Times, serif; margin: 3cm; }
-            h1 { text-align: center; font-size: 24pt; margin-bottom: 24pt; }
-            .content { line-height: 1.5; font-size: 12pt; }
-            .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; text-align: center; }
-            .date { margin-top: 30pt; }
-            .header { text-align: center; margin-bottom: 30pt; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>${willTitle}</h1>
-            <p>Created on ${new Date().toLocaleDateString()}</p>
-          </div>
-          <div class="content">
-            ${willContent.replace(/\n/g, '<br>')}
-          </div>
-          ${signatureData ? `
-            <div class="date">
-              <p>Dated: ${new Date().toLocaleDateString()}</p>
-            </div>
-            <div class="signature">
-              <img src="${signatureData}" width="250" />
-              <p>Signature</p>
-            </div>
-          ` : ''}
-        </body>
-      </html>
-    `;
-    
-    const blob = new Blob([willHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${willTitle.replace(/\s+/g, '_')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
+    downloadDocument(willContent, willTitle, signatureData);
     
     toast({
       title: "Download Started",
       description: "Your will document is being downloaded."
     });
   };
-  
+
   const handleCompleteWill = async () => {
     try {
-      // Save the will to the database
+      setIsAnalyzing(true);
+      setProgress(0);
+      
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 400);
+      
+      const documentUrl = willContent ? createDocumentUrl(willContent, willTitle) : '';
+      
       const newWill = await createWill({
         title: willTitle,
         status: 'active',
-        document_url: '', // In a real app, you'd upload to storage and get URL
+        document_url: documentUrl,
         template_type: selectedTemplate?.id || 'custom',
-        ai_generated: userResponses && Object.keys(userResponses).length > 0
+        ai_generated: userResponses && Object.keys(userResponses).length > 0,
+        content: willContent
       });
       
+      clearInterval(progressInterval);
+      
       if (newWill) {
-        await notifyWillUpdated({
-          title: 'Will Created',
-          description: `Your will "${willTitle}" has been created successfully.`
-        });
+        setProgress(100);
+        
+        try {
+          await notifyWillUpdated({
+            title: 'Will Created',
+            description: `Your will "${willTitle}" has been created successfully.`
+          });
+        } catch (notifyError) {
+          console.error('Error creating notification:', notifyError);
+        }
         
         toast({
           title: "Will Created Successfully",
@@ -230,11 +177,17 @@ export default function WillCreation() {
           variant: "default"
         });
         
-        // Navigate to the will dashboard
-        navigate("/will");
+        setTimeout(() => {
+          navigate("/will");
+        }, 1500);
+      } else {
+        throw new Error('Failed to create will');
       }
     } catch (error) {
       console.error('Error saving will:', error);
+      setProgress(0);
+      setIsAnalyzing(false);
+      
       toast({
         title: "Error Creating Will",
         description: "There was a problem saving your will. Please try again.",
@@ -357,7 +310,6 @@ export default function WillCreation() {
                   onFilesUploaded={(files) => {
                     setUploadedFiles(prev => [...prev, ...files]);
                     
-                    // Notify about uploads
                     if (files.length > 0) {
                       notifyDocumentUploaded({
                         title: "Documents Uploaded",

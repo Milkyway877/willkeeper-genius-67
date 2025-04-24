@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -77,10 +78,12 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       console.error('User is not authenticated');
       throw new Error('You must be logged in to create a will');
     }
-    
+
+    // Check if document_url is empty and set a default value if so
     const willToCreate = {
       ...will,
-      user_id: session.user.id
+      user_id: session.user.id,
+      document_url: will.document_url || ''
     };
     
     console.log('Creating will with data:', willToCreate);
@@ -96,10 +99,15 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       return null;
     }
     
-    await createSystemNotification('will_updated', {
-      title: 'Will Created',
-      description: `Your will "${will.title}" has been created successfully.`
-    });
+    try {
+      await createSystemNotification('will_created', {
+        title: 'Will Created',
+        description: `Your will "${will.title}" has been created successfully.`
+      });
+    } catch (notifError) {
+      console.error('Error creating notification:', notifError);
+      // Continue even if notification fails
+    }
     
     return data;
   } catch (error) {
