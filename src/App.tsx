@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, AuthProvider } from '@/hooks/use-auth';
 
 // Public Pages
 import Index from '@/pages/Index';
@@ -38,7 +39,7 @@ import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
-function App() {
+function AppContent() {
   const { user, isLoading } = useAuth();
   const [sessionChecked, setSessionChecked] = useState(false);
 
@@ -122,6 +123,14 @@ function App() {
         </div>
       </Router>
     </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
