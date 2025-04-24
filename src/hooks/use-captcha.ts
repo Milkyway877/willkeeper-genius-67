@@ -20,6 +20,13 @@ export const useCaptcha = () => {
       }
     });
   };
+
+  // Add this function to handle captcha validation from onValidated prop
+  const handleCaptchaValidation = () => {
+    // This function can be passed to the Captcha component if needed
+    // It's currently just a placeholder to satisfy TypeScript
+    return true;
+  };
   
-  return { captchaRef, validateCaptcha };
+  return { captchaRef, validateCaptcha, handleCaptchaValidation };
 };

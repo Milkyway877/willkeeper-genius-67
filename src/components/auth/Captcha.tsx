@@ -8,7 +8,11 @@ export interface CaptchaRef {
   refresh: () => void;
 }
 
-const Captcha = forwardRef<CaptchaRef>((_, ref) => {
+interface CaptchaProps {
+  onValidated?: () => boolean;
+}
+
+const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
   const inputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
@@ -18,7 +22,11 @@ const Captcha = forwardRef<CaptchaRef>((_, ref) => {
   useImperativeHandle(ref, () => ({
     validate: () => {
       if (inputRef.current) {
-        return validateCaptcha(inputRef.current.value || '');
+        const isValid = validateCaptcha(inputRef.current.value || '');
+        if (isValid && onValidated) {
+          onValidated();
+        }
+        return isValid;
       }
       return false;
     },
