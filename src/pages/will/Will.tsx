@@ -17,6 +17,7 @@ export default function Will() {
   const [createdDate, setCreatedDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [currentWill, setCurrentWill] = useState<WillType | null>(null);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,6 +27,7 @@ export default function Will() {
     const fetchWillData = async () => {
       try {
         setIsLoading(true);
+        setLoadingError(null);
         
         // If ID is provided in the URL, fetch that specific will
         if (id) {
@@ -38,26 +40,38 @@ export default function Will() {
             setWillContent(will.content || "");
             
             // Set dates
-            setLastSaved(will.updated_at ? format(new Date(will.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
-            setCreatedDate(will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : 'N/A');
+            if (will.updated_at) {
+              setLastSaved(format(new Date(will.updated_at), 'h:mm a'));
+            } else {
+              setLastSaved(format(new Date(), 'h:mm a'));
+            }
+            
+            if (will.created_at) {
+              setCreatedDate(format(new Date(will.created_at), 'MMMM dd, yyyy'));
+            } else {
+              setCreatedDate('N/A');
+            }
           } else {
+            setLoadingError("Will not found");
             toast({
               title: "Will not found",
               description: "The requested will document could not be found.",
               variant: "destructive"
             });
-            navigate('/wills');
+            // Don't navigate away automatically, let the user decide
           }
         } else {
-          // No ID provided, redirect to wills page
+          // No ID provided, set error
+          setLoadingError("No will specified");
           toast({
             title: "No will specified",
             description: "Please select a will to view.",
           });
-          navigate('/wills');
+          // Don't navigate away automatically, let the user decide
         }
       } catch (error) {
         console.error("Error fetching will data:", error);
+        setLoadingError("Error loading will");
         toast({
           title: "Error loading will",
           description: "Could not load your will document. Please try again later.",
@@ -69,7 +83,7 @@ export default function Will() {
     };
     
     fetchWillData();
-  }, [id, toast, navigate]);
+  }, [id, toast]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
@@ -99,7 +113,7 @@ export default function Will() {
       
       setCurrentWill(updated);
       setIsEditing(false);
-      setLastSaved(new Date().toLocaleTimeString());
+      setLastSaved(format(new Date(), 'h:mm a'));
       
       toast({
         title: "Will saved",
@@ -146,6 +160,38 @@ export default function Will() {
           
           <div className="flex justify-center items-center py-16">
             <Loader2 className="w-10 h-10 text-willtank-600 animate-spin" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (loadingError) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Will</h1>
+              <p className="text-red-600">There was an error loading the will document.</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button onClick={handleViewAllWills} variant="outline">
+                View All Wills
+              </Button>
+              <Button onClick={handleCreateNewWill} variant="default">
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Will
+              </Button>
+            </div>
+          </div>
+          
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <h3 className="text-lg font-medium text-red-800">{loadingError}</h3>
+            <p className="mt-2 text-sm text-red-700">
+              Please try again or select a different will.
+            </p>
           </div>
         </div>
       </Layout>

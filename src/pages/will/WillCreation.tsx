@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { WillEditor } from '../will/components/WillEditor';
+import { WillEditor } from './components/WillEditor';
 
 interface WillCreationProps {
   readOnly?: boolean;

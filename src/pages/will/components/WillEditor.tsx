@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File, AlertCircle, CheckCircle2, Clock, Lightbulb } from 'lucide-react';
+import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File, AlertCircle, CheckCircle2, Clock, Lightbulb, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { validateAddress } from '@/services/locationService';
 import { getWill, updateWill } from '@/services/willService';
@@ -38,7 +38,7 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
   const { toast } = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [willData, setWillData] = useState<any>(null);
   const [content, setContent] = useState('');
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
@@ -48,11 +48,33 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [showSectionHints, setShowSectionHints] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadWill = async () => {
-      if (!id) return;
+      if (!id) {
+        // For new wills, we don't need to fetch anything
+        setIsLoading(false);
+        
+        // Initialize with empty content for new will
+        setContent('');
+        
+        // Check if there's any cached progress for a new will
+        const savedProgress = getWillProgress('new_will');
+        if (savedProgress?.content) {
+          setContent(savedProgress.content);
+          
+          if (savedProgress.lastEditedSection && !readOnly) {
+            setShowRecoveryNotice(true);
+            setActiveSection(savedProgress.lastEditedSection);
+          }
+        }
+        return;
+      }
+      
       setIsLoading(true);
+      setError(null);
+      
       try {
         const will = await getWill(id);
         if (will) {
@@ -65,9 +87,14 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
             // Update our progress state with saved data
             setProgress({
               ...savedProgress,
-              content: will.content,
+              content: will.content || savedProgress.content,
               title: will.title
             });
+            
+            // If there's a more recent content in the progress, use that
+            if (savedProgress.content && savedProgress.content !== will.content) {
+              setContent(savedProgress.content);
+            }
             
             // If there's saved progress for a different section, show recovery notice
             if (savedProgress.lastEditedSection && !readOnly) {
@@ -78,33 +105,38 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
             // Initialize progress tracking for this will
             setProgress({
               id: id,
-              content: will.content,
+              content: will.content || '',
               title: will.title,
-              completedSections: detectCompletedSections(will.content)
+              completedSections: detectCompletedSections(will.content || '')
             });
           }
         } else {
-          toast({
-            title: "Error",
-            description: "Could not find the requested will",
-            variant: "destructive"
-          });
-          navigate('/wills');
+          setError("Could not find the requested will");
+          if (!readOnly) {
+            toast({
+              title: "Error",
+              description: "Could not find the requested will",
+              variant: "destructive"
+            });
+          }
         }
       } catch (error) {
         console.error('Error loading will:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load will content",
-          variant: "destructive"
-        });
+        setError("Failed to load will content");
+        if (!readOnly) {
+          toast({
+            title: "Error",
+            description: "Failed to load will content",
+            variant: "destructive"
+          });
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     loadWill();
-  }, [id, toast, navigate, setProgress]);
+  }, [id, toast, setProgress, readOnly]);
 
   // Update completion percentage and suggestions whenever progress changes
   useEffect(() => {
@@ -124,10 +156,11 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
     setContent(newContent);
     
     // Update progress with new content
-    if (!readOnly && id) {
+    if (!readOnly) {
       setProgress({
         content: newContent,
-        lastEditedSection: activeSection || undefined
+        lastEditedSection: activeSection || undefined,
+        lastEdited: new Date()
       });
     }
     
@@ -178,6 +211,7 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
   const handleSave = async () => {
     if (!id || !willData) return;
     try {
+      setIsLoading(true);
       const updated = await updateWill(id, {
         ...willData,
         content: content
@@ -196,6 +230,8 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
           completedSections,
           lastEdited: new Date()
         });
+      } else {
+        throw new Error("Failed to update will");
       }
     } catch (error) {
       console.error('Error saving will:', error);
@@ -204,6 +240,8 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
         description: "Failed to save changes",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -283,7 +321,33 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center">Loading will content...</div>;
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="flex justify-center items-center py-16">
+          <Loader2 className="w-10 h-10 text-willtank-600 animate-spin mr-2" />
+          <span className="text-lg text-gray-600">Loading will content...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="h-10 w-10 text-red-600 mx-auto mb-2" />
+          <h3 className="text-lg font-medium text-red-800">Error Loading Will</h3>
+          <p className="mt-2 text-sm text-red-700">{error}</p>
+          <Button 
+            onClick={() => navigate('/wills')}
+            variant="outline"
+            className="mt-4"
+          >
+            Return to Wills
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const renderAttachments = () => {
@@ -468,8 +532,8 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
             <Copy className="h-4 w-4" />
           </Button>
           {!readOnly && (
-            <Button variant="outline" onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={handleSave} disabled={isLoading}>
+              {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Save
             </Button>
           )}
@@ -477,10 +541,10 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
       </div>
       
       <div className="p-6">
-        {renderProgressIndicator()}
-        {renderRecoveryNotice()}
-        {renderSectionSelector()}
-        {renderSuggestions()}
+        {renderProgressIndicator?.()}
+        {renderRecoveryNotice?.()}
+        {renderSectionSelector?.()}
+        {renderSuggestions?.()}
         
         <Textarea
           className="min-h-[500px] font-mono text-sm resize-none"
@@ -490,8 +554,9 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
           placeholder={readOnly ? "No content available" : "Your will content will appear here. You can edit it directly."}
         />
         
-        {renderAttachments()}
+        {renderAttachments?.()}
       </div>
     </div>
   );
 }
+
