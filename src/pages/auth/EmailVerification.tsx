@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { motion } from 'framer-motion';
+import { verifyCode } from '@/utils/email';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -40,18 +41,12 @@ export default function EmailVerification() {
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      // Call to verify the OTP
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: values.code,
-        type: 'email'
-      });
+      const { valid, message } = await verifyCode(email, values.code, 'signup');
       
-      if (error) {
-        console.error('Error verifying OTP:', error);
+      if (!valid) {
         toast({
           title: "Verification failed",
-          description: "The code you entered is invalid or has expired. Please try again or request a new code.",
+          description: message || "Invalid or expired code. Please try again.",
           variant: "destructive",
         });
         
@@ -64,28 +59,22 @@ export default function EmailVerification() {
           });
         }
         
+        setIsLoading(false);
         return;
       }
       
       // If successful
-      if (data.user) {
-        toast({
-          title: "Email verified",
-          description: "Your email has been successfully verified.",
-          variant: "default",
-        });
-        
-        // Mark user as activation_complete in the database since we're using that instead of email_verified
-        await supabase
-          .from('user_profiles')
-          .update({ activation_complete: true })
-          .eq('id', data.user.id);
-        
-        // Navigate to dashboard
-        navigate('/dashboard');
-      }
+      toast({
+        title: "Email verified",
+        description: "Your email has been successfully verified.",
+        variant: "default",
+      });
+      
+      // Navigate to dashboard
+      navigate('/dashboard');
+      
     } catch (error) {
-      console.error('Error during email verification:', error);
+      console.error("Error during email verification:", error);
       toast({
         title: "Verification error",
         description: "An unexpected error occurred. Please try again later.",
