@@ -11,6 +11,7 @@ export interface Will {
   updated_at: string;
   template_type?: string;
   ai_generated?: boolean;
+  content?: string;
 }
 
 export interface WillExecutor {
