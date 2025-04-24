@@ -1,9 +1,9 @@
+
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { useSystemNotifications } from '@/hooks/use-system-notifications';
 import { createDocumentUrl, downloadDocument } from '@/utils/documentUtils';
@@ -162,6 +162,13 @@ export default function WillCreation() {
       if (newWill) {
         setProgress(100);
         
+        // Launch confetti celebration
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+
         try {
           await notifyWillUpdated({
             title: 'Will Created',
@@ -172,14 +179,15 @@ export default function WillCreation() {
         }
         
         toast({
-          title: "Will Created Successfully",
-          description: "Your will has been saved and is now available in your dashboard.",
+          title: "Congratulations! 🎉",
+          description: "Your will has been created successfully and is now securely stored.",
           variant: "default"
         });
         
+        // Properly redirect to the wills dashboard after a short delay
         setTimeout(() => {
-          navigate("/will");
-        }, 1500);
+          navigate("/dashboard/will");
+        }, 2000);
       } else {
         throw new Error('Failed to create will');
       }

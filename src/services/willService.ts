@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -96,7 +95,6 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       throw new Error('You must be logged in to create a will');
     }
 
-    // Check if document_url is empty and set a default value if so
     const willToCreate = {
       ...will,
       user_id: session.user.id,
@@ -124,7 +122,6 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       });
     } catch (notifError) {
       console.error('Error creating notification:', notifError);
-      // Continue even if notification fails
     }
     
     return data;
@@ -143,7 +140,6 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
       return null;
     }
 
-    // Make sure the update includes the updated_at timestamp
     const updatedWill = {
       ...updates,
       updated_at: new Date().toISOString()
