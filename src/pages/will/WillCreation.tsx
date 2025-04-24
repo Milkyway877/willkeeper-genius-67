@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { useSystemNotifications } from '@/hooks/use-system-notifications';
 import { createDocumentUrl, downloadDocument } from '@/utils/documentUtils';
 import { FileText, Book, PenTool, Video, Upload, Check, ArrowRight, ArrowLeft, Camera, File, Key, Lock, Briefcase, Share2, Download, Save, AlertCircle, Info, Trash2, RefreshCw, User, UserCheck, Edit, MoveRight, Heart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { TemplateCard } from './components/TemplateCard';
 import { WillEditor } from './components/WillEditor';
 import { WillPreview } from './components/WillPreview';
