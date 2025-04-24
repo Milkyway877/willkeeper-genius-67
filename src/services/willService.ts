@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -72,18 +71,16 @@ export const getWill = async (id: string): Promise<Will | null> => {
 
 export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will | null> => {
   try {
-    // Get the current user session
-    const { user } = supabase.auth.session() || { user: null };
+    const { data: { session } } = await supabase.auth.getSession();
     
-    if (!user) {
+    if (!session?.user) {
       console.error('User is not authenticated');
       throw new Error('You must be logged in to create a will');
     }
     
-    // Ensure the will has a user_id
     const willToCreate = {
       ...will,
-      user_id: user.id
+      user_id: session.user.id
     };
     
     console.log('Creating will with data:', willToCreate);

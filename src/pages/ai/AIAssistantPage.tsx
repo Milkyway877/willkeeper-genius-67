@@ -89,11 +89,15 @@ export default function AIAssistantPage() {
       // Add a small timeout to ensure the UI updates with the user message before showing the loading state
       setTimeout(async () => {
         try {
+          // Get the current session token
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token || '';
+          
           const response = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/ai-assistant', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`,
+              'Authorization': `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
               query: userMessage.content,
@@ -120,10 +124,10 @@ export default function AIAssistantPage() {
           setMessages(prev => [...prev, assistantMessage]);
           
           // Store the interaction in the database if the user is authenticated
-          const session = supabase.auth.session();
-          if (session?.user) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData?.session?.user) {
             await supabase.from('ai_interactions').insert({
-              user_id: session.user.id,
+              user_id: sessionData.session.user.id,
               request_type: 'estate_planning',
               response: JSON.stringify({
                 query: userMessage.content,
