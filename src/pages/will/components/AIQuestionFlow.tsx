@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Send,
   User,
@@ -498,7 +499,7 @@ Witnesses: [Witness 1], [Witness 2]`;
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[80vh]">
       <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
         <div className="flex items-center">
           <Bot className="text-willtank-700 mr-2" size={18} />
@@ -509,8 +510,8 @@ Witnesses: [Witness 1], [Witness 2]`;
         </div>
       </div>
       
-      <div className="p-6">
-        <div className="space-y-6 mb-6">
+      <ScrollArea className="flex-1 p-6">
+        <div className="space-y-6">
           {Object.entries(responses).map(([questionId, answer], index) => {
             const question = questions.find(q => q.id === questionId);
             return (
@@ -559,92 +560,94 @@ Witnesses: [Witness 1], [Witness 2]`;
             </motion.div>
           )}
         </div>
-        
-        {!allQuestionsAnswered && currentQuestion ? (
-          <div className="mt-4">
-            {currentQuestion.type === 'text' && (
-              <div className="flex gap-2">
-                <Input
-                  value={currentAnswer}
-                  onChange={(e) => setCurrentAnswer(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your answer here..."
-                  className="flex-1"
-                />
-                <Button onClick={handleAnswer} disabled={isTyping}>
-                  <Send className="h-4 w-4" />
-                </Button>
+      </ScrollArea>
+      
+      {!allQuestionsAnswered && currentQuestion ? (
+        <div className="border-t bg-white p-4 sticky bottom-0">
+          {currentQuestion.type === 'text' && (
+            <div className="flex gap-2">
+              <Input
+                value={currentAnswer}
+                onChange={(e) => setCurrentAnswer(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your answer here..."
+                className="flex-1"
+              />
+              <Button onClick={handleAnswer} disabled={isTyping}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          
+          {currentQuestion.type === 'textarea' && (
+            <div className="flex flex-col gap-2">
+              <Textarea
+                value={currentAnswer}
+                onChange={(e) => setCurrentAnswer(e.target.value)}
+                placeholder="Type your answer here..."
+                className="min-h-[100px]"
+              />
+              <Button onClick={handleAnswer} disabled={isTyping} className="self-end">
+                {isTyping ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Submit
+              </Button>
+            </div>
+          )}
+          
+          {currentQuestion.type === 'yesno' && (
+            <div className="flex gap-2">
+              <Button 
+                variant={currentAnswer === 'Yes' ? 'default' : 'outline'} 
+                onClick={() => setCurrentAnswer('Yes')}
+                className="flex-1"
+              >
+                Yes
+              </Button>
+              <Button 
+                variant={currentAnswer === 'No' ? 'default' : 'outline'} 
+                onClick={() => setCurrentAnswer('No')}
+                className="flex-1"
+              >
+                No
+              </Button>
+              <Button onClick={handleAnswer} disabled={!currentAnswer || isTyping}>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          
+          {currentQuestion.type === 'options' && currentQuestion.options && (
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {currentQuestion.options.map((option) => (
+                  <Button 
+                    key={option} 
+                    variant={currentAnswer === option ? 'default' : 'outline'} 
+                    onClick={() => setCurrentAnswer(option)}
+                    className="justify-start"
+                  >
+                    {option}
+                  </Button>
+                ))}
               </div>
-            )}
-            
-            {currentQuestion.type === 'textarea' && (
-              <div className="flex flex-col gap-2">
-                <Textarea
-                  value={currentAnswer}
-                  onChange={(e) => setCurrentAnswer(e.target.value)}
-                  placeholder="Type your answer here..."
-                  className="min-h-[100px]"
-                />
-                <Button onClick={handleAnswer} disabled={isTyping} className="self-end">
-                  {isTyping ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Submit
-                </Button>
-              </div>
-            )}
-            
-            {currentQuestion.type === 'yesno' && (
-              <div className="flex gap-2">
-                <Button 
-                  variant={currentAnswer === 'Yes' ? 'default' : 'outline'} 
-                  onClick={() => setCurrentAnswer('Yes')}
-                  className="flex-1"
-                >
-                  Yes
-                </Button>
-                <Button 
-                  variant={currentAnswer === 'No' ? 'default' : 'outline'} 
-                  onClick={() => setCurrentAnswer('No')}
-                  className="flex-1"
-                >
-                  No
-                </Button>
-                <Button onClick={handleAnswer} disabled={!currentAnswer || isTyping}>
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            
-            {currentQuestion.type === 'options' && currentQuestion.options && (
-              <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {currentQuestion.options.map((option) => (
-                    <Button 
-                      key={option} 
-                      variant={currentAnswer === option ? 'default' : 'outline'} 
-                      onClick={() => setCurrentAnswer(option)}
-                      className="justify-start"
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
-                <Button 
-                  onClick={handleAnswer} 
-                  disabled={!currentAnswer || isTyping}
-                  className="self-end mt-2"
-                >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Submit
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : allQuestionsAnswered ? (
-          <div className="mt-6 text-center">
+              <Button 
+                onClick={handleAnswer} 
+                disabled={!currentAnswer || isTyping}
+                className="self-end mt-2"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Submit
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : allQuestionsAnswered ? (
+        <div className="border-t bg-white p-6">
+          <div className="text-center">
             <div className="mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
               <Check className="h-8 w-8 text-green-600" />
             </div>
@@ -670,8 +673,8 @@ Witnesses: [Witness 1], [Witness 2]`;
               )}
             </Button>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
