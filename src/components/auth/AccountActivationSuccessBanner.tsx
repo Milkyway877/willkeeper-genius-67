@@ -1,15 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, X } from 'lucide-react';
 
 export function AccountActivationSuccessBanner() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    // Auto-hide the success banner after 5 seconds
+    // Auto-hide the success banner after 8 seconds
     const timer = setTimeout(() => {
       setVisible(false);
-    }, 5000);
+    }, 8000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -24,6 +24,13 @@ export function AccountActivationSuccessBanner() {
           Your account is now active — Welcome to WillTank!
         </p>
       </div>
+      <button 
+        onClick={() => setVisible(false)}
+        className="text-green-600 hover:text-green-800 transition-colors"
+        aria-label="Close notification"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }

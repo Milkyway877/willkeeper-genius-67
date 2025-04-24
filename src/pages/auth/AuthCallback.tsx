@@ -20,7 +20,7 @@ export default function AuthCallback() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownTimer);
-            navigate('/dashboard');
+            navigate('/dashboard?activated=true');
             return 0;
           }
           return prev - 1;
@@ -81,6 +81,22 @@ export default function AuthCallback() {
             console.log("Welcome notifications created successfully");
           }
           
+          // Update user profile to mark as activated if needed
+          try {
+            const { error: updateError } = await supabase
+              .from('user_profiles')
+              .update({ is_activated: true })
+              .eq('id', data.session.user.id);
+              
+            if (updateError) {
+              console.error("Failed to update user activation status:", updateError);
+            } else {
+              console.log("User account marked as activated successfully");
+            }
+          } catch (updateError) {
+            console.error("Error updating activation status:", updateError);
+          }
+          
           toast({
             title: "Email Verified Successfully!",
             description: "Welcome to WillTank. Your secure will management journey begins now.",
@@ -88,9 +104,6 @@ export default function AuthCallback() {
           
           // Set verified state and redirect with activation success parameter
           setIsVerified(true);
-          setTimeout(() => {
-            navigate('/dashboard?activated=true');
-          }, 2000);
         } else {
           // Handle any params from the URL
           const params = new URLSearchParams(window.location.hash.substring(1));
@@ -99,7 +112,7 @@ export default function AuthCallback() {
           
           if (accessToken) {
             // If we have tokens in the URL, try to exchange them for a session
-            const { error: setSessionError } = await supabase.auth.setSession({
+            const { data: sessionData, error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || '',
             });
@@ -109,6 +122,24 @@ export default function AuthCallback() {
               setError("Failed to verify your email. Please try signing in again.");
               setIsProcessing(false);
               return;
+            }
+            
+            // Update user profile to mark as activated
+            if (sessionData?.user) {
+              try {
+                const { error: updateError } = await supabase
+                  .from('user_profiles')
+                  .update({ is_activated: true })
+                  .eq('id', sessionData.user.id);
+                  
+                if (updateError) {
+                  console.error("Failed to update user activation status:", updateError);
+                } else {
+                  console.log("User account marked as activated successfully");
+                }
+              } catch (updateError) {
+                console.error("Error updating activation status:", updateError);
+              }
             }
             
             // Create notifications for the user
@@ -125,9 +156,6 @@ export default function AuthCallback() {
             
             // Set verified state and redirect with activation success parameter
             setIsVerified(true);
-            setTimeout(() => {
-              navigate('/dashboard?activated=true');
-            }, 2000);
           } else {
             // No session, no tokens - something went wrong
             setError("Authentication failed. Please try signing in again.");

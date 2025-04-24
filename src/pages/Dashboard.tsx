@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus, Users, Shield, Zap, CreditCard, Key, Bell, HelpCircle, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getDashboardSummary, getUserNotifications, getUserWills, getUserExecutors, getUserSubscription } from '@/services/dashboardService';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,7 +16,8 @@ import { AccountActivationSuccessBanner } from '@/components/auth/AccountActivat
 export default function Dashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
+  const location = useLocation();
+  const { profile, refreshProfile } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState({
     willCount: 0,
@@ -27,6 +29,30 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<any>(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [showActivationSuccess, setShowActivationSuccess] = useState(false);
+  
+  // Check for activated parameter and refresh profile data
+  useEffect(() => {
+    const checkActivation = async () => {
+      const params = new URLSearchParams(location.search);
+      const activated = params.get('activated') === 'true';
+      
+      if (activated) {
+        console.log("Activation detected from URL parameter");
+        setShowActivationSuccess(true);
+        
+        // Refresh profile to get updated activation status
+        if (refreshProfile) {
+          console.log("Refreshing user profile after activation");
+          await refreshProfile();
+        }
+        
+        // Remove the activated parameter from URL without page refresh
+        navigate(location.pathname, { replace: true });
+      }
+    };
+    
+    checkActivation();
+  }, [location, navigate, refreshProfile]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -115,14 +141,6 @@ export default function Dashboard() {
     
     loadDashboardData();
   }, [toast]);
-  
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('activated') === 'true') {
-      setShowActivationSuccess(true);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
 
   const handleActivateAccount = () => {
     navigate('/auth/activate');
@@ -166,7 +184,9 @@ export default function Dashboard() {
       {profile && !profile.is_activated && (
         <AccountActivationBar onActivateClick={handleActivateAccount} />
       )}
-      {showActivationSuccess && <AccountActivationSuccessBanner />}
+      {showActivationSuccess && profile && profile.is_activated && (
+        <AccountActivationSuccessBanner />
+      )}
       
       <div className="max-w-6xl mx-auto">
         <motion.div 
