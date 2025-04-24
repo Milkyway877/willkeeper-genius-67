@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,9 +47,9 @@ export function AIQuestionFlow({
   const [isTyping, setIsTyping] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
-  
   const [questions, setQuestions] = useState<Question[]>([]);
-  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (selectedTemplate) {
       if (selectedTemplate.id === 'traditional') {
@@ -489,6 +488,14 @@ Witnesses: [Witness 1], [Witness 2]`;
     }
   };
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [responses, currentQuestion]);
+
   if (!currentQuestion && !allQuestionsAnswered) {
     return (
       <div className="text-center py-10">
@@ -510,36 +517,34 @@ Witnesses: [Witness 1], [Witness 2]`;
         </div>
       </div>
       
-      <ScrollArea className="flex-1 p-6">
+      <div className="flex-1 overflow-auto p-6">
         <div className="space-y-6">
           {Object.entries(responses).map(([questionId, answer], index) => {
             const question = questions.find(q => q.id === questionId);
             return (
-              <div key={questionId} className="flex gap-4">
-                <div className="flex-shrink-0 mt-1">
-                  <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-willtank-600" />
+              <React.Fragment key={questionId}>
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center">
+                      <Bot className="h-4 w-4 text-willtank-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-gray-700 font-medium">{question?.text || questionId}</p>
                   </div>
                 </div>
-                <div>
-                  <p className="text-gray-700 font-medium">{question?.text || questionId}</p>
-                </div>
-              </div>
-            );
-          })}
-          
-          {Object.entries(responses).map(([questionId, answer], index) => {
-            return (
-              <div key={`answer-${questionId}`} className="flex gap-4">
-                <div className="flex-shrink-0 mt-1">
-                  <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                    <User className="h-4 w-4 text-gray-600" />
+                
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                      <User className="h-4 w-4 text-gray-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-gray-700">{typeof answer === 'boolean' ? (answer ? 'Yes' : 'No') : answer}</p>
                   </div>
                 </div>
-                <div>
-                  <p className="text-gray-700">{typeof answer === 'boolean' ? (answer ? 'Yes' : 'No') : answer}</p>
-                </div>
-              </div>
+              </React.Fragment>
             );
           })}
           
@@ -559,11 +564,12 @@ Witnesses: [Witness 1], [Witness 2]`;
               </div>
             </motion.div>
           )}
+          <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
       
       {!allQuestionsAnswered && currentQuestion ? (
-        <div className="border-t bg-white p-4 sticky bottom-0">
+        <div className="border-t bg-white p-4 sticky bottom-0 shadow-lg">
           {currentQuestion.type === 'text' && (
             <div className="flex gap-2">
               <Input
