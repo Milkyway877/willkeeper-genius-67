@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File, AlertCircle, CheckCircle2, Clock, Lightbulb, Loader2 } from 'lucide-react';
@@ -537,6 +536,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
           onContentChange={handleContentChange}
           onSave={handleSave}
           readOnly={readOnly}
+          lastEditedSection={progress?.lastEditedSection}
         />
         
         {renderAttachments?.()}
