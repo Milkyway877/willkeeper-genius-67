@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File, AlertCircle, CheckCircle2, Clock, Lightbulb, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -8,6 +6,7 @@ import { validateAddress } from '@/services/locationService';
 import { createWill, updateWill } from '@/services/willService';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GuidedWillEditor } from './GuidedWillEditor';
 import { 
   useWillProgress, 
   saveWillProgress, 
@@ -17,15 +16,6 @@ import {
   getWillCompletionPercentage,
   WILL_SECTIONS 
 } from '@/services/willProgressService';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Progress } from "@/components/ui/progress";
-import { motion, AnimatePresence } from "framer-motion";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type WillEditorProps = {
   content?: string;
@@ -52,14 +42,11 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [createdDate, setCreatedDate] = useState<string | null>(null);
 
-  // Initialize content and other fields from willData or progress
   useEffect(() => {
-    // Initialize with data from the will if provided
     if (willData) {
       setContent(willData.content || '');
       setTitle(willData.title || "Last Will and Testament");
       
-      // Update progress tracking with will data
       setProgress({
         id: willId,
         content: willData.content || '',
@@ -67,7 +54,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
         completedSections: detectCompletedSections(willData.content || '')
       });
     } else {
-      // For new wills, check if there's saved progress
       const savedProgress = getWillProgress('new_will');
       if (savedProgress?.content) {
         setContent(savedProgress.content);
@@ -81,7 +67,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
           setActiveSection(savedProgress.lastEditedSection);
         }
         
-        // Update our progress state with saved data
         setProgress({
           content: savedProgress.content,
           title: savedProgress.title,
@@ -89,11 +74,9 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
           completedSections: savedProgress.completedSections || []
         });
       } else if (!readOnly) {
-        // Initialize with empty content for new will
         const defaultContent = "LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], residing at [YOUR ADDRESS], being of sound mind, declare this to be my Will, revoking all previous wills and codicils.\n\n[START WRITING YOUR WILL HERE]";
         setContent(defaultContent);
         
-        // Initialize progress tracking for new will
         setProgress({
           content: defaultContent,
           title: title,
@@ -103,7 +86,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
     }
   }, [willData, willId, setProgress, readOnly]);
 
-  // Update completion percentage and suggestions whenever progress changes
   useEffect(() => {
     if (progress) {
       const percentage = getWillCompletionPercentage(progress);
@@ -116,11 +98,9 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
     }
   }, [progress, readOnly]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
+  const handleContentChange = (newContent: string) => {
     setContent(newContent);
     
-    // Update progress with new content
     if (!readOnly) {
       setProgress({
         content: newContent,
@@ -128,7 +108,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
         lastEdited: new Date()
       });
       
-      // Auto-save to local storage
       if (willId) {
         saveWillProgress(willId, {
           content: newContent,
@@ -146,7 +125,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       }
     }
     
-    // Detect completed sections based on content
     const completedSections = detectCompletedSections(newContent);
     if (completedSections.length > 0) {
       setProgress({
@@ -155,7 +133,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
     }
   };
 
-  // Helper function to detect completed sections based on will content
   const detectCompletedSections = (content: string): string[] => {
     const completedSections: string[] = [];
     
@@ -195,7 +172,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       setIsLoading(true);
       
       if (willId && willData) {
-        // Update existing will
         const updated = await updateWill(willId, {
           ...willData,
           content: content,
@@ -208,7 +184,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
             description: "Will has been updated successfully"
           });
           
-          // Update progress tracking
           const completedSections = detectCompletedSections(content);
           setProgress({
             content,
@@ -217,13 +192,11 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
             lastEdited: new Date()
           });
           
-          // Update last saved timestamp
           setLastSaved(new Date().toLocaleTimeString());
         } else {
           throw new Error("Failed to update will");
         }
       } else {
-        // Create new will
         const newWill = await createWill({
           title: title,
           content: content,
@@ -238,10 +211,8 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
             description: "Will has been created successfully"
           });
           
-          // Clear the new_will progress and create progress for the new will
           clearWillProgress('new_will');
           
-          // Navigate to the will view page
           navigate(`/will/${newWill.id}`);
         } else {
           throw new Error("Failed to create will");
@@ -278,12 +249,10 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
     setActiveSection(section);
     setShowSectionHints(true);
     
-    // Update progress with current section
     setProgress({
       lastEditedSection: section
     });
     
-    // Scroll to appropriate area in the document
     const sectionMap = {
       [WILL_SECTIONS.PERSONAL_INFO]: "I,",
       [WILL_SECTIONS.ASSETS]: "assets",
@@ -294,7 +263,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       [WILL_SECTIONS.FINAL_WISHES]: "final wishes",
     };
     
-    // Add helpful text at cursor position if section is empty
     const sectionHints = {
       [WILL_SECTIONS.PERSONAL_INFO]: "I, [YOUR FULL LEGAL NAME], residing at [YOUR ADDRESS], being of sound mind...",
       [WILL_SECTIONS.ASSETS]: "ASSETS: I own the following assets...",
@@ -305,7 +273,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       [WILL_SECTIONS.FINAL_WISHES]: "FINAL WISHES: Regarding my funeral and burial arrangements..."
     };
     
-    // If section text isn't found in the content, suggest adding it
     const sectionText = sectionMap[section];
     if (sectionText && !content.toLowerCase().includes(sectionText.toLowerCase()) && !readOnly) {
       const hint = sectionHints[section];
@@ -315,8 +282,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       });
     }
   };
-  
-  // Handle recovery of previous session
+
   const handleRecoverSession = () => {
     if (progress?.lastEditedSection) {
       setSection(progress.lastEditedSection);
@@ -329,7 +295,6 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
     }
   };
 
-  // Dismiss recovery notice
   const dismissRecoveryNotice = () => {
     setShowRecoveryNotice(false);
   };
@@ -399,8 +364,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
         return <File className="h-5 w-5 text-gray-500" />;
     }
   };
-  
-  // Render section selection buttons
+
   const renderSectionSelector = () => {
     if (readOnly) return null;
     
@@ -446,8 +410,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       </div>
     );
   };
-  
-  // Render completion progress
+
   const renderProgressIndicator = () => {
     if (readOnly) return null;
     
@@ -461,8 +424,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       </div>
     );
   };
-  
-  // Render AI suggestions
+
   const renderSuggestions = () => {
     if (readOnly || !suggestions.length) return null;
     
@@ -483,8 +445,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       </div>
     );
   };
-  
-  // Render session recovery notice
+
   const renderRecoveryNotice = () => {
     if (!showRecoveryNotice || readOnly) return null;
     
@@ -560,12 +521,11 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
         {renderSectionSelector?.()}
         {renderSuggestions?.()}
         
-        <Textarea
-          className="min-h-[500px] font-mono text-sm resize-none"
-          value={content}
-          onChange={handleChange}
+        <GuidedWillEditor
+          willContent={content}
+          onContentChange={handleContentChange}
+          onSave={handleSave}
           readOnly={readOnly}
-          placeholder={readOnly ? "No content available" : "Your will content will appear here. You can edit it directly."}
         />
         
         {renderAttachments?.()}
