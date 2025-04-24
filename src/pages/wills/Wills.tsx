@@ -1,245 +1,279 @@
 
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileText, Plus, Eye, Edit, Trash2, Filter, Search, MoreVertical } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { getWills, deleteWill } from '@/services/willService';
+import { Plus, FileText, Trash2, Edit, Eye, Loader2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { motion } from 'framer-motion';
 import { format } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { getWills, Will, deleteWill } from '@/services/willService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export default function Wills() {
-  const { toast } = useToast();
+  const [willToDelete, setWillToDelete] = useState<Will | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
-  const [wills, setWills] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchWills = async () => {
-      try {
-        setIsLoading(true);
-        const willsData = await getWills();
-        setWills(willsData || []);
-      } catch (error) {
-        console.error("Error fetching wills:", error);
-        toast({
-          title: "Error",
-          description: "Could not load your wills. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchWills();
-  }, [toast]);
+  // Fetch wills data
+  const { data: wills, isLoading, error } = useQuery({
+    queryKey: ['wills'],
+    queryFn: getWills,
+  });
 
-  const handleCreateNew = () => {
-    navigate('/will/create');
-  };
-
-  const handlePreviewWill = (willId) => {
-    navigate(`/will/${willId}`);
-  };
-
-  const handleEditWill = (willId) => {
-    navigate(`/will/edit/${willId}`);
-  };
-
-  const handleDeleteWill = async (willId) => {
-    try {
-      if (confirm("Are you sure you want to delete this will? This action cannot be undone.")) {
-        await deleteWill(willId);
-        setWills(wills.filter(will => will.id !== willId));
-        toast({
-          title: "Will Deleted",
-          description: "The will has been successfully deleted."
-        });
-      }
-    } catch (error) {
+  // Delete will mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteWill(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wills'] });
+      toast({
+        title: "Will deleted",
+        description: "Your will has been successfully deleted.",
+      });
+      setIsDeleteDialogOpen(false);
+    },
+    onError: (error) => {
       console.error("Error deleting will:", error);
       toast({
         title: "Error",
-        description: "Could not delete the will. Please try again.",
-        variant: "destructive"
+        description: "Failed to delete will. Please try again.",
+        variant: "destructive",
       });
-    }
-  };
-
-  const filteredWills = wills.filter(will => {
-    const matchesSearch = will.title?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = selectedStatus === 'all' || will.status?.toLowerCase() === selectedStatus.toLowerCase();
-    return matchesSearch && matchesStatus;
+    },
   });
 
-  const getStatusBadge = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
-      case 'draft':
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Draft</Badge>;
-      case 'archived':
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Archived</Badge>;
-      default:
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{status || 'Unknown'}</Badge>;
+  // Handle create new will button click
+  const handleCreateWill = () => {
+    navigate('/will/create');
+  };
+
+  // Handle view will button click
+  const handleViewWill = (will: Will) => {
+    navigate(`/will/${will.id}`);
+  };
+
+  // Handle edit will button click
+  const handleEditWill = (will: Will) => {
+    navigate(`/will/edit/${will.id}`);
+  };
+
+  // Handle delete will button click
+  const handleDeleteWill = (will: Will) => {
+    setWillToDelete(will);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Confirm delete will
+  const confirmDeleteWill = () => {
+    if (willToDelete) {
+      deleteMutation.mutate(willToDelete.id);
     }
   };
+
+  // Get status badge color
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'draft':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'inactive':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="h-10 w-10 text-willtank-600 animate-spin" />
+            <span className="ml-2 text-lg text-gray-600">Loading your wills...</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <h3 className="text-lg font-medium text-red-800">Unable to load wills</h3>
+            <p className="mt-2 text-sm text-red-700">
+              There was an error retrieving your wills. Please refresh the page or try again later.
+            </p>
+            <Button 
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['wills'] })}
+              variant="outline"
+              className="mt-4"
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold">My Wills</h1>
-            <p className="text-gray-600">Manage and view all your will documents</p>
+            <h1 className="text-3xl font-bold text-gray-900">My Wills</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Manage all your will documents in one place.
+            </p>
           </div>
-          <Button onClick={handleCreateNew}>
+          <Button onClick={handleCreateWill}>
             <Plus className="mr-2 h-4 w-4" />
             Create New Will
           </Button>
         </div>
-        
-        <div className="mb-6 flex flex-col md:flex-row gap-4">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <Input 
-              placeholder="Search wills by title..." 
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="w-full md:w-auto"
-            >
-              <Filter size={16} className="mr-2" />
-              Filter
-            </Button>
-          </div>
-        </div>
-        
-        {showFilters && (
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <h3 className="font-medium mb-3">Filter by Status</h3>
-            <div className="flex flex-wrap gap-2">
-              {['all', 'active', 'draft', 'archived'].map((status) => (
-                <Badge 
-                  key={status}
-                  variant={selectedStatus === status ? "default" : "outline"}
-                  className="cursor-pointer capitalize"
-                  onClick={() => setSelectedStatus(status)}
-                >
-                  {status}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin h-8 w-8 border-4 border-willtank-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your wills...</p>
-          </div>
-        ) : (
-          <>
-            {filteredWills.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
-                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No wills found</h3>
-                <p className="text-gray-500 mb-4">
-                  {searchQuery || selectedStatus !== 'all' 
-                    ? "No wills match your search criteria." 
-                    : "You haven't created any wills yet."}
-                </p>
-                {(searchQuery || selectedStatus !== 'all') && (
-                  <Button variant="outline" onClick={() => {
-                    setSearchQuery('');
-                    setSelectedStatus('all');
-                  }}>
-                    Clear Filters
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6">
-                {filteredWills.map((will) => (
-                  <Card key={will.id} className="overflow-hidden">
-                    <div className="p-6">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-start">
-                          <div className="w-10 h-10 rounded-full bg-willtank-100 flex items-center justify-center mr-4 flex-shrink-0">
-                            <FileText className="h-5 w-5 text-willtank-600" />
-                          </div>
-                          <div>
-                            <div className="flex items-center">
-                              <h3 className="font-medium text-lg">{will.title}</h3>
-                              <div className="ml-3">{getStatusBadge(will.status)}</div>
-                            </div>
-                            <p className="text-gray-500 text-sm">
-                              Last updated: {will.updated_at ? format(new Date(will.updated_at), 'MMM dd, yyyy') : 'N/A'}
-                            </p>
-                            {will.template_type && (
-                              <Badge variant="outline" className="mt-2">
-                                {will.template_type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handlePreviewWill(will.id)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Preview
-                          </Button>
-                          
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditWill(will.id)}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical size={16} />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleDeleteWill(will.id)} className="text-red-600">
-                                <Trash2 size={14} className="mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+
+        {wills && wills.length > 0 ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden"
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {wills.map((will) => (
+                  <TableRow key={will.id} className="hover:bg-gray-50">
+                    <TableCell className="font-medium flex items-center">
+                      <FileText className="h-4 w-4 mr-2 text-willtank-600" />
+                      {will.title}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getStatusColor(will.status)}>
+                        {will.status || 'Draft'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {will.created_at 
+                        ? format(new Date(will.created_at), 'MMM dd, yyyy') 
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {will.updated_at 
+                        ? format(new Date(will.updated_at), 'MMM dd, yyyy') 
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {will.template_type 
+                        ? will.template_type.charAt(0).toUpperCase() + will.template_type.slice(1) 
+                        : 'Custom'}
+                      {will.ai_generated && (
+                        <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-800">
+                          AI Generated
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleViewWill(will)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleEditWill(will)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          onClick={() => handleDeleteWill(will)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </div>
-                  </Card>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </div>
-            )}
-          </>
+              </TableBody>
+            </Table>
+          </motion.div>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border border-dashed border-gray-300"
+          >
+            <FileText className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">No wills found</h3>
+            <p className="mt-1 text-sm text-gray-500 text-center max-w-md">
+              You don't have any wills yet. Get started by creating your first will document.
+            </p>
+            <Button onClick={handleCreateWill} className="mt-6">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Your First Will
+            </Button>
+          </motion.div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Will</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this will? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-gray-50 p-4 rounded-md my-4">
+              <p className="font-medium">{willToDelete?.title}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Created on {willToDelete?.created_at 
+                  ? format(new Date(willToDelete.created_at), 'MMMM dd, yyyy') 
+                  : 'unknown date'}
+              </p>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-end">
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteWill}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
