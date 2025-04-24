@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { getWill, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
+import { WillPreview } from './components/WillPreview';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -132,6 +134,10 @@ export default function Will() {
     navigate('/wills');
   };
 
+  const handleEditWill = () => {
+    navigate(`/will/edit/${id}`);
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -168,17 +174,10 @@ export default function Will() {
               <Plus className="mr-2 h-4 w-4" />
               Create New Will
             </Button>
-            {isEditing ? (
-              <Button onClick={handleSave} variant="default">
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
-              </Button>
-            ) : (
-              <Button onClick={() => setIsEditing(true)} variant="outline">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Will
-              </Button>
-            )}
+            <Button onClick={handleEditWill} variant="outline">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Will
+            </Button>
             <Button variant="outline" onClick={copyToClipboard}>
               <Copy className="mr-2 h-4 w-4" />
               Copy
@@ -192,39 +191,7 @@ export default function Will() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-            >
-              <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                <div className="flex items-center">
-                  <FileText className="text-willtank-700 mr-2" size={18} />
-                  <h3 className="font-medium">{willTitle}</h3>
-                </div>
-                <div className="text-xs text-gray-500 flex items-center">
-                  <Clock size={14} className="mr-1" />
-                  Last saved at {lastSaved}
-                </div>
-              </div>
-              
-              <div className="p-6">
-                {isEditing ? (
-                  <textarea 
-                    className="w-full h-[500px] p-4 border border-gray-200 rounded-md font-mono text-sm"
-                    value={willContent}
-                    onChange={handleContentChange}
-                  />
-                ) : (
-                  <div className="prose max-w-none">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                      {willContent}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </motion.div>
+            <WillPreview content={willContent} />
           </div>
           
           <div>

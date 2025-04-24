@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -100,8 +101,9 @@ function App() {
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/will" element={<WillDashboard />} />
-            <Route path="/will/:id" element={<WillEditor />} />
+            <Route path="/will/:id" element={<WillDashboard />} />
+            <Route path="/will/edit/:id" element={<WillEditor />} />
+            <Route path="/will/create" element={<WillEditor />} />
             <Route path="/wills" element={<WillsList />} />
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />

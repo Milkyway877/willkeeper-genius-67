@@ -1,359 +1,103 @@
-import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification } from "./notificationService";
+
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Will {
   id: string;
-  title: string;
-  status: string;
-  document_url: string;
-  created_at: string;
-  updated_at: string;
+  title?: string;
+  content?: string;
+  status?: string;
+  user_id?: string;
+  document_url?: string;
   template_type?: string;
   ai_generated?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WillCreateInput {
+  title?: string;
   content?: string;
+  status?: string;
+  document_url?: string;
+  template_type?: string;
+  ai_generated?: boolean;
 }
-
-export interface WillExecutor {
-  id: string;
-  name: string;
-  email: string;
-  status: string;
-  created_at: string;
-  will_id?: string;
-}
-
-export interface WillBeneficiary {
-  id: string;
-  name: string;
-  relationship: string;
-  percentage?: number;
-  created_at: string;
-  will_id?: string;
-}
-
-export const getWills = async (): Promise<Will[]> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from('wills')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('updated_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error fetching wills:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error in getWills:', error);
-    return [];
-  }
-};
 
 export const getWill = async (id: string): Promise<Will | null> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return null;
-    }
-
     const { data, error } = await supabase
       .from('wills')
       .select('*')
       .eq('id', id)
-      .eq('user_id', session.user.id)
       .single();
-      
-    if (error) {
-      console.error('Error fetching will:', error);
-      return null;
-    }
     
+    if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error in getWill:', error);
+    console.error('Error fetching will:', error);
     return null;
   }
 };
 
-export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will | null> => {
+export const getWills = async (): Promise<Will[]> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      throw new Error('You must be logged in to create a will');
-    }
-
-    const willToCreate = {
-      ...will,
-      user_id: session.user.id,
-      document_url: will.document_url || '',
-      status: will.status || 'active'
-    };
-    
-    console.log('Creating will with data:', willToCreate);
-    
     const { data, error } = await supabase
       .from('wills')
-      .insert(willToCreate)
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching wills:', error);
+    return [];
+  }
+};
+
+export const createWill = async (will: WillCreateInput): Promise<Will | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('wills')
+      .insert([{ ...will }])
       .select()
       .single();
-      
-    if (error) {
-      console.error('Error creating will:', error);
-      return null;
-    }
     
-    try {
-      await createSystemNotification('will_created', {
-        title: 'Will Created',
-        description: `Your will "${will.title}" has been created successfully.`
-      });
-    } catch (notifError) {
-      console.error('Error creating notification:', notifError);
-    }
-    
+    if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error in createWill:', error);
+    console.error('Error creating will:', error);
     return null;
   }
 };
 
 export const updateWill = async (id: string, updates: Partial<Will>): Promise<Will | null> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return null;
-    }
-
-    const updatedWill = {
-      ...updates,
-      updated_at: new Date().toISOString()
-    };
-
     const { data, error } = await supabase
       .from('wills')
-      .update(updatedWill)
+      .update(updates)
       .eq('id', id)
-      .eq('user_id', session.user.id)
       .select()
       .single();
-      
-    if (error) {
-      console.error('Error updating will:', error);
-      return null;
-    }
     
-    await createSystemNotification('will_updated', {
-      title: 'Will Updated',
-      description: `Your will "${data.title}" has been updated successfully.`
-    });
-    
+    if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Error in updateWill:', error);
+    console.error('Error updating will:', error);
     return null;
   }
 };
 
 export const deleteWill = async (id: string): Promise<boolean> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return false;
-    }
-
-    const { data: willToDelete } = await supabase
-      .from('wills')
-      .select('title')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single();
-    
     const { error } = await supabase
       .from('wills')
       .delete()
-      .eq('id', id)
-      .eq('user_id', session.user.id);
-      
-    if (error) {
-      console.error('Error deleting will:', error);
-      return false;
-    }
+      .eq('id', id);
     
-    if (willToDelete) {
-      await createSystemNotification('will_deleted', {
-        title: 'Will Deleted',
-        description: `Your will "${willToDelete.title}" has been deleted.`
-      });
-    }
-    
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error in deleteWill:', error);
+    console.error('Error deleting will:', error);
     return false;
-  }
-};
-
-export const getWillExecutors = async (willId?: string): Promise<WillExecutor[]> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return [];
-    }
-
-    let query = supabase
-      .from('will_executors')
-      .select('*');
-      
-    if (willId) {
-      query = query.eq('will_id', willId);
-    }
-    
-    const { data, error } = await query.order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error fetching executors:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error in getWillExecutors:', error);
-    return [];
-  }
-};
-
-export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'created_at'>): Promise<WillExecutor | null> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return null;
-    }
-    
-    const { data, error } = await supabase
-      .from('will_executors')
-      .insert(executor)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error creating executor:', error);
-      return null;
-    }
-    
-    await createSystemNotification('executor_added', {
-      title: 'Executor Added',
-      description: `${executor.name} has been added as an executor to your will.`
-    });
-    
-    return data;
-  } catch (error) {
-    console.error('Error in createWillExecutor:', error);
-    return null;
-  }
-};
-
-export const getWillBeneficiaries = async (willId?: string): Promise<WillBeneficiary[]> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return [];
-    }
-
-    let query = supabase
-      .from('will_beneficiaries')
-      .select('*');
-      
-    if (willId) {
-      query = query.eq('will_id', willId);
-    }
-    
-    const { data, error } = await query.order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error fetching beneficiaries:', error);
-      return [];
-    }
-    
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.beneficiary_name,
-      relationship: item.relationship,
-      percentage: item.percentage,
-      created_at: item.created_at,
-      will_id: item.will_id
-    }));
-  } catch (error) {
-    console.error('Error in getWillBeneficiaries:', error);
-    return [];
-  }
-};
-
-export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, 'id' | 'created_at'>): Promise<WillBeneficiary | null> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return null;
-    }
-    
-    const dbBeneficiary = {
-      beneficiary_name: beneficiary.name,
-      relationship: beneficiary.relationship,
-      percentage: beneficiary.percentage,
-      will_id: beneficiary.will_id
-    };
-    
-    const { data, error } = await supabase
-      .from('will_beneficiaries')
-      .insert(dbBeneficiary)
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error creating beneficiary:', error);
-      return null;
-    }
-    
-    await createSystemNotification('beneficiary_added', {
-      title: 'Beneficiary Added',
-      description: `${beneficiary.name} has been added as a beneficiary to your will.`
-    });
-    
-    return {
-      id: data.id,
-      name: data.beneficiary_name,
-      relationship: data.relationship,
-      percentage: data.percentage,
-      created_at: data.created_at,
-      will_id: data.will_id
-    };
-  } catch (error) {
-    console.error('Error in createWillBeneficiary:', error);
-    return null;
   }
 };
