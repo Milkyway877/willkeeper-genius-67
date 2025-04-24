@@ -3,12 +3,30 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File } from 'lucide-react';
+import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File, AlertCircle, CheckCircle2, Clock, Lightbulb } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { validateAddress } from '@/services/locationService';
 import { getWill, updateWill } from '@/services/willService';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { 
+  useWillProgress, 
+  saveWillProgress, 
+  getWillProgress, 
+  clearWillProgress, 
+  getWillSuggestions,
+  getWillCompletionPercentage,
+  WILL_SECTIONS 
+} from '@/services/willProgressService';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
+import { motion, AnimatePresence } from "framer-motion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type WillEditorProps = {
   content?: string;
@@ -24,6 +42,12 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
   const [willData, setWillData] = useState<any>(null);
   const [content, setContent] = useState('');
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
+  const [showRecoveryNotice, setShowRecoveryNotice] = useState(false);
+  const { progress, setProgress } = useWillProgress(id);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [showSectionHints, setShowSectionHints] = useState(false);
 
   useEffect(() => {
     const loadWill = async () => {
@@ -34,6 +58,31 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
         if (will) {
           setWillData(will);
           setContent(will.content || '');
+          
+          // Check if there's saved progress for this will
+          const savedProgress = getWillProgress(id);
+          if (savedProgress) {
+            // Update our progress state with saved data
+            setProgress({
+              ...savedProgress,
+              content: will.content,
+              title: will.title
+            });
+            
+            // If there's saved progress for a different section, show recovery notice
+            if (savedProgress.lastEditedSection && !readOnly) {
+              setShowRecoveryNotice(true);
+              setActiveSection(savedProgress.lastEditedSection);
+            }
+          } else {
+            // Initialize progress tracking for this will
+            setProgress({
+              id: id,
+              content: will.content,
+              title: will.title,
+              completedSections: detectCompletedSections(will.content)
+            });
+          }
         } else {
           toast({
             title: "Error",
@@ -55,10 +104,75 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
     };
 
     loadWill();
-  }, [id, toast, navigate]);
+  }, [id, toast, navigate, setProgress]);
+
+  // Update completion percentage and suggestions whenever progress changes
+  useEffect(() => {
+    if (progress) {
+      const percentage = getWillCompletionPercentage(progress);
+      setCompletionPercentage(percentage);
+      
+      if (!readOnly) {
+        const willSuggestions = getWillSuggestions(progress);
+        setSuggestions(willSuggestions);
+      }
+    }
+  }, [progress, readOnly]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+    const newContent = e.target.value;
+    setContent(newContent);
+    
+    // Update progress with new content
+    if (!readOnly && id) {
+      setProgress({
+        content: newContent,
+        lastEditedSection: activeSection || undefined
+      });
+    }
+    
+    // Detect completed sections based on content
+    const completedSections = detectCompletedSections(newContent);
+    if (completedSections.length > 0) {
+      setProgress({
+        completedSections: completedSections
+      });
+    }
+  };
+
+  // Helper function to detect completed sections based on will content
+  const detectCompletedSections = (content: string): string[] => {
+    const completedSections: string[] = [];
+    
+    if (content.match(/name|address|date of birth|personal|details/i)) {
+      completedSections.push(WILL_SECTIONS.PERSONAL_INFO);
+    }
+    
+    if (content.match(/property|asset|house|bank|account|investment|own/i)) {
+      completedSections.push(WILL_SECTIONS.ASSETS);
+    }
+    
+    if (content.match(/beneficiary|beneficiaries|heir|inherit|give|gift|bequest/i)) {
+      completedSections.push(WILL_SECTIONS.BENEFICIARIES);
+    }
+    
+    if (content.match(/executor|executrix|administer|estate|appoint/i)) {
+      completedSections.push(WILL_SECTIONS.EXECUTORS);
+    }
+    
+    if (content.match(/guardian|minor|children|care|custody/i)) {
+      completedSections.push(WILL_SECTIONS.GUARDIANS);
+    }
+    
+    if (content.match(/digital|online|account|password|crypto|social media|email/i)) {
+      completedSections.push(WILL_SECTIONS.DIGITAL_ASSETS);
+    }
+    
+    if (content.match(/funeral|burial|cremation|ceremony|wishes|memorial/i)) {
+      completedSections.push(WILL_SECTIONS.FINAL_WISHES);
+    }
+    
+    return completedSections;
   };
 
   const handleSave = async () => {
@@ -73,6 +187,14 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
         toast({
           title: "Success",
           description: "Will has been updated successfully"
+        });
+        
+        // Update progress tracking
+        const completedSections = detectCompletedSections(content);
+        setProgress({
+          content,
+          completedSections,
+          lastEdited: new Date()
         });
       }
     } catch (error) {
@@ -98,6 +220,66 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
       title: "Formatted",
       description: "Document has been formatted according to legal standards"
     });
+  };
+
+  const setSection = (section: string) => {
+    setActiveSection(section);
+    setShowSectionHints(true);
+    
+    // Update progress with current section
+    setProgress({
+      lastEditedSection: section
+    });
+    
+    // Scroll to appropriate area in the document
+    const sectionMap = {
+      [WILL_SECTIONS.PERSONAL_INFO]: "I,",
+      [WILL_SECTIONS.ASSETS]: "assets",
+      [WILL_SECTIONS.BENEFICIARIES]: "beneficiary",
+      [WILL_SECTIONS.EXECUTORS]: "executor",
+      [WILL_SECTIONS.GUARDIANS]: "guardian",
+      [WILL_SECTIONS.DIGITAL_ASSETS]: "digital assets",
+      [WILL_SECTIONS.FINAL_WISHES]: "final wishes",
+    };
+    
+    // Add helpful text at cursor position if section is empty
+    const sectionHints = {
+      [WILL_SECTIONS.PERSONAL_INFO]: "I, [YOUR FULL LEGAL NAME], residing at [YOUR ADDRESS], being of sound mind...",
+      [WILL_SECTIONS.ASSETS]: "ASSETS: I own the following assets...",
+      [WILL_SECTIONS.BENEFICIARIES]: "BENEFICIARIES: I hereby designate the following persons as beneficiaries...",
+      [WILL_SECTIONS.EXECUTORS]: "EXECUTOR: I appoint [NAME] as the executor of this will...",
+      [WILL_SECTIONS.GUARDIANS]: "GUARDIANS: For any minor children, I appoint [NAME] as guardian...",
+      [WILL_SECTIONS.DIGITAL_ASSETS]: "DIGITAL ASSETS: I direct my digital assets to be handled as follows...",
+      [WILL_SECTIONS.FINAL_WISHES]: "FINAL WISHES: Regarding my funeral and burial arrangements..."
+    };
+    
+    // If section text isn't found in the content, suggest adding it
+    const sectionText = sectionMap[section];
+    if (sectionText && !content.toLowerCase().includes(sectionText.toLowerCase()) && !readOnly) {
+      const hint = sectionHints[section];
+      toast({
+        title: `Add ${section.replace('_', ' ')} details`,
+        description: hint
+      });
+    }
+  };
+  
+  // Handle recovery of previous session
+  const handleRecoverSession = () => {
+    if (progress?.lastEditedSection) {
+      setSection(progress.lastEditedSection);
+      setShowRecoveryNotice(false);
+      
+      toast({
+        title: "Session Recovered",
+        description: `Continuing from where you left off: ${progress.lastEditedSection.replace('_', ' ')}`
+      });
+    }
+  };
+
+  // Dismiss recovery notice
+  const dismissRecoveryNotice = () => {
+    setShowRecoveryNotice(false);
   };
 
   if (isLoading) {
@@ -139,6 +321,122 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
         return <File className="h-5 w-5 text-gray-500" />;
     }
   };
+  
+  // Render section selection buttons
+  const renderSectionSelector = () => {
+    if (readOnly) return null;
+    
+    const sections = [
+      { id: WILL_SECTIONS.PERSONAL_INFO, label: 'Personal Info', icon: <FileText className="h-4 w-4" /> },
+      { id: WILL_SECTIONS.ASSETS, label: 'Assets', icon: <FileText className="h-4 w-4" /> },
+      { id: WILL_SECTIONS.BENEFICIARIES, label: 'Beneficiaries', icon: <FileText className="h-4 w-4" /> },
+      { id: WILL_SECTIONS.EXECUTORS, label: 'Executors', icon: <FileText className="h-4 w-4" /> },
+      { id: WILL_SECTIONS.GUARDIANS, label: 'Guardians', icon: <FileText className="h-4 w-4" /> },
+      { id: WILL_SECTIONS.DIGITAL_ASSETS, label: 'Digital Assets', icon: <FileText className="h-4 w-4" /> },
+      { id: WILL_SECTIONS.FINAL_WISHES, label: 'Final Wishes', icon: <FileText className="h-4 w-4" /> },
+    ];
+    
+    const isCompleted = (sectionId: string) => {
+      return progress?.completedSections?.includes(sectionId);
+    };
+    
+    return (
+      <div className="mb-4 flex flex-wrap gap-2">
+        {sections.map(section => (
+          <TooltipProvider key={section.id}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant={activeSection === section.id ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setSection(section.id)}
+                  className={`flex items-center gap-1 ${isCompleted(section.id) ? 'border-green-500' : ''}`}
+                >
+                  {section.icon}
+                  <span>{section.label}</span>
+                  {isCompleted(section.id) && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isCompleted(section.id) 
+                  ? `${section.label} section is complete` 
+                  : `Add ${section.label.toLowerCase()} to your will`}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ))}
+      </div>
+    );
+  };
+  
+  // Render completion progress
+  const renderProgressIndicator = () => {
+    if (readOnly) return null;
+    
+    return (
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-sm font-medium">Will Completion</span>
+          <span className="text-sm font-medium">{completionPercentage}%</span>
+        </div>
+        <Progress value={completionPercentage} className="h-2" />
+      </div>
+    );
+  };
+  
+  // Render AI suggestions
+  const renderSuggestions = () => {
+    if (readOnly || !suggestions.length) return null;
+    
+    return (
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Lightbulb className="h-4 w-4 text-amber-500" />
+          <span className="font-medium">AI Suggestions</span>
+        </div>
+        <ul className="space-y-1 text-sm">
+          {suggestions.map((suggestion, index) => (
+            <li key={index} className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <span>{suggestion}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+  
+  // Render session recovery notice
+  const renderRecoveryNotice = () => {
+    if (!showRecoveryNotice || readOnly) return null;
+    
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="mb-4"
+        >
+          <Alert>
+            <Clock className="h-4 w-4 mr-2" />
+            <AlertTitle>Resume your progress</AlertTitle>
+            <AlertDescription className="flex justify-between items-center">
+              <span>You have an unfinished session. Would you like to continue where you left off?</span>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" variant="outline" onClick={dismissRecoveryNotice}>
+                  Dismiss
+                </Button>
+                <Button size="sm" onClick={handleRecoverSession}>
+                  Resume
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -179,6 +477,11 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
       </div>
       
       <div className="p-6">
+        {renderProgressIndicator()}
+        {renderRecoveryNotice()}
+        {renderSectionSelector()}
+        {renderSuggestions()}
+        
         <Textarea
           className="min-h-[500px] font-mono text-sm resize-none"
           value={content}

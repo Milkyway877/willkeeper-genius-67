@@ -20,6 +20,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getWills, Will, deleteWill } from '@/services/willService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { WillProgressTracker } from '../will/components/WillProgressTracker';
+import { getAllWillProgress } from '@/services/willProgressService';
 
 export default function Wills() {
   const [willToDelete, setWillToDelete] = useState<Will | null>(null);
@@ -27,12 +29,27 @@ export default function Wills() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [inProgressWills, setInProgressWills] = useState<Record<string, boolean>>({});
 
   // Fetch wills data
   const { data: wills, isLoading, error } = useQuery({
     queryKey: ['wills'],
     queryFn: getWills,
   });
+
+  // Check for wills in progress
+  useEffect(() => {
+    const progressData = getAllWillProgress();
+    const progressMap: Record<string, boolean> = {};
+    
+    Object.keys(progressData).forEach(key => {
+      if (key !== 'new_will') {
+        progressMap[key] = true;
+      }
+    });
+    
+    setInProgressWills(progressMap);
+  }, []);
 
   // Delete will mutation
   const deleteMutation = useMutation({
@@ -97,6 +114,38 @@ export default function Wills() {
     }
   };
 
+  const renderInProgressBanner = () => {
+    // Check if there's a new will in progress
+    const progressData = getAllWillProgress();
+    if (progressData?.new_will) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex justify-between items-center">
+            <div>
+              <h3 className="font-medium text-blue-800">You have an unfinished will</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                Continue creating your will from where you left off.
+              </p>
+            </div>
+            <Button 
+              onClick={() => navigate('/will/create')}
+              variant="outline"
+              className="border-blue-300 text-blue-700 hover:bg-blue-100"
+            >
+              Continue Writing
+            </Button>
+          </div>
+        </motion.div>
+      );
+    }
+    
+    return null;
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -148,78 +197,98 @@ export default function Wills() {
           </Button>
         </div>
 
+        {renderInProgressBanner()}
+
         {wills && wills.length > 0 ? (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden"
+            className="space-y-8"
           >
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {wills.map((will) => (
-                  <TableRow key={will.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium flex items-center">
-                      <FileText className="h-4 w-4 mr-2 text-willtank-600" />
-                      {will.title}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getStatusColor(will.status)}>
-                        {will.status || 'Draft'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {will.created_at 
-                        ? format(new Date(will.created_at), 'MMM dd, yyyy') 
-                        : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {will.updated_at 
-                        ? format(new Date(will.updated_at), 'MMM dd, yyyy') 
-                        : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {will.template_type 
-                        ? will.template_type.charAt(0).toUpperCase() + will.template_type.slice(1) 
-                        : 'Custom'}
-                      {will.ai_generated && (
-                        <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-800">
-                          AI Generated
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleViewWill(will)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleEditWill(will)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                          onClick={() => handleDeleteWill(will)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {/* Wills in progress section */}
+            {Object.keys(inProgressWills).length > 0 && (
+              <div>
+                <h2 className="text-lg font-medium mb-4">Continue Working</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                  {wills.filter(will => inProgressWills[will.id]).map(will => (
+                    <WillProgressTracker key={`progress-${will.id}`} willId={will.id} />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* All wills table */}
+            <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Last Updated</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {wills.map((will) => (
+                    <TableRow key={will.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium flex items-center">
+                        <FileText className="h-4 w-4 mr-2 text-willtank-600" />
+                        {will.title}
+                        {inProgressWills[will.id] && (
+                          <Badge className="ml-2 bg-blue-100 text-blue-800 border-blue-200">In Progress</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getStatusColor(will.status)}>
+                          {will.status || 'Draft'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {will.created_at 
+                          ? format(new Date(will.created_at), 'MMM dd, yyyy') 
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {will.updated_at 
+                          ? format(new Date(will.updated_at), 'MMM dd, yyyy') 
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {will.template_type 
+                          ? will.template_type.charAt(0).toUpperCase() + will.template_type.slice(1) 
+                          : 'Custom'}
+                        {will.ai_generated && (
+                          <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-800">
+                            AI Generated
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleViewWill(will)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleEditWill(will)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                            onClick={() => handleDeleteWill(will)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </motion.div>
         ) : (
           <motion.div 
