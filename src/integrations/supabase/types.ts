@@ -165,27 +165,109 @@ export type Database = {
         }
         Relationships: []
       }
-      wills: {
+      will_beneficiaries: {
         Row: {
-          content: string | null
+          beneficiary_name: string
           created_at: string | null
           id: string
+          percentage: number | null
+          relationship: string
+          will_id: string | null
+        }
+        Insert: {
+          beneficiary_name: string
+          created_at?: string | null
+          id?: string
+          percentage?: number | null
+          relationship: string
+          will_id?: string | null
+        }
+        Update: {
+          beneficiary_name?: string
+          created_at?: string | null
+          id?: string
+          percentage?: number | null
+          relationship?: string
+          will_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_beneficiaries_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      will_executors: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          status: string | null
+          will_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          status?: string | null
+          will_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          status?: string | null
+          will_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_executors_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wills: {
+        Row: {
+          ai_generated: boolean | null
+          content: string | null
+          created_at: string | null
+          document_url: string | null
+          id: string
+          status: string | null
+          template_type: string | null
           title: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          ai_generated?: boolean | null
           content?: string | null
           created_at?: string | null
+          document_url?: string | null
           id?: string
+          status?: string | null
+          template_type?: string | null
           title?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          ai_generated?: boolean | null
           content?: string | null
           created_at?: string | null
+          document_url?: string | null
           id?: string
+          status?: string | null
+          template_type?: string | null
           title?: string | null
           updated_at?: string | null
           user_id?: string

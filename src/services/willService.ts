@@ -34,9 +34,17 @@ export interface WillBeneficiary {
 
 export const getWills = async (): Promise<Will[]> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('wills')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('updated_at', { ascending: false });
       
     if (error) {
@@ -53,10 +61,18 @@ export const getWills = async (): Promise<Will[]> => {
 
 export const getWill = async (id: string): Promise<Will | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('wills')
       .select('*')
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .single();
       
     if (error) {
@@ -84,7 +100,8 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
     const willToCreate = {
       ...will,
       user_id: session.user.id,
-      document_url: will.document_url || ''
+      document_url: will.document_url || '',
+      status: will.status || 'active'
     };
     
     console.log('Creating will with data:', willToCreate);
@@ -119,10 +136,24 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
 
 export const updateWill = async (id: string, updates: Partial<Will>): Promise<Will | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+
+    // Make sure the update includes the updated_at timestamp
+    const updatedWill = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
       .from('wills')
-      .update(updates)
+      .update(updatedWill)
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .select()
       .single();
       
@@ -145,16 +176,25 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
 
 export const deleteWill = async (id: string): Promise<boolean> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return false;
+    }
+
     const { data: willToDelete } = await supabase
       .from('wills')
       .select('title')
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .single();
     
     const { error } = await supabase
       .from('wills')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', session.user.id);
       
     if (error) {
       console.error('Error deleting will:', error);
@@ -175,12 +215,24 @@ export const deleteWill = async (id: string): Promise<boolean> => {
   }
 };
 
-export const getWillExecutors = async (): Promise<WillExecutor[]> => {
+export const getWillExecutors = async (willId?: string): Promise<WillExecutor[]> => {
   try {
-    const { data, error } = await supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    let query = supabase
       .from('will_executors')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
       
     if (error) {
       console.error('Error fetching executors:', error);
@@ -196,6 +248,13 @@ export const getWillExecutors = async (): Promise<WillExecutor[]> => {
 
 export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'created_at'>): Promise<WillExecutor | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('will_executors')
       .insert(executor)
@@ -219,12 +278,24 @@ export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'cr
   }
 };
 
-export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
+export const getWillBeneficiaries = async (willId?: string): Promise<WillBeneficiary[]> => {
   try {
-    const { data, error } = await supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    let query = supabase
       .from('will_beneficiaries')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
       
     if (error) {
       console.error('Error fetching beneficiaries:', error);
@@ -247,6 +318,13 @@ export const getWillBeneficiaries = async (): Promise<WillBeneficiary[]> => {
 
 export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, 'id' | 'created_at'>): Promise<WillBeneficiary | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+    
     const dbBeneficiary = {
       beneficiary_name: beneficiary.name,
       relationship: beneficiary.relationship,
