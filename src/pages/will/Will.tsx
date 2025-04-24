@@ -6,10 +6,7 @@ import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'luci
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { getUserWills } from '@/services/dashboardService';
-import { Skeleton } from '@/components/ui/skeleton';
-import { getWill, updateWill } from '@/services/willService';
+import { getWill, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
 
 export default function Will() {
@@ -19,7 +16,7 @@ export default function Will() {
   const [lastSaved, setLastSaved] = useState('');
   const [createdDate, setCreatedDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [currentWill, setCurrentWill] = useState<any>(null);
+  const [currentWill, setCurrentWill] = useState<WillType | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,39 +34,8 @@ export default function Will() {
             setCurrentWill(will);
             setWillTitle(will.title || "Last Will and Testament");
             
-            // For demonstration, we're creating sample will content based on the title
-            const sampleWillContent = `
-LAST WILL AND TESTAMENT OF ALEX MORGAN
-
-I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
-
-ARTICLE I: REVOCATION
-I revoke all previous wills and codicils.
-
-ARTICLE II: FAMILY INFORMATION
-I am married to Jamie Morgan. We have two children: Taylor Morgan and Riley Morgan.
-
-ARTICLE III: EXECUTOR
-I appoint Jamie Morgan as the Executor of this Will. If they are unable or unwilling to serve, I appoint my sibling, Casey Morgan, as alternate Executor.
-
-ARTICLE IV: GUARDIAN
-If my spouse does not survive me, I appoint my sibling, Casey Morgan, as guardian of my minor children.
-
-ARTICLE V: DISPOSITION OF PROPERTY
-I give all my property, real and personal, to my spouse, Jamie Morgan, if they survive me.
-If my spouse does not survive me, I give all my property in equal shares to my children, Taylor Morgan and Riley Morgan.
-
-ARTICLE VI: DIGITAL ASSETS
-I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
-
-ARTICLE VII: TAXES AND EXPENSES
-I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
-
-Signed: Alex Morgan
-Date: ${will.created_at ? format(new Date(will.created_at), 'MMMM dd, yyyy') : new Date().toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]
-`;
-            setWillContent(sampleWillContent);
+            // Use actual content from the database
+            setWillContent(will.content || "");
             
             // Set dates
             setLastSaved(will.updated_at ? format(new Date(will.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
@@ -83,57 +49,12 @@ Witnesses: [Witness 1], [Witness 2]
             navigate('/wills');
           }
         } else {
-          // No ID provided, fetch the most recent will
-          const wills = await getUserWills();
-          
-          if (wills && wills.length > 0) {
-            const latestWill = wills[0]; // Get the most recent will
-            setCurrentWill(latestWill);
-            setWillTitle(latestWill.title || "Last Will and Testament");
-            
-            // For demonstration, create sample will content
-            const sampleWillContent = `
-LAST WILL AND TESTAMENT OF ALEX MORGAN
-
-I, Alex Morgan, residing at 123 Main Street, Anytown, USA, being of sound mind, declare this to be my Last Will and Testament.
-
-ARTICLE I: REVOCATION
-I revoke all previous wills and codicils.
-
-ARTICLE II: FAMILY INFORMATION
-I am married to Jamie Morgan. We have two children: Taylor Morgan and Riley Morgan.
-
-ARTICLE III: EXECUTOR
-I appoint Jamie Morgan as the Executor of this Will. If they are unable or unwilling to serve, I appoint my sibling, Casey Morgan, as alternate Executor.
-
-ARTICLE IV: GUARDIAN
-If my spouse does not survive me, I appoint my sibling, Casey Morgan, as guardian of my minor children.
-
-ARTICLE V: DISPOSITION OF PROPERTY
-I give all my property, real and personal, to my spouse, Jamie Morgan, if they survive me.
-If my spouse does not survive me, I give all my property in equal shares to my children, Taylor Morgan and Riley Morgan.
-
-ARTICLE VI: DIGITAL ASSETS
-I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.
-
-ARTICLE VII: TAXES AND EXPENSES
-I direct my Executor to pay all just debts, funeral expenses, and costs of administering my estate.
-
-Signed: Alex Morgan
-Date: ${new Date(latestWill.created_at).toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]
-`;
-            setWillContent(sampleWillContent);
-            
-            // Set dates
-            setLastSaved(latestWill.updated_at ? format(new Date(latestWill.updated_at), 'h:mm a') : new Date().toLocaleTimeString());
-            setCreatedDate(latestWill.created_at ? format(new Date(latestWill.created_at), 'MMMM dd, yyyy') : 'N/A');
-          } else {
-            // No wills found
-            setWillContent("No will document found. Create your first will to get started.");
-            setLastSaved(new Date().toLocaleTimeString());
-            setCreatedDate("N/A");
-          }
+          // No ID provided, redirect to wills page
+          toast({
+            title: "No will specified",
+            description: "Please select a will to view.",
+          });
+          navigate('/wills');
         }
       } catch (error) {
         console.error("Error fetching will data:", error);
@@ -156,33 +77,30 @@ Witnesses: [Witness 1], [Witness 2]
 
   const handleSave = async () => {
     try {
-      setIsLoading(true);
-      
       if (!currentWill) {
-        // Create a new will if none exists
-        const { data, error } = await supabase
-          .from('wills')
-          .insert({
-            title: willTitle,
-            document_url: 'placeholder_url', // In a real app, you'd upload the document
-            status: 'Active'
-          })
-          .select()
-          .single();
-          
-        if (error) throw error;
-        setCurrentWill(data);
-      } else {
-        // Update existing will
-        const updated = await updateWill(currentWill.id, { 
-          updated_at: new Date().toISOString()
+        toast({
+          title: "Error",
+          description: "No will found to update",
+          variant: "destructive"
         });
-        
-        if (!updated) throw new Error("Failed to update will");
+        return;
       }
       
+      setIsLoading(true);
+      
+      // Update existing will with new content
+      const updated = await updateWill(currentWill.id, { 
+        content: willContent,
+        title: willTitle,
+        updated_at: new Date().toISOString()
+      });
+      
+      if (!updated) throw new Error("Failed to update will");
+      
+      setCurrentWill(updated);
       setIsEditing(false);
       setLastSaved(new Date().toLocaleTimeString());
+      
       toast({
         title: "Will saved",
         description: "Your will has been saved successfully.",
@@ -325,7 +243,7 @@ Witnesses: [Witness 1], [Witness 2]
                   <div className="flex items-center">
                     <div className="h-2.5 w-2.5 rounded-full bg-green-500 mr-2"></div>
                     <p className="font-medium text-green-700">
-                      {currentWill ? currentWill.status : 'Draft'}
+                      {currentWill?.status || 'Draft'}
                     </p>
                   </div>
                 </div>
@@ -339,6 +257,21 @@ Witnesses: [Witness 1], [Witness 2]
                   <p className="text-sm text-gray-500 mb-1">Last Modified</p>
                   <p className="font-medium">Today at {lastSaved}</p>
                 </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Template Type</p>
+                  <p className="font-medium">{currentWill?.template_type || 'Custom'}</p>
+                </div>
+                
+                {currentWill?.ai_generated && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Generation Method</p>
+                    <div className="flex items-center">
+                      <div className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-2"></div>
+                      <p className="font-medium text-blue-700">AI Generated</p>
+                    </div>
+                  </div>
+                )}
                 
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Encryption Status</p>

@@ -161,7 +161,6 @@ export default function WillCreation() {
       if (newWill) {
         setProgress(100);
         
-        // Launch confetti celebration
         confetti({
           particleCount: 100,
           spread: 70,
@@ -183,9 +182,8 @@ export default function WillCreation() {
           variant: "default"
         });
         
-        // Properly redirect to the wills dashboard after a short delay
         setTimeout(() => {
-          navigate("/dashboard/will");
+          navigate("/wills");
         }, 2000);
       } else {
         throw new Error('Failed to create will');
