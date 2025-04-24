@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
@@ -31,17 +30,38 @@ export default function EmailVerification() {
 
   useEffect(() => {
     if (!email) {
+      console.log("No email found in URL, redirecting to signup");
       navigate('/auth/signup');
       toast({
         title: "Missing email",
         description: "We couldn't find your email. Please try signing up again.",
         variant: "destructive",
       });
+    } else {
+      console.log("Email found in URL:", email);
     }
   }, [email, navigate, toast]);
 
   const handleFormSubmit = async (values: { code: string }) => {
-    if (!email) return;
+    if (!email) {
+      console.error("Missing email");
+      toast({
+        title: "Missing email",
+        description: "Please try signing up again.",
+        variant: "destructive",
+      });
+      navigate('/auth/signup');
+      return;
+    }
+    
+    if (!values.code || values.code.length !== 6) {
+      toast({
+        title: "Invalid code",
+        description: "Please enter the 6-digit verification code.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
@@ -79,7 +99,7 @@ export default function EmailVerification() {
         
         if (sessionError) {
           console.error("Session error:", sessionError);
-          throw sessionError;
+          // Continue anyway - this just means the user isn't logged in yet
         }
         
         if (sessionData?.session?.user) {
@@ -105,16 +125,45 @@ export default function EmailVerification() {
       // Success flow
       toast({
         title: "Email verified",
-        description: "Your email has been successfully verified. You can now sign in.",
+        description: "Your email has been successfully verified.",
         variant: "default",
       });
       
-      // Navigate to dashboard or signin
+      // Check if we have an active session
       const { data: currentSession } = await supabase.auth.getSession();
       if (currentSession?.session) {
         console.log("User is authenticated, redirecting to dashboard");
         navigate('/dashboard');
       } else {
+        // Try to sign in the user with their information stored in localStorage
+        try {
+          console.log("Attempting to retrieve stored credentials");
+          const storedEmail = localStorage.getItem('tempAuthEmail');
+          const storedPassword = localStorage.getItem('tempAuthPassword');
+          
+          if (storedEmail && storedPassword && storedEmail === email) {
+            console.log("Found stored credentials, attempting sign in");
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+              email: storedEmail,
+              password: storedPassword,
+            });
+            
+            if (!signInError) {
+              console.log("Auto sign-in successful, redirecting to dashboard");
+              // Clear stored credentials
+              localStorage.removeItem('tempAuthEmail');
+              localStorage.removeItem('tempAuthPassword');
+              navigate('/dashboard');
+              return;
+            } else {
+              console.log("Auto sign-in failed:", signInError);
+            }
+          }
+        } catch (signInError) {
+          console.error("Error during auto sign-in attempt:", signInError);
+        }
+        
+        // If auto sign-in failed or no stored credentials, redirect to sign in
         console.log("User not authenticated, redirecting to signin");
         navigate('/auth/signin', { state: { verifiedEmail: email } });
       }
@@ -126,13 +175,20 @@ export default function EmailVerification() {
         description: error?.message || "An unexpected error occurred. Please try again later.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendCode = async () => {
-    if (!email) return;
+    if (!email) {
+      toast({
+        title: "Missing email",
+        description: "Please try signing up again.",
+        variant: "destructive",
+      });
+      navigate('/auth/signup');
+      return;
+    }
     
     setResendLoading(true);
     

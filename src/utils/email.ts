@@ -26,6 +26,11 @@ export const verifyCode = async (email: string, code: string, type: 'signup' | '
   try {
     console.log('Verifying code for email:', email, 'type:', type);
     
+    if (!email || !code) {
+      console.error('Missing email or code');
+      return { valid: false, message: 'Email and code are required' };
+    }
+    
     const { data, error } = await supabase
       .from('email_verification_codes')
       .select('*')

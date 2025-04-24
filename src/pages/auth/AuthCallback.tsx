@@ -36,6 +36,8 @@ export default function AuthCallback() {
   }, [isVerified, navigate]);
 
   useEffect(() => {
+    console.log("AuthCallback: Initializing");
+
     const createWelcomeNotifications = async () => {
       try {
         console.log("Creating welcome notifications for new user");
@@ -55,6 +57,8 @@ export default function AuthCallback() {
             title: "Secure Your Account",
             description: "For maximum security, we recommend enabling two-factor authentication in settings."
           });
+          
+          console.log("Successfully created welcome notifications");
         } catch (notificationError) {
           console.error("Error creating notifications:", notificationError);
           // Continue anyway - notifications are not critical for authentication
@@ -70,6 +74,7 @@ export default function AuthCallback() {
     const handleEmailVerification = async () => {
       try {
         console.log("AuthCallback: Checking authentication state");
+        
         // Check if this is coming from an email verification link
         const { data, error: sessionError } = await supabase.auth.getSession();
         
@@ -86,11 +91,7 @@ export default function AuthCallback() {
           
           // Create notifications for the user
           try {
-            const notificationsCreated = await createWelcomeNotifications();
-            
-            if (notificationsCreated) {
-              console.log("Welcome notifications created successfully");
-            }
+            await createWelcomeNotifications();
           } catch (notificationError) {
             console.error("Error with notifications:", notificationError);
             // Continue anyway - notifications are not critical
@@ -128,13 +129,18 @@ export default function AuthCallback() {
               return;
             }
             
+            // Check if session was successfully set
+            const { data: newSession } = await supabase.auth.getSession();
+            if (!newSession?.session) {
+              console.error("Failed to establish session after setSession");
+              setError("Authentication failed. Please try signing in again.");
+              setIsProcessing(false);
+              return;
+            }
+            
             // Create notifications for the user
             try {
-              const notificationsCreated = await createWelcomeNotifications();
-              
-              if (notificationsCreated) {
-                console.log("Welcome notifications created successfully");
-              }
+              await createWelcomeNotifications();
             } catch (notificationError) {
               console.error("Error with notifications:", notificationError);
               // Continue anyway - notifications are not critical

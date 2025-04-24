@@ -58,8 +58,11 @@ export function SignUpForm() {
           description: "Please complete the CAPTCHA verification.",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
+
+      console.log("Creating user account...");
 
       // Create the user in Supabase auth but disable auto confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -82,26 +85,48 @@ export function SignUpForm() {
           description: authError.message,
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!authData?.user) {
+        console.error("No user data returned from signup");
+        toast({
+          title: "Error creating account",
+          description: "Failed to create account. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
         return;
       }
 
       console.log("User signed up successfully, sending verification email");
       
       // Send our custom verification email
-      await sendVerificationEmail(
-        values.email,
-        'signup',
-        values.firstName
-      );
-      
-      // Success! Redirect to verification page
-      toast({
-        title: "Account created",
-        description: "Please check your email for your verification code.",
-      });
-      
-      // Redirect to the email verification page
-      navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
+      try {
+        await sendVerificationEmail(
+          values.email,
+          'signup',
+          values.firstName
+        );
+        
+        // Success! Redirect to verification page
+        toast({
+          title: "Account created",
+          description: "Please check your email for your verification code.",
+        });
+        
+        // Redirect to the email verification page
+        navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        toast({
+          title: "Verification email failed",
+          description: "Your account was created but we couldn't send the verification email. Please try logging in.",
+          variant: "destructive",
+        });
+        navigate('/auth/signin');
+      }
       
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -110,7 +135,6 @@ export function SignUpForm() {
         description: error?.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };

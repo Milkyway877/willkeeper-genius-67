@@ -23,31 +23,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    console.log("Setting up auth state listener");
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, newSession) => {
+        console.log(`Auth state changed: ${event}`, newSession?.user?.id);
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
         setIsLoading(false);
       }
     );
     
     // Initial session fetch
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
+      console.log("Fetching initial session");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Initial session:", session?.user?.id || "No session");
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error("Error getting initial session:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     getInitialSession();
 
     return () => {
+      console.log("Cleaning up auth listener");
       authListener?.subscription.unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    console.log("Signing out user");
+    try {
+      await supabase.auth.signOut();
+      console.log("User signed out successfully");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   const value = {
