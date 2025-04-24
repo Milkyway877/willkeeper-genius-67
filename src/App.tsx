@@ -103,8 +103,9 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/will" element={<WillDashboard />} />
             <Route path="/will/:id" element={<WillDashboard />} />
-            <Route path="/will/create" element={<WillEditor />} />
+            <Route path="/will/view/:id" element={<WillEditor readOnly={true} />} />
             <Route path="/will/edit/:id" element={<WillEditor />} />
+            <Route path="/will/create" element={<WillEditor />} />
             <Route path="/wills" element={<Wills />} />
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />

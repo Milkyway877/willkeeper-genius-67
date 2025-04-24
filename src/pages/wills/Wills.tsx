@@ -62,7 +62,7 @@ export default function Wills() {
 
   // Handle view will button click
   const handleViewWill = (will: Will) => {
-    navigate(`/will/${will.id}`);
+    navigate(`/will/view/${will.id}`);
   };
 
   // Handle edit will button click
