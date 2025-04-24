@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Save, Copy, Undo, Redo, Code, FileText, Video, FileAudio, File, AlertCircle, CheckCircle2, Clock, Lightbulb, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { validateAddress } from '@/services/locationService';
-import { getWill, updateWill } from '@/services/willService';
+import { createWill, updateWill } from '@/services/willService';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -32,111 +31,77 @@ type WillEditorProps = {
   content?: string;
   onChange?: (content: string) => void;
   readOnly?: boolean;
+  willData?: any;
+  willId?: string;
 };
 
-export function WillEditor({ readOnly = false }: WillEditorProps) {
+export function WillEditor({ readOnly = false, willData = null, willId }: WillEditorProps) {
   const { toast } = useToast();
-  const { id } = useParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [willData, setWillData] = useState<any>(null);
   const [content, setContent] = useState('');
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   const [showRecoveryNotice, setShowRecoveryNotice] = useState(false);
-  const { progress, setProgress } = useWillProgress(id);
+  const { progress, setProgress } = useWillProgress(willId);
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [showSectionHints, setShowSectionHints] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState("Last Will and Testament");
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [createdDate, setCreatedDate] = useState<string | null>(null);
 
+  // Initialize content and other fields from willData or progress
   useEffect(() => {
-    const loadWill = async () => {
-      if (!id) {
-        // For new wills, we don't need to fetch anything
-        setIsLoading(false);
+    // Initialize with data from the will if provided
+    if (willData) {
+      setContent(willData.content || '');
+      setTitle(willData.title || "Last Will and Testament");
+      
+      // Update progress tracking with will data
+      setProgress({
+        id: willId,
+        content: willData.content || '',
+        title: willData.title,
+        completedSections: detectCompletedSections(willData.content || '')
+      });
+    } else {
+      // For new wills, check if there's saved progress
+      const savedProgress = getWillProgress('new_will');
+      if (savedProgress?.content) {
+        setContent(savedProgress.content);
         
+        if (savedProgress.title) {
+          setTitle(savedProgress.title);
+        }
+        
+        if (savedProgress.lastEditedSection && !readOnly) {
+          setShowRecoveryNotice(true);
+          setActiveSection(savedProgress.lastEditedSection);
+        }
+        
+        // Update our progress state with saved data
+        setProgress({
+          content: savedProgress.content,
+          title: savedProgress.title,
+          lastEditedSection: savedProgress.lastEditedSection,
+          completedSections: savedProgress.completedSections || []
+        });
+      } else if (!readOnly) {
         // Initialize with empty content for new will
-        setContent('');
+        const defaultContent = "LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], residing at [YOUR ADDRESS], being of sound mind, declare this to be my Will, revoking all previous wills and codicils.\n\n[START WRITING YOUR WILL HERE]";
+        setContent(defaultContent);
         
-        // Check if there's any cached progress for a new will
-        const savedProgress = getWillProgress('new_will');
-        if (savedProgress?.content) {
-          setContent(savedProgress.content);
-          
-          if (savedProgress.lastEditedSection && !readOnly) {
-            setShowRecoveryNotice(true);
-            setActiveSection(savedProgress.lastEditedSection);
-          }
-        }
-        return;
+        // Initialize progress tracking for new will
+        setProgress({
+          content: defaultContent,
+          title: title,
+          completedSections: []
+        });
       }
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const will = await getWill(id);
-        if (will) {
-          setWillData(will);
-          setContent(will.content || '');
-          
-          // Check if there's saved progress for this will
-          const savedProgress = getWillProgress(id);
-          if (savedProgress) {
-            // Update our progress state with saved data
-            setProgress({
-              ...savedProgress,
-              content: will.content || savedProgress.content,
-              title: will.title
-            });
-            
-            // If there's a more recent content in the progress, use that
-            if (savedProgress.content && savedProgress.content !== will.content) {
-              setContent(savedProgress.content);
-            }
-            
-            // If there's saved progress for a different section, show recovery notice
-            if (savedProgress.lastEditedSection && !readOnly) {
-              setShowRecoveryNotice(true);
-              setActiveSection(savedProgress.lastEditedSection);
-            }
-          } else {
-            // Initialize progress tracking for this will
-            setProgress({
-              id: id,
-              content: will.content || '',
-              title: will.title,
-              completedSections: detectCompletedSections(will.content || '')
-            });
-          }
-        } else {
-          setError("Could not find the requested will");
-          if (!readOnly) {
-            toast({
-              title: "Error",
-              description: "Could not find the requested will",
-              variant: "destructive"
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error loading will:', error);
-        setError("Failed to load will content");
-        if (!readOnly) {
-          toast({
-            title: "Error",
-            description: "Failed to load will content",
-            variant: "destructive"
-          });
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadWill();
-  }, [id, toast, setProgress, readOnly]);
+    }
+  }, [willData, willId, setProgress, readOnly]);
 
   // Update completion percentage and suggestions whenever progress changes
   useEffect(() => {
@@ -162,6 +127,23 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
         lastEditedSection: activeSection || undefined,
         lastEdited: new Date()
       });
+      
+      // Auto-save to local storage
+      if (willId) {
+        saveWillProgress(willId, {
+          content: newContent,
+          title: title,
+          lastEditedSection: activeSection || undefined,
+          lastEdited: new Date()
+        });
+      } else {
+        saveWillProgress('new_will', {
+          content: newContent,
+          title: title,
+          lastEditedSection: activeSection || undefined,
+          lastEdited: new Date()
+        });
+      }
     }
     
     // Detect completed sections based on content
@@ -209,29 +191,61 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
   };
 
   const handleSave = async () => {
-    if (!id || !willData) return;
     try {
       setIsLoading(true);
-      const updated = await updateWill(id, {
-        ...willData,
-        content: content
-      });
       
-      if (updated) {
-        toast({
-          title: "Success",
-          description: "Will has been updated successfully"
+      if (willId && willData) {
+        // Update existing will
+        const updated = await updateWill(willId, {
+          ...willData,
+          content: content,
+          title: title
         });
         
-        // Update progress tracking
-        const completedSections = detectCompletedSections(content);
-        setProgress({
-          content,
-          completedSections,
-          lastEdited: new Date()
-        });
+        if (updated) {
+          toast({
+            title: "Success",
+            description: "Will has been updated successfully"
+          });
+          
+          // Update progress tracking
+          const completedSections = detectCompletedSections(content);
+          setProgress({
+            content,
+            title,
+            completedSections,
+            lastEdited: new Date()
+          });
+          
+          // Update last saved timestamp
+          setLastSaved(new Date().toLocaleTimeString());
+        } else {
+          throw new Error("Failed to update will");
+        }
       } else {
-        throw new Error("Failed to update will");
+        // Create new will
+        const newWill = await createWill({
+          title: title,
+          content: content,
+          status: 'draft',
+          document_url: '',
+          template_type: 'custom'
+        });
+        
+        if (newWill) {
+          toast({
+            title: "Success",
+            description: "Will has been created successfully"
+          });
+          
+          // Clear the new_will progress and create progress for the new will
+          clearWillProgress('new_will');
+          
+          // Navigate to the will view page
+          navigate(`/will/${newWill.id}`);
+        } else {
+          throw new Error("Failed to create will");
+        }
       }
     } catch (error) {
       console.error('Error saving will:', error);
@@ -320,7 +334,7 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
     setShowRecoveryNotice(false);
   };
 
-  if (isLoading) {
+  if (isLoading && !content) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
         <div className="flex justify-center items-center py-16">
@@ -331,7 +345,7 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
     );
   }
 
-  if (error) {
+  if (error && !content) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -559,4 +573,3 @@ export function WillEditor({ readOnly = false }: WillEditorProps) {
     </div>
   );
 }
-

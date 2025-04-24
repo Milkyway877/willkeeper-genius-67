@@ -23,11 +23,16 @@ export const saveWillProgress = (willId: string | undefined, progress: Partial<W
     
     // Update or create progress for this will
     const willKey = willId || 'new_will';
+    
+    // Ensure we have completed sections
+    const completedSections = progress.completedSections || existingProgress[willKey]?.completedSections || [];
+    
     existingProgress[willKey] = {
       ...existingProgress[willKey],
       ...progress,
       lastEdited: new Date(),
       id: willId,
+      completedSections
     };
     
     // Save back to localStorage
@@ -94,14 +99,19 @@ export function useWillProgress(willId: string | undefined) {
   });
   
   const setProgress = (newProgress: Partial<WillProgress>) => {
-    setProgressState({
+    // Merge existing progress with new progress
+    const updatedProgress = {
       ...progress,
       ...newProgress,
       lastEdited: new Date(),
-    });
+      // Ensure completedSections is always an array
+      completedSections: newProgress.completedSections || progress.completedSections || []
+    };
+    
+    setProgressState(updatedProgress);
     
     // Also save to the consolidated storage
-    saveWillProgress(willId, newProgress);
+    saveWillProgress(willId, updatedProgress);
   };
   
   return { progress, setProgress };
