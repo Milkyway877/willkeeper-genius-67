@@ -73,11 +73,12 @@ const GUIDED_QUESTIONS = [
 export function GuidedWillEditor({ willContent, onContentChange, onSave, readOnly = false }: GuidedWillEditorProps) {
   const [currentSection, setCurrentSection] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
   
-  // Parse existing will content into answers
+  // Parse existing will content into answers only once on initial load
   useEffect(() => {
-    if (willContent) {
+    if (willContent && !isInitialized) {
       // Simple parsing logic - this could be enhanced based on your will format
       const parsedAnswers: Record<string, string> = {};
       GUIDED_QUESTIONS.forEach(section => {
@@ -89,25 +90,31 @@ export function GuidedWillEditor({ willContent, onContentChange, onSave, readOnl
         });
       });
       setAnswers(parsedAnswers);
+      setIsInitialized(true);
     }
-  }, [willContent]);
+  }, [willContent, isInitialized]);
 
+  // Separate effect for updating content to avoid unnecessary rerenders
   const updateAnswer = (questionId: string, value: string) => {
-    const newAnswers = { ...answers, [questionId]: value };
-    setAnswers(newAnswers);
-    
-    // Generate updated will content
-    let newContent = "LAST WILL AND TESTAMENT\n\n";
-    GUIDED_QUESTIONS.forEach(section => {
-      newContent += `\n== ${section.section.replace(/_/g, ' ').toUpperCase()} ==\n\n`;
-      section.questions.forEach(q => {
-        if (newAnswers[q.id]) {
-          newContent += `${q.question}\n${newAnswers[q.id]}\n\n`;
-        }
+    setAnswers(prevAnswers => {
+      const newAnswers = { ...prevAnswers, [questionId]: value };
+      
+      // Generate updated will content
+      let newContent = "LAST WILL AND TESTAMENT\n\n";
+      GUIDED_QUESTIONS.forEach(section => {
+        newContent += `\n== ${section.section.replace(/_/g, ' ').toUpperCase()} ==\n\n`;
+        section.questions.forEach(q => {
+          if (newAnswers[q.id]) {
+            newContent += `${q.question}\n${newAnswers[q.id]}\n\n`;
+          }
+        });
       });
+      
+      // Only update parent component when we have a complete content update
+      onContentChange(newContent);
+      
+      return newAnswers;
     });
-    
-    onContentChange(newContent);
   };
 
   const handleSave = () => {
