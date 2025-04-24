@@ -451,10 +451,12 @@ export default function TankCreation() {
       return;
     }
     
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setCurrentStep(currentStep + 1);
   };
 
   const handlePrev = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setCurrentStep(currentStep - 1);
   };
 

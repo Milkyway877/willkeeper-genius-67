@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -95,6 +94,7 @@ export default function WillCreation() {
     if (responses.willTitle) {
       setWillTitle(responses.willTitle);
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setCurrentStep(currentStep + 1);
     toast({
       title: "Questionnaire Completed",
@@ -534,10 +534,12 @@ export default function WillCreation() {
       return;
     }
     
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setCurrentStep(currentStep - 1);
   };
 
