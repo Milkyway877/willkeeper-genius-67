@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -27,9 +26,12 @@ import AuthResetPassword from './pages/auth/ResetPassword';
 import AccountActivation from './pages/auth/AccountActivation';
 import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
+
+// Import will pages
 import Dashboard from './pages/Dashboard';
 import WillDashboard from './pages/will/Will';
 import WillEditor from './pages/will/WillCreation';
+import WillsList from './pages/wills/Wills';
 import WillTemplates from './pages/templates/Templates';
 import WillTank from './pages/tank/Tank';
 import Settings from './pages/settings/Settings';
@@ -100,6 +102,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/will" element={<WillDashboard />} />
             <Route path="/will/:id" element={<WillEditor />} />
+            <Route path="/wills" element={<WillsList />} />
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />
             <Route path="/settings" element={<Settings />} />

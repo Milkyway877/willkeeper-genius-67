@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { getWill, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
