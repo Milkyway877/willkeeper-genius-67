@@ -42,6 +42,9 @@ import HowItWorks from './pages/HowItWorks';
 import Security from './pages/Security';
 import Services from './pages/Services';
 
+// Add the Will List page import
+import Wills from './pages/wills/Wills';
+
 // Import the Documentation pages
 import Documentation from './pages/corporate/Documentation';
 import GettingStarted from './pages/corporate/documentation/GettingStarted';
@@ -99,7 +102,10 @@ function App() {
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/will" element={<WillDashboard />} />
-            <Route path="/will/:id" element={<WillEditor />} />
+            <Route path="/will/:id" element={<WillDashboard />} />
+            <Route path="/will/create" element={<WillEditor />} />
+            <Route path="/will/edit/:id" element={<WillEditor />} />
+            <Route path="/wills" element={<Wills />} />
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />
             <Route path="/settings" element={<Settings />} />
