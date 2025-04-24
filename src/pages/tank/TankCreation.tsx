@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -83,7 +82,6 @@ export default function TankCreation() {
     setIsGenerating(true);
     setProgress(0);
     
-    // Simulate progress
     const interval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
@@ -95,7 +93,6 @@ export default function TankCreation() {
       });
     }, 400);
     
-    // Simulate completion and navigate away
     setTimeout(() => {
       clearInterval(interval);
       toast({
@@ -106,7 +103,6 @@ export default function TankCreation() {
     }, 4500);
   };
 
-  // Define the steps for the creation process
   const steps: Step[] = [
     {
       id: "type",
@@ -135,7 +131,6 @@ export default function TankCreation() {
     }
   ];
   
-  // Component for the first step - selecting message type
   const MessageTypeSelector = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card 
@@ -272,7 +267,6 @@ export default function TankCreation() {
     </div>
   );
   
-  // Component for the third step - selecting delivery method
   const DeliveryMethodSelector = () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <Card 
@@ -477,7 +471,7 @@ export default function TankCreation() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center">
             <MessageSquare className="mr-2 h-6 w-6 md:h-8 md:w-8 text-willtank-600" />
