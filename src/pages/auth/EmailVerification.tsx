@@ -84,6 +84,8 @@ export default function EmailVerification() {
             .from('user_profiles')
             .update({ activation_complete: true, email_verified: true })
             .eq('id', sessionData.session.user.id);
+        } else {
+          console.log("No active session found, continuing without updating profile");
         }
       } catch (profileError) {
         console.error("Error updating profile:", profileError);

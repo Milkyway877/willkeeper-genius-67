@@ -39,24 +39,30 @@ export default function AuthCallback() {
       try {
         console.log("Creating welcome notifications for new user");
         
-        // Send welcome notification
-        await createWelcomeNotification();
-        
-        // Send getting started instructions
-        await createSystemNotification('info', {
-          title: "Getting Started with WillTank",
-          description: "Follow our quick guide to set up your account and create your first will."
-        });
-        
-        // Send a security reminder
-        await createSystemNotification('security', {
-          title: "Secure Your Account",
-          description: "For maximum security, we recommend enabling two-factor authentication in settings."
-        });
+        // Handle potential errors from notification creation more gracefully
+        try {
+          // Send welcome notification
+          await createWelcomeNotification();
+          
+          // Send getting started instructions
+          await createSystemNotification('info', {
+            title: "Getting Started with WillTank",
+            description: "Follow our quick guide to set up your account and create your first will."
+          });
+          
+          // Send a security reminder
+          await createSystemNotification('security', {
+            title: "Secure Your Account",
+            description: "For maximum security, we recommend enabling two-factor authentication in settings."
+          });
+        } catch (notificationError) {
+          console.error("Error creating notifications:", notificationError);
+          // Continue anyway - notifications are not critical for authentication
+        }
         
         return true;
       } catch (notifError) {
-        console.error("Error creating welcome notifications:", notifError);
+        console.error("Error in createWelcomeNotifications:", notifError);
         return false;
       }
     };
@@ -75,11 +81,18 @@ export default function AuthCallback() {
 
         // If session exists, the email has been verified
         if (data?.session) {
-          // Create notifications for the user
-          const notificationsCreated = await createWelcomeNotifications();
+          console.log("User is authenticated with session:", data.session.user.id);
           
-          if (notificationsCreated) {
-            console.log("Welcome notifications created successfully");
+          // Create notifications for the user
+          try {
+            const notificationsCreated = await createWelcomeNotifications();
+            
+            if (notificationsCreated) {
+              console.log("Welcome notifications created successfully");
+            }
+          } catch (notificationError) {
+            console.error("Error with notifications:", notificationError);
+            // Continue anyway - notifications are not critical
           }
           
           toast({
@@ -91,12 +104,16 @@ export default function AuthCallback() {
           setIsVerified(true);
           setIsProcessing(false);
         } else {
+          console.log("No active session found, checking URL parameters");
+          
           // Handle any params from the URL
           const params = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           
           if (accessToken) {
+            console.log("Found access token in URL, attempting to set session");
+            
             // If we have tokens in the URL, try to exchange them for a session
             const { error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
@@ -111,10 +128,15 @@ export default function AuthCallback() {
             }
             
             // Create notifications for the user
-            const notificationsCreated = await createWelcomeNotifications();
-            
-            if (notificationsCreated) {
-              console.log("Welcome notifications created successfully");
+            try {
+              const notificationsCreated = await createWelcomeNotifications();
+              
+              if (notificationsCreated) {
+                console.log("Welcome notifications created successfully");
+              }
+            } catch (notificationError) {
+              console.error("Error with notifications:", notificationError);
+              // Continue anyway - notifications are not critical
             }
             
             toast({
@@ -126,6 +148,7 @@ export default function AuthCallback() {
             setIsVerified(true);
             setIsProcessing(false);
           } else {
+            console.log("No authentication tokens found in URL");
             // No session, no tokens - something went wrong
             setError("Authentication failed. Please try signing in again.");
             setIsProcessing(false);
