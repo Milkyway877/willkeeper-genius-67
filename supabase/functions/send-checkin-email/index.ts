@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.132.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.23.0";
 import { Resend } from 'npm:resend@1.0.0';
@@ -34,6 +33,9 @@ const checkinReminderTemplate = (name: string, checkInUrl: string) => `
 </head>
 <body>
   <div class="header">
+    <img src="https://ksiinmxsycosnpchutuw.supabase.co/storage/v1/object/public/email-assets/willtank-logo-secure.png" 
+         alt="WillTank Logo" 
+         style="display: block; margin: 0 auto; max-width: 200px; height: auto;">
     <h1>WillTank Check-in</h1>
   </div>
   <div class="content">

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
@@ -31,7 +30,7 @@ const createEmailHtml = (code: string, firstName?: string) => {
       </head>
       <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
         <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          <img src="https://ksiinmxsycosnpchutuw.supabase.co/storage/v1/object/public/email-assets/willtank-logo.png" 
+          <img src="https://ksiinmxsycosnpchutuw.supabase.co/storage/v1/object/public/email-assets/willtank-logo-secure.png" 
                alt="WillTank Logo" 
                style="display: block; margin: 0 auto; max-width: 200px; height: auto;">
           
@@ -79,13 +78,10 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate a 6-digit verification code
     const verificationCode = generateVerificationCode();
     
-    // Calculate expiration time (10 minutes from now)
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    // Store the verification code in the database
     const { error: dbError } = await supabase
       .from('email_verification_codes')
       .insert([
@@ -102,7 +98,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to store verification code');
     }
 
-    // Send the email using Resend
     const emailResponse = await resend.emails.send({
       from: "WillTank <support@willtank.com>",
       to: [email],
