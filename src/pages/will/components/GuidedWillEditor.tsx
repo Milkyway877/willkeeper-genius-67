@@ -163,6 +163,7 @@ export function GuidedWillEditor({ willContent, onContentChange, onSave, readOnl
                 onChange={(e) => updateAnswer(q.id, e.target.value)}
                 placeholder={q.placeholder}
                 className="min-h-[100px]"
+                disabled={readOnly}
               />
             </div>
           ))}
