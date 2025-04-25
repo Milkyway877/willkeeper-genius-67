@@ -1,82 +1,40 @@
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Logo } from '@/components/ui/logo/Logo';
-import { 
-  fadeInUp, 
-  glowPulse, 
-  floatElement, 
-  scanLine,
-  holographicReveal
-} from '@/components/auth/animations';
-import { Eye, EyeOff, Key, Mail, Shield, ArrowRight } from 'lucide-react';
-import { AuthLayout } from '@/components/auth/AuthLayout';
+import { cn } from "@/lib/utils";
+import { Github, Mail, LockKeyhole } from "lucide-react";
 import { login, logUserActivity } from '@/services/authService';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formErrors, setFormErrors] = useState<{email?: string; password?: string}>({});
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const validateForm = () => {
-    const errors: {email?: string; password?: string} = {};
-    
-    if (!email) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errors.email = 'Email format is invalid';
-    }
-    
-    if (!password) {
-      errors.password = 'Password is required';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
     setLoading(true);
     
     try {
-      // Log the login attempt
       await logUserActivity('login_attempt', { email });
-      
-      // Call login service
       const { data, error } = await login({ email, password });
       
       if (error) {
-        // Handle specific error cases
-        if (error.includes('Invalid login credentials')) {
-          toast({
-            title: "Login failed",
-            description: "Invalid email or password.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Login failed",
-            description: error,
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Login failed",
+          description: error.includes('Invalid login credentials') 
+            ? "Invalid email or password."
+            : error,
+          variant: "destructive"
+        });
         setLoading(false);
         return;
       }
       
-      // Redirect to verification
       navigate('/auth/verify', { 
         state: { 
           email,
@@ -94,114 +52,117 @@ export default function Login() {
       setLoading(false);
     }
   };
-  
+
   return (
-    <AuthLayout title="Welcome Back">
-      <motion.div
-        className="w-full max-w-md relative z-20 bg-white/10 backdrop-blur-xl border border-white/30 rounded-2xl p-8 shadow-[0_0_40px_rgba(14,165,233,0.2)]"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <motion.div {...floatElement} className="absolute -right-20 -top-20 w-40 h-40 bg-blue-500 rounded-full filter blur-3xl opacity-20 z-0" />
-        <motion.div {...floatElement} className="absolute -left-20 -bottom-20 w-40 h-40 bg-indigo-500 rounded-full filter blur-3xl opacity-20 z-0" />
-        
-        <div className="relative z-10">
-          {/* Form */}
-          <form onSubmit={handleSubmit}>
-            <motion.div 
-              className="space-y-5"
-              variants={{
-                hidden: { opacity: 0 },
-                show: {
-                  opacity: 1,
-                  transition: {
-                    staggerChildren: 0.15
-                  }
-                }
-              }}
-              initial="hidden"
-              animate="show"
-            >
-              {/* Email field */}
-              <motion.div variants={fadeInUp}>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-blue-400" />
-                  <Input
-                    type="email"
-                    placeholder="Email Address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
-                  />
-                </div>
-                {formErrors.email && <p className="text-red-400 text-sm mt-1">{formErrors.email}</p>}
-              </motion.div>
-              
-              {/* Password field */}
-              <motion.div variants={fadeInUp}>
-                <div className="relative">
-                  <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400" />
-                    )}
-                  </button>
-                </div>
-                {formErrors.password && <p className="text-red-400 text-sm mt-1">{formErrors.password}</p>}
-              </motion.div>
-              
-              {/* Submit button */}
-              <motion.div variants={fadeInUp} className="pt-2">
-                <Button 
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl relative overflow-hidden border border-white/20"
-                >
-                  {loading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      <span>Signing In</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <span className="mr-2">Sign In</span>
-                      <ArrowRight className="h-5 w-5" />
-                    </div>
-                  )}
-                </Button>
-              </motion.div>
-            </motion.div>
-          </form>
+    <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-white dark:bg-black">
+        <h2 className="font-bold text-xl text-neutral-800 dark:text-neutral-200">
+          Welcome Back
+        </h2>
+        <p className="text-neutral-600 text-sm max-w-sm mt-2 dark:text-neutral-300">
+          Sign in to your account to continue
+        </p>
+
+        <form className="my-8" onSubmit={handleSubmit}>
+          <LabelInputContainer className="mb-4">
+            <Label htmlFor="email">Email Address</Label>
+            <Input 
+              id="email" 
+              placeholder="you@example.com" 
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </LabelInputContainer>
           
-          {/* Link to signup */}
-          <motion.div 
-            className="mt-8 text-center text-gray-300"
-            variants={fadeInUp}
-            initial="initial"
-            animate="animate"
-            transition={{ delay: 0.6 }}
+          <LabelInputContainer className="mb-8">
+            <Label htmlFor="password">Password</Label>
+            <Input 
+              id="password" 
+              placeholder="••••••••" 
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </LabelInputContainer>
+
+          <button
+            className="bg-gradient-to-br relative group/btn from-black dark:from-zinc-900 dark:to-zinc-900 to-neutral-600 block dark:bg-zinc-800 w-full text-white rounded-md h-10 font-medium shadow-[0px_1px_0px_0px_#ffffff40_inset,0px_-1px_0px_0px_#ffffff40_inset] dark:shadow-[0px_1px_0px_0px_var(--zinc-800)_inset,0px_-1px_0px_0px_var(--zinc-800)_inset]"
+            type="submit"
+            disabled={loading}
           >
-            Don't have an account?{' '}
-            <Link to="/auth/signup" className="text-blue-400 hover:text-blue-300 transition-colors">
-              Create account
-            </Link>
-          </motion.div>
-        </div>
-      </motion.div>
-    </AuthLayout>
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                <span>Signing In</span>
+              </div>
+            ) : (
+              <>
+                Sign in &rarr;
+                <BottomGradient />
+              </>
+            )}
+          </button>
+
+          <div className="bg-gradient-to-r from-transparent via-neutral-300 dark:via-neutral-700 to-transparent my-8 h-[1px] w-full" />
+
+          <div className="flex flex-col space-y-4">
+            <button
+              type="button"
+              className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
+            >
+              <Github className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
+              <span className="text-neutral-700 dark:text-neutral-300 text-sm">
+                GitHub
+              </span>
+              <BottomGradient />
+            </button>
+            <button
+              type="button"
+              className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
+            >
+              <Mail className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
+              <span className="text-neutral-700 dark:text-neutral-300 text-sm">
+                Google
+              </span>
+              <BottomGradient />
+            </button>
+            <button
+              type="button"
+              className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
+            >
+              <LockKeyhole className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
+              <span className="text-neutral-700 dark:text-neutral-300 text-sm">
+                SSO
+              </span>
+              <BottomGradient />
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
+
+const BottomGradient = () => {
+  return (
+    <>
+      <span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
+      <span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
+    </>
+  );
+};
+
+const LabelInputContainer = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  return (
+    <div className={cn("flex flex-col space-y-2 w-full", className)}>
+      {children}
+    </div>
+  );
+};
