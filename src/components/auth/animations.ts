@@ -8,7 +8,7 @@ export const fadeInUp = {
 export const glowPulse = {
   initial: { boxShadow: '0 0 0 rgba(255,255,255,0)' },
   animate: { boxShadow: '0 0 30px rgba(255,255,255,0.5)' },
-  transition: { duration: 2, repeat: Infinity, repeatType: 'reverse' }
+  transition: { duration: 2, repeat: Infinity, repeatType: "reverse" as const }
 };
 
 export const floatElement = {
@@ -32,7 +32,7 @@ export const scanLine = {
 export const particleSystem = {
   initial: { scale: 0.8, opacity: 0 },
   animate: { scale: 1, opacity: [0, 1, 0] },
-  transition: { duration: 3, repeat: Infinity, repeatType: 'loop' }
+  transition: { duration: 3, repeat: Infinity, repeatType: "loop" as const }
 };
 
 export const wavyBorder = {
