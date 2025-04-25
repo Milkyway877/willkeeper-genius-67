@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,7 +66,6 @@ export function AIQuestionFlow({
   const recognitionRef = useRef<any>(null);
   const conversationHistoryRef = useRef<any[]>([]);
 
-  // Check for speech recognition support
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -75,7 +73,6 @@ export function AIQuestionFlow({
     }
   }, []);
 
-  // Initialize speech recognition
   const initSpeechRecognition = useCallback(() => {
     if (!recordingSupported) return;
     
@@ -130,7 +127,6 @@ export function AIQuestionFlow({
     }
   }, [activeVoiceInput, initSpeechRecognition]);
 
-  // Welcome message from AI based on template type
   useEffect(() => {
     if (!selectedTemplate) return;
     
@@ -160,17 +156,14 @@ export function AIQuestionFlow({
     ];
   }, [selectedTemplate]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isProcessing]);
   
-  // Extract information from conversation to responses object
   const extractInformationFromConversation = useCallback(() => {
     const extractedResponses: Record<string, any> = { ...responses };
     let userMessages = messages.filter(m => m.role === 'user').map(m => m.content);
     
-    // Extract full name
     const nameMatch = userMessages.find(msg => 
       /^(my name is|I am|I'm) ([A-Z][a-z]+ [A-Z][a-z]+)/i.test(msg)
     );
@@ -182,7 +175,6 @@ export function AIQuestionFlow({
       }
     }
     
-    // Extract marital status
     const maritalStatusMatch = userMessages.find(msg => 
       /(single|married|divorced|widowed)/i.test(msg) && 
       /status/i.test(msg)
@@ -194,7 +186,6 @@ export function AIQuestionFlow({
       else if (maritalStatusMatch.match(/widowed/i)) extractedResponses.maritalStatus = 'Widowed';
     }
     
-    // Extract spouse name if married
     if (extractedResponses.maritalStatus === 'Married') {
       const spouseMatch = userMessages.find(msg => 
         /spouse|wife|husband|partner/i.test(msg) && 
@@ -209,7 +200,6 @@ export function AIQuestionFlow({
       }
     }
     
-    // Extract children information
     const childrenMatch = userMessages.find(msg => 
       /(have|has) (no |[0-9]+) (child|children)/i.test(msg)
     );
@@ -219,7 +209,6 @@ export function AIQuestionFlow({
       } else {
         extractedResponses.hasChildren = true;
         
-        // Try to extract children names
         const childrenNamesMatch = userMessages.find(msg => 
           /(children|kids) (are|named|:) /i.test(msg)
         );
@@ -230,7 +219,6 @@ export function AIQuestionFlow({
       }
     }
     
-    // Extract executor information
     const executorMatch = userMessages.find(msg => 
       /executor/i.test(msg) && 
       /name/i.test(msg)
@@ -243,7 +231,6 @@ export function AIQuestionFlow({
       }
     }
     
-    // Extract residual estate information
     const residualMatch = userMessages.find(msg => 
       /(residual|remainder|rest|remaining)/i.test(msg) && 
       /(estate|assets|property)/i.test(msg)
@@ -252,7 +239,6 @@ export function AIQuestionFlow({
       extractedResponses.residualEstate = residualMatch;
     }
     
-    // Digital assets information if applicable
     if (selectedTemplate.id === 'digital-assets') {
       const digitalAssetsMatch = userMessages.find(msg => 
         /(cryptocurrency|crypto|bitcoin|ethereum|nft|digital assets|online accounts)/i.test(msg)
@@ -263,7 +249,6 @@ export function AIQuestionFlow({
       }
     }
     
-    // Update the responses state
     setResponses(extractedResponses);
     return extractedResponses;
   }, [messages, responses, selectedTemplate, setResponses]);
@@ -282,12 +267,10 @@ export function AIQuestionFlow({
   const handleSendMessage = async () => {
     if (inputValue.trim() === '' || isProcessing || conversationCompleted) return;
     
-    // Stop voice input if active
     if (activeVoiceInput) {
       toggleVoiceInput();
     }
     
-    // Create new user message
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -295,19 +278,15 @@ export function AIQuestionFlow({
       timestamp: new Date()
     };
     
-    // Add user message to state
     setMessages(prev => [...prev, userMessage]);
     conversationHistoryRef.current.push({ role: 'user', content: inputValue });
     
-    // Clear input
     setInputValue('');
     setTranscribedText('');
     
-    // Start processing
     setIsProcessing(true);
     
     try {
-      // Call our edge function
       const { data, error } = await supabase.functions.invoke('gpt-will-assistant', {
         body: { 
           query: inputValue,
@@ -320,7 +299,6 @@ export function AIQuestionFlow({
         throw new Error(`Error calling AI assistant: ${error.message}`);
       }
       
-      // Create new AI message
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
@@ -328,17 +306,14 @@ export function AIQuestionFlow({
         timestamp: new Date()
       };
       
-      // Add AI message to state
       setMessages(prev => [...prev, aiMessage]);
       conversationHistoryRef.current.push({ role: 'assistant', content: aiMessage.content });
       
-      // Check if we have enough information to complete the process
       checkForCompletion(aiMessage.content);
       
     } catch (error) {
       console.error('Error communicating with AI assistant:', error);
       
-      // Add error message
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'system',
@@ -359,7 +334,6 @@ export function AIQuestionFlow({
   };
   
   const checkForCompletion = (lastAiMessage: string) => {
-    // Check if the last AI message suggests we're done
     const completionPhrases = [
       'we have all the information',
       'we\'ve collected all the necessary information',
@@ -372,30 +346,37 @@ export function AIQuestionFlow({
       'i\'ve gathered all the necessary information',
       'would you like to review',
       'shall we proceed to',
-      'thank you for providing all the information'
+      'thank you for providing all the information',
+      'we can now proceed to',
+      'we are done with this part',
+      'let\'s proceed to',
+      'we can move on to'
     ];
     
     const isComplete = completionPhrases.some(phrase => 
       lastAiMessage.toLowerCase().includes(phrase.toLowerCase())
     );
     
-    if (isComplete || messages.length >= 20) {
+    if (isComplete || messages.length >= 15) {
       setAllQuestionsAnswered(true);
       
-      // Add a final concluding message if we've detected completion
-      if (isComplete && !conversationCompleted) {
+      if (!conversationCompleted) {
         setTimeout(() => {
           const conclusionMessage: Message = {
             id: `conclusion-${Date.now()}`,
             role: 'system',
-            content: '✅ We have now completed the information gathering phase for your will. Click the "Next Step" button below to proceed to the contacts collection stage.',
+            content: '✅ We have completed the information gathering phase for your will. Click the "Next Step" button below to proceed to the contacts collection stage.',
             timestamp: new Date()
           };
           
           setMessages(prev => [...prev, conclusionMessage]);
           setConversationCompleted(true);
           setShowNextStepButton(true);
-        }, 1000);
+          
+          setTimeout(() => {
+            setInputValue('');
+          }, 300);
+        }, 800);
       }
     }
   };
@@ -404,10 +385,8 @@ export function AIQuestionFlow({
     setIsGenerating(true);
     
     try {
-      // Extract all information from conversation
       const extractedResponses = extractInformationFromConversation();
       
-      // Generate progress
       let progress = 0;
       const progressInterval = setInterval(() => {
         progress += 5;
@@ -418,15 +397,12 @@ export function AIQuestionFlow({
         }
       }, 200);
       
-      // Generate will content based on template
       setTimeout(() => {
         clearInterval(progressInterval);
         setProgress(100);
         
-        // Generate simple will from template
         const generatedWill = generateWillContent(selectedTemplate, extractedResponses);
         
-        // Complete the process
         setTimeout(() => {
           onComplete(extractedResponses, generatedWill);
         }, 1000);
@@ -446,13 +422,10 @@ export function AIQuestionFlow({
   };
   
   const handleNextStep = () => {
-    // Extract information before proceeding
     const extractedResponses = extractInformationFromConversation();
     
-    // Generate a basic will template to pass to the next step
     const generatedWill = generateWillContent(selectedTemplate, extractedResponses);
     
-    // Complete the conversation process and move to the next step
     onComplete(extractedResponses, generatedWill);
   };
   
@@ -615,7 +588,6 @@ Witnesses: [Witness 1], [Witness 2]`;
                 </div>
               )}
               
-              {/* Transcribed text preview */}
               {activeVoiceInput && transcribedText && (
                 <div className="flex justify-end">
                   <div className="bg-gray-100 text-gray-500 p-3 rounded-lg ml-4 rounded-tr-none border border-dashed border-gray-300">
@@ -639,7 +611,7 @@ Witnesses: [Witness 1], [Witness 2]`;
           <div className="p-4 border-t flex items-center gap-2">
             <div className="relative flex-1">
               <Input
-                placeholder="Type your message..."
+                placeholder={conversationCompleted ? "Conversation completed. Click Next Step." : "Type your message..."}
                 value={inputValue}
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
@@ -703,7 +675,7 @@ Witnesses: [Witness 1], [Witness 2]`;
               <div className="text-center">
                 <Button 
                   onClick={handleNextStep} 
-                  className="w-full"
+                  className="w-full pulse-animation"
                   size="lg"
                 >
                   <ArrowRight className="h-4 w-4 mr-2" />
@@ -732,7 +704,6 @@ Witnesses: [Witness 1], [Witness 2]`;
         )}
       </Card>
       
-      {/* CSS for typing animation - Fix the style tag by removing jsx property */}
       <style>
         {`
         .dot-flashing {
@@ -778,6 +749,23 @@ Witnesses: [Witness 1], [Witness 2]`;
           }
           50%, 100% {
             background-color: rgba(152, 128, 255, 0.2);
+          }
+        }
+        
+        .pulse-animation {
+          animation: pulse 2s infinite;
+          box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+        }
+        
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
           }
         }
         `}
