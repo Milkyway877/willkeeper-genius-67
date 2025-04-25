@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,6 +9,7 @@ import { Logo } from "@/components/ui/logo/Logo";
 import { SecurityTipsPanel } from "@/components/ui/security-tips-panel";
 import { verifyCode, sendVerificationEmail } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client"; // Added missing import
 
 export default function AccountVerification() {
   const [loading, setLoading] = useState(false);
