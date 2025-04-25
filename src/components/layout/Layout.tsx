@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -97,6 +98,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const hasSpecialLayout = location.pathname.includes('/executors') || 
                           location.pathname.includes('/help');
   
+  // Main route for hero page with globe
+  const isLandingPage = location.pathname === '/';
+  
   return (
     <div className={cn(
       "flex h-screen w-full",
@@ -112,9 +116,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       <motion.div 
         className={cn(
           "flex flex-col w-full transition-all duration-300",
-          showSidebar && showAuthenticatedLayout ? 
+          isLandingPage ? "" : // Don't add any padding/margin to landing page
+          (showSidebar && showAuthenticatedLayout ? 
             hasSpecialLayout ? "lg:ml-64" : "lg:pl-64" : 
-            hasSpecialLayout ? "lg:ml-16" : "lg:pl-16"
+            hasSpecialLayout ? "lg:ml-16" : "lg:pl-16")
         )}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
