@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -24,10 +23,8 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMenuLoaded, setMobileMenuLoaded] = useState(false);
   
-  // Pre-load mobile menu data
   useEffect(() => {
     if (isMobile) {
-      // Pre-render the mobile menu content in the background
       setTimeout(() => {
         setMobileMenuLoaded(true);
       }, 100);
@@ -39,11 +36,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       title: 'Dashboard',
       icon: LayoutDashboard,
       href: '/dashboard',
-    },
-    {
-      title: 'My Will',
-      icon: FileText,
-      href: '/will',
     },
     {
       title: 'Will Templates',
@@ -103,7 +95,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
     setMobileMenuOpen(!mobileMenuOpen);
   };
   
-  // Handle mobile menu closing when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const sidebar = document.getElementById('mobile-sidebar');
@@ -125,11 +116,9 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
     };
   }, [mobileMenuOpen]);
   
-  // Mobile menu overlay
   if (isMobile) {
     return (
       <>
-        {/* Mobile menu button - Now positioned at top left with higher z-index */}
         <button
           id="mobile-menu-button"
           onClick={toggleMobileMenu}
@@ -143,7 +132,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
           )}
         </button>
         
-        {/* Mobile menu overlay */}
         {mobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -224,7 +212,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
     );
   }
   
-  // Desktop sidebar
   return (
     <motion.aside
       initial={{ width: isCollapsed ? 64 : 256 }}
@@ -281,7 +268,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
         </nav>
       </div>
       
-      {/* Container for bottom content including collapse button and corporate link */}
       <div className="mt-auto">
         {!isCollapsed && (
           <div className="p-4">
@@ -302,7 +288,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
           </div>
         )}
         
-        {/* Collapse button at the bottom */}
         <button 
           onClick={onToggle} 
           className={cn(

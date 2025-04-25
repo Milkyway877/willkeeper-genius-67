@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -17,7 +16,6 @@ import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/settings/Settings';
 import Security from '@/pages/dashboard/Security';
 import Notifications from '@/pages/notifications/Notifications';
-import Wills from '@/pages/wills/Wills';
 import CreateWill from '@/pages/dashboard/CreateWill';
 import EditWill from '@/pages/dashboard/EditWill';
 import ViewWill from '@/pages/dashboard/ViewWill';
@@ -92,13 +90,6 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/security" element={<Security />} />
                     <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/wills" element={<Wills />} />
-                    <Route path="/will/create" element={<CreateWill />} />
-                    <Route path="/will/edit/:id" element={<EditWill />} />
-                    <Route path="/will/view/:id" element={<ViewWill />} />
-                    <Route path="/will/:id" element={<Will />} />
-                    <Route path="/will/new" element={<Will />} />
-                    <Route path="/will" element={<Wills />} />
                     <Route path="/templates" element={<Templates />} />
                     <Route path="/pages/encryption/Encryption" element={<Encryption />} />
                     <Route path="/pages/executors/Executors" element={<Executors />} />
