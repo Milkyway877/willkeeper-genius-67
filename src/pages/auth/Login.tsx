@@ -1,10 +1,8 @@
-
-import React, { useState } from 'react'; // Add useState to the import
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { cn } from "@/lib/utils";
-import { Github, Mail, LockKeyhole } from "lucide-react";
 import { login, logUserActivity } from '@/services/authService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,12 +52,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-100 flex items-center justify-center">
-      <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-white dark:bg-black">
-        <h2 className="font-bold text-xl text-neutral-800 dark:text-neutral-200">
+    <div className="min-h-screen w-full bg-gray-900 flex items-center justify-center">
+      <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-gray-800">
+        <h2 className="font-bold text-xl text-white">
           Welcome Back
         </h2>
-        <p className="text-neutral-600 text-sm max-w-sm mt-2 dark:text-neutral-300">
+        <p className="text-gray-300 text-sm max-w-sm mt-2">
           Sign in to your account to continue
         </p>
 
@@ -103,42 +101,10 @@ export default function Login() {
               </>
             )}
           </button>
-
-          <div className="bg-gradient-to-r from-transparent via-neutral-300 dark:via-neutral-700 to-transparent my-8 h-[1px] w-full" />
-
-          <div className="flex flex-col space-y-4">
-            <button
-              type="button"
-              className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
-            >
-              <Github className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
-              <span className="text-neutral-700 dark:text-neutral-300 text-sm">
-                GitHub
-              </span>
-              <BottomGradient />
-            </button>
-            <button
-              type="button"
-              className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
-            >
-              <Mail className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
-              <span className="text-neutral-700 dark:text-neutral-300 text-sm">
-                Google
-              </span>
-              <BottomGradient />
-            </button>
-            <button
-              type="button"
-              className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
-            >
-              <LockKeyhole className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
-              <span className="text-neutral-700 dark:text-neutral-300 text-sm">
-                SSO
-              </span>
-              <BottomGradient />
-            </button>
-          </div>
         </form>
+      </div>
+      <div className="absolute bottom-8 text-center text-gray-400">
+        Don't have an account? <Link to="/auth/signup" className="text-white hover:underline">Sign up here</Link>
       </div>
     </div>
   );

@@ -1,22 +1,31 @@
-
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Github, Mail, LockKeyhole } from "lucide-react"; // Using lucide icons instead of tabler
+import { Github, Mail, LockKeyhole } from "lucide-react";
 
 export function SignupForm() {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setPasswordError("Passwords don't match");
+      return;
+    }
+    setPasswordError('');
     console.log("Form submitted");
   };
+
   return (
-    <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-white dark:bg-black">
-      <h2 className="font-bold text-xl text-neutral-800 dark:text-neutral-200">
+    <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-gray-800 text-white">
+      <h2 className="font-bold text-xl text-white">
         Welcome to WillTank
       </h2>
-      <p className="text-neutral-600 text-sm max-w-sm mt-2 dark:text-neutral-300">
+      <p className="text-gray-300 text-sm max-w-sm mt-2">
         Create your account to get started
       </p>
 
@@ -35,9 +44,28 @@ export function SignupForm() {
           <Label htmlFor="email">Email Address</Label>
           <Input id="email" placeholder="you@example.com" type="email" />
         </LabelInputContainer>
-        <LabelInputContainer className="mb-8">
+        <LabelInputContainer className="mb-4">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" placeholder="••••••••" type="password" />
+          <Input 
+            id="password" 
+            placeholder="••••••••" 
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </LabelInputContainer>
+        <LabelInputContainer className="mb-8">
+          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Input 
+            id="confirmPassword" 
+            placeholder="••••••••" 
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          {passwordError && (
+            <span className="text-red-500 text-sm">{passwordError}</span>
+          )}
         </LabelInputContainer>
 
         <button
@@ -47,41 +75,6 @@ export function SignupForm() {
           Sign up &rarr;
           <BottomGradient />
         </button>
-
-        <div className="bg-gradient-to-r from-transparent via-neutral-300 dark:via-neutral-700 to-transparent my-8 h-[1px] w-full" />
-
-        <div className="flex flex-col space-y-4">
-          <button
-            className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
-            type="submit"
-          >
-            <Github className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
-            <span className="text-neutral-700 dark:text-neutral-300 text-sm">
-              GitHub
-            </span>
-            <BottomGradient />
-          </button>
-          <button
-            className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
-            type="submit"
-          >
-            <Mail className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
-            <span className="text-neutral-700 dark:text-neutral-300 text-sm">
-              Google
-            </span>
-            <BottomGradient />
-          </button>
-          <button
-            className="relative group/btn flex space-x-2 items-center justify-start px-4 w-full text-black rounded-md h-10 font-medium shadow-input bg-gray-50 dark:bg-zinc-900 dark:shadow-[0px_0px_1px_1px_var(--neutral-800)]"
-            type="submit"
-          >
-            <LockKeyhole className="h-4 w-4 text-neutral-800 dark:text-neutral-300" />
-            <span className="text-neutral-700 dark:text-neutral-300 text-sm">
-              SSO
-            </span>
-            <BottomGradient />
-          </button>
-        </div>
       </form>
     </div>
   );
