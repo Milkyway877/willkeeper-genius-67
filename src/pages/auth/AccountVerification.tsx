@@ -40,6 +40,8 @@ export default function AccountVerification() {
     setError(null);
 
     try {
+      console.log(`Verifying code: ${code} for email: ${email}, isLogin: ${isLogin}`);
+      
       // Call the verify code endpoint
       const { data, error: verifyError } = await verifyCode({ 
         email, 
@@ -48,14 +50,18 @@ export default function AccountVerification() {
       });
 
       if (verifyError) {
+        console.error("Verification error:", verifyError);
         setError(verifyError);
         toast({
           title: "Verification failed",
           description: verifyError,
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
+
+      console.log("Verification successful, response data:", data);
 
       toast({
         title: isLogin ? "Login successful!" : "Account verified successfully!",
@@ -64,33 +70,50 @@ export default function AccountVerification() {
 
       // If we received a session directly from the API, set it
       if (data?.session) {
-        // Set the session in Supabase client
-        const { error: setSessionError } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token
-        });
+        try {
+          console.log("Setting session from API response");
+          // Set the session in Supabase client
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+          });
 
-        if (setSessionError) {
-          console.error("Error setting session:", setSessionError);
-          // Try to recover by redirecting anyway
+          if (setSessionError) {
+            console.error("Error setting session:", setSessionError);
+            // Try to recover with another approach
+            await supabase.auth.refreshSession();
+          }
+          
+          // Navigate to the appropriate page
+          const destination = isLogin ? '/dashboard' : '/auth/onboarding';
+          console.log(`Navigating to: ${destination}`);
+          navigate(destination, { replace: true });
+        } catch (sessionError) {
+          console.error("Session handling error:", sessionError);
+          // Fall back to manual login
+          navigateAfterVerification();
         }
-        
-        // Navigate to the appropriate page
-        navigate(isLogin ? '/dashboard' : '/auth/onboarding', { replace: true });
       } else {
         // Fallback if no session was provided
-        navigate(isLogin ? '/auth/login' : '/auth/onboarding', { replace: true });
+        navigateAfterVerification();
       }
     } catch (err: any) {
+      console.error("Unexpected error during verification:", err);
       setError(err.message || "Verification failed. Please try again.");
       toast({
         title: "Verification error",
         description: err.message || "An unexpected error occurred",
         variant: "destructive"
       });
-    } finally {
       setLoading(false);
     }
+  };
+
+  const navigateAfterVerification = () => {
+    // Handle navigation manually if session setup failed
+    console.log("Using manual navigation after verification");
+    const destination = isLogin ? '/auth/login?verified=true' : '/auth/onboarding';
+    navigate(destination, { replace: true });
   };
 
   const handleResendCode = async () => {
@@ -98,6 +121,7 @@ export default function AccountVerification() {
     
     setLoading(true);
     try {
+      console.log("Resending verification code to:", email);
       const { data, error: sendError } = await sendVerificationEmail({
         email,
         isLogin
@@ -109,6 +133,7 @@ export default function AccountVerification() {
           description: sendError,
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
 

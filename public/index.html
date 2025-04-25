@@ -10,17 +10,24 @@
   <script>
     // Handle redirect from magic links and direct navigation
     (function() {
-      // Check if we're being redirected with an access token in the URL hash
+      // Check if we're being redirected with an access token in the URL hash or fragment
       const hash = window.location.hash;
-      if (hash && hash.includes('access_token')) {
+      const query = window.location.search;
+      
+      // Check for auth parameters in hash or query string
+      if ((hash && (hash.includes('access_token') || hash.includes('error') || hash.includes('type=recovery'))) || 
+          (query && (query.includes('access_token') || query.includes('error') || query.includes('type=recovery')))) {
+        
         // Store that we're processing an auth redirect
         sessionStorage.setItem('auth_redirect', 'true');
         
         // Let Supabase client handle the auth redirect normally
+        console.log('Auth redirect detected, letting Supabase handle it');
       } else {
         // Check for stored redirect path from 404.html
         const redirectPath = sessionStorage.getItem('redirect_path');
         if (redirectPath) {
+          console.log('Processing redirect to:', redirectPath);
           sessionStorage.removeItem('redirect_path');
           history.replaceState(null, '', redirectPath);
         }

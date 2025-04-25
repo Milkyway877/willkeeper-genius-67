@@ -8,10 +8,25 @@
     // Single Page Apps for GitHub Pages and other static hosts
     // This script ensures proper routing even on direct page loading or refresh
     (function(){
+      // Get the current path and query params 
       const path = window.location.pathname + window.location.search + window.location.hash;
       
-      // If this is not the index page, redirect to the correct URL through the index
-      if (path !== '/') {
+      // Check for Supabase authentication redirects (common auth error cases)
+      const isAuthRedirect = 
+        path.includes('access_token=') || 
+        path.includes('refresh_token=') ||
+        path.includes('type=recovery') ||
+        path.includes('error=') ||
+        path.includes('/auth/v1/');
+        
+      if (isAuthRedirect) {
+        // Handle auth redirect by going to home page and letting supabase client handle it
+        console.log('Detected auth redirect, sending to root to handle');
+        window.location.href = '/';
+      } 
+      // If this is not the index page, store path for redirection
+      else if (path !== '/') {
+        console.log('Storing redirect path:', path);
         sessionStorage.setItem('redirect_path', path);
         window.location.href = '/';
       }

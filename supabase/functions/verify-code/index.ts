@@ -38,6 +38,8 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Verifying code for email: ${email}, isLogin: ${isLogin}`);
+
     // Create a Supabase client with the service role key
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: { 
@@ -51,12 +53,16 @@ serve(async (req) => {
     
     if (userError) {
       console.error("Error fetching users:", userError.message);
-      throw new Error("Could not verify code");
+      return new Response(
+        JSON.stringify({ error: "Could not verify code: " + userError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const user = userData.users.find(u => u.email === email);
     
     if (!user) {
+      console.error("User not found for email:", email);
       return new Response(
         JSON.stringify({ error: "User does not exist" }),
         { 
@@ -65,6 +71,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log("Found user:", user.id);
 
     // Check if the verification code is valid
     const { data: verificationData, error: verificationError } = await supabaseAdmin
@@ -90,6 +98,8 @@ serve(async (req) => {
       );
     }
 
+    console.log("Verification data found:", verificationData.id);
+
     // Mark the verification code as used
     const { error: updateError } = await supabaseAdmin
       .from('email_verifications')
@@ -101,8 +111,13 @@ serve(async (req) => {
     
     if (updateError) {
       console.error("Error updating verification:", updateError.message);
-      throw new Error("Could not update verification status");
+      return new Response(
+        JSON.stringify({ error: "Could not update verification status: " + updateError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    console.log("Verification marked as used");
 
     // Update user profile status
     const { error: profileError } = await supabaseAdmin
@@ -112,18 +127,12 @@ serve(async (req) => {
     
     if (profileError) {
       console.error("Error updating profile:", profileError.message);
-      throw new Error("Could not update profile status");
+      // Don't fail the whole process for this error, just log it
+    } else {
+      console.log("User profile updated");
     }
 
-    // Determine the application URL for redirection
-    // Try multiple sources to get the application URL
-    const origin = req.headers.get('origin') || 
-                  req.headers.get('referer')?.replace(/\/[^/]*$/, '') || 
-                  'https://lovable.dev';
-    
-    console.log("Origin for redirection:", origin);
-
-    // Create direct sign-in credentials instead of magic link
+    // Create direct sign-in credentials
     const { data: signInData, error: signInError } = await supabaseAdmin.auth.admin.createSession({
       userId: user.id,
       properties: {
@@ -133,25 +142,32 @@ serve(async (req) => {
 
     if (signInError) {
       console.error("Error creating session:", signInError.message);
-      throw new Error("Could not create user session");
+      return new Response(
+        JSON.stringify({ error: "Could not create user session: " + signInError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    console.log("Created session successfully");
 
     // Log the verification activity
-    const { error: activityError } = await supabaseAdmin
-      .from('user_activity')
-      .insert({
-        user_id: user.id,
-        activity_type: isLogin ? 'email_verification_login' : 'email_verification_signup',
-        details: { email: email },
-        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown'
-      });
-    
-    if (activityError) {
-      console.error("Error logging activity:", activityError.message);
-      // Don't throw, just log the error as this is not critical
+    try {
+      await supabaseAdmin
+        .from('user_activity')
+        .insert({
+          user_id: user.id,
+          activity_type: isLogin ? 'email_verification_login' : 'email_verification_signup',
+          details: { email: email },
+          ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown'
+        });
+        
+      console.log("Activity logged");
+    } catch (activityError) {
+      console.error("Error logging activity:", activityError);
+      // Don't fail the whole process for this error
     }
 
-    // Return the response with auth data for client-side handling
+    // Return the response with auth data
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -160,8 +176,8 @@ serve(async (req) => {
           id: user.id,
           email: user.email
         },
-        session: signInData?.session,
-        isNewUser: user.created_at === user.updated_at, // If created_at equals updated_at, user is new
+        session: signInData.session,
+        isNewUser: !isLogin
       }),
       { 
         status: 200, 
@@ -172,7 +188,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in verify-code function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
       { 
         status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 

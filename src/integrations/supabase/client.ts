@@ -13,6 +13,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: localStorage,  // Explicitly setting storage
+    storageKey: 'willtank-auth-token',  // Custom storage key for better isolation
+    flowType: 'pkce'  // Using PKCE for better security
   }
 });
