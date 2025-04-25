@@ -110,80 +110,128 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
     return true;
   };
 
+  // Group contacts by role for better organization
+  const contactsByRole = contacts.reduce((acc, contact) => {
+    if (!acc[contact.role]) {
+      acc[contact.role] = [];
+    }
+    acc[contact.role].push(contact);
+    return acc;
+  }, {} as Record<string, Contact[]>);
+
+  const roleOrder = ["Executor", "Alternate Executor", "Guardian", "Beneficiary", "Trustee", "Witness", "Other"];
+
   return (
     <div className="space-y-6">
       <div className="bg-willtank-50 p-4 rounded-lg mb-6 border border-willtank-100">
         <h3 className="font-medium text-willtank-700 mb-2">Important People in Your Will</h3>
         <p className="text-sm text-gray-600">
-          We've identified the following people mentioned in your will. Please provide their contact information
-          for future reference and communication. You can also add additional contacts if needed.
+          We've identified the following people mentioned in your will conversation. Please provide their contact information
+          for future reference and communication. This information will be used for document delivery and notifications.
         </p>
       </div>
       
+      {/* Summary of roles needed */}
+      {Object.keys(contactsByRole).length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-medium mb-3">Contact Information Needed:</h3>
+          <ul className="list-disc pl-5 space-y-1 text-sm">
+            {roleOrder
+              .filter(role => contactsByRole[role] && contactsByRole[role].length > 0)
+              .map(role => (
+                <li key={role}>
+                  <span className="font-medium">{role}s ({contactsByRole[role].length}):</span> 
+                  {contactsByRole[role].map(c => c.name).join(', ')}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
+      
       {/* Contact list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {contacts.map((contact) => (
-          <motion.div 
-            key={contact.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="border rounded-lg p-4 hover:border-willtank-300 transition-all duration-200"
-          >
-            <div className="flex justify-between">
-              <div>
-                <h3 className="font-medium">{contact.name}</h3>
-                <p className="text-sm text-gray-500">{contact.role}</p>
+      {contacts.length === 0 ? (
+        <div className="text-center p-8 border border-dashed rounded-lg">
+          <p className="text-gray-500">No contacts identified yet. Add contacts using the button below.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {roleOrder.filter(role => contactsByRole[role]).map(role => (
+            contactsByRole[role] && (
+              <div key={role} className="space-y-3">
+                <h3 className="font-medium text-gray-700 flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center bg-willtank-100 rounded-full h-6 w-6 text-xs text-willtank-700">
+                    {contactsByRole[role].length}
+                  </span>
+                  {role}s
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {contactsByRole[role].map((contact) => (
+                    <motion.div 
+                      key={contact.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="border rounded-lg p-4 hover:border-willtank-300 transition-all duration-200"
+                    >
+                      <div className="flex justify-between">
+                        <div>
+                          <h3 className="font-medium">{contact.name}</h3>
+                          <p className="text-sm text-gray-500">{contact.role}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleEditContact(contact)}
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-red-500 hover:text-red-700" 
+                            onClick={() => handleRemoveContact(contact.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 space-y-2 text-sm">
+                        {contact.email && (
+                          <div className="flex items-center">
+                            <Mail className="h-4 w-4 mr-2 text-gray-400" />
+                            <span>{contact.email}</span>
+                          </div>
+                        )}
+                        
+                        {contact.phone && (
+                          <div className="flex items-center">
+                            <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                            <span>{contact.phone}</span>
+                          </div>
+                        )}
+                        
+                        {contact.address && (
+                          <div className="flex items-center">
+                            <Home className="h-4 w-4 mr-2 text-gray-400" />
+                            <span>{contact.address}</span>
+                          </div>
+                        )}
+                        
+                        {!contact.email && !contact.phone && !contact.address && (
+                          <div className="text-amber-600 text-sm italic">
+                            No contact information provided yet
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={() => handleEditContact(contact)}
-                >
-                  Edit
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="text-red-500 hover:text-red-700" 
-                  onClick={() => handleRemoveContact(contact.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="mt-4 space-y-2 text-sm">
-              {contact.email && (
-                <div className="flex items-center">
-                  <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                  <span>{contact.email}</span>
-                </div>
-              )}
-              
-              {contact.phone && (
-                <div className="flex items-center">
-                  <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                  <span>{contact.phone}</span>
-                </div>
-              )}
-              
-              {contact.address && (
-                <div className="flex items-center">
-                  <Home className="h-4 w-4 mr-2 text-gray-400" />
-                  <span>{contact.address}</span>
-                </div>
-              )}
-              
-              {!contact.email && !contact.phone && !contact.address && (
-                <div className="text-amber-600 text-sm italic">
-                  No contact information provided
-                </div>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            )
+          ))}
+        </div>
+      )}
       
       {/* Add contact button */}
       {!editingContact && (
@@ -200,11 +248,11 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
       {editingContact && (
         <Card>
           <CardHeader>
-            <CardTitle>{isAddingContact ? "Add New Contact" : "Edit Contact"}</CardTitle>
+            <CardTitle>{isAddingContact ? "Add New Contact" : `Edit ${editingContact.name}`}</CardTitle>
             <CardDescription>
               {isAddingContact 
                 ? "Add a new person related to your will." 
-                : "Update the contact information for this person."}
+                : `Update the contact information for ${editingContact.name}.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -314,7 +362,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
         </Card>
       )}
       
-      {!editingContact && (
+      {!editingContact && contacts.length > 0 && (
         <div className="mt-8">
           <Button 
             className="w-full"
@@ -324,11 +372,13 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                 handleComplete();
               }
             }}
-            disabled={contacts.length === 0}
           >
             <Check className="mr-2 h-4 w-4" />
             Save Contacts & Continue
           </Button>
+          <p className="text-xs text-center text-gray-500 mt-2">
+            Contact information will be used for document notifications and deliveries only.
+          </p>
         </div>
       )}
     </div>

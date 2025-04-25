@@ -1,511 +1,543 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { FileText, Upload, X, Check, File, Image, FileArchive, FileLock2, Plus, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-
-interface DocumentsUploaderProps {
-  contacts: any[];
-  responses: Record<string, any>;
-  onComplete: (documents: any[]) => void;
-}
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Check, Trash2, Upload, File, FileText, Plus, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface Document {
   id: string;
   name: string;
+  description: string;
   type: string;
-  category: string;
   file: File | null;
-  relatedTo?: string;
-  description?: string;
-  uploaded: boolean;
-  previewUrl?: string;
+  relatedContact?: string;
+  uploadProgress: number;
+  status: 'uploading' | 'complete' | 'error' | 'ready';
 }
 
-// Document categories based on common will-related documents
-const documentCategories = [
-  {
-    id: 'property',
-    name: 'Property Documents',
-    description: 'Property deeds, mortgage records, titles',
-    icon: <Home className="h-5 w-5 text-blue-600" />
-  },
-  {
-    id: 'financial',
-    name: 'Financial Documents',
-    description: 'Bank statements, investment records, insurance policies',
-    icon: <FileText className="h-5 w-5 text-green-600" />
-  },
-  {
-    id: 'identification',
-    name: 'Identification Documents',
-    description: 'ID cards, passports, birth certificates',
-    icon: <User className="h-5 w-5 text-orange-600" />
-  },
-  {
-    id: 'digital',
-    name: 'Digital Assets',
-    description: 'Cryptocurrency keys, digital asset information',
-    icon: <Key className="h-5 w-5 text-purple-600" />
-  },
-  {
-    id: 'other',
-    name: 'Other Documents',
-    description: 'Any other supporting documents',
-    icon: <File className="h-5 w-5 text-gray-600" />
-  }
-];
-
-// Document types within categories
-const documentTypes: Record<string, string[]> = {
-  property: ['Property Deed', 'Mortgage Record', 'Property Title', 'Property Tax Record', 'Lease Agreement'],
-  financial: ['Bank Statement', 'Investment Portfolio', 'Insurance Policy', 'Tax Return', 'Business Documents'],
-  identification: ['Passport', 'Driver\'s License', 'Birth Certificate', 'Marriage Certificate', 'Social Security Card'],
-  digital: ['Cryptocurrency Keys', 'Digital Wallet Information', 'Website Ownership', 'Digital Asset Inventory'],
-  other: ['Medical Records', 'Personal Letters', 'Family Photos', 'Other']
-};
-
-// Suggested documents based on responses
-const getSuggestedDocuments = (responses: Record<string, any>) => {
-  const suggestions: Partial<Document>[] = [];
-  
-  // Property-related documents
-  if (responses.residualEstate?.toLowerCase().includes('house') || 
-      responses.residualEstate?.toLowerCase().includes('property') ||
-      responses.bequestsDetails?.toLowerCase().includes('house')) {
-    suggestions.push({
-      name: 'Property Deed',
-      type: 'Property Deed',
-      category: 'property',
-      description: 'Proof of ownership for your property'
-    });
-  }
-  
-  // Digital asset documents
-  if (responses.digitalAssets && responses.digitalAssets === true) {
-    suggestions.push({
-      name: 'Digital Assets Inventory',
-      type: 'Digital Asset Inventory',
-      category: 'digital',
-      description: 'Inventory of your digital assets and access information'
-    });
-  }
-  
-  // Identification
-  suggestions.push({
-    name: 'Proof of Identity',
-    type: 'Passport',
-    category: 'identification',
-    description: 'Your personal identification document'
-  });
-  
-  return suggestions;
-};
-
-// Helper functions
-import { Home, Key, User, AlertCircle } from 'lucide-react';
-
-function getFileIcon(fileType: string | undefined) {
-  if (!fileType) return <File className="h-10 w-10 text-gray-400" />;
-  
-  if (fileType.includes('image/')) {
-    return <Image className="h-10 w-10 text-blue-400" />;
-  } else if (fileType.includes('pdf')) {
-    return <FileText className="h-10 w-10 text-red-400" />;
-  } else if (fileType.includes('zip') || fileType.includes('archive')) {
-    return <FileArchive className="h-10 w-10 text-amber-400" />;
-  } else {
-    return <File className="h-10 w-10 text-gray-400" />;
-  }
+interface DocumentsUploaderProps {
+  contacts: any[];
+  responses: Record<string, any>;
+  onComplete: (documents: Document[]) => void;
 }
 
 export function DocumentsUploader({ contacts, responses, onComplete }: DocumentsUploaderProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [currentCategory, setCurrentCategory] = useState<string>('property');
-  const [isUploading, setIsUploading] = useState(false);
-  const [suggestionAdded, setSuggestionAdded] = useState(false);
+  const [currentDocument, setCurrentDocument] = useState<Document | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  
-  const suggestedDocs = getSuggestedDocuments(responses);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, docId: string) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      toast({
-        title: "File Too Large",
-        description: "Please select a file smaller than 10MB.",
-        variant: "destructive"
-      });
-      return;
+  // Suggested document types based on the will template and AI conversation
+  const suggestedDocuments = getSuggestedDocuments(responses);
+
+  // Initialize with suggested documents if empty
+  React.useEffect(() => {
+    if (documents.length === 0 && suggestedDocuments.length > 0) {
+      setDocuments(suggestedDocuments);
     }
-    
-    const previewUrl = file.type.startsWith('image/') 
-      ? URL.createObjectURL(file) 
-      : undefined;
-    
-    setDocuments(docs => docs.map(doc => 
-      doc.id === docId 
-        ? { ...doc, file, uploaded: true, previewUrl } 
-        : doc
-    ));
-    
-    toast({
-      title: "File Selected",
-      description: `"${file.name}" has been selected.`
-    });
-  };
-  
+  }, []);
+
   const handleAddDocument = () => {
     const newDoc: Document = {
       id: `doc-${Date.now()}`,
       name: '',
-      type: documentTypes[currentCategory][0],
-      category: currentCategory,
-      file: null,
       description: '',
-      uploaded: false
+      type: 'identification',
+      file: null,
+      uploadProgress: 0,
+      status: 'ready'
     };
     
-    setDocuments([...documents, newDoc]);
+    setCurrentDocument(newDoc);
   };
-  
-  const handleRemoveDocument = (docId: string) => {
-    setDocuments(docs => {
-      const docToRemove = docs.find(d => d.id === docId);
-      if (docToRemove?.previewUrl) {
-        URL.revokeObjectURL(docToRemove.previewUrl);
-      }
-      return docs.filter(d => d.id !== docId);
+
+  const handleEditDocument = (doc: Document) => {
+    setCurrentDocument({ ...doc });
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentDocument) return;
+    
+    setCurrentDocument({
+      ...currentDocument,
+      file,
+      name: currentDocument.name || file.name,
     });
   };
-  
-  const handleCompleteUpload = () => {
-    // Filter out any documents that don't have files attached
-    const completedDocuments = documents.filter(doc => doc.uploaded && doc.file);
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleDeleteDocument = (id: string) => {
+    setDocuments(docs => docs.filter(d => d.id !== id));
     
-    if (completedDocuments.length === 0) {
+    toast({
+      title: "Document Removed",
+      description: "The document has been removed from the upload list."
+    });
+  };
+
+  const handleSaveDocument = () => {
+    if (!currentDocument) return;
+    
+    if (!currentDocument.name.trim()) {
       toast({
-        title: "No Documents",
-        description: "Please upload at least one document before continuing.",
+        title: "Document Name Required",
+        description: "Please enter a name for this document.",
         variant: "destructive"
       });
       return;
     }
     
-    onComplete(completedDocuments);
-  };
-  
-  const handleAddSuggestion = (suggestion: Partial<Document>) => {
-    const newDoc: Document = {
-      id: `doc-${Date.now()}`,
-      name: suggestion.name || '',
-      type: suggestion.type || '',
-      category: suggestion.category || 'other',
-      file: null,
-      description: suggestion.description || '',
-      uploaded: false
-    };
+    if (!currentDocument.file) {
+      toast({
+        title: "File Required",
+        description: "Please select a file to upload.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    setDocuments([...documents, newDoc]);
-    setCurrentCategory(suggestion.category || 'other');
-    setSuggestionAdded(true);
+    // For an existing document
+    if (documents.some(d => d.id === currentDocument.id)) {
+      setDocuments(docs => 
+        docs.map(d => d.id === currentDocument.id ? currentDocument : d)
+      );
+    } 
+    // For a new document
+    else {
+      setDocuments([...documents, currentDocument]);
+    }
+    
+    setCurrentDocument(null);
+    
+    toast({
+      title: "Document Saved",
+      description: `${currentDocument.name} has been added to your will documents.`
+    });
+  };
+
+  const handleUploadAll = () => {
+    // In a real implementation, we would actually upload the files
+    // For now, we simulate the upload with a progress bar
+    
+    const docsToUpload = documents.filter(d => d.file && d.status !== 'complete');
+    
+    if (docsToUpload.length === 0) {
+      onComplete(documents);
+      return;
+    }
+    
+    // Simulate uploading each document
+    const updatedDocs = [...documents];
+    
+    docsToUpload.forEach(doc => {
+      const index = updatedDocs.findIndex(d => d.id === doc.id);
+      if (index !== -1) {
+        updatedDocs[index] = { ...doc, status: 'uploading', uploadProgress: 0 };
+      }
+    });
+    
+    setDocuments(updatedDocs);
+    
+    // Simulate upload progress for each document
+    docsToUpload.forEach(doc => {
+      let progress = 0;
+      
+      const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          
+          setDocuments(currentDocs => 
+            currentDocs.map(d => 
+              d.id === doc.id 
+                ? { ...d, status: 'complete', uploadProgress: 100 } 
+                : d
+            )
+          );
+          
+          // Check if all uploads are complete
+          const allComplete = documents.every(d => 
+            d.status === 'complete' || !d.file
+          );
+          
+          if (allComplete) {
+            setTimeout(() => {
+              onComplete(documents);
+            }, 500);
+          }
+        } else {
+          setDocuments(currentDocs => 
+            currentDocs.map(d => 
+              d.id === doc.id 
+                ? { ...d, uploadProgress: Math.round(progress) } 
+                : d
+            )
+          );
+        }
+      }, 200);
+    });
+  };
+
+  const getDocumentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'identification':
+        return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'property':
+        return <File className="h-4 w-4 text-green-500" />;
+      case 'financial':
+        return <File className="h-4 w-4 text-yellow-500" />;
+      case 'medical':
+        return <File className="h-4 w-4 text-red-500" />;
+      case 'other':
+      default:
+        return <File className="h-4 w-4 text-gray-500" />;
+    }
   };
   
+  // Function to generate suggested documents based on the AI conversation
+  function getSuggestedDocuments(responses: Record<string, any>): Document[] {
+    const suggestedDocs: Document[] = [];
+    
+    // Identification documents
+    suggestedDocs.push({
+      id: `doc-id-${Date.now()}`,
+      name: "Personal Identification",
+      description: "Government-issued ID such as passport or driver's license",
+      type: "identification",
+      file: null,
+      uploadProgress: 0,
+      status: "ready"
+    });
+    
+    // Property documents if mentioned in conversation
+    if (responses.residualEstate && responses.residualEstate.toLowerCase().includes("house") || 
+        responses.residualEstate && responses.residualEstate.toLowerCase().includes("property")) {
+      suggestedDocs.push({
+        id: `doc-property-${Date.now()}`,
+        name: "Property Deed/Title",
+        description: "Documentation for real estate mentioned in your will",
+        type: "property",
+        file: null,
+        uploadProgress: 0,
+        status: "ready"
+      });
+    }
+    
+    // Financial documents if digital assets are mentioned
+    if (responses.digitalAssets) {
+      suggestedDocs.push({
+        id: `doc-financial-${Date.now()}`,
+        name: "Digital Asset Information",
+        description: "Documentation of cryptocurrency or other digital holdings",
+        type: "financial",
+        file: null,
+        uploadProgress: 0,
+        status: "ready"
+      });
+    }
+    
+    return suggestedDocs;
+  }
+
+  // Group documents by type
+  const documentsByType = documents.reduce((acc, doc) => {
+    if (!acc[doc.type]) {
+      acc[doc.type] = [];
+    }
+    acc[doc.type].push(doc);
+    return acc;
+  }, {} as Record<string, Document[]>);
+
   return (
-    <div className="space-y-8">
-      {/* AI suggestion section */}
-      {!suggestionAdded && suggestedDocs.length > 0 && (
-        <div className="bg-willtank-50 rounded-lg p-5 border border-willtank-100">
-          <div className="flex items-start mb-4">
-            <div className="mr-4 mt-1">
-              <AlertCircle className="h-5 w-5 text-willtank-700" />
-            </div>
-            <div>
-              <h3 className="font-medium text-willtank-700">AI Document Suggestions</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                Based on your responses, our AI suggests adding the following documents to support your will:
-              </p>
-            </div>
-          </div>
-          
-          <div className="space-y-3 mt-4">
-            {suggestedDocs.map((suggestion, index) => (
-              <div 
-                key={index}
-                className="bg-white rounded-md p-3 border border-gray-200 flex justify-between items-center"
-              >
-                <div className="flex items-center">
-                  {suggestion.category === 'property' && <Home className="h-5 w-5 text-blue-500 mr-3" />}
-                  {suggestion.category === 'digital' && <Key className="h-5 w-5 text-purple-500 mr-3" />}
-                  {suggestion.category === 'identification' && <User className="h-5 w-5 text-orange-500 mr-3" />}
-                  
-                  <div>
-                    <p className="font-medium">{suggestion.name}</p>
-                    <p className="text-xs text-gray-500">{suggestion.description}</p>
-                  </div>
-                </div>
-                
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleAddSuggestion(suggestion)}
-                >
-                  Add Document
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="space-y-6">
+      <div className="bg-willtank-50 p-4 rounded-lg mb-6 border border-willtank-100">
+        <h3 className="font-medium text-willtank-700 mb-2">Supporting Documents</h3>
+        <p className="text-sm text-gray-600">
+          Upload important documents that support your will, such as property deeds, financial statements,
+          or identification documents. These will be securely stored and accessible to your executors when needed.
+        </p>
+      </div>
       
-      {/* Document category selector */}
-      <div className="space-y-4">
-        <Label>Document Category</Label>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {documentCategories.map(category => (
-            <div
-              key={category.id}
-              className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 flex flex-col items-center text-center ${
-                currentCategory === category.id 
-                  ? 'border-willtank-500 bg-willtank-50' 
-                  : 'border-gray-200 hover:border-willtank-300'
-              }`}
-              onClick={() => setCurrentCategory(category.id)}
-            >
-              <div className="mb-2">
-                {category.icon}
+      {/* Document list */}
+      {documents.length === 0 ? (
+        <div className="text-center p-8 border border-dashed rounded-lg">
+          <p className="text-gray-500">No documents added yet. Add documents using the button below.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(documentsByType).map(([type, docs]) => (
+            <div key={type} className="space-y-3">
+              <h3 className="font-medium text-gray-700 capitalize">
+                {type} Documents ({docs.length})
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {docs.map((doc) => (
+                  <motion.div 
+                    key={doc.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border rounded-lg p-4 hover:border-willtank-300 transition-all duration-200"
+                  >
+                    <div className="flex justify-between">
+                      <div className="flex items-center">
+                        {getDocumentTypeIcon(doc.type)}
+                        <div className="ml-2">
+                          <h3 className="font-medium">{doc.name}</h3>
+                          <p className="text-sm text-gray-500">{doc.file?.name || 'No file selected'}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {doc.status !== 'uploading' && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => handleEditDocument(doc)}
+                              disabled={doc.status === 'complete'}
+                            >
+                              Edit
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="text-red-500 hover:text-red-700" 
+                              onClick={() => handleDeleteDocument(doc.id)}
+                              disabled={doc.status === 'complete'}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {doc.description && (
+                      <p className="text-sm text-gray-600 mt-2">{doc.description}</p>
+                    )}
+                    
+                    {doc.relatedContact && (
+                      <div className="mt-2">
+                        <span className="text-xs bg-willtank-50 text-willtank-700 px-2 py-1 rounded">
+                          Related to: {contacts.find(c => c.id === doc.relatedContact)?.name || doc.relatedContact}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {doc.status === 'uploading' && (
+                      <div className="mt-3">
+                        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-willtank-500 rounded-full transition-all" 
+                            style={{ width: `${doc.uploadProgress}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Uploading: {doc.uploadProgress}%
+                        </p>
+                      </div>
+                    )}
+                    
+                    {doc.status === 'complete' && (
+                      <div className="flex items-center text-green-600 text-sm mt-2">
+                        <Check className="h-4 w-4 mr-1" />
+                        Upload complete
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
               </div>
-              <div className="text-sm font-medium">{category.name}</div>
-              <div className="text-xs text-gray-500 mt-1">{category.description}</div>
             </div>
           ))}
         </div>
-      </div>
+      )}
       
-      <Separator />
-      
-      {/* Document list */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="font-medium">Your Documents</h3>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleAddDocument}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Document
-          </Button>
-        </div>
-        
-        <AnimatePresence>
-          {documents.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No documents added yet</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Click "Add Document" to upload supporting documents for your will
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {documents.map((doc) => (
-                <motion.div
-                  key={doc.id}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Card>
-                    <CardHeader className="py-3 px-4">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          {doc.category === 'property' && <Home className="h-5 w-5 text-blue-500 mr-2" />}
-                          {doc.category === 'financial' && <FileText className="h-5 w-5 text-green-500 mr-2" />}
-                          {doc.category === 'identification' && <User className="h-5 w-5 text-orange-500 mr-2" />}
-                          {doc.category === 'digital' && <Key className="h-5 w-5 text-purple-500 mr-2" />}
-                          {doc.category === 'other' && <File className="h-5 w-5 text-gray-500 mr-2" />}
-                          
-                          <Input 
-                            value={doc.name}
-                            onChange={(e) => setDocuments(docs => docs.map(d => 
-                              d.id === doc.id ? { ...d, name: e.target.value } : d
-                            ))}
-                            placeholder="Document Name"
-                            className="h-7 text-sm w-48 md:w-auto"
-                          />
-                        </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveDocument(doc.id)}
-                          className="text-gray-400 hover:text-red-500"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="py-3 px-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className="mb-3">
-                            <Label htmlFor={`type-${doc.id}`} className="text-sm">Document Type</Label>
-                            <Select 
-                              value={doc.type} 
-                              onValueChange={(value) => setDocuments(docs => docs.map(d => 
-                                d.id === doc.id ? { ...d, type: value } : d
-                              ))}
-                            >
-                              <SelectTrigger id={`type-${doc.id}`}>
-                                <SelectValue placeholder="Select document type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {documentTypes[doc.category].map(type => (
-                                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          {contacts.length > 0 && (
-                            <div className="mb-3">
-                              <Label htmlFor={`related-${doc.id}`} className="text-sm">Related To</Label>
-                              <Select 
-                                value={doc.relatedTo || ''} 
-                                onValueChange={(value) => setDocuments(docs => docs.map(d => 
-                                  d.id === doc.id ? { ...d, relatedTo: value } : d
-                                ))}
-                              >
-                                <SelectTrigger id={`related-${doc.id}`}>
-                                  <SelectValue placeholder="Select related person (optional)" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="">Not related to a specific person</SelectItem>
-                                  {contacts.map(contact => (
-                                    <SelectItem key={contact.id} value={contact.id}>
-                                      {contact.name} ({contact.role})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          
-                          <div>
-                            <Label htmlFor={`description-${doc.id}`} className="text-sm">Description (Optional)</Label>
-                            <Input
-                              id={`description-${doc.id}`}
-                              value={doc.description || ''}
-                              onChange={(e) => setDocuments(docs => docs.map(d => 
-                                d.id === doc.id ? { ...d, description: e.target.value } : d
-                              ))}
-                              placeholder="Brief description of this document"
-                              className="text-sm"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div>
-                          {doc.uploaded && doc.file ? (
-                            <div className="border rounded-lg p-4 h-full flex flex-col items-center justify-center">
-                              {doc.previewUrl ? (
-                                <img 
-                                  src={doc.previewUrl} 
-                                  alt="Document preview" 
-                                  className="h-32 object-contain mb-2"
-                                />
-                              ) : (
-                                <div className="mb-2">
-                                  {getFileIcon(doc.file.type)}
-                                </div>
-                              )}
-                              
-                              <div className="text-center">
-                                <p className="text-sm font-medium truncate max-w-xs">{doc.file.name}</p>
-                                <p className="text-xs text-gray-500">
-                                  {(doc.file.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                              </div>
-                              
-                              <div className="mt-4">
-                                <Label htmlFor={`file-${doc.id}`} className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-green-50 text-green-700 cursor-pointer">
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Change File
-                                </Label>
-                                <Input 
-                                  type="file" 
-                                  id={`file-${doc.id}`} 
-                                  className="hidden" 
-                                  onChange={(e) => handleFileSelect(e, doc.id)}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="border rounded-lg p-4 border-dashed h-full flex flex-col items-center justify-center">
-                              <Upload className="h-12 w-12 text-gray-300 mb-2" />
-                              <p className="text-sm text-gray-500 mb-4">
-                                Drag and drop a file or click to browse
-                              </p>
-                              
-                              <Label htmlFor={`file-${doc.id}`} className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-willtank-50 text-willtank-700 cursor-pointer hover:bg-willtank-100 transition-colors">
-                                <Upload className="h-4 w-4 mr-2" />
-                                Select File
-                              </Label>
-                              <Input 
-                                type="file" 
-                                id={`file-${doc.id}`} 
-                                className="hidden" 
-                                onChange={(e) => handleFileSelect(e, doc.id)}
-                              />
-                              <p className="text-xs text-gray-400 mt-2">Max file size: 10MB</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </AnimatePresence>
-      </div>
-      
-      <div className="mt-8 flex justify-between">
-        <p className="text-sm text-gray-500">
-          {documents.filter(d => d.uploaded).length} of {documents.length} documents uploaded
-        </p>
-        
+      {/* Add document button */}
+      {!currentDocument && (
         <Button 
-          className="min-w-[180px]"
-          onClick={handleCompleteUpload}
-          disabled={documents.filter(d => d.uploaded).length === 0 || isUploading}
+          variant="outline" 
+          onClick={handleAddDocument}
+          disabled={documents.some(d => d.status === 'uploading')}
         >
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              Complete & Continue
-            </>
-          )}
+          <Plus className="h-4 w-4 mr-2" />
+          Add Document
         </Button>
-      </div>
+      )}
+      
+      {/* Hidden file input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        style={{ display: 'none' }}
+        accept="image/*,.pdf,.doc,.docx,.txt"
+      />
+      
+      {/* Edit document form */}
+      {currentDocument && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {documents.some(d => d.id === currentDocument.id) 
+                ? "Edit Document" 
+                : "Add Document"}
+            </CardTitle>
+            <CardDescription>
+              Add supporting documentation for your will. These documents will be securely stored.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="doc-name">Document Name</Label>
+              <Input 
+                id="doc-name" 
+                value={currentDocument.name} 
+                onChange={e => setCurrentDocument({...currentDocument, name: e.target.value})}
+                placeholder="e.g., Property Deed, Bank Statement"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="doc-type">Document Type</Label>
+              <Select 
+                value={currentDocument.type} 
+                onValueChange={value => setCurrentDocument({...currentDocument, type: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select document type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="identification">Identification</SelectItem>
+                  <SelectItem value="property">Property</SelectItem>
+                  <SelectItem value="financial">Financial</SelectItem>
+                  <SelectItem value="medical">Medical</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="doc-description">Description (Optional)</Label>
+              <Textarea 
+                id="doc-description" 
+                value={currentDocument.description} 
+                onChange={e => setCurrentDocument({...currentDocument, description: e.target.value})}
+                placeholder="Brief description of this document"
+              />
+            </div>
+            
+            {contacts.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="doc-related">Related Contact (Optional)</Label>
+                <Select 
+                  value={currentDocument.relatedContact} 
+                  onValueChange={value => setCurrentDocument({...currentDocument, relatedContact: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select related contact" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {contacts.map(contact => (
+                      <SelectItem key={contact.id} value={contact.id}>
+                        {contact.name} ({contact.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label>File</Label>
+              <div 
+                onClick={triggerFileInput}
+                className="border-2 border-dashed rounded-lg p-6 cursor-pointer hover:bg-gray-50 text-center transition-colors"
+              >
+                {currentDocument.file ? (
+                  <div>
+                    <div className="flex items-center justify-center mb-2 text-willtank-600">
+                      <FileText className="h-8 w-8" />
+                    </div>
+                    <p className="font-medium text-sm">{currentDocument.file.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {(currentDocument.file.size / 1024 / 1024).toFixed(2)} MB • 
+                      Click to replace
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-center mb-2 text-gray-400">
+                      <Upload className="h-8 w-8" />
+                    </div>
+                    <p className="text-sm font-medium">Click to upload a file</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PDF, DOCX, JPG or PNG, max 10MB
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+          <CardContent className="flex justify-between pt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setCurrentDocument(null)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveDocument}>
+              <Check className="h-4 w-4 mr-2" />
+              Save Document
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      
+      {!currentDocument && documents.length > 0 && (
+        <div className="mt-8">
+          {documents.some(d => d.status === 'uploading') ? (
+            <Button 
+              className="w-full"
+              size="lg"
+              disabled
+            >
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading Documents...
+            </Button>
+          ) : (
+            <Button 
+              className="w-full"
+              size="lg"
+              onClick={handleUploadAll}
+              disabled={documents.filter(d => d.file && d.status !== 'complete').length === 0 && documents.some(d => d.file && d.status === 'complete')}
+            >
+              {documents.some(d => d.status === 'complete') ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Continue to Next Step
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Documents & Continue
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
