@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,11 +19,12 @@ interface Contact {
 }
 
 interface ContactsCollectionProps {
+  willId: string;
   contacts: Contact[];
   onComplete: (contacts: Contact[]) => void;
 }
 
-export function ContactsCollection({ contacts: initialContacts, onComplete }: ContactsCollectionProps) {
+export function ContactsCollection({ willId, contacts: initialContacts, onComplete }: ContactsCollectionProps) {
   const [contacts, setContacts] = useState<Contact[]>(initialContacts);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [isAddingContact, setIsAddingContact] = useState(false);
@@ -110,7 +110,6 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
     return true;
   };
 
-  // Group contacts by role for better organization
   const contactsByRole = contacts.reduce((acc, contact) => {
     if (!acc[contact.role]) {
       acc[contact.role] = [];
@@ -131,7 +130,6 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
         </p>
       </div>
       
-      {/* Summary of roles needed */}
       {Object.keys(contactsByRole).length > 0 && (
         <div className="mb-6">
           <h3 className="text-lg font-medium mb-3">Contact Information Needed:</h3>
@@ -148,7 +146,6 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
         </div>
       )}
       
-      {/* Contact list */}
       {contacts.length === 0 ? (
         <div className="text-center p-8 border border-dashed rounded-lg">
           <p className="text-gray-500">No contacts identified yet. Add contacts using the button below.</p>
@@ -233,7 +230,6 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
         </div>
       )}
       
-      {/* Add contact button */}
       {!editingContact && (
         <Button 
           variant="outline" 
@@ -244,7 +240,6 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
         </Button>
       )}
       
-      {/* Edit contact form */}
       {editingContact && (
         <Card>
           <CardHeader>

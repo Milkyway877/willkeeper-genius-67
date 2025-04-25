@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Camera, StopCircle, Play, Check } from 'lucide-react';
+import { Video, Camera, StopCircle, Play, Check, Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadWillVideo } from '@/services/willStorageService';
 
@@ -155,6 +155,13 @@ export function VideoRecorder({ willId, onComplete }: VideoRecorderProps) {
                 >
                   <Check className="mr-2 h-4 w-4" />
                   Use This Recording
+                </Button>
+              )}
+              
+              {isUploading && (
+                <Button disabled>
+                  <Loader className="h-4 w-4 animate-spin mr-2" />
+                  Uploading...
                 </Button>
               )}
             </div>

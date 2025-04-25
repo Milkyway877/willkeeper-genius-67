@@ -11,7 +11,9 @@ import { VideoRecorder } from './components/VideoRecorder';
 import { WillPreview } from './components/WillPreview';
 import { useToast } from '@/hooks/use-toast';
 import { createWill, Will } from '@/services/willService';
-import { Book, FileText, User, Video, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { saveWillContacts, WillContact } from '@/services/willContactService';
+import { saveAIConversation } from '@/services/willAiService';
+import { Book, FileText, User, Video, ArrowRight, Check, Loader } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 const templates = [
@@ -85,18 +87,46 @@ export default function WillWizardPage() {
   };
 
   const handleConversationComplete = async (allResponses: Record<string, any>, generatedContent: string) => {
-    setResponses(allResponses);
-    setGeneratedWill(generatedContent);
-    
-    const extractedContacts = extractContactsFromResponses(allResponses);
-    setContacts(extractedContacts);
-    
-    setCurrentStep(prev => prev + 1);
-    
-    toast({
-      title: "Information Collected",
-      description: "All your will information has been collected successfully.",
-    });
+    try {
+      const will: Omit<Will, 'id' | 'created_at' | 'updated_at'> = {
+        title: allResponses.fullName ? `Will of ${allResponses.fullName}` : 'My Will',
+        status: 'draft',
+        document_url: '',
+        template_type: selectedTemplate?.id || 'traditional',
+        ai_generated: true,
+        content: generatedContent
+      };
+      
+      const createdWill = await createWill(will);
+      
+      if (createdWill && createdWill.id) {
+        setWillId(createdWill.id);
+        
+        await saveAIConversation(createdWill.id, allResponses);
+        
+        setResponses(allResponses);
+        setGeneratedWill(generatedContent);
+        
+        const extractedContacts = extractContactsFromResponses(allResponses);
+        setContacts(extractedContacts);
+        
+        setCurrentStep(prev => prev + 1);
+        
+        toast({
+          title: "Information Collected",
+          description: "All your will information has been collected successfully.",
+        });
+      } else {
+        throw new Error("Failed to create will");
+      }
+    } catch (error) {
+      console.error("Error in conversation completion:", error);
+      toast({
+        title: "Error",
+        description: "There was an error processing your information. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const extractContactsFromResponses = (responses: Record<string, any>) => {
@@ -157,7 +187,24 @@ export default function WillWizardPage() {
 
   const handleContactsComplete = async (updatedContacts: any[]) => {
     try {
-      await saveWillContacts(willId!, updatedContacts);
+      if (!willId) {
+        toast({
+          title: "Error",
+          description: "Will ID is missing. Please start over.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const contactsToSave: Omit<WillContact, 'will_id'>[] = updatedContacts.map(contact => ({
+        name: contact.name,
+        role: contact.role,
+        email: contact.email,
+        phone: contact.phone,
+        address: contact.address
+      }));
+      
+      await saveWillContacts(willId, contactsToSave);
       setContacts(updatedContacts);
       setCurrentStep(prev => prev + 1);
       
@@ -326,7 +373,7 @@ export default function WillWizardPage() {
                   {progress >= 90 && "Securing and saving your will..."}
                 </p>
                 <Button disabled className="mx-auto">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
                   Processing
                 </Button>
               </div>

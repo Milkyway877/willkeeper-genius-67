@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, File, Trash2, Check } from 'lucide-react';
+import { Upload, File, Trash2, Check, Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadWillDocument, getWillDocuments } from '@/services/willStorageService';
 import { bytesToSize } from '@/lib/utils';
@@ -75,7 +75,7 @@ export function DocumentsUploader({ willId, onComplete }: DocumentsUploaderProps
               >
                 {isUploading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader className="h-4 w-4 animate-spin mr-2" />
                     Uploading...
                   </>
                 ) : (
