@@ -60,6 +60,8 @@ export function AIQuestionFlow({
   const [recordingSupported, setRecordingSupported] = useState(false);
   const [transcribedText, setTranscribedText] = useState('');
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [conversationCompleted, setConversationCompleted] = useState(false);
+  const [showNextStepButton, setShowNextStepButton] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -271,14 +273,14 @@ export function AIQuestionFlow({
   };
   
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && inputValue.trim() !== '' && !isProcessing) {
+    if (e.key === 'Enter' && !e.shiftKey && inputValue.trim() !== '' && !isProcessing && !conversationCompleted) {
       e.preventDefault();
       handleSendMessage();
     }
   };
   
   const handleSendMessage = async () => {
-    if (inputValue.trim() === '' || isProcessing) return;
+    if (inputValue.trim() === '' || isProcessing || conversationCompleted) return;
     
     // Stop voice input if active
     if (activeVoiceInput) {
@@ -369,7 +371,8 @@ export function AIQuestionFlow({
       'i have all the information i need',
       'i\'ve gathered all the necessary information',
       'would you like to review',
-      'shall we proceed to'
+      'shall we proceed to',
+      'thank you for providing all the information'
     ];
     
     const isComplete = completionPhrases.some(phrase => 
@@ -378,6 +381,22 @@ export function AIQuestionFlow({
     
     if (isComplete || messages.length >= 20) {
       setAllQuestionsAnswered(true);
+      
+      // Add a final concluding message if we've detected completion
+      if (isComplete && !conversationCompleted) {
+        setTimeout(() => {
+          const conclusionMessage: Message = {
+            id: `conclusion-${Date.now()}`,
+            role: 'system',
+            content: '✅ We have now completed the information gathering phase for your will. Click the "Next Step" button below to proceed to the contacts collection stage.',
+            timestamp: new Date()
+          };
+          
+          setMessages(prev => [...prev, conclusionMessage]);
+          setConversationCompleted(true);
+          setShowNextStepButton(true);
+        }, 1000);
+      }
     }
   };
   
@@ -424,6 +443,17 @@ export function AIQuestionFlow({
       setIsGenerating(false);
       setProgress(0);
     }
+  };
+  
+  const handleNextStep = () => {
+    // Extract information before proceeding
+    const extractedResponses = extractInformationFromConversation();
+    
+    // Generate a basic will template to pass to the next step
+    const generatedWill = generateWillContent(selectedTemplate, extractedResponses);
+    
+    // Complete the conversation process and move to the next step
+    onComplete(extractedResponses, generatedWill);
   };
   
   const generateWillContent = (template: any, responses: Record<string, any>): string => {
@@ -538,6 +568,8 @@ Witnesses: [Witness 1], [Witness 2]`;
                         ? 'bg-black text-white ml-4 rounded-tr-none'
                         : message.role === 'assistant'
                         ? 'bg-gray-100 text-gray-800 mr-4 rounded-tl-none'
+                        : message.role === 'system'
+                        ? 'bg-willtank-50 text-willtank-800 mx-auto border border-willtank-200'
                         : 'bg-rose-100 text-red-800 mx-auto'
                     }`}
                   >
@@ -551,6 +583,11 @@ Witnesses: [Witness 1], [Witness 2]`;
                         <div className="flex items-center ml-auto">
                           <span className="text-xs font-semibold text-gray-200">You</span>
                           <User className="h-4 w-4 ml-2 text-gray-200" />
+                        </div>
+                      ) : message.role === 'system' ? (
+                        <div className="flex items-center">
+                          <FileText className="h-4 w-4 mr-2 text-willtank-600" />
+                          <span className="text-xs font-semibold text-willtank-600">System</span>
                         </div>
                       ) : (
                         <span className="text-xs font-semibold text-red-800">System</span>
@@ -606,10 +643,10 @@ Witnesses: [Witness 1], [Witness 2]`;
                 value={inputValue}
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
-                disabled={isProcessing}
-                className={`pr-10 ${activeVoiceInput ? 'bg-willtank-50' : ''}`}
+                disabled={isProcessing || conversationCompleted}
+                className={`pr-10 ${activeVoiceInput ? 'bg-willtank-50' : ''} ${conversationCompleted ? 'bg-gray-100' : ''}`}
               />
-              {recordingSupported && (
+              {recordingSupported && !conversationCompleted && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -617,6 +654,7 @@ Witnesses: [Witness 1], [Witness 2]`;
                     activeVoiceInput ? 'text-willtank-600' : 'text-gray-400'
                   }`}
                   onClick={toggleVoiceInput}
+                  disabled={conversationCompleted}
                 >
                   {activeVoiceInput ? (
                     <MicOff className="h-4 w-4" />
@@ -628,7 +666,7 @@ Witnesses: [Witness 1], [Witness 2]`;
             </div>
             <Button 
               onClick={handleSendMessage} 
-              disabled={inputValue.trim() === '' || isProcessing}
+              disabled={inputValue.trim() === '' || isProcessing || conversationCompleted}
               className="shrink-0"
             >
               {isProcessing ? (
@@ -659,6 +697,20 @@ Witnesses: [Witness 1], [Witness 2]`;
                   {progress >= 30 && progress < 60 && "Structuring your will document..."}
                   {progress >= 60 && progress < 90 && "Generating legal clauses..."}
                   {progress >= 90 && "Finalizing your document..."}
+                </p>
+              </div>
+            ) : showNextStepButton ? (
+              <div className="text-center">
+                <Button 
+                  onClick={handleNextStep} 
+                  className="w-full"
+                  size="lg"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Next Step: Contact Information
+                </Button>
+                <p className="text-xs text-gray-500 mt-2">
+                  You've provided all the necessary information. Proceed to enter contact details for key people in your will.
                 </p>
               </div>
             ) : (
