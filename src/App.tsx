@@ -107,7 +107,8 @@ function App() {
             <Route path="/will/:id" element={<WillDashboard />} />
             <Route path="/will/view/:id" element={<WillCreation readOnly={true} />} />
             <Route path="/will/edit/:id" element={<WillCreation />} />
-            <Route path="/will/create" element={<WillWizardPage />} /> {/* Updated to use the new wizard */}
+            <Route path="/will/create" element={<WillWizardPage />} />
+            <Route path="/will/wizard" element={<WillWizardPage />} />
             <Route path="/wills" element={<Wills />} />
             <Route path="/templates" element={<WillTemplates />} />
             <Route path="/tank" element={<WillTank />} />

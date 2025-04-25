@@ -3,3 +3,6 @@ project_id = "ksiinmxsycosnpchutuw"
 
 [functions.ai-assistant]
 verify_jwt = true
+
+[functions.gpt-will-assistant]
+verify_jwt = false

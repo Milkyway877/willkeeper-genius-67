@@ -1,21 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import {
   Send,
   User,
   Bot,
-  ArrowRight,
   Loader2,
   Check,
   FileText,
-  RefreshCw
+  RefreshCw,
+  ArrowRight,
+  Mic,
+  MicOff,
+  Sparkles
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+
+type Message = {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+};
 
 type AIQuestionFlowProps = {
   selectedTemplate: any;
@@ -24,394 +35,402 @@ type AIQuestionFlowProps = {
   onComplete: (responses: Record<string, any>, generatedWill: string) => void;
 };
 
-type Question = {
-  id: string;
-  text: string;
-  type: 'text' | 'textarea' | 'yesno' | 'options';
-  options?: string[];
-  dependsOn?: {
-    question: string;
-    value: string | boolean;
-  };
+type TemplateInfo = {
+  name: string;
+  key: string;
+  completionKey?: string;
+  questions: string[];
+  systemMessage: string;
 };
 
-export function AIQuestionFlow({ 
-  selectedTemplate, 
-  responses, 
-  setResponses, 
-  onComplete 
+export function AIQuestionFlow({
+  selectedTemplate,
+  responses,
+  setResponses,
+  onComplete
 }: AIQuestionFlowProps) {
   const { toast } = useToast();
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [currentAnswer, setCurrentAnswer] = useState<string>('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [activeVoiceInput, setActiveVoiceInput] = useState(false);
+  const [recordingSupported, setRecordingSupported] = useState(false);
+  const [transcribedText, setTranscribedText] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const conversationHistoryRef = useRef<any[]>([]);
 
+  // Check for speech recognition support
   useEffect(() => {
-    if (selectedTemplate) {
-      if (selectedTemplate.id === 'traditional') {
-        setQuestions([
-          { 
-            id: 'fullName', 
-            text: 'What is your full legal name?', 
-            type: 'text' 
-          },
-          { 
-            id: 'address', 
-            text: 'What is your current residential address?', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'maritalStatus', 
-            text: 'What is your marital status?', 
-            type: 'options',
-            options: ['Single', 'Married', 'Divorced', 'Widowed'] 
-          },
-          { 
-            id: 'spouseName', 
-            text: 'What is your spouse\'s full name?', 
-            type: 'text',
-            dependsOn: {
-              question: 'maritalStatus',
-              value: 'Married'
-            }
-          },
-          { 
-            id: 'hasChildren', 
-            text: 'Do you have any children?', 
-            type: 'yesno' 
-          },
-          { 
-            id: 'childrenNames', 
-            text: 'Please list the full names of all your children, separated by commas.', 
-            type: 'textarea',
-            dependsOn: {
-              question: 'hasChildren',
-              value: true
-            }
-          },
-          { 
-            id: 'executorName', 
-            text: 'Who would you like to name as the executor of your will?', 
-            type: 'text' 
-          },
-          { 
-            id: 'alternateExecutor', 
-            text: 'Would you like to designate an alternate executor in case your primary choice is unavailable?', 
-            type: 'yesno' 
-          },
-          { 
-            id: 'alternateExecutorName', 
-            text: 'Who would you like to name as your alternate executor?', 
-            type: 'text',
-            dependsOn: {
-              question: 'alternateExecutor',
-              value: true
-            }
-          },
-          { 
-            id: 'guardianNeeded', 
-            text: 'Do you need to appoint a guardian for minor children?', 
-            type: 'yesno',
-            dependsOn: {
-              question: 'hasChildren',
-              value: true
-            }
-          },
-          { 
-            id: 'guardianName', 
-            text: 'Who would you like to name as guardian for your minor children?', 
-            type: 'text',
-            dependsOn: {
-              question: 'guardianNeeded',
-              value: true
-            }
-          },
-          { 
-            id: 'specificBequests', 
-            text: 'Are there any specific possessions you would like to leave to particular individuals?', 
-            type: 'yesno' 
-          },
-          { 
-            id: 'bequestsDetails', 
-            text: 'Please describe these specific bequests (item and recipient).', 
-            type: 'textarea',
-            dependsOn: {
-              question: 'specificBequests',
-              value: true
-            }
-          },
-          { 
-            id: 'residualEstate', 
-            text: 'Who should receive the remainder of your estate?', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'digitalAssets', 
-            text: 'Do you have specific inheritance wishes for digital assets?', 
-            type: 'yesno' 
-          },
-          { 
-            id: 'digitalAssetsDetails', 
-            text: 'Please describe your digital assets and how you would like them handled.', 
-            type: 'textarea',
-            dependsOn: {
-              question: 'digitalAssets',
-              value: true
-            }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setRecordingSupported(true);
+    }
+  }, []);
+
+  // Initialize speech recognition
+  const initSpeechRecognition = useCallback(() => {
+    if (!recordingSupported) return;
+    
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!recognitionRef.current) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      
+      recognitionRef.current.onresult = (event: any) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            setInputValue(prev => prev + transcript + ' ');
+          } else {
+            interimTranscript += transcript;
           }
-        ]);
-      } else if (selectedTemplate.id === 'digital-assets') {
-        setQuestions([
-          { 
-            id: 'fullName', 
-            text: 'What is your full legal name?', 
-            type: 'text' 
-          },
-          { 
-            id: 'address', 
-            text: 'What is your current residential address?', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'digitalExecutor', 
-            text: 'Who would you like to name as your digital executor?', 
-            type: 'text' 
-          },
-          { 
-            id: 'hasCryptocurrency', 
-            text: 'Do you own cryptocurrency assets?', 
-            type: 'yesno' 
-          },
-          { 
-            id: 'cryptocurrencyDetails', 
-            text: 'Please list your cryptocurrency holdings and where they are stored.', 
-            type: 'textarea',
-            dependsOn: {
-              question: 'hasCryptocurrency',
-              value: true
-            }
-          },
-          { 
-            id: 'hasNFTs', 
-            text: 'Do you own any NFTs (Non-Fungible Tokens)?', 
-            type: 'yesno' 
-          },
-          { 
-            id: 'nftDetails', 
-            text: 'Please list your NFT holdings and where they are stored.', 
-            type: 'textarea',
-            dependsOn: {
-              question: 'hasNFTs',
-              value: true
-            }
-          },
-          { 
-            id: 'socialMediaAccounts', 
-            text: 'Please list your social media accounts that should be managed after your passing.', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'emailAccounts', 
-            text: 'Please list your email accounts that should be managed after your passing.', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'digitalInstructions', 
-            text: 'What specific instructions do you have for your digital assets?', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'passwordManager', 
-            text: 'Do you use a password manager or other secure storage for your digital access information?', 
-            type: 'yesno' 
-          },
-          { 
-            id: 'passwordManagerDetails', 
-            text: 'Please describe how your digital executor can access your password manager or secure storage.', 
-            type: 'textarea',
-            dependsOn: {
-              question: 'passwordManager',
-              value: true
-            }
-          },
-          { 
-            id: 'digitalMemorial', 
-            text: 'Do you have preferences for how your digital presence should be memorialized?', 
-            type: 'textarea' 
-          }
-        ]);
-      } else if (selectedTemplate.id === 'living-trust') {
-        setQuestions([
-          { 
-            id: 'fullName', 
-            text: 'What is your full legal name?', 
-            type: 'text' 
-          },
-          { 
-            id: 'address', 
-            text: 'What is your current residential address?', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'trustName', 
-            text: 'What would you like to name your trust?', 
-            type: 'text' 
-          },
-          { 
-            id: 'trustee', 
-            text: 'Who would you like to name as the trustee of your trust?', 
-            type: 'text' 
-          },
-          { 
-            id: 'successorTrustee', 
-            text: 'Who would you like to name as your successor trustee?', 
-            type: 'text' 
-          },
-          { 
-            id: 'beneficiaries', 
-            text: 'Please list all beneficiaries of your trust.', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'assetsList', 
-            text: 'Please list the major assets you plan to include in your trust.', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'distributionTerms', 
-            text: 'How would you like your assets distributed upon your passing?', 
-            type: 'textarea' 
-          }
-        ]);
-      } else {
-        setQuestions([
-          { 
-            id: 'fullName', 
-            text: 'What is your full legal name?', 
-            type: 'text' 
-          },
-          { 
-            id: 'address', 
-            text: 'What is your current residential address?', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'executorName', 
-            text: 'Who would you like to name as the executor of your will?', 
-            type: 'text' 
-          },
-          { 
-            id: 'beneficiaries', 
-            text: 'Please list all beneficiaries of your will.', 
-            type: 'textarea' 
-          },
-          { 
-            id: 'assetDistribution', 
-            text: 'How would you like your assets distributed?', 
-            type: 'textarea' 
-          }
-        ]);
+        }
+        setTranscribedText(interimTranscript);
+      };
+      
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event);
+        setActiveVoiceInput(false);
+        toast({
+          title: "Voice Input Error",
+          description: "There was a problem with voice recognition. Please try again or type your response.",
+          variant: "destructive"
+        });
+      };
+      
+      recognitionRef.current.onend = () => {
+        setActiveVoiceInput(false);
+      };
+    }
+  }, [recordingSupported, toast]);
+
+  const toggleVoiceInput = useCallback(() => {
+    if (activeVoiceInput) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setActiveVoiceInput(false);
+      setTranscribedText('');
+    } else {
+      initSpeechRecognition();
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setActiveVoiceInput(true);
       }
     }
+  }, [activeVoiceInput, initSpeechRecognition]);
+
+  // Welcome message from AI based on template type
+  useEffect(() => {
+    if (!selectedTemplate) return;
+    
+    let welcomeMessage = '';
+    
+    if (selectedTemplate.id === 'traditional') {
+      welcomeMessage = `👋 Hello! I'm your AI will assistant, and I'll be guiding you through creating a traditional will. I'll ask you a series of questions to gather all the necessary information. Let's start with the basics: What is your full legal name?`;
+    } else if (selectedTemplate.id === 'digital-assets') {
+      welcomeMessage = `👋 Hello! I'm your AI will assistant specializing in digital assets. I'll help you create a will that properly addresses your online accounts, cryptocurrency, and other digital property. Let's start with the basics: What is your full legal name?`;
+    } else if (selectedTemplate.id === 'living-trust') {
+      welcomeMessage = `👋 Hello! I'm your AI will assistant specializing in living trusts. I'll guide you through creating a trust that can help manage your assets during your lifetime and distribute them after your passing. Let's start with the basics: What is your full legal name?`;
+    } else {
+      welcomeMessage = `👋 Hello! I'm your AI will assistant. I'll help you create a comprehensive will tailored to your needs. Let's start with the basics: What is your full legal name?`;
+    }
+    
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: welcomeMessage,
+        timestamp: new Date()
+      }
+    ]);
+    
+    conversationHistoryRef.current = [
+      { role: 'assistant', content: welcomeMessage }
+    ];
   }, [selectedTemplate]);
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isProcessing]);
   
-  const shouldShowQuestion = (question: Question): boolean => {
-    if (!question.dependsOn) return true;
+  // Extract information from conversation to responses object
+  const extractInformationFromConversation = useCallback(() => {
+    const extractedResponses: Record<string, any> = { ...responses };
+    let userMessages = messages.filter(m => m.role === 'user').map(m => m.content);
     
-    const dependentValue = responses[question.dependsOn.question];
-    return dependentValue === question.dependsOn.value;
+    // Extract full name
+    const nameMatch = userMessages.find(msg => 
+      /^(my name is|I am|I'm) ([A-Z][a-z]+ [A-Z][a-z]+)/i.test(msg)
+    );
+    if (nameMatch) {
+      const nameRegex = /^(?:my name is|I am|I'm) ([A-Z][a-z]+ [A-Z][a-z]+)/i;
+      const match = nameMatch.match(nameRegex);
+      if (match && match[1]) {
+        extractedResponses.fullName = match[1];
+      }
+    }
+    
+    // Extract marital status
+    const maritalStatusMatch = userMessages.find(msg => 
+      /(single|married|divorced|widowed)/i.test(msg) && 
+      /status/i.test(msg)
+    );
+    if (maritalStatusMatch) {
+      if (maritalStatusMatch.match(/single/i)) extractedResponses.maritalStatus = 'Single';
+      else if (maritalStatusMatch.match(/married/i)) extractedResponses.maritalStatus = 'Married';
+      else if (maritalStatusMatch.match(/divorced/i)) extractedResponses.maritalStatus = 'Divorced';
+      else if (maritalStatusMatch.match(/widowed/i)) extractedResponses.maritalStatus = 'Widowed';
+    }
+    
+    // Extract spouse name if married
+    if (extractedResponses.maritalStatus === 'Married') {
+      const spouseMatch = userMessages.find(msg => 
+        /spouse|wife|husband|partner/i.test(msg) && 
+        /name/i.test(msg)
+      );
+      if (spouseMatch) {
+        const nameRegex = /(?:spouse|wife|husband|partner)(?:'s| is| name is)? ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i;
+        const match = spouseMatch.match(nameRegex);
+        if (match && match[1]) {
+          extractedResponses.spouseName = match[1];
+        }
+      }
+    }
+    
+    // Extract children information
+    const childrenMatch = userMessages.find(msg => 
+      /(have|has) (no |[0-9]+) (child|children)/i.test(msg)
+    );
+    if (childrenMatch) {
+      if (childrenMatch.match(/no child/i)) {
+        extractedResponses.hasChildren = false;
+      } else {
+        extractedResponses.hasChildren = true;
+        
+        // Try to extract children names
+        const childrenNamesMatch = userMessages.find(msg => 
+          /(children|kids) (are|named|:) /i.test(msg)
+        );
+        if (childrenNamesMatch) {
+          const childrenNames = childrenNamesMatch.replace(/(my|the) (children|kids) (are|named|:) /i, '');
+          extractedResponses.childrenNames = childrenNames;
+        }
+      }
+    }
+    
+    // Extract executor information
+    const executorMatch = userMessages.find(msg => 
+      /executor/i.test(msg) && 
+      /name/i.test(msg)
+    );
+    if (executorMatch) {
+      const nameRegex = /executor (?:is|would be|will be|should be) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i;
+      const match = executorMatch.match(nameRegex);
+      if (match && match[1]) {
+        extractedResponses.executorName = match[1];
+      }
+    }
+    
+    // Extract residual estate information
+    const residualMatch = userMessages.find(msg => 
+      /(residual|remainder|rest|remaining)/i.test(msg) && 
+      /(estate|assets|property)/i.test(msg)
+    );
+    if (residualMatch) {
+      extractedResponses.residualEstate = residualMatch;
+    }
+    
+    // Digital assets information if applicable
+    if (selectedTemplate.id === 'digital-assets') {
+      const digitalAssetsMatch = userMessages.find(msg => 
+        /(cryptocurrency|crypto|bitcoin|ethereum|nft|digital assets|online accounts)/i.test(msg)
+      );
+      if (digitalAssetsMatch) {
+        extractedResponses.digitalAssets = true;
+        extractedResponses.digitalAssetsDetails = digitalAssetsMatch;
+      }
+    }
+    
+    // Update the responses state
+    setResponses(extractedResponses);
+    return extractedResponses;
+  }, [messages, responses, selectedTemplate, setResponses]);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
   };
   
-  const findNextQuestionIndex = (currentIndex: number): number => {
-    let nextIndex = currentIndex + 1;
-    
-    while (
-      nextIndex < questions.length && 
-      !shouldShowQuestion(questions[nextIndex])
-    ) {
-      nextIndex++;
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && inputValue.trim() !== '' && !isProcessing) {
+      e.preventDefault();
+      handleSendMessage();
     }
-    
-    return nextIndex;
   };
-
-  const handleAnswer = async () => {
-    if (!currentAnswer.trim()) {
-      toast({
-        title: "Answer Required",
-        description: "Please provide an answer to continue.",
-        variant: "destructive"
-      });
-      return;
+  
+  const handleSendMessage = async () => {
+    if (inputValue.trim() === '' || isProcessing) return;
+    
+    // Stop voice input if active
+    if (activeVoiceInput) {
+      toggleVoiceInput();
     }
     
-    let value: string | boolean = currentAnswer;
-    if (currentQuestion.type === 'yesno') {
-      value = currentAnswer.toLowerCase() === 'yes';
-    }
+    // Create new user message
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: inputValue,
+      timestamp: new Date()
+    };
     
-    const updatedResponses = { ...responses, [currentQuestion.id]: value };
-    setResponses(updatedResponses);
+    // Add user message to state
+    setMessages(prev => [...prev, userMessage]);
+    conversationHistoryRef.current.push({ role: 'user', content: inputValue });
     
-    setIsTyping(true);
+    // Clear input
+    setInputValue('');
+    setTranscribedText('');
+    
+    // Start processing
+    setIsProcessing(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+      // Call our edge function
+      const { data, error } = await supabase.functions.invoke('gpt-will-assistant', {
         body: { 
-          query: `Based on the user's answer to the question "${currentQuestion.text}" which was "${currentAnswer}", provide any additional relevant context or guidance that might help them with the next steps of creating their will. Be brief and focused.`,
-          conversation_history: []
+          query: inputValue,
+          template_type: selectedTemplate?.id || 'traditional',
+          conversation_history: conversationHistoryRef.current
         }
       });
       
-      if (!error && data?.response) {
-        localStorage.setItem('willAIEnhancement', data.response);
+      if (error) {
+        throw new Error(`Error calling AI assistant: ${error.message}`);
       }
+      
+      // Create new AI message
+      const aiMessage: Message = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: data?.response || 'I apologize, but I encountered an issue processing your request. Could you please try again?',
+        timestamp: new Date()
+      };
+      
+      // Add AI message to state
+      setMessages(prev => [...prev, aiMessage]);
+      conversationHistoryRef.current.push({ role: 'assistant', content: aiMessage.content });
+      
+      // Check if we have enough information to complete the process
+      checkForCompletion(aiMessage.content);
+      
     } catch (error) {
-      console.error('Error enhancing answers with AI:', error);
+      console.error('Error communicating with AI assistant:', error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: 'system',
+        content: 'I apologize, but I encountered an issue processing your request. Please try again.',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: 'Connection Error',
+        description: 'There was a problem connecting to the AI assistant. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsProcessing(false);
     }
+  };
+  
+  const checkForCompletion = (lastAiMessage: string) => {
+    // Check if the last AI message suggests we're done
+    const completionPhrases = [
+      'we have all the information',
+      'we\'ve collected all the necessary information',
+      'that completes all the',
+      'we now have everything we need',
+      'that covers all the essential information',
+      'now ready to generate your will',
+      'now i have all the information needed',
+      'i have all the information i need',
+      'i\'ve gathered all the necessary information',
+      'would you like to review',
+      'shall we proceed to'
+    ];
     
-    setTimeout(() => {
-      setIsTyping(false);
-      
-      const nextIndex = findNextQuestionIndex(currentQuestionIndex);
-      
-      if (nextIndex < questions.length) {
-        setCurrentQuestionIndex(nextIndex);
-        setCurrentAnswer('');
-      } else {
-        setAllQuestionsAnswered(true);
-      }
-    }, 1000);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleAnswer();
+    const isComplete = completionPhrases.some(phrase => 
+      lastAiMessage.toLowerCase().includes(phrase.toLowerCase())
+    );
+    
+    if (isComplete || messages.length >= 20) {
+      setAllQuestionsAnswered(true);
     }
   };
-
-  const handleGenerateWill = () => {
+  
+  const handleGenerateWill = async () => {
     setIsGenerating(true);
     
-    setTimeout(() => {
-      const generatedWill = generateWillContent(selectedTemplate, responses);
+    try {
+      // Extract all information from conversation
+      const extractedResponses = extractInformationFromConversation();
+      
+      // Generate progress
+      let progress = 0;
+      const progressInterval = setInterval(() => {
+        progress += 5;
+        if (progress > 95) {
+          clearInterval(progressInterval);
+        } else {
+          setProgress(progress);
+        }
+      }, 200);
+      
+      // Generate will content based on template
+      setTimeout(() => {
+        clearInterval(progressInterval);
+        setProgress(100);
+        
+        // Generate simple will from template
+        const generatedWill = generateWillContent(selectedTemplate, extractedResponses);
+        
+        // Complete the process
+        setTimeout(() => {
+          onComplete(extractedResponses, generatedWill);
+        }, 1000);
+      }, 3000);
+    } catch (error) {
+      console.error('Error generating will:', error);
+      
+      toast({
+        title: 'Error Generating Will',
+        description: 'There was a problem generating your will. Please try again.',
+        variant: 'destructive'
+      });
+      
       setIsGenerating(false);
-      onComplete(responses, generatedWill);
-    }, 3000);
+      setProgress(0);
+    }
   };
-
+  
   const generateWillContent = (template: any, responses: Record<string, any>): string => {
     if (template.id === 'traditional') {
       return `LAST WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
 
-I, ${responses.fullName || '[NAME]'}, residing at ${responses.address || '[ADDRESS]'}, being of sound mind, declare this to be my Last Will and Testament.
+I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my Last Will and Testament.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
@@ -441,28 +460,28 @@ Witnesses: [Witness 1], [Witness 2]`;
     } else if (template.id === 'digital-assets') {
       return `DIGITAL ASSET WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
 
-I, ${responses.fullName || '[NAME]'}, residing at ${responses.address || '[ADDRESS]'}, being of sound mind, declare this to be my Digital Asset Will and Testament.
+I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my Digital Asset Will and Testament.
 
 ARTICLE I: DIGITAL EXECUTOR
-I appoint ${responses.digitalExecutor || '[DIGITAL EXECUTOR]'} as my Digital Executor with authority to manage all my digital assets.
+I appoint ${responses.executorName || '[DIGITAL EXECUTOR]'} as my Digital Executor with authority to manage all my digital assets.
 
 ARTICLE II: CRYPTOCURRENCY ASSETS
-${responses.hasCryptocurrency ? `My cryptocurrency assets include: ${responses.cryptocurrencyDetails || '[CRYPTOCURRENCY DETAILS]'}` : 'I have no cryptocurrency assets.'}
+${responses.digitalAssetsDetails?.includes('crypto') ? `My cryptocurrency assets include: ${responses.digitalAssetsDetails || '[CRYPTOCURRENCY DETAILS]'}` : 'I have no cryptocurrency assets.'}
 
 ARTICLE III: NFT ASSETS
-${responses.hasNFTs ? `My NFT holdings include: ${responses.nftDetails || '[NFT DETAILS]'}` : 'I have no NFT assets.'}
+${responses.digitalAssetsDetails?.includes('nft') ? `My NFT holdings include: ${responses.digitalAssetsDetails || '[NFT DETAILS]'}` : 'I have no NFT assets.'}
 
 ARTICLE IV: SOCIAL MEDIA ACCOUNTS
-My social media accounts include: ${responses.socialMediaAccounts || '[SOCIAL MEDIA ACCOUNTS]'}
+${responses.digitalAssetsDetails?.includes('social') ? `My social media accounts include: ${responses.digitalAssetsDetails || '[SOCIAL MEDIA ACCOUNTS]'}` : 'My social media accounts should be handled according to the individual platform policies.'}
 
 ARTICLE V: EMAIL ACCOUNTS
-My email accounts include: ${responses.emailAccounts || '[EMAIL ACCOUNTS]'}
+${responses.digitalAssetsDetails?.includes('email') ? `My email accounts include: ${responses.digitalAssetsDetails || '[EMAIL ACCOUNTS]'}` : 'My email accounts should be closed after important information is saved.'}
 
 ARTICLE VI: ACCESS INFORMATION
-${responses.passwordManager ? `My access information is stored in: ${responses.passwordManagerDetails || '[PASSWORD MANAGER DETAILS]'}` : 'I have provided separate secure instructions for accessing my digital accounts.'}
+${responses.digitalAssetsDetails?.includes('password') ? `My access information is stored in: ${responses.digitalAssetsDetails || '[PASSWORD MANAGER DETAILS]'}` : 'I have provided separate secure instructions for accessing my digital accounts.'}
 
-ARTICLE VII: DIGITAL MEMORIAL PREFERENCES
-My preferences for my digital memorial are: ${responses.digitalMemorial || '[DIGITAL MEMORIAL PREFERENCES]'}
+ARTICLE VII: DIGITAL LEGACY PREFERENCES
+My preferences for my digital legacy are: ${responses.digitalAssetsDetails || '[DIGITAL LEGACY PREFERENCES]'}
 
 Signed: ${responses.fullName || '[NAME]'}
 Date: [Current Date]
@@ -470,7 +489,7 @@ Witnesses: [Witness 1], [Witness 2]`;
     } else {
       return `LAST WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
 
-I, ${responses.fullName || '[NAME]'}, residing at ${responses.address || '[ADDRESS]'}, being of sound mind, declare this to be my Last Will and Testament.
+I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my Last Will and Testament.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
@@ -479,8 +498,7 @@ ARTICLE II: EXECUTOR
 I appoint ${responses.executorName || '[EXECUTOR NAME]'} as the Executor of this Will.
 
 ARTICLE III: DISPOSITION OF PROPERTY
-I give all my property to my beneficiaries as follows: ${responses.beneficiaries || '[BENEFICIARIES]'}
-Distribution terms: ${responses.assetDistribution || '[ASSET DISTRIBUTION]'}
+I give all my property to my beneficiaries as follows: ${responses.residualEstate || '[BENEFICIARIES]'}
 
 Signed: ${responses.fullName || '[NAME]'}
 Date: [Current Date]
@@ -488,199 +506,228 @@ Witnesses: [Witness 1], [Witness 2]`;
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [responses, currentQuestion]);
-
-  if (!currentQuestion && !allQuestionsAnswered) {
-    return (
-      <div className="text-center py-10">
-        <Loader2 className="h-10 w-10 animate-spin mx-auto text-willtank-500" />
-        <p className="mt-4 text-gray-600">Loading questions...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[80vh]">
-      <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-        <div className="flex items-center">
-          <Bot className="text-willtank-700 mr-2" size={18} />
-          <h3 className="font-medium">AI Assistant</h3>
-        </div>
-        <div className="text-xs text-gray-500">
-          {currentQuestionIndex + 1} of {questions.length} questions
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-auto p-6">
-        <div className="space-y-6">
-          {Object.entries(responses).map(([questionId, answer], index) => {
-            const question = questions.find(q => q.id === questionId);
-            return (
-              <React.Fragment key={questionId}>
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-willtank-600" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-gray-700 font-medium">{question?.text || questionId}</p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                      <User className="h-4 w-4 text-gray-600" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-gray-700">{typeof answer === 'boolean' ? (answer ? 'Yes' : 'No') : answer}</p>
-                  </div>
-                </div>
-              </React.Fragment>
-            );
-          })}
-          
-          {!allQuestionsAnswered && currentQuestion && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-4"
-            >
-              <div className="flex-shrink-0 mt-1">
-                <div className="h-8 w-8 rounded-full bg-willtank-100 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-willtank-600" />
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-700 font-medium">{currentQuestion.text}</p>
-              </div>
-            </motion.div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-      
-      {!allQuestionsAnswered && currentQuestion ? (
-        <div className="border-t bg-white p-4 sticky bottom-0 shadow-lg">
-          {currentQuestion.type === 'text' && (
-            <div className="flex gap-2">
-              <Input
-                value={currentAnswer}
-                onChange={(e) => setCurrentAnswer(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your answer here..."
-                className="flex-1"
-              />
-              <Button onClick={handleAnswer} disabled={isTyping}>
-                <Send className="h-4 w-4" />
-              </Button>
+    <div className="flex flex-col h-[65vh]">
+      <Card className="flex-1 flex flex-col overflow-hidden h-full">
+        <CardHeader className="flex-shrink-0 border-b p-4">
+          <div className="flex items-center">
+            <div className="bg-willtank-50 p-1 rounded-full">
+              <Bot className="h-6 w-6 text-willtank-600" />
             </div>
-          )}
-          
-          {currentQuestion.type === 'textarea' && (
-            <div className="flex flex-col gap-2">
-              <Textarea
-                value={currentAnswer}
-                onChange={(e) => setCurrentAnswer(e.target.value)}
-                placeholder="Type your answer here..."
-                className="min-h-[100px]"
-              />
-              <Button onClick={handleAnswer} disabled={isTyping} className="self-end">
-                {isTyping ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Submit
-              </Button>
+            <div className="ml-3">
+              <h3 className="font-semibold">Will AI Assistant</h3>
+              <p className="text-xs text-gray-500">Powered by GPT-4o-mini</p>
             </div>
-          )}
-          
-          {currentQuestion.type === 'yesno' && (
-            <div className="flex gap-2">
-              <Button 
-                variant={currentAnswer === 'Yes' ? 'default' : 'outline'} 
-                onClick={() => setCurrentAnswer('Yes')}
-                className="flex-1"
-              >
-                Yes
-              </Button>
-              <Button 
-                variant={currentAnswer === 'No' ? 'default' : 'outline'} 
-                onClick={() => setCurrentAnswer('No')}
-                className="flex-1"
-              >
-                No
-              </Button>
-              <Button onClick={handleAnswer} disabled={!currentAnswer || isTyping}>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          
-          {currentQuestion.type === 'options' && currentQuestion.options && (
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {currentQuestion.options.map((option) => (
-                  <Button 
-                    key={option} 
-                    variant={currentAnswer === option ? 'default' : 'outline'} 
-                    onClick={() => setCurrentAnswer(option)}
-                    className="justify-start"
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-0 flex-1 overflow-y-auto">
+          <ScrollArea className="h-full p-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] p-3 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-black text-white ml-4 rounded-tr-none'
+                        : message.role === 'assistant'
+                        ? 'bg-gray-100 text-gray-800 mr-4 rounded-tl-none'
+                        : 'bg-rose-100 text-red-800 mx-auto'
+                    }`}
                   >
-                    {option}
-                  </Button>
-                ))}
-              </div>
-              <Button 
-                onClick={handleAnswer} 
-                disabled={!currentAnswer || isTyping}
-                className="self-end mt-2"
-              >
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Submit
-              </Button>
+                    <div className="flex items-center mb-1">
+                      {message.role === 'assistant' ? (
+                        <div className="flex items-center">
+                          <Bot className="h-4 w-4 mr-2 text-willtank-600" />
+                          <span className="text-xs font-semibold text-willtank-600">Will Assistant</span>
+                        </div>
+                      ) : message.role === 'user' ? (
+                        <div className="flex items-center ml-auto">
+                          <span className="text-xs font-semibold text-gray-200">You</span>
+                          <User className="h-4 w-4 ml-2 text-gray-200" />
+                        </div>
+                      ) : (
+                        <span className="text-xs font-semibold text-red-800">System</span>
+                      )}
+                    </div>
+                    <p className="whitespace-pre-line text-sm">{message.content}</p>
+                    <div className="text-xs opacity-70 mt-1 flex justify-end">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+              
+              {isProcessing && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 text-gray-800 p-3 rounded-lg mr-4 rounded-tl-none">
+                    <div className="flex items-center mb-1">
+                      <Bot className="h-4 w-4 mr-2 text-willtank-600" />
+                      <span className="text-xs font-semibold text-willtank-600">Will Assistant</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="dot-flashing"></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Transcribed text preview */}
+              {activeVoiceInput && transcribedText && (
+                <div className="flex justify-end">
+                  <div className="bg-gray-100 text-gray-500 p-3 rounded-lg ml-4 rounded-tr-none border border-dashed border-gray-300">
+                    <div className="flex items-center mb-1">
+                      <div className="flex items-center ml-auto">
+                        <span className="text-xs font-semibold text-gray-500">Transcribing...</span>
+                        <Mic className="h-4 w-4 ml-2 text-gray-500" />
+                      </div>
+                    </div>
+                    <p className="text-sm italic">{transcribedText}</p>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
-      ) : allQuestionsAnswered ? (
-        <div className="border-t bg-white p-6">
-          <div className="text-center">
-            <div className="mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <Check className="h-8 w-8 text-green-600" />
+          </ScrollArea>
+        </CardContent>
+        
+        {!allQuestionsAnswered ? (
+          <div className="p-4 border-t flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                placeholder="Type your message..."
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                disabled={isProcessing}
+                className={`pr-10 ${activeVoiceInput ? 'bg-willtank-50' : ''}`}
+              />
+              {recordingSupported && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 ${
+                    activeVoiceInput ? 'text-willtank-600' : 'text-gray-400'
+                  }`}
+                  onClick={toggleVoiceInput}
+                >
+                  {activeVoiceInput ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
             </div>
-            <h3 className="text-xl font-medium mb-2">All Questions Completed!</h3>
-            <p className="text-gray-600 mb-6">We have all the information needed to generate your will.</p>
-            
             <Button 
-              onClick={handleGenerateWill} 
-              className="mx-auto"
-              disabled={isGenerating}
-              size="lg"
+              onClick={handleSendMessage} 
+              disabled={inputValue.trim() === '' || isProcessing}
+              className="shrink-0"
             >
-              {isGenerating ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                  Generating Your Will...
-                </>
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Generate My Will
-                </>
+                <Send className="h-4 w-4" />
               )}
             </Button>
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <div className="p-4 border-t">
+            {isGenerating ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium">Generating your will document</span>
+                  <span className="text-sm">{progress}%</span>
+                </div>
+                
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-willtank-500 transition-all duration-300 rounded-full"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                
+                <p className="text-sm text-gray-500">
+                  {progress < 30 && "Analyzing your responses..."}
+                  {progress >= 30 && progress < 60 && "Structuring your will document..."}
+                  {progress >= 60 && progress < 90 && "Generating legal clauses..."}
+                  {progress >= 90 && "Finalizing your document..."}
+                </p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Button 
+                  onClick={handleGenerateWill} 
+                  className="w-full"
+                  size="lg"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate My Will Document
+                </Button>
+                <p className="text-xs text-gray-500 mt-2">
+                  You've provided all the necessary information. Click to generate your will document.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+      
+      {/* CSS for typing animation */}
+      <style jsx>{`
+        .dot-flashing {
+          position: relative;
+          width: 10px;
+          height: 10px;
+          border-radius: 5px;
+          background-color: #9880ff;
+          color: #9880ff;
+          animation: dot-flashing 1s infinite linear alternate;
+          animation-delay: 0.5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+          content: '';
+          display: inline-block;
+          position: absolute;
+          top: 0;
+        }
+        .dot-flashing::before {
+          left: -15px;
+          width: 10px;
+          height: 10px;
+          border-radius: 5px;
+          background-color: #9880ff;
+          color: #9880ff;
+          animation: dot-flashing 1s infinite alternate;
+          animation-delay: 0s;
+        }
+        .dot-flashing::after {
+          left: 15px;
+          width: 10px;
+          height: 10px;
+          border-radius: 5px;
+          background-color: #9880ff;
+          color: #9880ff;
+          animation: dot-flashing 1s infinite alternate;
+          animation-delay: 1s;
+        }
+
+        @keyframes dot-flashing {
+          0% {
+            background-color: #9880ff;
+          }
+          50%, 100% {
+            background-color: rgba(152, 128, 255, 0.2);
+          }
+        }
+      `}</style>
     </div>
   );
 }
