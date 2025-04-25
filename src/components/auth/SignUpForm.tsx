@@ -43,11 +43,44 @@ export function SignUpForm() {
     },
   });
 
+  const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
   const onSubmit = async (data: SignUpFormInputs) => {
     setIsLoading(true);
     
     try {
-      // Attempt to sign up directly without checking email existence first
+      const verificationCode = generateVerificationCode();
+      
+      // Send verification email
+      const emailResponse = await supabase.functions.invoke('send-verification', {
+        body: {
+          email: data.email,
+          code: verificationCode,
+          type: 'signup'
+        }
+      });
+
+      if (emailResponse.error) {
+        throw new Error(emailResponse.error.message);
+      }
+
+      // Store verification code in Supabase
+      const { error: verificationError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: data.email,
+          code: verificationCode,
+          type: 'signup',
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+        });
+
+      if (verificationError) {
+        throw verificationError;
+      }
+
+      // Sign up the user
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -57,12 +90,10 @@ export function SignUpForm() {
             last_name: data.lastName,
             full_name: `${data.firstName} ${data.lastName}`
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
         },
       });
       
       if (error) {
-        // Handle specific error cases
         if (error.message.includes('already registered') || error.message.includes('already in use')) {
           toast({
             title: "Email already registered",
@@ -76,22 +107,18 @@ export function SignUpForm() {
             variant: "destructive",
           });
         }
-        setIsLoading(false);
         return;
       }
       
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account.",
+        title: "Verification email sent",
+        description: "Please check your email for the verification code.",
       });
       
-      // Redirect to the verification banner page instead
-      setTimeout(() => {
-        navigate('/auth/verification-banner');
-      }, 2000);
+      // Navigate to verification page with email
+      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}`);
     } catch (error) {
-      console.error("Error registering user:", error);
-      
+      console.error("Error during signup:", error);
       toast({
         title: "Registration failed",
         description: "An unexpected error occurred. Please try again.",

@@ -40,22 +40,24 @@ export default function EmailVerification() {
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      // Call to verify the OTP
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: values.code,
-        type: 'email'
-      });
-      
-      if (error) {
-        console.error('Error verifying OTP:', error);
+      // First verify the code
+      const { data: verificationData, error: verificationError } = await supabase
+        .from('email_verification_codes')
+        .select('*')
+        .eq('email', email)
+        .eq('code', values.code)
+        .eq('type', 'signup')
+        .eq('used', false)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (verificationError || !verificationData) {
         toast({
           title: "Verification failed",
           description: "The code you entered is invalid or has expired. Please try again or request a new code.",
           variant: "destructive",
         });
         
-        // If too many attempts, suggest getting a new code
         if (verificationAttempts >= 3) {
           toast({
             title: "Too many attempts",
@@ -63,27 +65,29 @@ export default function EmailVerification() {
             variant: "destructive",
           });
         }
-        
         return;
       }
+
+      // Mark code as used
+      await supabase
+        .from('email_verification_codes')
+        .update({ used: true })
+        .eq('id', verificationData.id);
+
+      // Update user profile
+      await supabase
+        .from('user_profiles')
+        .update({ activation_complete: true })
+        .eq('email', email);
       
-      // If successful
-      if (data.user) {
-        toast({
-          title: "Email verified",
-          description: "Your email has been successfully verified.",
-          variant: "default",
-        });
-        
-        // Mark user as activation_complete in the database since we're using that instead of email_verified
-        await supabase
-          .from('user_profiles')
-          .update({ activation_complete: true })
-          .eq('id', data.user.id);
-        
-        // Navigate to dashboard
-        navigate('/dashboard');
-      }
+      toast({
+        title: "Email verified",
+        description: "Your email has been successfully verified.",
+        variant: "default",
+      });
+      
+      // Navigate to dashboard
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error during email verification:', error);
       toast({

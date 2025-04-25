@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.save-will-conversation]
 verify_jwt = false
+
+[functions.send-verification]
+verify_jwt = false
