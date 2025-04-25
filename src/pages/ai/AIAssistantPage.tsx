@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,7 +33,6 @@ export default function AIAssistantPage() {
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
   
-  // Auto-scroll to bottom when new messages appear
   useEffect(() => {
     if (isAutoScrollEnabled && chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -84,15 +82,13 @@ export default function AIAssistantPage() {
     setLoading(true);
     
     try {
-      // Ensure auto-scroll is enabled when sending new messages
       setIsAutoScrollEnabled(true);
       
-      // Add a small timeout to ensure the UI updates with the user message before showing the loading state
       setTimeout(async () => {
         try {
-          // Get the current session token
           const { data: { session } } = await supabase.auth.getSession();
           const accessToken = session?.access_token || '';
+          const userId = session?.user?.id;
           
           const response = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/ai-assistant', {
             method: 'POST',
@@ -124,17 +120,45 @@ export default function AIAssistantPage() {
           
           setMessages(prev => [...prev, assistantMessage]);
           
-          // Store the interaction in the database if the user is authenticated
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData?.session?.user) {
+          if (userId) {
             await supabase.from('ai_interactions').insert({
-              user_id: sessionData.session.user.id,
+              user_id: userId,
               request_type: 'estate_planning',
               response: JSON.stringify({
                 query: userMessage.content,
                 response: assistantMessage.content
               })
             });
+            
+            const allMessages = [...messages, userMessage, assistantMessage];
+            const conversationData = allMessages.map(m => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp
+            }));
+            
+            try {
+              const saveResponse = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/save-will-conversation', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                  conversation_data: conversationData,
+                  user_id: userId
+                }),
+              });
+              
+              if (saveResponse.ok) {
+                const saveData = await saveResponse.json();
+                console.log("Saved conversation data and extracted entities:", saveData);
+              } else {
+                console.error("Error saving conversation data:", await saveResponse.text());
+              }
+            } catch (saveError) {
+              console.error("Error calling save-will-conversation function:", saveError);
+            }
           }
           
         } catch (error) {

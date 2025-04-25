@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, X, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +20,11 @@ export function FloatingAssistant() {
     try {
       setIsLoading(true);
       setResponse('');
+      
+      // Get current auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || '';
+      const userId = session?.user?.id;
       
       // Call the AI assistant edge function
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
@@ -44,7 +49,40 @@ export function FloatingAssistant() {
         return;
       }
       
-      setResponse(data?.response || 'I could not process your request. Please try again.');
+      const aiResponse = data?.response || 'I could not process your request. Please try again.';
+      setResponse(aiResponse);
+      
+      // Save the conversation data to extract entities if user is authenticated
+      if (userId) {
+        try {
+          const conversationData = [
+            { role: 'user', content: message, timestamp: new Date() },
+            { role: 'assistant', content: aiResponse, timestamp: new Date() }
+          ];
+          
+          // Call the save-will-conversation function to extract and store entities
+          const saveResponse = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/save-will-conversation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              conversation_data: conversationData,
+              user_id: userId
+            }),
+          });
+          
+          if (saveResponse.ok) {
+            const saveData = await saveResponse.json();
+            console.log("Saved floating assistant conversation:", saveData);
+          } else {
+            console.error("Error saving conversation:", await saveResponse.text());
+          }
+        } catch (saveError) {
+          console.error("Error calling save-will-conversation function:", saveError);
+        }
+      }
       
       // Try to create a notification for this interaction, but don't block if it fails
       try {

@@ -287,6 +287,10 @@ export function AIQuestionFlow({
     setIsProcessing(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || '';
+      const userId = session?.user?.id;
+      
       const { data, error } = await supabase.functions.invoke('gpt-will-assistant', {
         body: { 
           query: inputValue,
@@ -308,6 +312,43 @@ export function AIQuestionFlow({
       
       setMessages(prev => [...prev, aiMessage]);
       conversationHistoryRef.current.push({ role: 'assistant', content: aiMessage.content });
+      
+      if (userId) {
+        try {
+          const allMessages = [...messages, userMessage, aiMessage];
+          const conversationData = allMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp
+          }));
+          
+          const saveResponse = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/save-will-conversation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              conversation_data: conversationData,
+              user_id: userId
+            }),
+          });
+          
+          if (saveResponse.ok) {
+            const saveData = await saveResponse.json();
+            console.log("Saved will conversation data:", saveData);
+            
+            if (saveData.extracted_entities) {
+              const updatedResponses = { ...responses, ...saveData.extracted_entities };
+              setResponses(updatedResponses);
+            }
+          } else {
+            console.error("Error saving will conversation:", await saveResponse.text());
+          }
+        } catch (saveError) {
+          console.error("Error calling save-will-conversation function:", saveError);
+        }
+      }
       
       checkForCompletion(aiMessage.content);
       

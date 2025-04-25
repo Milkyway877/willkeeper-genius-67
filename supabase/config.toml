@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.gpt-will-assistant]
 verify_jwt = false
+
+[functions.save-will-conversation]
+verify_jwt = false
