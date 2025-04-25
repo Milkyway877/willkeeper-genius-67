@@ -680,8 +680,9 @@ Witnesses: [Witness 1], [Witness 2]`;
         )}
       </Card>
       
-      {/* CSS for typing animation */}
-      <style jsx>{`
+      {/* CSS for typing animation - Fix the style tag by removing jsx property */}
+      <style>
+        {`
         .dot-flashing {
           position: relative;
           width: 10px;
@@ -727,7 +728,8 @@ Witnesses: [Witness 1], [Witness 2]`;
             background-color: rgba(152, 128, 255, 0.2);
           }
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 }
