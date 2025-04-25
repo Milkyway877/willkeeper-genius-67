@@ -41,6 +41,8 @@ import IDSecurity from '@/pages/security/IDSecurity';
 import Tank from '@/pages/tank/Tank';
 import Billing from '@/pages/billing/Billing';
 import Corporate from '@/pages/Corporate';
+import Help from '@/pages/Help';
+import Documentation from '@/pages/corporate/Documentation';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -65,6 +67,7 @@ function App() {
               <Routes>
                 {/* Public Routes - No auth required */}
                 <Route path="/" element={<Index />} />
+                <Route path="/help" element={<Help />} />
                 
                 {/* Auth Routes */}
                 <Route path="/auth">
@@ -76,6 +79,10 @@ function App() {
                     <Route path="onboarding" element={<Onboarding />} />
                   </Route>
                 </Route>
+                
+                {/* Corporate Pages */}
+                <Route path="/corporate" element={<Corporate />} />
+                <Route path="/corporate/documentation" element={<Documentation />} />
                 
                 {/* Protected Dashboard Routes */}
                 <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
@@ -109,6 +116,7 @@ function App() {
                     <Route path="/vault/create" element={<CreateVaultItem />} />
                     <Route path="/vault/edit/:id" element={<EditVaultItem />} />
                     <Route path="/vault/view/:id" element={<ViewVaultItem />} />
+                    <Route path="/help" element={<Help />} />
                   </Route>
                 </Route>
 
