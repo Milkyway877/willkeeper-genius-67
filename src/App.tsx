@@ -98,16 +98,13 @@ function App() {
                     <Route path="/will/view/:id" element={<ViewWill />} />
                     <Route path="/will/:id" element={<Will />} />
                     <Route path="/will/new" element={<Will />} />
-                    <Route path="/will" element={<Wills />} />
                     <Route path="/templates" element={<Templates />} />
-                    <Route path="/pages/encryption/Encryption" element={<Encryption />} />
-                    <Route path="/pages/executors/Executors" element={<Executors />} />
-                    <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
-                    <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+                    <Route path="/encryption" element={<Encryption />} />
+                    <Route path="/executors" element={<Executors />} />
+                    <Route path="/ai-assistance" element={<AIAssistance />} />
+                    <Route path="/id-security" element={<IDSecurity />} />
                     <Route path="/tank" element={<Tank />} />
-                    <Route path="/pages/billing/Billing" element={<Billing />} />
-                    <Route path="/pages/notifications/Notifications" element={<Notifications />} />
-                    <Route path="/corporate" element={<Corporate />} />
+                    <Route path="/billing" element={<Billing />} />
                     <Route path="/messages" element={<FutureMessages />} />
                     <Route path="/messages/create" element={<CreateMessage />} />
                     <Route path="/messages/edit/:id" element={<EditMessage />} />
