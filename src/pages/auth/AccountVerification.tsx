@@ -9,6 +9,7 @@ import { AuthLayout } from '@/components/auth/AuthLayout';
 import { fadeInUp } from '@/components/auth/animations';
 import { useToast } from "@/hooks/use-toast";
 import { verifyCode, sendVerificationEmail } from "@/services/authService";
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AccountVerification() {
   const [loading, setLoading] = useState(false);
@@ -61,13 +62,24 @@ export default function AccountVerification() {
         description: `Welcome${email ? ` ${email}` : ''} to WillTank.`,
       });
 
-      // Check if we have an auth link from the API
-      if (data?.authLink) {
-        // Use window.location.href to ensure full page reload and proper auth handling
-        window.location.href = data.authLink;
+      // If we received a session directly from the API, set it
+      if (data?.session) {
+        // Set the session in Supabase client
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
+
+        if (setSessionError) {
+          console.error("Error setting session:", setSessionError);
+          // Try to recover by redirecting anyway
+        }
+        
+        // Navigate to the appropriate page
+        navigate(isLogin ? '/dashboard' : '/auth/onboarding', { replace: true });
       } else {
-        // Fallback navigation if no auth link is provided
-        navigate(isLogin ? '/dashboard' : '/auth/onboarding');
+        // Fallback if no session was provided
+        navigate(isLogin ? '/auth/login' : '/auth/onboarding', { replace: true });
       }
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");

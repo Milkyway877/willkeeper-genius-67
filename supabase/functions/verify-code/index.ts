@@ -115,29 +115,26 @@ serve(async (req) => {
       throw new Error("Could not update profile status");
     }
 
-    // Extract origin from request headers for redirection
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.replace(/\/[^/]*$/, '') || '';
+    // Determine the application URL for redirection
+    // Try multiple sources to get the application URL
+    const origin = req.headers.get('origin') || 
+                  req.headers.get('referer')?.replace(/\/[^/]*$/, '') || 
+                  'https://lovable.dev';
+    
     console.log("Origin for redirection:", origin);
-    
-    // If origin is empty, use a default URL
-    const baseUrl = origin || 'https://lovable.dev';
-    const redirectPath = `/auth/onboarding`;
-    
-    // Create user session and return session data
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: user.email!,
-      options: {
-        redirectTo: `${baseUrl}${redirectPath}`
+
+    // Create direct sign-in credentials instead of magic link
+    const { data: signInData, error: signInError } = await supabaseAdmin.auth.admin.createSession({
+      userId: user.id,
+      properties: {
+        custom_claim: 'verified_user'
       }
     });
-    
-    if (sessionError) {
-      console.error("Error creating session:", sessionError.message);
+
+    if (signInError) {
+      console.error("Error creating session:", signInError.message);
       throw new Error("Could not create user session");
     }
-
-    console.log("Generated auth link:", sessionData.properties?.action_link);
 
     // Log the verification activity
     const { error: activityError } = await supabaseAdmin
@@ -154,7 +151,7 @@ serve(async (req) => {
       // Don't throw, just log the error as this is not critical
     }
 
-    // Return the response with auth link
+    // Return the response with auth data for client-side handling
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -163,8 +160,8 @@ serve(async (req) => {
           id: user.id,
           email: user.email
         },
+        session: signInData?.session,
         isNewUser: user.created_at === user.updated_at, // If created_at equals updated_at, user is new
-        authLink: sessionData.properties?.action_link
       }),
       { 
         status: 200, 

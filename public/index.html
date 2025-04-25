@@ -1,0 +1,35 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/placeholder.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WillTank - Secure Your Digital Legacy</title>
+  <meta name="description" content="WillTank helps you secure your digital legacy and prepare important documents for your loved ones." />
+  <script>
+    // Handle redirect from magic links and direct navigation
+    (function() {
+      // Check if we're being redirected with an access token in the URL hash
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        // Store that we're processing an auth redirect
+        sessionStorage.setItem('auth_redirect', 'true');
+        
+        // Let Supabase client handle the auth redirect normally
+      } else {
+        // Check for stored redirect path from 404.html
+        const redirectPath = sessionStorage.getItem('redirect_path');
+        if (redirectPath) {
+          sessionStorage.removeItem('redirect_path');
+          history.replaceState(null, '', redirectPath);
+        }
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

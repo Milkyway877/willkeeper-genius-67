@@ -113,11 +113,6 @@ export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
       throw new Error(response.error.message || 'Error verifying code');
     }
 
-    if (response.data?.authLink) {
-      // If we have an auth link, use it to automatically sign in the user
-      window.location.href = response.data.authLink;
-    }
-
     return { data: response.data, error: null };
   } catch (error: any) {
     console.error('Verify code error:', error);
