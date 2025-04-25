@@ -28,6 +28,7 @@ import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import AccountVerification from '@/pages/auth/AccountVerification';
+import Onboarding from '@/pages/auth/Onboarding';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/signup" element={<Signup />} />
             <Route path="/auth/verify" element={<AccountVerification />} />
+            <Route path="/auth/onboarding" element={<Onboarding />} />
             
             {/* Protected Dashboard Routes */}
             <Route path="/dashboard/*" element={<DashboardLayout />} />

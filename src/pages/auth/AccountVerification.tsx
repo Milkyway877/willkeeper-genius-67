@@ -31,9 +31,10 @@ export default function AccountVerification() {
       setLoading(false);
       toast({
         title: isLogin ? "Login successful!" : "Account verified successfully!",
-        description: `Welcome${email ? ` ${email}` : ''} to your WillTank account.`,
+        description: `Welcome${email ? ` ${email}` : ''} to WillTank.`,
       });
-      navigate('/dashboard');
+      // Redirect to onboarding for new users, dashboard for existing users
+      navigate(isLogin ? '/dashboard' : '/auth/onboarding');
     }, 1500);
   };
 
