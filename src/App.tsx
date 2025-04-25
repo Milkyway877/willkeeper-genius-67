@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -84,7 +85,7 @@ function App() {
                 <Route path="/corporate/documentation" element={<Documentation />} />
                 
                 {/* Protected Dashboard Routes */}
-                <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
+                <Route path="/" element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
                   <Route element={<DashboardLayout />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/profile" element={<Profile />} />
