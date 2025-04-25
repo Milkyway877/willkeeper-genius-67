@@ -35,8 +35,8 @@ serve(async (req) => {
       actionText = "complete your sign-in";
     }
 
-    // Use a verified sender domain or Resend's default domain
-    const fromEmail = "onboarding@resend.dev";
+    // Use the verified sender domain and name
+    const fromEmail = "support@willtan.com";
     const fromName = "WillTank";
 
     const emailResponse = await resend.emails.send({

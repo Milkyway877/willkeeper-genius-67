@@ -119,7 +119,7 @@ export function SignUpForm() {
           }
         });
 
-        console.log("Email function response:", { data: emailData, error: emailError });
+        console.log("Email function response:", emailData, emailError);
 
         if (emailError) {
           console.error("Error invoking send-verification function:", emailError);
