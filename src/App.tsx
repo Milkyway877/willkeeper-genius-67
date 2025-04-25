@@ -71,21 +71,18 @@ function App() {
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/auth/signup" element={<Signup />} />
                 <Route path="/auth/verify" element={<AccountVerification />} />
-                <Route 
-                  path="/auth/onboarding" 
-                  element={
-                    <RouteGuard requireAuth={true} requireOnboarding={false}>
-                      <Onboarding />
-                    </RouteGuard>
-                  } 
-                />
+                <Route path="/auth/onboarding" element={
+                  <RouteGuard requireAuth={true} requireOnboarding={false}>
+                    <Onboarding />
+                  </RouteGuard>
+                } />
                 
                 {/* Corporate Pages */}
                 <Route path="/corporate" element={<Corporate />} />
                 <Route path="/corporate/documentation" element={<Documentation />} />
                 
                 {/* Protected Dashboard Routes */}
-                <Route path="/" element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
+                <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
                   <Route element={<DashboardLayout />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/profile" element={<Profile />} />

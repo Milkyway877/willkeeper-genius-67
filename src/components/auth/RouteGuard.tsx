@@ -7,11 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 interface RouteGuardProps {
   requireAuth?: boolean;
   requireOnboarding?: boolean;
+  children?: React.ReactNode;
 }
 
 export function RouteGuard({ 
   requireAuth = true, 
-  requireOnboarding = true 
+  requireOnboarding = true,
+  children
 }: RouteGuardProps) {
   const { user, profile, loading } = useUserProfile();
   const location = useLocation();
@@ -48,12 +50,12 @@ export function RouteGuard({
 
   // Special handling for the root path - always allow access
   if (location.pathname === "/") {
-    return <Outlet />;
+    return children ? <>{children}</> : <Outlet />;
   }
   
   // Special handling for verification path - always allow access
   if (location.pathname.includes('/auth/verify')) {
-    return <Outlet />;
+    return children ? <>{children}</> : <Outlet />;
   }
 
   // Authentication check
@@ -86,5 +88,6 @@ export function RouteGuard({
     return <Navigate to="/auth/login" replace />;
   }
 
-  return <Outlet />;
+  // Return children if provided, otherwise use Outlet
+  return children ? <>{children}</> : <Outlet />;
 }
