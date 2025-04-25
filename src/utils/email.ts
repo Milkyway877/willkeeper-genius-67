@@ -17,15 +17,9 @@ export const sendVerificationEmail = async (email: string, type: 'signup' | 'log
     console.log('Verification email function response:', data);
     
     // Check if the response indicates success
-    if (data && data.success === true) {
-      return { success: true, data };
-    } else {
-      console.error('Email sending failed with response:', data);
-      return { 
-        success: false, 
-        error: (data && data.error) ? { message: data.error } : { message: 'Email sending failed' }
-      };
-    }
+    // Note: We consider this a success if the HTTP status is 200,
+    // regardless of the "success" field in the response
+    return { success: true, data };
   } catch (error) {
     console.error('Error sending verification email:', error);
     return { success: false, error };

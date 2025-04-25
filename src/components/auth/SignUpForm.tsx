@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -125,42 +124,29 @@ export function SignUpForm() {
       }
 
       // Send our custom verification email
-      try {
-        const { success, error } = await sendVerificationEmail(
-          values.email,
-          'signup',
-          values.firstName
-        );
+      const { success, error } = await sendVerificationEmail(
+        values.email,
+        'signup',
+        values.firstName
+      );
 
-        if (!success) {
-          console.error("Email sending error:", error);
-          toast({
-            title: "Account created but verification email failed",
-            description: "Your account was created, but we couldn't send a verification email. Please try again or contact support.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        // Success! Redirect to verification page
+      if (!success) {
+        console.error("Email sending error:", error);
+        toast({
+          title: "Account created",
+          description: "Your account was created, but we couldn't send a verification email. Please try again or contact support.",
+          variant: "destructive",
+        });
+      } else {
+        // Success! Toast and redirect to verification page
         toast({
           title: "Account created",
           description: "Please check your email for a verification code.",
         });
-        
-        // Redirect to the email verification page
-        navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
-      } catch (emailError: any) {
-        console.error("Email sending error:", emailError);
-        
-        toast({
-          title: "Account created but verification email failed",
-          description: "Your account was created, but we couldn't send a verification email. Please try again or contact support.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
       }
+      
+      // Always redirect to verification page - even with email errors, the account was created
+      navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
       
     } catch (error: any) {
       console.error("Signup error:", error);
