@@ -1,84 +1,22 @@
 
-import React, { useEffect, useRef } from 'react';
-import QRCodeStyling from 'qr-code-styling';
+import React from 'react';
 
 interface QRCodeProps {
   value: string;
   size?: number;
-  color?: string;
-  backgroundColor?: string;
-  logoImage?: string;
-  logoWidth?: number;
-  logoHeight?: number;
 }
 
-export function QRCode({
-  value,
-  size = 200,
-  color = '#000000',
-  backgroundColor = '#ffffff',
-  logoImage,
-  logoWidth,
-  logoHeight
-}: QRCodeProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    if (!ref.current || !value) return;
-    
-    // Clear any previous QR codes
-    while (ref.current.firstChild) {
-      ref.current.removeChild(ref.current.firstChild);
-    }
-    
-    try {
-      // Create QR code
-      const qrCode = new QRCodeStyling({
-        width: size,
-        height: size,
-        type: 'svg',
-        data: value,
-        dotsOptions: {
-          color: color,
-          type: 'rounded'
-        },
-        backgroundOptions: {
-          color: backgroundColor,
-        },
-        cornersSquareOptions: {
-          type: 'extra-rounded'
-        },
-        cornersDotOptions: {
-          type: 'dot'
-        },
-        imageOptions: {
-          crossOrigin: 'anonymous',
-          margin: 10
-        },
-        qrOptions: {
-          errorCorrectionLevel: 'H'
-        }
-      });
-      
-      // Add logo if provided
-      if (logoImage) {
-        qrCode.update({
-          image: logoImage,
-          imageOptions: {
-            hideBackgroundDots: true,
-            imageSize: 0.3,
-            crossOrigin: 'anonymous',
-            margin: 10
-          }
-        });
-      }
-      
-      qrCode.append(ref.current);
-      console.log("QR code generated successfully for value:", value);
-    } catch (error) {
-      console.error("Error generating QR code:", error);
-    }
-  }, [value, size, color, backgroundColor, logoImage, logoWidth, logoHeight]);
-  
-  return <div ref={ref} className="flex justify-center" />;
+export function QRCode({ value, size = 200 }: QRCodeProps) {
+  // This is a placeholder component - in a real app, you'd use a proper QR code library
+  return (
+    <div 
+      className="bg-gray-200 flex items-center justify-center" 
+      style={{ width: size, height: size }}
+    >
+      <span className="text-xs text-gray-600 text-center p-4">
+        QR Code Placeholder<br />
+        {value ? "(QR data available)" : "(No QR data)"}
+      </span>
+    </div>
+  );
 }

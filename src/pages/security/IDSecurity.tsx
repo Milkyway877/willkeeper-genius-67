@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -66,7 +65,6 @@ export default function IDSecurity() {
       setEnableTwoFactor(data?.google_auth_enabled || false);
       
       if (!data?.google_auth_secret) {
-        // Generate a new secret if user doesn't have one
         const secretData = await generateTOTPSecret();
         setTotp(secretData);
       }
@@ -87,12 +85,10 @@ export default function IDSecurity() {
       setSetting2FA(true);
       setVerificationError(null);
       
-      // Clean up the code
       const cleanCode = otpCode.replace(/\s+/g, '');
       
       console.log("Setting up 2FA with code:", cleanCode, "and secret:", totp.secret);
       
-      // Verify the code against the current secret
       const isValid = validateTOTP(cleanCode, totp.secret);
       
       if (!isValid) {
@@ -102,7 +98,6 @@ export default function IDSecurity() {
         return;
       }
       
-      // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
@@ -111,12 +106,10 @@ export default function IDSecurity() {
       
       console.log("Setting up 2FA for user:", user.id);
       
-      // Generate a random encryption key if needed
       const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
       
-      // Check if a security record already exists
       const { data: existingRecord, error: checkError } = await supabase
         .from('user_security')
         .select('id, encryption_key')
@@ -125,7 +118,6 @@ export default function IDSecurity() {
       
       const finalEncryptionKey = existingRecord?.encryption_key || encryptionKey;
       
-      // Use upsert to handle both insert and update cases
       const { error: upsertError } = await supabase
         .from('user_security')
         .upsert({
@@ -149,9 +141,7 @@ export default function IDSecurity() {
           : "You can enable 2FA later in your security settings.",
       });
       
-      await fetchSecurityData(); // Refresh security data
-      
-      // Success! Proceed to next step
+      await fetchSecurityData();
     } catch (error) {
       console.error("Error setting up authenticator:", error);
       setVerificationError(
@@ -169,17 +159,15 @@ export default function IDSecurity() {
       setDisabling2FA(true);
       setVerificationError(null);
       
-      // Clean up the code
       const cleanCode = otpCode.replace(/\s+/g, '');
       
       console.log("Disabling 2FA with code:", cleanCode);
       
-      // Call the disable2FA function
       const result = await disable2FA(cleanCode);
       
       if (result.success) {
         setShowDisableDialog(false);
-        await fetchSecurityData(); // Refresh security data
+        await fetchSecurityData();
         
         toast({
           title: '2FA Disabled',
@@ -207,8 +195,6 @@ export default function IDSecurity() {
     if (!enabled && security?.google_auth_enabled) {
       setShowDisableDialog(true);
     } else if (enabled && !security?.google_auth_enabled) {
-      // We don't show dialog here because the user still needs to set up 2FA
-      // Just update the UI state to reflect their intent
       setActiveTab("2fa");
     }
   };
