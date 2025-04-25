@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect } from 'react';
-import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus, Users, Shield, Zap, CreditCard, Key, Bell, HelpCircle, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -144,317 +144,315 @@ export default function Dashboard() {
           <span className="text-gray-700">Set up your security measures</span>
         </li>
       </ul>
-      <Link to="/will/create">
+      <Link to="/dashboard/will/create">
         <Button className="w-full">Get Started</Button>
       </Link>
     </div>
   );
 
   return (
-    <Layout>
-      <div className="max-w-6xl mx-auto">
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold mb-2">Welcome{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}</h1>
-          <p className="text-gray-600">
-            {isNewUser 
-              ? "Let's help you get started with managing your estate." 
-              : "Here's an overview of your will management activity."}
-          </p>
-        </motion.div>
+    <div className="max-w-6xl mx-auto">
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mb-8"
+      >
+        <h1 className="text-3xl font-bold mb-2">Welcome{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}</h1>
+        <p className="text-gray-600">
+          {isNewUser 
+            ? "Let's help you get started with managing your estate." 
+            : "Here's an overview of your will management activity."}
+        </p>
+      </motion.div>
+      
+      {isNewUser && <NewUserWelcome />}
+      
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+      >
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium">Active Wills</h3>
+            <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
+              <FileText size={20} className="text-willtank-500" />
+            </div>
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-8 w-16 mb-4" />
+          ) : (
+            <p className="text-3xl font-bold mb-4">{summary.willCount}</p>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">
+              {summary.willCount > 0 
+                ? "Last updated recently" 
+                : "No wills created yet"}
+            </span>
+            <Link to="/dashboard/will">
+              <Button variant="ghost" size="sm">View</Button>
+            </Link>
+          </div>
+        </div>
         
-        {isNewUser && <NewUserWelcome />}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium">Executors</h3>
+            <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
+              <Users size={20} className="text-willtank-500" />
+            </div>
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-8 w-16 mb-4" />
+          ) : (
+            <p className="text-3xl font-bold mb-4">{summary.executorCount}</p>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">
+              {summary.executorCount > 0 
+                ? `${summary.executorCount} ${summary.executorCount === 1 ? 'executor' : 'executors'} added` 
+                : "None added yet"}
+            </span>
+            <Link to="/dashboard/executors">
+              <Button variant="ghost" size="sm">Manage</Button>
+            </Link>
+          </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium">Security Status</h3>
+            <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
+              <Shield size={20} className="text-willtank-500" />
+            </div>
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-8 w-24 mb-4" />
+          ) : (
+            <p className="text-3xl font-bold text-green-500 mb-4">{summary.securityStatus}</p>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">
+              {isNewUser ? "Security setup pending" : "Your account is secure"}
+            </span>
+            <Link to="/dashboard/id-security">
+              <Button variant="ghost" size="sm">Check</Button>
+            </Link>
+          </div>
+        </div>
+        
+        <DeathVerificationWidget />
+      </motion.div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+          className="lg:col-span-2"
+        >
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
+            <h3 className="text-xl font-medium mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <Link to="/dashboard/will/create">
+                <Button 
+                  className="flex flex-col items-center justify-center h-auto py-6 w-full" 
+                  variant="outline"
+                >
+                  <Plus size={20} />
+                  <span className="mt-2">Create New Will</span>
+                </Button>
+              </Link>
+              <Link to="/dashboard/executors">
+                <Button 
+                  className="flex flex-col items-center justify-center h-auto py-6 w-full" 
+                  variant="outline"
+                >
+                  <Users size={20} />
+                  <span className="mt-2">Add Executor</span>
+                </Button>
+              </Link>
+              <Link to="/dashboard/id-security">
+                <Button 
+                  className="flex flex-col items-center justify-center h-auto py-6 w-full" 
+                  variant="outline"
+                >
+                  <Shield size={20} />
+                  <span className="mt-2">Security Check</span>
+                </Button>
+              </Link>
+              <Link to="/dashboard/encryption">
+                <Button 
+                  className="flex flex-col items-center justify-center h-auto py-6 w-full" 
+                  variant="outline"
+                >
+                  <Key size={20} />
+                  <span className="mt-2">Manage Keys</span>
+                </Button>
+              </Link>
+              <Link to="/dashboard/notifications">
+                <Button 
+                  className="flex flex-col items-center justify-center h-auto py-6 w-full" 
+                  variant="outline"
+                >
+                  <Bell size={20} />
+                  <span className="mt-2">Notifications</span>
+                </Button>
+              </Link>
+              <Link to="/dashboard/help">
+                <Button 
+                  className="flex flex-col items-center justify-center h-auto py-6 w-full" 
+                  variant="outline"
+                >
+                  <HelpCircle size={20} />
+                  <span className="mt-2">Get Help</span>
+                </Button>
+              </Link>
+            </div>
+          </div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-medium">Recent Activity</h3>
+              {activities.length > 0 && (
+                <Button variant="ghost" size="sm">View all</Button>
+              )}
+            </div>
+            
+            <div className="space-y-4">
+              {isLoading ? (
+                Array(3).fill(0).map((_, index) => (
+                  <div key={index} className="flex items-start gap-4 p-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                ))
+              ) : activities.length > 0 ? (
+                activities.map((activity, index) => (
+                  <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center flex-shrink-0">
+                      {activity.icon}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-sm">{activity.title}</h4>
+                      <p className="text-xs text-gray-500 mt-1">{activity.description}</p>
+                      <p className="text-xs text-gray-400 mt-2">{activity.date}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <FileText className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <h4 className="text-gray-600 font-medium mb-1">No activity yet</h4>
+                  <p className="text-gray-500 text-sm">Your recent actions will appear here</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+          transition={{ duration: 0.3, delay: 0.4 }}
         >
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium">Active Wills</h3>
+              <h3 className="font-medium">Subscription</h3>
               <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
-                <FileText size={20} className="text-willtank-500" />
-              </div>
-            </div>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16 mb-4" />
-            ) : (
-              <p className="text-3xl font-bold mb-4">{summary.willCount}</p>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">
-                {summary.willCount > 0 
-                  ? "Last updated recently" 
-                  : "No wills created yet"}
-              </span>
-              <Link to="/wills">
-                <Button variant="ghost" size="sm">View</Button>
-              </Link>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium">Executors</h3>
-              <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
-                <Users size={20} className="text-willtank-500" />
-              </div>
-            </div>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16 mb-4" />
-            ) : (
-              <p className="text-3xl font-bold mb-4">{summary.executorCount}</p>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">
-                {summary.executorCount > 0 
-                  ? `${summary.executorCount} ${summary.executorCount === 1 ? 'executor' : 'executors'} added` 
-                  : "None added yet"}
-              </span>
-              <Link to="/pages/executors/Executors">
-                <Button variant="ghost" size="sm">Manage</Button>
-              </Link>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium">Security Status</h3>
-              <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
-                <Shield size={20} className="text-willtank-500" />
-              </div>
-            </div>
-            {isLoading ? (
-              <Skeleton className="h-8 w-24 mb-4" />
-            ) : (
-              <p className="text-3xl font-bold text-green-500 mb-4">{summary.securityStatus}</p>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">
-                {isNewUser ? "Security setup pending" : "Your account is secure"}
-              </span>
-              <Link to="/pages/security/IDSecurity">
-                <Button variant="ghost" size="sm">Check</Button>
-              </Link>
-            </div>
-          </div>
-          
-          <DeathVerificationWidget />
-        </motion.div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-            className="lg:col-span-2"
-          >
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-              <h3 className="text-xl font-medium mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <Link to="/will/create">
-                  <Button 
-                    className="flex flex-col items-center justify-center h-auto py-6 w-full" 
-                    variant="outline"
-                  >
-                    <Plus size={20} />
-                    <span className="mt-2">Create New Will</span>
-                  </Button>
-                </Link>
-                <Link to="/pages/executors/Executors">
-                  <Button 
-                    className="flex flex-col items-center justify-center h-auto py-6 w-full" 
-                    variant="outline"
-                  >
-                    <Users size={20} />
-                    <span className="mt-2">Add Executor</span>
-                  </Button>
-                </Link>
-                <Link to="/pages/security/IDSecurity">
-                  <Button 
-                    className="flex flex-col items-center justify-center h-auto py-6 w-full" 
-                    variant="outline"
-                  >
-                    <Shield size={20} />
-                    <span className="mt-2">Security Check</span>
-                  </Button>
-                </Link>
-                <Link to="/pages/encryption/Encryption">
-                  <Button 
-                    className="flex flex-col items-center justify-center h-auto py-6 w-full" 
-                    variant="outline"
-                  >
-                    <Key size={20} />
-                    <span className="mt-2">Manage Keys</span>
-                  </Button>
-                </Link>
-                <Link to="/pages/notifications/Notifications">
-                  <Button 
-                    className="flex flex-col items-center justify-center h-auto py-6 w-full" 
-                    variant="outline"
-                  >
-                    <Bell size={20} />
-                    <span className="mt-2">Notifications</span>
-                  </Button>
-                </Link>
-                <Link to="/help">
-                  <Button 
-                    className="flex flex-col items-center justify-center h-auto py-6 w-full" 
-                    variant="outline"
-                  >
-                    <HelpCircle size={20} />
-                    <span className="mt-2">Get Help</span>
-                  </Button>
-                </Link>
+                <CreditCard size={18} className="text-willtank-500" />
               </div>
             </div>
             
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.3 }}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-medium">Recent Activity</h3>
-                {activities.length > 0 && (
-                  <Button variant="ghost" size="sm">View all</Button>
-                )}
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-8 w-full mt-4" />
               </div>
-              
-              <div className="space-y-4">
-                {isLoading ? (
-                  Array(3).fill(0).map((_, index) => (
-                    <div key={index} className="flex items-start gap-4 p-4">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-3 w-full" />
-                        <Skeleton className="h-3 w-16" />
-                      </div>
-                    </div>
-                  ))
-                ) : activities.length > 0 ? (
-                  activities.map((activity, index) => (
-                    <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center flex-shrink-0">
-                        {activity.icon}
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-sm">{activity.title}</h4>
-                        <p className="text-xs text-gray-500 mt-1">{activity.description}</p>
-                        <p className="text-xs text-gray-400 mt-2">{activity.date}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                      <FileText className="h-6 w-6 text-gray-400" />
-                    </div>
-                    <h4 className="text-gray-600 font-medium mb-1">No activity yet</h4>
-                    <p className="text-gray-500 text-sm">Your recent actions will appear here</p>
+            ) : subscription ? (
+              <>
+                <div className="mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-willtank-100 px-3 py-1 text-xs font-medium text-willtank-700">
+                    <Zap size={12} />
+                    <span>{subscription.plan} Plan</span>
                   </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
-          >
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">Subscription</h3>
-                <div className="h-10 w-10 rounded-full bg-willtank-50 flex items-center justify-center">
-                  <CreditCard size={18} className="text-willtank-500" />
-                </div>
-              </div>
-              
-              {isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-6 w-32 mb-2" />
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-8 w-full mt-4" />
-                </div>
-              ) : subscription ? (
-                <>
-                  <div className="mb-4">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-willtank-100 px-3 py-1 text-xs font-medium text-willtank-700">
-                      <Zap size={12} />
-                      <span>{subscription.plan} Plan</span>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 mb-4">
-                    Your subscription renews on{' '}
-                    <span className="font-medium">
-                      {new Date(subscription.end_date).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
-                    </span>
-                  </p>
-                  
-                  <Link to="/billing">
-                    <Button className="w-full" variant="outline">Manage Plan</Button>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                      <span>Free Plan</span>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 mb-4">
-                    Upgrade to unlock premium features and secure your legacy.
-                  </p>
-                  
-                  <Link to="/billing">
-                    <Button className="w-full">Choose a Plan</Button>
-                  </Link>
-                </>
-              )}
-            </div>
-            
-            <div className="bg-willtank-50 p-6 rounded-xl border border-willtank-100">
-              <h3 className="font-medium mb-4">AI Assistant</h3>
-              
-              <div className="space-y-3">
-                <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Need help getting started?</p>
-                  <p className="text-gray-600">Our AI assistant can guide you through the process.</p>
                 </div>
                 
-                <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Have questions?</p>
-                  <p className="text-gray-600">Ask about will creation, executors, or any other topics.</p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Your subscription renews on{' '}
+                  <span className="font-medium">
+                    {new Date(subscription.end_date).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </span>
+                </p>
+                
+                <Link to="/dashboard/billing">
+                  <Button className="w-full" variant="outline">Manage Plan</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                    <span>Free Plan</span>
+                  </div>
                 </div>
+                
+                <p className="text-sm text-gray-600 mb-4">
+                  Upgrade to unlock premium features and secure your legacy.
+                </p>
+                
+                <Link to="/dashboard/billing">
+                  <Button className="w-full">Choose a Plan</Button>
+                </Link>
+              </>
+            )}
+          </div>
+          
+          <div className="bg-willtank-50 p-6 rounded-xl border border-willtank-100">
+            <h3 className="font-medium mb-4">AI Assistant</h3>
+            
+            <div className="space-y-3">
+              <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
+                <p className="text-willtank-800 font-medium mb-1">Need help getting started?</p>
+                <p className="text-gray-600">Our AI assistant can guide you through the process.</p>
               </div>
               
-              <div className="mt-4">
-                <Link to="/pages/ai/AIAssistance">
-                  <Button variant="outline" className="w-full" size="sm">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Ask AI Assistant
-                  </Button>
-                </Link>
+              <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
+                <p className="text-willtank-800 font-medium mb-1">Have questions?</p>
+                <p className="text-gray-600">Ask about will creation, executors, or any other topics.</p>
               </div>
             </div>
-          </motion.div>
-        </div>
+            
+            <div className="mt-4">
+              <Link to="/dashboard/ai-assistance">
+                <Button variant="outline" className="w-full" size="sm">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Ask AI Assistant
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </motion.div>
       </div>
-    </Layout>
+    </div>
   );
 }

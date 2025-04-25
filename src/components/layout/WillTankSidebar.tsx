@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -48,52 +47,52 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
     {
       title: 'Will Templates',
       icon: PackageOpen,
-      href: '/templates',
+      href: '/dashboard/templates',
     },
     {
       title: 'Encryption',
       icon: Lock,
-      href: '/pages/encryption/Encryption',
+      href: '/dashboard/encryption',
     },
     {
       title: 'Executors',
       icon: Users,
-      href: '/pages/executors/Executors',
+      href: '/dashboard/executors',
     },
     {
       title: 'AI Assistance',
       icon: Brain,
-      href: '/pages/ai/AIAssistance',
+      href: '/dashboard/ai-assistance',
     },
     {
       title: 'ID Security',
       icon: ShieldCheck,
-      href: '/pages/security/IDSecurity',
+      href: '/dashboard/id-security',
     },
     {
-      title: 'Tank',
+      title: 'Vault',
       icon: Archive,
-      href: '/tank',
+      href: '/dashboard/vault',
     },
     {
       title: 'Billing',
       icon: CreditCard,
-      href: '/pages/billing/Billing',
+      href: '/dashboard/billing',
     },
     {
       title: 'Notifications',
       icon: Bell,
-      href: '/pages/notifications/Notifications',
+      href: '/dashboard/notifications',
     },
     {
       title: 'Settings',
       icon: Settings,
-      href: '/settings',
+      href: '/dashboard/settings',
     },
     {
       title: 'Help & Support',
       icon: HelpCircle,
-      href: '/help',
+      href: '/dashboard/help',
     },
   ];
   

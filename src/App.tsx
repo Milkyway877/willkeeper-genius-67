@@ -10,7 +10,7 @@ import { RouteGuard } from '@/components/auth/RouteGuard';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/Dashboard'; // Updated import
+import Dashboard from '@/pages/Dashboard';
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/dashboard/Settings';
 import Security from '@/pages/dashboard/Security';
@@ -33,6 +33,15 @@ import Onboarding from '@/pages/auth/Onboarding';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+
+// Additional pages
+import IDSecurity from '@/pages/security/IDSecurity';
+import AIAssistance from '@/pages/ai/AIAssistance';
+import Encryption from '@/pages/encryption/Encryption';
+import Executors from '@/pages/executors/Executors';
+import Billing from '@/pages/billing/Billing';
+import Help from '@/pages/Help';
+import Templates from '@/pages/templates/Templates';
 
 function App() {
   return (
@@ -63,18 +72,33 @@ function App() {
                   <Route path="settings" element={<Settings />} />
                   <Route path="security" element={<Security />} />
                   <Route path="notifications" element={<Notifications />} />
-                  <Route path="wills" element={<Wills />} />
-                  <Route path="wills/create" element={<CreateWill />} />
-                  <Route path="wills/edit/:id" element={<EditWill />} />
-                  <Route path="wills/view/:id" element={<ViewWill />} />
+                  
+                  {/* Will routes */}
+                  <Route path="will" element={<Wills />} />
+                  <Route path="will/create" element={<CreateWill />} />
+                  <Route path="will/edit/:id" element={<EditWill />} />
+                  <Route path="will/view/:id" element={<ViewWill />} />
+                  
+                  {/* Messages routes */}
                   <Route path="messages" element={<FutureMessages />} />
                   <Route path="messages/create" element={<CreateMessage />} />
                   <Route path="messages/edit/:id" element={<EditMessage />} />
                   <Route path="messages/view/:id" element={<ViewMessage />} />
+                  
+                  {/* Vault routes */}
                   <Route path="vault" element={<LegacyVault />} />
                   <Route path="vault/create" element={<CreateVaultItem />} />
                   <Route path="vault/edit/:id" element={<EditVaultItem />} />
                   <Route path="vault/view/:id" element={<ViewVaultItem />} />
+                  
+                  {/* Additional routes */}
+                  <Route path="encryption" element={<Encryption />} />
+                  <Route path="executors" element={<Executors />} />
+                  <Route path="ai-assistance" element={<AIAssistance />} />
+                  <Route path="id-security" element={<IDSecurity />} />
+                  <Route path="templates" element={<Templates />} />
+                  <Route path="billing" element={<Billing />} />
+                  <Route path="help" element={<Help />} />
                 </Route>
               </Route>
 
