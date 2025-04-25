@@ -1,9 +1,9 @@
+
 "use client";
 import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Github, Mail, LockKeyhole } from "lucide-react";
 
 export function SignupForm() {
   const [password, setPassword] = useState('');
@@ -21,12 +21,12 @@ export function SignupForm() {
   };
 
   return (
-    <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-gray-800 text-white">
+    <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-gray-800">
       <h2 className="font-bold text-xl text-white">
-        Welcome to WillTank
+        Create Your Account
       </h2>
       <p className="text-gray-300 text-sm max-w-sm mt-2">
-        Create your account to get started
+        Create your account to get started with WillTank
       </p>
 
       <form className="my-8" onSubmit={handleSubmit}>
