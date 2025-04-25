@@ -71,19 +71,19 @@ export default function EmailVerification() {
       
       // If code is valid, proceed with account activation
       try {
-        // Get the user data by email
-        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers({
-          filter: {
-            email: email
-          }
-        });
+        // Use a simpler query to find the user by email
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
         
-        if (listError || !usersData || usersData.users.length === 0) {
-          console.error("Error finding user:", listError || "No user found");
+        if (error || !data) {
+          console.error("Error finding user:", error || "No user found");
           throw new Error("Failed to find user account");
         }
         
-        const userId = usersData.users[0].id;
+        const userId = data.id;
         
         // Mark user as verified in the profile
         const { error: updateError } = await supabase

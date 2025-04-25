@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (error) {
       console.error("Failed to parse request body:", error);
       return new Response(
-        JSON.stringify({ error: "Invalid request body" }),
+        JSON.stringify({ success: false, error: "Invalid request body" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -94,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!email || !type) {
       console.error("Missing required parameters: email and type");
       return new Response(
-        JSON.stringify({ error: "Email and type are required" }),
+        JSON.stringify({ success: false, error: "Email and type are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -115,7 +115,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (fetchError) {
       console.error('Error checking for existing codes:', fetchError);
-      throw new Error('Failed to check for existing verification codes');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Failed to check for existing verification codes" 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // If there are existing codes, update them to be used (expired)
@@ -129,7 +135,7 @@ const handler = async (req: Request): Promise<Response> => {
       
       if (updateError) {
         console.error('Error updating existing codes:', updateError);
-        // Continue anyway
+        // We'll continue anyway since this isn't critical
       }
     }
 
@@ -147,7 +153,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (dbError) {
       console.error('Database error:', dbError);
-      throw new Error('Failed to store verification code');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Failed to store verification code" 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Send email
@@ -161,7 +173,13 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (!emailResponse || !emailResponse.id) {
         console.error('Email sending failed with no error but no ID returned');
-        throw new Error('Failed to send email - no confirmation received');
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: "Failed to send email - no confirmation received" 
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       console.log('Email sent successfully:', emailResponse);
@@ -179,11 +197,20 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
-    } catch (emailError) {
+    } catch (emailError: any) {
       console.error("Error sending email:", emailError);
-      throw new Error(`Email sending failed: ${emailError.message || 'Unknown email error'}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: emailError.message || "Unknown email error" 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in send-verification-email function:", error);
     return new Response(
       JSON.stringify({ 

@@ -62,20 +62,20 @@ export function SignUpForm() {
         return;
       }
 
-      // First check if user already exists by using the auth.signUp method with email check only
+      // First check if user already exists
       try {
-        // Try to get users matching the email
-        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers({
-          filter: {
-            email: values.email
-          }
-        });
-        
-        if (listError) {
-          // If there's an error listing users, log it but continue with signup attempt
-          console.error("Error checking for existing user:", listError);
-        } else if (usersData && usersData.users.length > 0) {
-          // If we found users with this email, show an error
+        // Use the Supabase query API to check for existing users
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .eq('email', values.email)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error checking for existing user:", error);
+          // Continue with signup attempt
+        } else if (data) {
+          // If we found a user with this email, show an error
           toast({
             title: "Account already exists",
             description: "An account with this email already exists. Please sign in instead.",
