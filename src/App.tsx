@@ -23,10 +23,9 @@ import FutureMessages from '@/pages/tank/Tank';
 import CreateMessage from '@/pages/tank/TankCreation';
 import EditMessage from '@/pages/tank/TankCreation';
 import ViewMessage from '@/pages/tank/Tank';
-import LegacyVault from '@/pages/tank/components/TankLegacyVault';
-import CreateVaultItem from '@/pages/tank/components/vault/AddVaultItem';
-import EditVaultItem from '@/pages/tank/components/vault/AddVaultItem';
-import ViewVaultItem from '@/pages/tank/components/vault/VaultItem';
+import { TankLegacyVault } from '@/pages/tank/components/TankLegacyVault';
+import { AddVaultItem } from '@/pages/tank/components/vault/AddVaultItem';
+import { VaultItem } from '@/pages/tank/components/vault/VaultItem';
 import NotFound from '@/pages/NotFound';
 import AccountVerification from '@/pages/auth/AccountVerification';
 import Onboarding from '@/pages/auth/Onboarding';
@@ -73,10 +72,10 @@ function App() {
                   <Route path="messages/create" element={<CreateMessage />} />
                   <Route path="messages/edit/:id" element={<EditMessage />} />
                   <Route path="messages/view/:id" element={<ViewMessage />} />
-                  <Route path="vault" element={<LegacyVault />} />
-                  <Route path="vault/create" element={<CreateVaultItem />} />
-                  <Route path="vault/edit/:id" element={<EditVaultItem />} />
-                  <Route path="vault/view/:id" element={<ViewVaultItem />} />
+                  <Route path="vault" element={<TankLegacyVault />} />
+                  <Route path="vault/create" element={<AddVaultItem mode="create" />} />
+                  <Route path="vault/edit/:id" element={<AddVaultItem mode="edit" />} />
+                  <Route path="vault/view/:id" element={<VaultItem mode="view" />} />
                 </Route>
               </Route>
               
