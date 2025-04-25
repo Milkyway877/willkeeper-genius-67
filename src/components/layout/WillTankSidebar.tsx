@@ -208,90 +208,99 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
   }
   
   return (
-    <aside className={`sticky top-0 h-screen border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-200 ${
-      isCollapsed ? 'w-16' : 'w-64'
-    }`}>
-      <div className="flex h-full flex-col">
-        <div className={`flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-4 ${
-          isCollapsed ? 'justify-center' : 'justify-between'
-        }`}>
-          {isCollapsed ? (
-            <Logo size="sm" pixelated={false} />
-          ) : (
-            <>
-              <Link to="/" className="flex items-center">
-                <Logo size="md" pixelated={false} />
-              </Link>
-              <ModeToggle />
-            </>
+    <motion.aside
+      initial={{ width: isCollapsed ? 64 : 256 }}
+      animate={{ width: isCollapsed ? 64 : 256 }}
+      transition={{ duration: 0.2 }}
+      className={cn(
+        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800",
+        isCollapsed ? "items-center" : ""
+      )}
+    >
+      <div 
+        className={cn(
+          "flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-4",
+          isCollapsed ? "justify-center" : "justify-between"
+        )}
+      >
+        {isCollapsed ? (
+          <Logo size="sm" pixelated={false} />
+        ) : (
+          <>
+            <Link to="/" className="flex items-center">
+              <Logo size="md" pixelated={false} />
+            </Link>
+            <ModeToggle />
+          </>
+        )}
+      </div>
+      
+      <div className="flex-1 overflow-auto py-6">
+        <nav className="space-y-1 px-2">
+          {navigationItems.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              onMouseEnter={() => setHoveredItem(item.href)}
+              onMouseLeave={() => setHoveredItem(null)}
+              className={cn(
+                "flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
+                isActive(item.href) 
+                  ? "bg-black text-white dark:bg-white dark:text-black" 
+                  : "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
+                isCollapsed ? "justify-center" : "justify-between"
+              )}
+            >
+              <div className="flex items-center">
+                <item.icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+                {!isCollapsed && <span>{item.title}</span>}
+              </div>
+              {!isCollapsed && isActive(item.href) && (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      
+      <div className="mt-auto">
+        {!isCollapsed && (
+          <div className="p-4">
+            <Link 
+              to="/corporate" 
+              className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
+            >
+              <div className="flex items-center">
+                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Briefcase className="h-4 w-4 text-white" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
+        
+        <button 
+          onClick={onToggle} 
+          className={cn(
+            "w-full flex items-center justify-center py-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors cursor-pointer",
+            "border-t border-gray-200 dark:border-gray-800",
+            isCollapsed ? "px-0" : "px-4"
           )}
-        </div>
-        
-        <div className="flex-1 overflow-auto py-6">
-          <nav className="space-y-1 px-2">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                onMouseEnter={() => setHoveredItem(item.href)}
-                onMouseLeave={() => setHoveredItem(null)}
-                className={cn(
-                  "flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
-                  isActive(item.href) 
-                    ? "bg-black text-white dark:bg-white dark:text-black" 
-                    : "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
-                  isCollapsed ? 'justify-center' : 'justify-between'
-                )}
-              >
-                <div className="flex items-center">
-                  <item.icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
-                  {!isCollapsed && <span>{item.title}</span>}
-                </div>
-                {!isCollapsed && isActive(item.href) && (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        
-        <div className="mt-auto">
-          {!isCollapsed && (
-            <div className="p-4">
-              <Link 
-                to="/corporate" 
-                className="block rounded-lg bg-[#F0F7FF] hover:bg-[#E1EFFF] dark:bg-gray-800 dark:hover:bg-gray-700 p-3 transition-colors"
-              >
-                <div className="flex items-center">
-                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                    <Briefcase className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-xs font-medium text-gray-900 dark:text-gray-200">For Corporations</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">White Label Solutions</p>
-                  </div>
-                </div>
-              </Link>
+        >
+          {isCollapsed ? (
+            <ArrowRightCircle className="h-5 w-5" />
+          ) : (
+            <div className="flex items-center w-full justify-between">
+              <span className="text-sm font-medium">Collapse Sidebar</span>
+              <ArrowLeftCircle className="h-5 w-5" />
             </div>
           )}
-          
-          <button 
-            onClick={onToggle} 
-            className={`w-full flex items-center justify-center py-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors cursor-pointer border-t border-gray-200 dark:border-gray-800 ${
-              isCollapsed ? 'px-0' : 'px-4'
-            }`}
-          >
-            {isCollapsed ? (
-              <ArrowRightCircle className="h-5 w-5" />
-            ) : (
-              <div className="flex items-center w-full justify-between">
-                <span className="text-sm font-medium">Collapse Sidebar</span>
-                <ArrowLeftCircle className="h-5 w-5" />
-              </div>
-            )}
-          </button>
-        </div>
+        </button>
       </div>
-    </aside>
+    </motion.aside>
   );
 }
