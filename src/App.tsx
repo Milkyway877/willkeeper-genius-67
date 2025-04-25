@@ -10,7 +10,7 @@ import { RouteGuard } from '@/components/auth/RouteGuard';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/dashboard/Dashboard';
+import Dashboard from '@/pages/Dashboard'; // Updated import
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/dashboard/Settings';
 import Security from '@/pages/dashboard/Security';
@@ -28,11 +28,11 @@ import CreateVaultItem from '@/pages/dashboard/CreateVaultItem';
 import EditVaultItem from '@/pages/dashboard/EditVaultItem';
 import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 import NotFound from '@/pages/NotFound';
+import AccountVerification from '@/pages/auth/AccountVerification';
+import Onboarding from '@/pages/auth/Onboarding';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import AccountVerification from '@/pages/auth/AccountVerification';
-import Onboarding from '@/pages/auth/Onboarding';
 
 function App() {
   return (
@@ -41,7 +41,7 @@ function App() {
         <Router>
           <div className="min-h-screen bg-background">
             <Routes>
-              {/* Public Routes - No auth required - Important: Don't wrap Index in RouteGuard */}
+              {/* Public Routes - No auth required */}
               <Route path="/" element={<Index />} />
               
               {/* Auth Routes */}
