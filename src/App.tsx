@@ -6,6 +6,8 @@ import { Toaster } from '@/components/ui/toaster';
 
 // Pages
 import Index from '@/pages/Index';
+import Login from '@/pages/auth/Login';
+import Signup from '@/pages/auth/Signup';
 import Dashboard from '@/pages/dashboard/Dashboard';
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/dashboard/Settings';
@@ -34,6 +36,12 @@ function App() {
         <div className="min-h-screen bg-background">
           <Routes>
             <Route path="/" element={<Index />} />
+            
+            {/* Auth Routes */}
+            <Route path="/auth">
+              <Route path="login" element={<Login />} />
+              <Route path="signup" element={<Signup />} />
+            </Route>
             
             {/* Dashboard Routes */}
             <Route path="/dashboard" element={<DashboardLayout />}>

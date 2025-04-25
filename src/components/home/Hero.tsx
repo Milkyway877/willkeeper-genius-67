@@ -84,9 +84,9 @@ export function Hero() {
                   Get started <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link to="/how-it-works">
+              <Link to="/auth/login">
                 <Button size="lg" variant="outline" className="rounded-full border-white text-white bg-transparent hover:bg-white/10 px-8 py-6 text-lg transition-all">
-                  How it works
+                  Login
                 </Button>
               </Link>
             </motion.div>
