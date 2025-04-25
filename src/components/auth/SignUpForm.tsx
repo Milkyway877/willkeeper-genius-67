@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -111,7 +110,7 @@ export function SignUpForm() {
         console.log("Attempting to send verification email to:", data.email);
         
         // Send verification email through the edge function
-        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+        const response = await supabase.functions.invoke('send-verification', {
           body: {
             email: data.email,
             code: verificationCode,
@@ -119,7 +118,14 @@ export function SignUpForm() {
           }
         });
 
-        console.log("Email function response:", emailData, emailError);
+        // Log the full response for debugging
+        console.log("Email function full response:", response);
+        
+        // Access data and error from the response
+        const { data: emailData, error: emailError } = response;
+        
+        console.log("Email data:", emailData);
+        console.log("Email error:", emailError);
 
         if (emailError) {
           console.error("Error invoking send-verification function:", emailError);

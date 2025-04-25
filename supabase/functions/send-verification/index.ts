@@ -36,7 +36,7 @@ serve(async (req) => {
     }
 
     // Use the verified sender domain and name
-    const fromEmail = "support@willtan.com";
+    const fromEmail = "support@willtank.com";
     const fromName = "WillTank";
 
     const emailResponse = await resend.emails.send({
