@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SignupData {
@@ -108,31 +109,27 @@ export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
     const origin = window.location.origin;
     console.log("Current origin for verification:", origin);
     
+    // Add additional logging
+    console.log("Verifying code with params:", { email, code, isLogin, origin });
+    
     const response = await supabase.functions.invoke('verify-code', {
       body: { email, code, isLogin, origin }
     });
 
+    console.log("Verify code response:", response);
+
     if (response.error) {
+      console.error("Verify code error:", response.error);
       throw new Error(response.error.message || 'Error verifying code');
     }
 
-    // Stop any automatic redirects - we want to handle this manually
-    if (response.data?.authLink) {
-      console.log("Received auth link:", response.data.authLink);
-      
-      // If the auth link is a full URL with our origin, extract the token
-      if (response.data.authLink.includes('#access_token=')) {
-        // Extract the hash part and store it for the Supabase client to use
-        const hashPart = response.data.authLink.substring(response.data.authLink.indexOf('#'));
-        sessionStorage.setItem('supabase.auth.token', hashPart);
-        
-        // Don't navigate - let the app handle it based on the token
-        console.log("Stored auth token for processing, will NOT redirect automatically");
-      } 
-      // Otherwise, we'll use the link directly but prevent automatic navigation
-      else {
-        console.log("Will NOT redirect automatically - letting the app handle it");
-      }
+    // Important: Log the response data to help with debugging
+    console.log("Verification successful:", response.data);
+
+    // If the response contains an auth link but has noAutoRedirect flag,
+    // we'll manually handle the auth session in the AccountVerification component
+    if (response.data?.authLink && response.data?.noAutoRedirect) {
+      console.log("Will NOT redirect automatically - letting the app handle it");
     }
 
     return { data: response.data, error: null };

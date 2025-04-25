@@ -41,6 +41,7 @@ export default function Onboarding() {
   const { toast } = useToast();
   const { profile, refreshProfile, user } = useUserProfile();
   const totalSteps = 4;
+  const [hasCheckedProfile, setHasCheckedProfile] = useState(false);
 
   // Debug logging
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function Onboarding() {
         navigate('/dashboard');
       } else {
         console.log("User is not activated, staying on onboarding page");
+        setHasCheckedProfile(true);
       }
     };
     
@@ -69,15 +71,47 @@ export default function Onboarding() {
 
   // Keep refreshing the profile until we have it
   useEffect(() => {
+    let interval: number | undefined;
+    
     if (!profile && user) {
       console.log("No profile found but user exists, refreshing profile");
-      const interval = setInterval(() => {
+      // First refresh immediately
+      refreshProfile();
+      
+      // Then set an interval to keep checking
+      interval = window.setInterval(() => {
+        console.log("Refreshing user profile...");
         refreshProfile();
       }, 2000);
-      
-      return () => clearInterval(interval);
+    } else if (profile) {
+      // If we have a profile, clear the interval
+      console.log("Profile found, clearing refresh interval");
+      if (interval) {
+        clearInterval(interval);
+      }
     }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [profile, user, refreshProfile]);
+
+  // Handle auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed in onboarding:", event, session?.user?.id);
+      
+      // If user signed in, refresh the profile
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log("User signed in, refreshing profile");
+        setTimeout(() => refreshProfile(), 500);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [refreshProfile]);
 
   const handleGoalSelection = (goals: UserGoals) => {
     setSelectedGoals(goals);
@@ -101,6 +135,7 @@ export default function Onboarding() {
 
   const handleComplete = async () => {
     try {
+      console.log("Completing onboarding process");
       // Update user profile to mark onboarding as completed
       const updatedProfile = await updateUserProfile({ 
         is_activated: true,
@@ -150,6 +185,16 @@ export default function Onboarding() {
         return null;
     }
   };
+
+  // Show a loading state while we're checking the profile
+  if (!hasCheckedProfile && !profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <p className="ml-4 text-lg">Loading onboarding...</p>
+      </div>
+    );
+  }
 
   return (
     <OnboardingLayout step={currentStep} totalSteps={totalSteps}>

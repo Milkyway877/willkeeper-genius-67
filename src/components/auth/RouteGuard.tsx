@@ -40,7 +40,7 @@ export function RouteGuard({
   if (isLoading) {
     // Show a loading indicator while checking auth status
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -48,6 +48,11 @@ export function RouteGuard({
 
   // Special handling for the root path - always allow access
   if (location.pathname === "/") {
+    return <Outlet />;
+  }
+  
+  // Special handling for verification path - always allow access
+  if (location.pathname.includes('/auth/verify')) {
     return <Outlet />;
   }
 
@@ -73,6 +78,12 @@ export function RouteGuard({
       !location.pathname.includes('/auth/verify')) {
     console.log("Redirecting to dashboard: Authenticated user on auth page");
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // If we're on the onboarding page and the user is not authenticated, redirect to login
+  if (location.pathname.includes('/auth/onboarding') && !user) {
+    console.log("Redirecting to login: User not authenticated on onboarding page");
+    return <Navigate to="/auth/login" replace />;
   }
 
   return <Outlet />;

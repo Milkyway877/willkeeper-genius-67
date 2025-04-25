@@ -49,17 +49,23 @@ export default function AccountVerification() {
 
   // Set up auth state change listener to handle successful verification
   useEffect(() => {
+    console.log("Setting up auth state listener in verification page");
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed in verification page:", event);
-      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        // Redirect to onboarding after successful verification and sign in
+      console.log("Auth state changed in verification page:", event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log("Detected sign in, will redirect to onboarding shortly");
+        // Add a delay to ensure the state is fully processed
         setTimeout(() => {
+          console.log("Redirecting to onboarding now");
           navigate('/auth/onboarding', { replace: true });
-        }, 500);
+        }, 1000);
       }
     });
     
     return () => {
+      console.log("Cleaning up auth state listener");
       subscription.unsubscribe();
     };
   }, [navigate]);
@@ -85,6 +91,7 @@ export default function AccountVerification() {
           description: verifyError,
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
 
@@ -93,8 +100,17 @@ export default function AccountVerification() {
         description: `Welcome${email ? ` ${email}` : ''} to WillTank.`,
       });
       
-      console.log("Verification successful, waiting for auth state change");
-      // The auth state listener will handle the redirect
+      console.log("Verification successful, auth data:", data);
+      
+      // If we received auth link but no automatic redirect happened,
+      // manually navigate to onboarding after a short delay
+      if (data?.authLink) {
+        console.log("Received auth link, will manually navigate to onboarding after delay");
+        setTimeout(() => {
+          console.log("Manual navigation to onboarding");
+          navigate('/auth/onboarding', { replace: true });
+        }, 2000);
+      }
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       toast({
