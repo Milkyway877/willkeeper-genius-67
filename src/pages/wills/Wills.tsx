@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -72,7 +71,7 @@ export default function Wills() {
     },
   });
 
-  // Handle create new will button click
+  // Handle create new will button click - update to go to wizard
   const handleCreateWill = () => {
     navigate('/will/create');
   };

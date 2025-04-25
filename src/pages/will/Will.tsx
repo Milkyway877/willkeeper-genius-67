@@ -6,7 +6,7 @@ import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'luci
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { getWill, updateWill, Will as WillType } from '@/services/willService';
+import { getWill, getWills, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
 
 export default function Will() {
@@ -58,16 +58,26 @@ export default function Will() {
               description: "The requested will document could not be found.",
               variant: "destructive"
             });
-            // Don't navigate away automatically, let the user decide
           }
         } else {
-          // No ID provided, set error
-          setLoadingError("No will specified");
-          toast({
-            title: "No will specified",
-            description: "Please select a will to view.",
-          });
-          // Don't navigate away automatically, let the user decide
+          // No ID provided - try to get the most recently updated will
+          const wills = await getWills();
+          if (wills && wills.length > 0) {
+            // Sort by updated_at in descending order
+            const sortedWills = [...wills].sort((a, b) => 
+              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            );
+            
+            // Redirect to the most recent will
+            navigate(`/dashboard/will/${sortedWills[0].id}`);
+            return;
+          } else {
+            setLoadingError("No wills available");
+            toast({
+              title: "No wills found",
+              description: "You don't have any wills yet. Create your first will to get started.",
+            });
+          }
         }
       } catch (error) {
         console.error("Error fetching will data:", error);
@@ -83,7 +93,7 @@ export default function Will() {
     };
     
     fetchWillData();
-  }, [id, toast]);
+  }, [id, toast, navigate]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
