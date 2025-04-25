@@ -32,7 +32,7 @@ export function RouteGuard({
         requireAuth,
         requireOnboarding,
         user: user ? "exists" : "null",
-        profile: profile ? `activated: ${profile.is_activated}` : "null",
+        profile: profile ? `activated: ${profile?.is_activated}` : "null",
       });
     }
   }, [loading, location.pathname, requireAuth, requireOnboarding, user, profile]);
@@ -44,6 +44,11 @@ export function RouteGuard({
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
+  }
+
+  // Special handling for the root path - always allow access
+  if (location.pathname === "/") {
+    return <Outlet />;
   }
 
   // Authentication check

@@ -41,7 +41,7 @@ function App() {
         <Router>
           <div className="min-h-screen bg-background">
             <Routes>
-              {/* Public Routes - No auth required */}
+              {/* Public Routes - No auth required - Important: Don't wrap Index in RouteGuard */}
               <Route path="/" element={<Index />} />
               
               {/* Auth Routes */}
