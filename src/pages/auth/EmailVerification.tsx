@@ -29,7 +29,7 @@ export default function EmailVerification() {
 
   useEffect(() => {
     if (!email) {
-      navigate('/auth/signup');
+      navigate('/auth/signin');
     }
   }, [email, navigate]);
 
@@ -81,7 +81,7 @@ export default function EmailVerification() {
 
       if (type === 'signup') {
         // For signup flow
-        // Update user profile
+        // Update user profile to mark activation as complete
         await supabase
           .from('user_profiles')
           .update({ activation_complete: true })
@@ -93,7 +93,7 @@ export default function EmailVerification() {
           variant: "default",
         });
         
-        // Navigate to signin
+        // Fixed: Redirect to signin instead of signup
         navigate('/auth/signin');
       } else {
         // For login flow

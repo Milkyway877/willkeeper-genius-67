@@ -98,7 +98,7 @@ function App() {
             <Route path="/auth/forgot-password" element={<SecureRecover />} />
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
             <Route path="/auth/activate" element={<AccountActivation />} />
-            <Route path="/auth/verify-email" element={<EmailVerification />} />
+            <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />
