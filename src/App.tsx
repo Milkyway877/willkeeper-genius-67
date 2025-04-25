@@ -14,13 +14,14 @@ import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import Dashboard from '@/pages/Dashboard';
 import Profile from '@/pages/dashboard/Profile';
-import Settings from '@/pages/dashboard/Settings';
+// Import from the correct paths for these components
+import Settings from '@/pages/settings/Settings';
 import Security from '@/pages/dashboard/Security';
-import Notifications from '@/pages/dashboard/Notifications';
-import Wills from '@/pages/dashboard/Wills';
+import Notifications from '@/pages/notifications/Notifications';
+import Wills from '@/pages/will/Wills';
 import CreateWill from '@/pages/dashboard/CreateWill';
 import EditWill from '@/pages/dashboard/EditWill';
-import ViewWill from '@/pages/dashboard/ViewWill';
+import ViewWill from '@/pages/will/Will';
 import FutureMessages from '@/pages/dashboard/FutureMessages';
 import CreateMessage from '@/pages/dashboard/CreateMessage';
 import EditMessage from '@/pages/dashboard/EditMessage';
@@ -47,7 +48,7 @@ import Templates from '@/pages/templates/Templates';
 
 function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" storageKey="willtank-theme">
+    <ThemeProvider defaultTheme="light" storageKey="willtank-theme">
       <UserProfileProvider>
         <NotificationsProvider>
           <SidebarProvider>
