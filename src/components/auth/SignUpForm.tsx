@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -71,7 +70,30 @@ export function SignUpForm() {
       
       const verificationCode = generateVerificationCode();
       
-      // Send verification email
+      // First create a user account
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            first_name: data.firstName,
+            last_name: data.lastName,
+            full_name: `${data.firstName} ${data.lastName}`
+          },
+        },
+      });
+      
+      if (signUpError) {
+        toast({
+          title: "Registration failed",
+          description: signUpError.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Send verification email through the edge function
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
           email: data.email,
@@ -85,10 +107,8 @@ export function SignUpForm() {
         throw new Error("Failed to send verification email");
       }
 
-      console.log("Verification email sent successfully");
-
-      // Store verification code in Supabase
-      const { error: verificationError } = await supabase
+      // Store verification code directly using SQL query
+      const { error: insertError } = await supabase
         .from('email_verification_codes')
         .insert({
           email: data.email,
@@ -98,28 +118,11 @@ export function SignUpForm() {
           used: false
         });
 
-      if (verificationError) {
-        console.error("Error storing verification code:", verificationError);
-        throw verificationError;
-      }
-
-      // Sign up the user
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            first_name: data.firstName,
-            last_name: data.lastName,
-            full_name: `${data.firstName} ${data.lastName}`
-          },
-        },
-      });
-      
-      if (error) {
+      if (insertError) {
+        console.error("Error storing verification code:", insertError);
         toast({
-          title: "Registration failed",
-          description: error.message,
+          title: "Registration error",
+          description: "Failed to create verification code. Please try again.",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -132,7 +135,7 @@ export function SignUpForm() {
       });
       
       // Navigate to verification page with email
-      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}`);
+      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
     } catch (error: any) {
       console.error("Error during signup:", error);
       toast({
@@ -140,7 +143,6 @@ export function SignUpForm() {
         description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
