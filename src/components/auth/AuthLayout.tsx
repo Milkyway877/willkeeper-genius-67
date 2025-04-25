@@ -1,53 +1,57 @@
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { Logo } from '@/components/ui/logo/Logo';
+import { PageTransition } from '@/components/animations/PageTransition';
+import { cn } from '@/lib/utils';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
+  rightPanel?: React.ReactNode;
   title?: string;
+  subtitle?: string;
 }
 
-export function AuthLayout({ children, title }: AuthLayoutProps) {
+export function AuthLayout({ children, rightPanel, title, subtitle }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col justify-center overflow-hidden relative">
-      {/* Dynamic background */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.3),rgba(0,0,0,0.7))]"></div>
-        <motion.div 
-          className="absolute inset-0"
-          initial={{ backgroundPosition: "0% 0%" }}
-          animate={{ backgroundPosition: ["0% 0%", "100% 100%"] }}
-          transition={{ duration: 20, repeat: Infinity, repeatType: "reverse" }}
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 30h60v60h-60z' fill='none' stroke='%233b82f6' stroke-opacity='0.2' stroke-width='0.5'/%3E%3C/svg%3E")`,
-            backgroundSize: "60px 60px"
-          }}
-        />
+    <div className="min-h-screen w-full flex flex-col md:flex-row bg-background">
+      {/* Left panel with form */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        <header className="p-6 md:p-8">
+          <Link to="/" className="inline-block">
+            <Logo color="black" className="h-10 w-auto" />
+          </Link>
+        </header>
+        
+        <main className="flex-1 flex items-center justify-center px-6 py-10 md:px-12">
+          <PageTransition className="w-full max-w-md mx-auto">
+            {title && (
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold mb-2 text-black">{title}</h1>
+                {subtitle && <p className="text-gray-600 font-medium">{subtitle}</p>}
+              </div>
+            )}
+            
+            {children}
+          </PageTransition>
+        </main>
+        
+        <footer className="p-6 text-center text-sm text-muted-foreground">
+          &copy; {new Date().getFullYear()} WillTank. All rights reserved.
+        </footer>
       </div>
       
-      {/* Content */}
-      <div className="relative z-10 py-12 px-4">
-        {/* Add WillTank logo */}
-        <div className="mb-6 flex justify-center">
-          <Logo size="lg" color="white" className="mx-auto" showSlogan />
+      {/* Right panel with security info */}
+      {rightPanel && (
+        <div className={cn(
+          "hidden lg:flex lg:w-[450px] bg-willtank-50 flex-col items-center justify-center p-12 border-l border-border",
+          "dark:bg-slate-900"
+        )}>
+          <PageTransition>
+            {rightPanel}
+          </PageTransition>
         </div>
-        
-        {title && (
-          <motion.h1 
-            className="text-center text-4xl font-extrabold text-white mb-8 tracking-tight"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {title}
-          </motion.h1>
-        )}
-        
-        <div className="max-w-md mx-auto">
-          {children}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

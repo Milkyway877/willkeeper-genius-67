@@ -1,9 +1,9 @@
 
-import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserProfile, getInitials, UserProfile } from "@/services/profileService";
-import { logUserActivity } from "@/services/authService";
+import { logUserActivity } from "@/services/activityService";
 
 interface UserProfileContextType {
   user: User | null;
@@ -21,7 +21,7 @@ const UserProfileContext = createContext<UserProfileContextType>({
   refreshProfile: async () => {}
 });
 
-export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ 
+export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
   children 
 }) => {
   const [user, setUser] = useState<User | null>(null);

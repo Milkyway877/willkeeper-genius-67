@@ -1,26 +1,10 @@
 
-export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
-
-// Subscription Plans
-export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
-
-export interface PlanDetails {
-  name: string;
-  price: {
-    monthly: number;
-    yearly: number;
-    lifetime: number;
-  };
-  features: string[];
-  description: string;
-}
-
-// Message Types
 export type MessageType = 'letter' | 'video' | 'audio' | 'document';
 export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
+export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
 
 export interface Message {
-  id: string;
+  id: string | number;
   type: MessageType;
   title: string;
   recipient: string;
@@ -29,10 +13,6 @@ export interface Message {
   preview?: string;
 }
 
-// Delivery Types
-export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
-
-// Legacy Vault Types
 export type VaultItemType = 'story' | 'confession' | 'wishes' | 'advice';
 
 export interface LegacyVaultItem {
@@ -40,20 +20,35 @@ export interface LegacyVaultItem {
   title: string;
   type: VaultItemType;
   preview: string;
-  document_url?: string;
+  document_url: string;
   createdAt: string;
   created_at: string;
   encryptionStatus: boolean;
 }
 
-// Database specific type for legacy vault items
+// Database schema type with additional is_encrypted field
 export interface DBLegacyVaultItem {
   id: string;
   title: string;
-  category: string | null;
-  preview: string | null;
   document_url: string;
+  preview: string | null;
+  category: string | null;
   created_at: string;
-  is_encrypted: boolean;
-  user_id: string;
+  is_encrypted?: boolean;
+  user_id?: string;
+}
+
+// Subscription types for billing
+export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
+export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
+
+export interface PlanDetails {
+  name: string;
+  price: {
+    monthly: number;
+    yearly: number;
+    lifetime?: number;
+  };
+  features: string[];
+  description: string;
 }

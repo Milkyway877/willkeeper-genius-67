@@ -21,49 +21,6 @@
     
     <!-- Add base tag to help with SPA routing -->
     <base href="/" />
-    
-    <script>
-      // Handle auth token and redirects before the app loads
-      (function() {
-        console.log("Initializing auth handler in index.html");
-        
-        // Check current URL for auth fragments
-        const hasAuthFragment = window.location.hash && 
-          (window.location.hash.includes('access_token=') || 
-           window.location.hash.includes('refresh_token='));
-           
-        console.log("Has auth fragment:", hasAuthFragment);
-        
-        // If we have auth fragments in the URL, let Supabase Auth handle it directly
-        if (hasAuthFragment) {
-          console.log("Found auth fragment in URL, letting Supabase handle it");
-          // No need to do anything, Supabase will pick it up
-        }
-        
-        // Check for stored auth token from 404.html or other redirects
-        const storedAuthToken = sessionStorage.getItem('supabase.auth.token');
-        if (storedAuthToken) {
-          console.log("Found stored auth token, setting hash for processing");
-          // Set the hash directly for the Supabase client to process
-          window.location.hash = storedAuthToken;
-          // Clear it from session storage to avoid reprocessing
-          sessionStorage.removeItem('supabase.auth.token');
-        }
-        
-        // Handle stored redirects from 404.html
-        const redirectPath = sessionStorage.getItem('redirect_path');
-        if (redirectPath) {
-          console.log("Found stored redirect path:", redirectPath);
-          sessionStorage.removeItem('redirect_path');
-          
-          // Don't override auth fragments if they exist
-          if (!hasAuthFragment && !window.location.hash.includes('access_token=')) {
-            console.log("Setting history state to:", redirectPath);
-            history.replaceState(null, '', redirectPath);
-          }
-        }
-      })();
-    </script>
   </head>
 
   <body>

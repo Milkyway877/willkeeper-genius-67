@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
+import { AccountActivationBar } from '@/components/auth/AccountActivationBar';
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -152,6 +153,10 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      {profile && !profile.is_activated && (
+        <AccountActivationBar onActivateClick={handleActivateAccount} />
+      )}
+      
       <div className="max-w-6xl mx-auto">
         <motion.div 
           initial={{ opacity: 0, y: 10 }}

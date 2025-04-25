@@ -1,24 +1,42 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface AccountActivationBarProps {
-  onActivateClick: () => void;
+  onActivateClick?: () => void;
 }
 
 export function AccountActivationBar({ onActivateClick }: AccountActivationBarProps) {
+  const navigate = useNavigate();
+  
+  const handleActivateClick = () => {
+    if (onActivateClick) {
+      onActivateClick();
+    } else {
+      navigate('/auth/activate');
+    }
+  };
+
   return (
-    <div className="bg-amber-50 border-b border-amber-200 py-2 px-4">
-      <div className="container mx-auto flex items-center justify-between">
-        <div className="flex items-center">
-          <AlertTriangle className="h-4 w-4 text-amber-500 mr-2" />
-          <span className="text-sm text-amber-800">Your account needs to be activated</span>
-        </div>
-        <Button size="sm" variant="outline" onClick={onActivateClick}>
-          Activate Now
-        </Button>
+    <div className="w-full bg-[#ea384c] border-b border-red-700 py-3 px-4 flex items-center justify-between">
+      <div className="flex items-center">
+        <AlertTriangle className="h-5 w-5 text-white mr-2 flex-shrink-0" />
+        <p className="text-white font-medium">
+          Your account is not active. No real data will be saved —
+          <span className="font-bold"> ACTIVATE YOUR ACCOUNT NOW</span>
+        </p>
       </div>
+      <Button 
+        variant="outline"
+        size="sm"
+        onClick={handleActivateClick}
+        className="whitespace-nowrap ml-4 bg-white text-red-600 hover:bg-gray-100 hover:text-red-700 border-white"
+      >
+        Activate Account
+      </Button>
     </div>
   );
 }

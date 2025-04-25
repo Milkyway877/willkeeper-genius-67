@@ -1,9 +1,12 @@
+
 import React, { useState } from 'react';
+import { Layout } from '@/components/layout/Layout';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, HelpCircle, Book, MessageSquare, FileText, Mail, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export default function Help() {
   const { toast } = useToast();
@@ -95,162 +98,164 @@ export default function Help() {
   };
 
   return (
-    <div className="container px-4 md:px-6">
-      <motion.div 
-        className="text-center mb-10"
-        initial="hidden"
-        animate="visible"
-        variants={fadeIn}
-      >
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Help Center</h1>
-        <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
-          Find answers to your questions about using WillTank for your estate planning.
-        </p>
-        
-        <div className="max-w-2xl mx-auto relative">
-          <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Search help articles..." 
-            className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-willtank-500 focus:border-transparent"
-          />
-        </div>
-      </motion.div>
-      
-      {showGuideContent && selectedTopic && (
+    <Layout>
+      <div className="container px-4 md:px-6">
         <motion.div 
-          className="bg-white rounded-xl shadow-md mb-10 p-6 relative"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          className="text-center mb-10"
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
         >
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute right-4 top-4"
-            onClick={() => setShowGuideContent(false)}
-          >
-            <X size={18} />
-          </Button>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Help Center</h1>
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
+            Find answers to your questions about using WillTank for your estate planning.
+          </p>
           
-          {popularTopics.find(t => t.slug === selectedTopic) && (
-            <>
-              <h2 className="text-2xl font-bold mb-4">{popularTopics.find(t => t.slug === selectedTopic)?.title}</h2>
-              <div className="prose max-w-none">
-                <p className="whitespace-pre-line">{popularTopics.find(t => t.slug === selectedTopic)?.content}</p>
-              </div>
-            </>
-          )}
+          <div className="max-w-2xl mx-auto relative">
+            <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search help articles..." 
+              className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-willtank-500 focus:border-transparent"
+            />
+          </div>
         </motion.div>
-      )}
-      
-      <motion.div 
-        className="mb-16"
-        initial="hidden"
-        animate="visible"
-        variants={fadeIn}
-      >
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Popular Topics</h2>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {popularTopics.map((topic, index) => (
-            <motion.div 
-              key={index}
-              className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
-              whileHover={{ y: -5 }}
-              transition={{ type: "spring", stiffness: 300 }}
-              onClick={() => handleTopicClick(topic.slug)}
+        {showGuideContent && selectedTopic && (
+          <motion.div 
+            className="bg-white rounded-xl shadow-md mb-10 p-6 relative"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute right-4 top-4"
+              onClick={() => setShowGuideContent(false)}
             >
-              <div className="flex items-start gap-4">
-                <div className="mt-1 p-2 rounded-full bg-willtank-50">
-                  {topic.icon}
+              <X size={18} />
+            </Button>
+            
+            {popularTopics.find(t => t.slug === selectedTopic) && (
+              <>
+                <h2 className="text-2xl font-bold mb-4">{popularTopics.find(t => t.slug === selectedTopic)?.title}</h2>
+                <div className="prose max-w-none">
+                  <p className="whitespace-pre-line">{popularTopics.find(t => t.slug === selectedTopic)?.content}</p>
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-1">{topic.title}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{topic.description}</p>
-                  <div 
-                    className="text-sm text-willtank-600 hover:text-willtank-700 font-medium inline-flex items-center"
-                  >
-                    Learn more <ChevronRight className="h-4 w-4 ml-1" />
+              </>
+            )}
+          </motion.div>
+        )}
+        
+        <motion.div 
+          className="mb-16"
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+        >
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Popular Topics</h2>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {popularTopics.map((topic, index) => (
+              <motion.div 
+                key={index}
+                className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
+                whileHover={{ y: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                onClick={() => handleTopicClick(topic.slug)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="mt-1 p-2 rounded-full bg-willtank-50">
+                    {topic.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-1">{topic.title}</h3>
+                    <p className="text-sm text-gray-600 mb-3">{topic.description}</p>
+                    <div 
+                      className="text-sm text-willtank-600 hover:text-willtank-700 font-medium inline-flex items-center"
+                    >
+                      Learn more <ChevronRight className="h-4 w-4 ml-1" />
+                    </div>
                   </div>
                 </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+        
+        <motion.div 
+          className="mb-16"
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+        >
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Frequently Asked Questions</h2>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 divide-y divide-gray-200">
+            {faqs.map((faq, index) => (
+              <div key={index} className="p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{faq.question}</h3>
+                <p className="text-gray-600">{faq.answer}</p>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-      
-      <motion.div 
-        className="mb-16"
-        initial="hidden"
-        animate="visible"
-        variants={fadeIn}
-      >
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Frequently Asked Questions</h2>
+            ))}
+          </div>
+          
+          <div className="mt-6 text-center">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                toast({
+                  title: "FAQs",
+                  description: "Viewing all frequently asked questions",
+                });
+              }}
+            >
+              View All FAQs
+            </Button>
+          </div>
+        </motion.div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 divide-y divide-gray-200">
-          {faqs.map((faq, index) => (
-            <div key={index} className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{faq.question}</h3>
-              <p className="text-gray-600">{faq.answer}</p>
+        <motion.div 
+          className="bg-gradient-to-br from-willtank-50 to-gray-50 rounded-2xl p-8"
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+        >
+          <div className="md:flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Still Need Help?</h2>
+              <p className="text-gray-600 mb-4 md:mb-0 max-w-xl">
+                Our support team is available to assist you with any questions or concerns about your estate planning documents.
+              </p>
             </div>
-          ))}
-        </div>
-        
-        <div className="mt-6 text-center">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              toast({
-                title: "FAQs",
-                description: "Viewing all frequently asked questions",
-              });
-            }}
-          >
-            View All FAQs
-          </Button>
-        </div>
-      </motion.div>
-      
-      <motion.div 
-        className="bg-gradient-to-br from-willtank-50 to-gray-50 rounded-2xl p-8"
-        initial="hidden"
-        animate="visible"
-        variants={fadeIn}
-      >
-        <div className="md:flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Still Need Help?</h2>
-            <p className="text-gray-600 mb-4 md:mb-0 max-w-xl">
-              Our support team is available to assist you with any questions or concerns about your estate planning documents.
-            </p>
+            <div className="flex flex-wrap gap-4">
+              <Button 
+                variant="default" 
+                onClick={() => {
+                  toast({
+                    title: "Contact Support",
+                    description: "Opening support contact form",
+                  });
+                }}
+              >
+                Contact Support
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  toast({
+                    title: "Community",
+                    description: "Joining the WillTank community forum",
+                  });
+                }}
+              >
+                Join Community
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-4">
-            <Button 
-              variant="default" 
-              onClick={() => {
-                toast({
-                  title: "Contact Support",
-                  description: "Opening support contact form",
-                });
-              }}
-            >
-              Contact Support
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => {
-                toast({
-                  title: "Community",
-                  description: "Joining the WillTank community forum",
-                });
-              }}
-            >
-              Join Community
-            </Button>
-          </div>
-        </div>
-      </motion.div>
-    </div>
+        </motion.div>
+      </div>
+    </Layout>
   );
 }

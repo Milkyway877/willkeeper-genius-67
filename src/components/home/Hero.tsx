@@ -1,23 +1,38 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
-import { Globe } from '@/components/ui/globe';
+import { motion, useAnimation } from 'framer-motion';
+import { RotatingGlobe } from './RotatingGlobe';
 
 export function Hero() {
-  // Track if component is mounted to prevent flickering
-  const [mounted, setMounted] = useState(false);
+  const controls = useAnimation();
   
   useEffect(() => {
-    // Small delay to ensure everything renders properly
-    const timeout = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(timeout);
-  }, []);
+    const animateBackground = async () => {
+      await controls.start({
+        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+        transition: { 
+          repeat: Infinity, 
+          duration: 25, // Slower animation
+          ease: "easeInOut" 
+        }
+      });
+    };
+    
+    animateBackground();
+  }, [controls]);
 
   return (
-    <section className="relative min-h-screen overflow-hidden flex items-center bg-black">
+    <motion.section 
+      className="relative min-h-screen overflow-hidden flex items-center"
+      animate={controls}
+      style={{
+        background: 'linear-gradient(135deg, #000000, #1c2e40, #000000, #162435, #000000)',
+        backgroundSize: '400% 400%',
+      }}
+    >
       {/* Subtle overlay pattern for texture */}
       <div className="absolute inset-0 dot-pattern opacity-[0.05] z-10"></div>
       
@@ -84,9 +99,9 @@ export function Hero() {
                   Get started <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link to="/auth/login">
+              <Link to="/how-it-works">
                 <Button size="lg" variant="outline" className="rounded-full border-white text-white bg-transparent hover:bg-white/10 px-8 py-6 text-lg transition-all">
-                  Login
+                  How it works
                 </Button>
               </Link>
             </motion.div>
@@ -114,19 +129,33 @@ export function Hero() {
           
           {/* Right content - Globe */}
           <motion.div 
-            className="relative flex justify-center items-center lg:justify-end h-[600px]"
+            className="flex justify-center items-center lg:justify-end"
             initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: mounted ? 1 : 0, scale: mounted ? 1 : 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
           >
-            {mounted && <Globe />}
-            <div className="pointer-events-none absolute inset-0 h-full bg-[radial-gradient(circle_at_50%_200%,rgba(0,0,0,0.2),rgba(255,255,255,0))]" />
+            <div className="relative w-full max-w-xl">
+              <motion.div 
+                className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 blur-3xl"
+                animate={{ 
+                  opacity: [0.5, 0.8, 0.5],
+                  scale: [0.8, 1.05, 0.8],
+                  rotate: 360
+                }}
+                transition={{ 
+                  repeat: Infinity, 
+                  duration: 20,
+                  ease: "linear" 
+                }}
+              ></motion.div>
+              <RotatingGlobe />
+            </div>
           </motion.div>
         </div>
       </div>
       
       {/* Bottom gradient overlay */}
       <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent z-10"></div>
-    </section>
+    </motion.section>
   );
 }
