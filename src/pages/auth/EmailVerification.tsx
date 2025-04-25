@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -227,14 +226,13 @@ export default function EmailVerification() {
                     <InputOTP
                       maxLength={6}
                       {...field}
-                      render={({ slots }) => (
-                        <InputOTPGroup>
-                          {slots.map((slot, i) => (
-                            <InputOTPSlot key={i} {...slot} index={i} />
-                          ))}
-                        </InputOTPGroup>
-                      )}
-                    />
+                    >
+                      <InputOTPGroup>
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <InputOTPSlot key={i} index={i} />
+                        ))}
+                      </InputOTPGroup>
+                    </InputOTP>
                   </FormControl>
                 </FormItem>
               )}
