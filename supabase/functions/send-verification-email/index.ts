@@ -1,4 +1,6 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -64,24 +66,53 @@ const createEmailHtml = (code: string, firstName?: string) => {
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Get Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Parse the request body
     const { email, type, firstName }: EmailRequest = await req.json();
 
     if (!email || !type) {
+      console.error("Missing required parameters: email and type");
       return new Response(
         JSON.stringify({ error: "Email and type are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log(`Processing verification email for ${email}, type: ${type}`);
+
+    // Generate a verification code
     const verificationCode = generateVerificationCode();
-    
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
+    // Check if user is already in the verification table
+    const { data: existingCodes } = await supabase
+      .from('email_verification_codes')
+      .select('*')
+      .eq('email', email)
+      .eq('type', type)
+      .eq('used', false);
+
+    // If there are existing codes, update them to be used (expired)
+    if (existingCodes && existingCodes.length > 0) {
+      await supabase
+        .from('email_verification_codes')
+        .update({ used: true })
+        .eq('email', email)
+        .eq('type', type)
+        .eq('used', false);
+    }
+
+    // Insert the new verification code
     const { error: dbError } = await supabase
       .from('email_verification_codes')
       .insert([
@@ -98,26 +129,32 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to store verification code');
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "WillTank <support@willtank.com>",
-      to: [email],
-      subject: type === 'signup' ? "Verify Your WillTank Account" : "Your WillTank Login Code",
-      html: createEmailHtml(verificationCode, firstName),
-    });
+    // Send email
+    try {
+      const emailResponse = await resend.emails.send({
+        from: "WillTank <support@willtank.com>",
+        to: [email],
+        subject: type === 'signup' ? "Verify Your WillTank Account" : "Your WillTank Login Code",
+        html: createEmailHtml(verificationCode, firstName),
+      });
 
-    console.log('Email sent successfully:', emailResponse);
+      console.log('Email sent successfully:', emailResponse);
 
-    return new Response(
-      JSON.stringify({ message: "Verification code sent successfully" }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+      return new Response(
+        JSON.stringify({ message: "Verification code sent successfully" }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    } catch (emailError) {
+      console.error("Error sending email:", emailError);
+      throw new Error(`Email sending failed: ${emailError.message}`);
+    }
   } catch (error) {
     console.error("Error in send-verification-email function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

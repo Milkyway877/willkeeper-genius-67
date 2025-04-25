@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
+import { sendVerificationEmail } from '@/utils/email';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -29,26 +30,26 @@ export function SignInForm() {
   
   useEffect(() => {
     const handleAuthRedirect = async () => {
-      const searchParams = new URLSearchParams(location.search);
-      const verified = searchParams.get('verified');
-      
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session && !error) {
-        if (verified === 'true') {
-          toast({
-            title: "Email verified!",
-            description: "Your email has been verified and you are now signed in.",
-          });
-        } else {
-          toast({
-            title: "Welcome back!",
-            description: "You are now signed in.",
-          });
-        }
+        toast({
+          title: "Welcome back!",
+          description: "You are now signed in.",
+        });
         navigate('/dashboard');
       }
     };
+    
+    // Check for a verifiedEmail in the location state (coming from verification page)
+    const state = location.state as { verifiedEmail?: string } | null;
+    if (state?.verifiedEmail) {
+      form.setValue('email', state.verifiedEmail);
+      toast({
+        title: "Email verified!",
+        description: "Your email has been verified. Please sign in.",
+      });
+    }
     
     handleAuthRedirect();
   }, [navigate, location]);
@@ -145,28 +146,15 @@ export function SignInForm() {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        toast({
-          title: "Failed to resend verification",
-          description: error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
+      await sendVerificationEmail(email, 'signup');
       
       toast({
         title: "Verification email sent",
-        description: "Please check your inbox for the verification link.",
+        description: "Please check your inbox for the verification code.",
       });
+      
+      // Redirect to verification page
+      navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`);
     } catch (error) {
       console.error("Error resending verification:", error);
       toast({

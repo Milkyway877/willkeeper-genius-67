@@ -46,6 +46,7 @@ export function SignUpForm() {
           description: "Form submission failed. Please try again.",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
@@ -57,6 +58,28 @@ export function SignUpForm() {
           description: "Please complete the CAPTCHA verification.",
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
+      }
+
+      // First check if user already exists
+      const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers({
+        filter: {
+          email: values.email,
+        },
+      });
+
+      if (getUserError) {
+        console.error("Error checking for existing user:", getUserError);
+      }
+
+      if (users && users.length > 0) {
+        toast({
+          title: "Account already exists",
+          description: "An account with this email already exists. Please sign in instead.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
         return;
       }
 
@@ -76,29 +99,53 @@ export function SignUpForm() {
 
       if (authError) {
         console.error("Auth error during signup:", authError);
-        toast({
-          title: "Error creating account",
-          description: authError.message,
-          variant: "destructive",
-        });
+        
+        // Check for specific error types
+        if (authError.message.includes("User already registered")) {
+          toast({
+            title: "Account already exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error creating account",
+            description: authError.message || "Failed to create account. Please try again.",
+            variant: "destructive",
+          });
+        }
+        setIsLoading(false);
         return;
       }
 
       // Send our custom verification email
-      await sendVerificationEmail(
-        values.email,
-        'signup',
-        values.firstName
-      );
-      
-      // Success! Redirect to verification page
-      toast({
-        title: "Account created",
-        description: "Please check your email to verify your account.",
-      });
-      
-      // Redirect to the email verification page
-      navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
+      try {
+        await sendVerificationEmail(
+          values.email,
+          'signup',
+          values.firstName
+        );
+
+        // Success! Redirect to verification page
+        toast({
+          title: "Account created",
+          description: "Please check your email for a verification code.",
+        });
+        
+        // Redirect to the email verification page
+        navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
+      } catch (emailError: any) {
+        console.error("Email sending error:", emailError);
+        
+        toast({
+          title: "Account created but verification email failed",
+          description: "Your account was created, but we couldn't send a verification email. Please contact support.",
+          variant: "destructive",
+        });
+        
+        // Still redirect to verification in case they got the email anyway
+        navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
+      }
       
     } catch (error: any) {
       console.error("Signup error:", error);
