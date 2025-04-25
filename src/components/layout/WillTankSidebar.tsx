@@ -38,11 +38,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       href: '/dashboard',
     },
     {
-      title: 'Will Templates',
-      icon: PackageOpen,
-      href: '/templates',
-    },
-    {
       title: 'Encryption',
       icon: Lock,
       href: '/pages/encryption/Encryption',

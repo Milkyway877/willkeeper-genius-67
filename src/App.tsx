@@ -31,7 +31,6 @@ import NotFound from '@/pages/NotFound';
 import AccountVerification from '@/pages/auth/AccountVerification';
 import Onboarding from '@/pages/auth/Onboarding';
 import Will from '@/pages/will/Will';
-import Templates from '@/pages/templates/Templates';
 import Encryption from '@/pages/encryption/Encryption';
 import Executors from '@/pages/executors/Executors';
 import AIAssistance from '@/pages/ai/AIAssistance';
@@ -90,7 +89,6 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/security" element={<Security />} />
                     <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/templates" element={<Templates />} />
                     <Route path="/pages/encryption/Encryption" element={<Encryption />} />
                     <Route path="/pages/executors/Executors" element={<Executors />} />
                     <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
