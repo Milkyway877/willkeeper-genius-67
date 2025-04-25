@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -18,11 +17,23 @@ export default function AccountVerification() {
   const location = useLocation();
   const { toast } = useToast();
 
-  const { email, isLogin, message } = location.state || {
-    email: '',
-    isLogin: false,
-    message: "We've sent a verification code to your email address. Please enter it below to complete your account setup."
+  // Get email and isLogin from location state or URL parameters
+  const getStateFromLocation = () => {
+    // First try to get from location state
+    if (location.state?.email) {
+      return location.state;
+    }
+    
+    // Otherwise try to parse from URL parameters
+    const params = new URLSearchParams(location.search);
+    const email = params.get('email') || '';
+    const isLogin = params.get('isLogin') === 'true';
+    const message = params.get('message') || "We've sent a verification code to your email address. Please enter it below to complete your account setup.";
+    
+    return { email, isLogin, message };
   };
+
+  const { email, isLogin, message } = getStateFromLocation();
 
   // Set up cooldown timer for resend button
   useEffect(() => {
@@ -39,6 +50,8 @@ export default function AccountVerification() {
     setError(null);
 
     try {
+      console.log("Verifying code for:", email, "isLogin:", isLogin);
+      
       // Call the verify code endpoint
       const { data, error: verifyError } = await verifyCode({ 
         email, 
@@ -61,14 +74,8 @@ export default function AccountVerification() {
         description: `Welcome${email ? ` ${email}` : ''} to WillTank.`,
       });
 
-      // Check if we have an auth link from the API
-      if (data?.authLink) {
-        // Use window.location.href to ensure full page reload and proper auth handling
-        window.location.href = data.authLink;
-      } else {
-        // Fallback navigation if no auth link is provided
-        navigate(isLogin ? '/dashboard' : '/auth/onboarding');
-      }
+      // Verification successful - auth redirection is handled directly in the verifyCode function
+      // No need to navigate here as the auth link handles it
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       toast({
@@ -86,6 +93,8 @@ export default function AccountVerification() {
     
     setLoading(true);
     try {
+      console.log("Resending code to:", email, "isLogin:", isLogin);
+      
       const { data, error: sendError } = await sendVerificationEmail({
         email,
         isLogin

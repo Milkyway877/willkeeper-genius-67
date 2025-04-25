@@ -17,6 +17,7 @@ interface VerifyCodeRequest {
   email: string;
   code: string;
   isLogin: boolean;
+  origin?: string; // Client origin for better redirection
 }
 
 serve(async (req) => {
@@ -26,7 +27,8 @@ serve(async (req) => {
   }
 
   try {
-    const { email, code, isLogin }: VerifyCodeRequest = await req.json();
+    const { email, code, isLogin, origin }: VerifyCodeRequest = await req.json();
+    console.log("Verify code request:", { email, code, isLogin, origin });
     
     if (!email || !code) {
       return new Response(
@@ -115,20 +117,23 @@ serve(async (req) => {
       throw new Error("Could not update profile status");
     }
 
-    // Extract origin from request headers for redirection
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.replace(/\/[^/]*$/, '') || '';
-    console.log("Origin for redirection:", origin);
+    // Extract origin from request or use provided origin
+    const clientOrigin = origin || req.headers.get('origin') || req.headers.get('referer')?.replace(/\/[^/]*$/, '') || '';
+    console.log("Using origin for redirection:", clientOrigin);
     
-    // If origin is empty, use a default URL
-    const baseUrl = origin || 'https://lovable.dev';
+    // Default to a fallback URL if we can't determine the origin
+    const baseUrl = clientOrigin || 'https://lovable.dev';
     const redirectPath = `/auth/onboarding`;
+    const redirectTo = `${baseUrl}${redirectPath}`;
     
-    // Create user session and return session data
+    console.log("Redirect destination:", redirectTo);
+    
+    // Create user session and return session data - using the latest redirect approach
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email!,
       options: {
-        redirectTo: `${baseUrl}${redirectPath}`
+        redirectTo
       }
     });
     

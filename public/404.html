@@ -6,12 +6,21 @@
   <title>Redirecting...</title>
   <script>
     // Single Page Apps for GitHub Pages and other static hosts
-    // This script ensures proper routing even on direct page loading or refresh
+    // This script handles redirects for auth tokens and other URL fragments
     (function(){
+      // Get the full path including hash fragments
       const path = window.location.pathname + window.location.search + window.location.hash;
+      const hasAccessToken = window.location.hash && window.location.hash.includes('access_token');
       
-      // If this is not the index page, redirect to the correct URL through the index
-      if (path !== '/') {
+      // Special handling for access tokens
+      if (hasAccessToken) {
+        // Store the complete hash in session storage and redirect to root
+        // This ensures the auth token is properly processed
+        sessionStorage.setItem('supabase.auth.token', window.location.hash);
+        window.location.href = '/';
+      } 
+      // If this is not the index page and doesn't have a token, handle normal redirects
+      else if (path !== '/' && !hasAccessToken) {
         sessionStorage.setItem('redirect_path', path);
         window.location.href = '/';
       }

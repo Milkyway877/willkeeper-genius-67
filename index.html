@@ -21,6 +21,28 @@
     
     <!-- Add base tag to help with SPA routing -->
     <base href="/" />
+    
+    <script>
+      // Handle auth token and redirects before the app loads
+      (function() {
+        // Check for stored auth token and set it for proper processing
+        const storedAuthToken = sessionStorage.getItem('supabase.auth.token');
+        if (storedAuthToken) {
+          // Set the hash directly for the Supabase client to process
+          window.location.hash = storedAuthToken;
+          // Clear it from session storage to avoid reprocessing
+          sessionStorage.removeItem('supabase.auth.token');
+        }
+        
+        // Handle stored redirects from 404.html
+        const redirectPath = sessionStorage.getItem('redirect_path');
+        if (redirectPath && !window.location.hash.includes('access_token')) {
+          sessionStorage.removeItem('redirect_path');
+          // Only set the history state if there's no auth token involved
+          history.replaceState(null, '', redirectPath);
+        }
+      })();
+    </script>
   </head>
 
   <body>

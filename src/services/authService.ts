@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SignupData {
@@ -54,7 +53,7 @@ export const signUp = async ({ email, password, name }: SignupData) => {
 export const login = async ({ email, password }: LoginData) => {
   try {
     // First check if email exists
-    const { data: { user }, error: userError } = await supabase.auth.signInWithPassword({
+    const { data, error: userError } = await supabase.auth.signInWithPassword({
       email,
       password
     });
@@ -66,7 +65,7 @@ export const login = async ({ email, password }: LoginData) => {
     // Send verification email
     await sendVerificationEmail({ email, isLogin: true });
 
-    return { data: user, error: null };
+    return { data: data.user, error: null };
   } catch (error: any) {
     console.error('Login error:', error);
     return { data: null, error: error.message || 'An error occurred during login' };
@@ -105,17 +104,37 @@ export const sendVerificationEmail = async ({ email, name, isLogin }: VerifyEmai
 
 export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
   try {
+    // Get the current origin for proper redirection
+    const origin = window.location.origin;
+    console.log("Current origin for verification:", origin);
+    
     const response = await supabase.functions.invoke('verify-code', {
-      body: { email, code, isLogin }
+      body: { email, code, isLogin, origin }
     });
 
     if (response.error) {
       throw new Error(response.error.message || 'Error verifying code');
     }
 
+    // Handle the auth link if it exists
     if (response.data?.authLink) {
-      // If we have an auth link, use it to automatically sign in the user
-      window.location.href = response.data.authLink;
+      console.log("Received auth link:", response.data.authLink);
+      
+      // If the auth link is a full URL with our origin, use it directly
+      if (response.data.authLink.startsWith(origin)) {
+        window.location.href = response.data.authLink;
+      } 
+      // Otherwise if it's a magic link with hash fragments, use special handling
+      else if (response.data.authLink.includes('#access_token=')) {
+        // Extract the hash part and store it
+        const hashPart = response.data.authLink.substring(response.data.authLink.indexOf('#'));
+        sessionStorage.setItem('supabase.auth.token', hashPart);
+        window.location.href = '/';
+      }
+      // Fallback to direct navigation
+      else {
+        window.location.href = response.data.authLink;
+      }
     }
 
     return { data: response.data, error: null };
