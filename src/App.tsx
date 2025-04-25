@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -12,13 +11,18 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/Dashboard';
+import Dashboard from '@/pages/Dashboard'; // Updated import
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/settings/Settings';
 import Security from '@/pages/dashboard/Security';
+import Notifications from '@/pages/notifications/Notifications';
 import CreateWill from '@/pages/dashboard/CreateWill';
 import EditWill from '@/pages/dashboard/EditWill';
 import ViewWill from '@/pages/dashboard/ViewWill';
+import FutureMessages from '@/pages/dashboard/FutureMessages';
+import CreateMessage from '@/pages/dashboard/CreateMessage';
+import EditMessage from '@/pages/dashboard/EditMessage';
+import ViewMessage from '@/pages/dashboard/ViewMessage';
 import LegacyVault from '@/pages/dashboard/LegacyVault';
 import CreateVaultItem from '@/pages/dashboard/CreateVaultItem';
 import EditVaultItem from '@/pages/dashboard/EditVaultItem';
@@ -29,6 +33,7 @@ import Onboarding from '@/pages/auth/Onboarding';
 import Will from '@/pages/will/Will';
 import Encryption from '@/pages/encryption/Encryption';
 import Executors from '@/pages/executors/Executors';
+import AIAssistance from '@/pages/ai/AIAssistance';
 import IDSecurity from '@/pages/security/IDSecurity';
 import Tank from '@/pages/tank/Tank';
 import Billing from '@/pages/billing/Billing';
@@ -66,6 +71,7 @@ function App() {
                   <Route path="login" element={<Login />} />
                   <Route path="signup" element={<Signup />} />
                   <Route path="verify" element={<AccountVerification />} />
+                  {/* Onboarding route - requires auth but not onboarding completion */}
                   <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
                     <Route path="onboarding" element={<Onboarding />} />
                   </Route>
@@ -82,12 +88,19 @@ function App() {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/security" element={<Security />} />
+                    <Route path="/notifications" element={<Notifications />} />
                     <Route path="/pages/encryption/Encryption" element={<Encryption />} />
                     <Route path="/pages/executors/Executors" element={<Executors />} />
+                    <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
                     <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
                     <Route path="/tank" element={<Tank />} />
                     <Route path="/pages/billing/Billing" element={<Billing />} />
+                    <Route path="/pages/notifications/Notifications" element={<Notifications />} />
                     <Route path="/corporate" element={<Corporate />} />
+                    <Route path="/messages" element={<FutureMessages />} />
+                    <Route path="/messages/create" element={<CreateMessage />} />
+                    <Route path="/messages/edit/:id" element={<EditMessage />} />
+                    <Route path="/messages/view/:id" element={<ViewMessage />} />
                     <Route path="/vault" element={<LegacyVault />} />
                     <Route path="/vault/create" element={<CreateVaultItem />} />
                     <Route path="/vault/edit/:id" element={<EditVaultItem />} />
