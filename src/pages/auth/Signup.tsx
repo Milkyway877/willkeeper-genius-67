@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,11 +9,9 @@ import {
   floatElement, 
   scanLine,
   holographicReveal,
-  particleSystem,
   glitchText
 } from '@/components/auth/animations';
 import { CircleUser, Key, Mail, ShieldCheck, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import { QRCode } from '@/components/ui/QRCode';
 
 export default function Signup() {
   const [step, setStep] = useState(1);
@@ -71,8 +70,6 @@ export default function Signup() {
   const handleNextStep = () => {
     if (step === 1 && validateStep1()) {
       setStep(2);
-    } else if (step === 2 && validateStep2()) {
-      setStep(3);
     }
   };
   
@@ -81,13 +78,15 @@ export default function Signup() {
   };
   
   const handleCompleteSignup = () => {
-    setLoading(true);
-    
-    // Simulate registration delay
-    setTimeout(() => {
-      setLoading(false);
-      navigate('/dashboard');
-    }, 2000);
+    if (validateStep2()) {
+      setLoading(true);
+      
+      // Simulate registration delay
+      setTimeout(() => {
+        setLoading(false);
+        navigate('/dashboard');
+      }, 2000);
+    }
   };
   
   const renderStep1 = () => (
@@ -111,7 +110,7 @@ export default function Signup() {
           <CircleUser className="absolute left-3 top-3 h-5 w-5 text-blue-400" />
           <Input
             type="text"
-            placeholder="Neural Identifier (Full Name)"
+            placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
@@ -126,7 +125,7 @@ export default function Signup() {
           <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
           <Input
             type="email"
-            placeholder="Neural Connection (Email)"
+            placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
@@ -143,7 +142,7 @@ export default function Signup() {
           className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl relative overflow-hidden border border-white/20"
         >
           <div className="flex items-center justify-center">
-            <span className="mr-2">Continue Neural Interface Setup</span>
+            <span className="mr-2">Continue Account Setup</span>
             <ArrowRight className="h-5 w-5" />
           </div>
           
@@ -184,7 +183,7 @@ export default function Signup() {
           <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
           <Input
             type={showPassword ? "text" : "password"}
-            placeholder="Neural Security Key (Password)"
+            placeholder="Create Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
@@ -210,7 +209,7 @@ export default function Signup() {
           <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
           <Input
             type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirm Neural Security Key"
+            placeholder="Confirm Password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
@@ -233,7 +232,7 @@ export default function Signup() {
       {/* Password strength indicator */}
       <motion.div variants={fadeInUp} className="pt-2">
         <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-          <div className="text-sm text-gray-300 mb-2">Neural Key Strength:</div>
+          <div className="text-sm text-gray-300 mb-2">Password Strength:</div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
             <div 
               className={`h-full rounded-full ${
@@ -259,87 +258,20 @@ export default function Signup() {
         </Button>
         <Button 
           type="button"
-          onClick={handleNextStep}
-          className="w-2/3 py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl relative overflow-hidden"
-        >
-          <div className="flex items-center justify-center">
-            <span className="mr-2">Complete Neural Link</span>
-            <ArrowRight className="h-5 w-5" />
-          </div>
-        </Button>
-      </motion.div>
-    </motion.div>
-  );
-  
-  const renderStep3 = () => (
-    <motion.div 
-      className="space-y-6"
-      variants={{
-        hidden: { opacity: 0 },
-        show: {
-          opacity: 1,
-          transition: {
-            staggerChildren: 0.15
-          }
-        }
-      }}
-      initial="hidden"
-      animate="show"
-    >
-      {/* Success message */}
-      <motion.div variants={fadeInUp} className="text-center">
-        <motion.div 
-          className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 10 }}
-        >
-          <ShieldCheck className="w-10 h-10 text-white" />
-        </motion.div>
-        <h3 className="text-xl font-medium text-white mb-2">Neural Profile Created</h3>
-        <p className="text-gray-400 mb-4">Complete by scanning the quantum code below</p>
-      </motion.div>
-      
-      {/* QR code */}
-      <motion.div variants={fadeInUp} className="flex justify-center">
-        <motion.div 
-          className="p-3 bg-white rounded-lg"
-          whileHover={{ boxShadow: "0 0 20px rgba(59, 130, 246, 0.5)" }}
-        >
-          <QRCode value={`neurolink:${email}`} size={180} />
-        </motion.div>
-      </motion.div>
-      
-      {/* Scanning animation */}
-      <motion.div 
-        variants={fadeInUp} 
-        className="h-1 bg-blue-500 rounded-full"
-        animate={{ 
-          y: [0, 180, 0],
-          opacity: [0.5, 0.8, 0.5],
-        }}
-        transition={{ 
-          duration: 2.5, 
-          repeat: Infinity,
-          ease: "linear"
-        }}
-      />
-      
-      {/* Complete button */}
-      <motion.div variants={fadeInUp} className="pt-2">
-        <Button 
-          type="button"
           onClick={handleCompleteSignup}
           disabled={loading}
-          className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl"
+          className="w-2/3 py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl relative overflow-hidden"
         >
           {loading ? (
             <div className="flex items-center justify-center">
               <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              <span>Integrating Neural Profile</span>
+              <span>Creating Account</span>
             </div>
           ) : (
-            "Complete Neural Interface Setup"
+            <div className="flex items-center justify-center">
+              <span className="mr-2">Complete Account Setup</span>
+              <ArrowRight className="h-5 w-5" />
+            </div>
           )}
         </Button>
       </motion.div>
@@ -388,12 +320,6 @@ export default function Signup() {
         ))}
       </div>
       
-      {/* Scan line effect */}
-      <motion.div 
-        className="absolute inset-x-0 h-40 bg-gradient-to-b from-indigo-500/10 to-transparent z-10 pointer-events-none"
-        {...scanLine}
-      />
-      
       {/* Holographic container */}
       <motion.div
         className="w-full max-w-md relative z-20 bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-[0_0_40px_rgba(59,130,246,0.1)]"
@@ -412,7 +338,7 @@ export default function Signup() {
           >
             {/* Step indicator */}
             <motion.div className="flex items-center justify-center gap-3 mb-6">
-              {[1, 2, 3].map((stepNumber) => (
+              {[1, 2].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
                   <motion.div 
                     className={`w-8 h-8 rounded-full flex items-center justify-center border ${
@@ -428,7 +354,7 @@ export default function Signup() {
                   >
                     {stepNumber < step ? '✓' : stepNumber}
                   </motion.div>
-                  {stepNumber < 3 && (
+                  {stepNumber < 2 && (
                     <div 
                       className={`w-10 h-0.5 ${
                         stepNumber < step ? 'bg-green-600' : 'bg-white/10'
@@ -443,9 +369,7 @@ export default function Signup() {
               className="text-3xl font-bold text-white mb-1"
               {...glitchText}
             >
-              {step === 1 && "Neural Profile Creation"}
-              {step === 2 && "Security Protocol Setup"}
-              {step === 3 && "Quantum Authentication"}
+              {step === 1 ? "Create Your Account" : "Set Up Security"}
             </motion.h1>
             <motion.p 
               className="text-blue-300"
@@ -453,9 +377,7 @@ export default function Signup() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              {step === 1 && "Enter your neural identifiers"}
-              {step === 2 && "Establish secure neural links"}
-              {step === 3 && "Complete biometric integration"}
+              {step === 1 ? "Enter your account details" : "Secure your account"}
             </motion.p>
           </motion.div>
           
@@ -463,11 +385,10 @@ export default function Signup() {
           <form onSubmit={(e) => e.preventDefault()}>
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
           </form>
           
           {/* Link to login */}
-          {step < 3 && (
+          {step < 2 && (
             <motion.div 
               className="mt-8 text-center text-gray-400"
               variants={fadeInUp}
@@ -475,9 +396,9 @@ export default function Signup() {
               animate="animate"
               transition={{ delay: 0.6 }}
             >
-              Neural profile exists?{' '}
+              Already have an account?{' '}
               <Link to="/auth/login" className="text-blue-400 hover:text-blue-300 transition-colors">
-                Access system
+                Log in
               </Link>
             </motion.div>
           )}
@@ -486,3 +407,4 @@ export default function Signup() {
     </div>
   );
 }
+
