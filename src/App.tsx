@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -91,14 +90,14 @@ function App() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/cookies" element={<Cookies />} />
             
-            {/* Auth routes - using our new secure components */}
+            {/* Auth routes - using our secure components */}
             <Route path="/auth/signin" element={<SecureSignIn />} />
             <Route path="/auth/signup" element={<SecureSignUp />} />
+            <Route path="/auth/verification" element={<EmailVerification />} />
             <Route path="/auth/forgot-password" element={<SecureRecover />} />
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
             <Route path="/auth/activate" element={<AccountActivation />} />
             <Route path="/auth/verify-email" element={<EmailVerification />} />
-            <Route path="/auth/verification-banner" element={<VerifyEmailBanner />} />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />

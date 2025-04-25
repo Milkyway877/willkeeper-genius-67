@@ -94,19 +94,11 @@ export function SignUpForm() {
       });
       
       if (error) {
-        if (error.message.includes('already registered') || error.message.includes('already in use')) {
-          toast({
-            title: "Email already registered",
-            description: "This email address is already in use. Please use a different email or try to login.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Registration failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Registration failed",
+          description: error.message,
+          variant: "destructive",
+        });
         return;
       }
       
