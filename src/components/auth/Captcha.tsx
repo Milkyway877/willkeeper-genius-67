@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
 export interface CaptchaProps {
-  onValidated: (isValid: boolean) => void;
+  onValidated: (isValid: boolean) => boolean;
 }
 
 export interface CaptchaRef {
@@ -19,7 +19,11 @@ const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadCaptchaEnginge(6);
+    try {
+      loadCaptchaEnginge(6);
+    } catch (error) {
+      console.error("Error loading captcha engine:", error);
+    }
   }, []);
 
   // This function will be called by the parent component when submitting
@@ -27,9 +31,8 @@ const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
     setAttemptedValidation(true);
     
     // For empty captcha, always return false
-    if (!userCaptcha.trim()) {
+    if (!userCaptcha || !userCaptcha.trim()) {
       setIsValid(false);
-      onValidated(false);
       return false;
     }
     
@@ -46,7 +49,11 @@ const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
     
     // Refresh captcha if incorrect
     if (!valid) {
-      loadCaptchaEnginge(6);
+      try {
+        loadCaptchaEnginge(6);
+      } catch (error) {
+        console.error("Error refreshing captcha:", error);
+      }
       setUserCaptcha('');
       if (inputRef.current) {
         inputRef.current.focus();
@@ -57,11 +64,14 @@ const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
   };
 
   const refreshCaptcha = () => {
-    loadCaptchaEnginge(6);
-    setUserCaptcha('');
-    setAttemptedValidation(false);
-    setIsValid(false);
-    onValidated(false);
+    try {
+      loadCaptchaEnginge(6);
+      setUserCaptcha('');
+      setAttemptedValidation(false);
+      setIsValid(false);
+    } catch (error) {
+      console.error("Error refreshing captcha:", error);
+    }
   };
 
   // Expose the validation method to the parent component

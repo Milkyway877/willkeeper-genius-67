@@ -31,7 +31,7 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { captchaRef, handleCaptchaValidation } = useCaptcha();
+  const { captchaRef, validateCaptcha } = useCaptcha();
 
   const form = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -49,6 +49,16 @@ export function SignUpForm() {
   };
 
   const onSubmit = async (data: SignUpFormInputs) => {
+    // Validate captcha first
+    if (!validateCaptcha()) {
+      toast({
+        title: "Captcha validation failed",
+        description: "Please complete the captcha verification.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -271,7 +281,11 @@ export function SignUpForm() {
           <div>
             <Captcha 
               ref={captchaRef}
-              onValidated={handleCaptchaValidation} 
+              onValidated={(isValid) => {
+                // This function is called when the captcha is completed
+                // No need to do anything here as we'll check validity on form submit
+                return isValid;
+              }} 
             />
           </div>
           
