@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 import { Shield, ArrowLeft, Mail } from 'lucide-react';
@@ -13,7 +13,14 @@ export default function AccountVerification() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  const { email, isLogin, message } = location.state || {
+    email: '',
+    isLogin: false,
+    message: "We've sent a verification code to your email address. Please enter it below to complete your account setup."
+  };
 
   const handleVerification = async (code: string) => {
     setLoading(true);
@@ -23,8 +30,8 @@ export default function AccountVerification() {
     setTimeout(() => {
       setLoading(false);
       toast({
-        title: "Account verified successfully!",
-        description: "You can now access your WillTank account.",
+        title: isLogin ? "Login successful!" : "Account verified successfully!",
+        description: `Welcome${email ? ` ${email}` : ''} to your WillTank account.`,
       });
       navigate('/dashboard');
     }, 1500);
@@ -33,16 +40,16 @@ export default function AccountVerification() {
   const handleResendCode = () => {
     toast({
       title: "Verification code resent",
-      description: "Please check your email for the new code.",
+      description: `We've sent a new code to ${email || 'your email address'}.`,
     });
   };
 
   const handleGoBack = () => {
-    navigate('/auth/login');
+    navigate(isLogin ? '/auth/login' : '/auth/signup');
   };
 
   return (
-    <AuthLayout title="Verify Your Account">
+    <AuthLayout title={isLogin ? "Verify Your Login" : "Verify Your Account"}>
       <motion.div
         className="w-full max-w-md space-y-6"
         initial={{ opacity: 0, y: 20 }}
@@ -58,9 +65,13 @@ export default function AccountVerification() {
             <Shield className="w-8 h-8 text-blue-500" />
           </div>
           <p className="text-muted-foreground">
-            We've sent a verification code to your email address. 
-            Please enter it below to complete your account setup.
+            {message}
           </p>
+          {email && (
+            <p className="text-sm font-medium text-blue-500">
+              {email}
+            </p>
+          )}
         </motion.div>
 
         {/* Verification Code Input */}
@@ -95,7 +106,7 @@ export default function AccountVerification() {
               disabled={loading}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to login
+              Back to {isLogin ? 'login' : 'signup'}
             </Button>
           </div>
         </motion.div>

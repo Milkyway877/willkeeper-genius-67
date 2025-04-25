@@ -42,38 +42,8 @@ function App() {
             <Route path="/auth/signup" element={<Signup />} />
             <Route path="/auth/verify" element={<AccountVerification />} />
             
-            {/* Dashboard Routes */}
-            <Route path="/dashboard" element={<DashboardLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="security" element={<Security />} />
-              <Route path="notifications" element={<Notifications />} />
-              
-              {/* Will Management */}
-              <Route path="wills">
-                <Route index element={<Wills />} />
-                <Route path="create" element={<CreateWill />} />
-                <Route path="edit/:id" element={<EditWill />} />
-                <Route path="view/:id" element={<ViewWill />} />
-              </Route>
-              
-              {/* Future Messages */}
-              <Route path="messages">
-                <Route index element={<FutureMessages />} />
-                <Route path="create" element={<CreateMessage />} />
-                <Route path="edit/:id" element={<EditMessage />} />
-                <Route path="view/:id" element={<ViewMessage />} />
-              </Route>
-              
-              {/* Legacy Vault */}
-              <Route path="vault">
-                <Route index element={<LegacyVault />} />
-                <Route path="create" element={<CreateVaultItem />} />
-                <Route path="edit/:id" element={<EditVaultItem />} />
-                <Route path="view/:id" element={<ViewVaultItem />} />
-              </Route>
-            </Route>
+            {/* Protected Dashboard Routes */}
+            <Route path="/dashboard/*" element={<DashboardLayout />} />
           </Routes>
           <Toaster />
         </div>

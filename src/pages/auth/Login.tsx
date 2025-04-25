@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -47,11 +46,17 @@ export default function Login() {
     
     setLoading(true);
     
-    // Simulate authentication delay
+    // Simulate login and redirect to verification
     setTimeout(() => {
       setLoading(false);
-      navigate('/dashboard');
-    }, 2000);
+      navigate('/auth/verify', { 
+        state: { 
+          email,
+          isLogin: true,
+          message: "Please verify your email to continue to your account."
+        }
+      });
+    }, 1500);
   };
   
   return (
