@@ -10,19 +10,9 @@ interface OnboardingLayoutProps {
 }
 
 export function OnboardingLayout({ children, step, totalSteps }: OnboardingLayoutProps) {
-  // Calculate background color based on step (getting lighter)
-  const getBackgroundColor = (currentStep: number) => {
-    const baseHue = 210; // Blue hue
-    const lightness = 15 + (currentStep - 1) * 5; // Gets lighter with each step
-    return `hsl(${baseHue}, 50%, ${lightness}%)`;
-  };
-
   return (
-    <div 
-      className="min-h-screen transition-colors duration-500"
-      style={{ backgroundColor: getBackgroundColor(step) }}
-    >
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen w-full bg-gray-950 flex flex-col">
+      <div className="container mx-auto px-4 py-8 flex-1 flex flex-col">
         {/* Logo */}
         <motion.div 
           initial={{ y: -20, opacity: 0 }}
@@ -40,8 +30,8 @@ export function OnboardingLayout({ children, step, totalSteps }: OnboardingLayou
                 <div 
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     index + 1 <= step
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white/10 text-white/50'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-800 text-gray-400'
                   }`}
                 >
                   {index + 1 <= step ? '✓' : index + 1}
@@ -49,29 +39,37 @@ export function OnboardingLayout({ children, step, totalSteps }: OnboardingLayou
                 {index < totalSteps - 1 && (
                   <div 
                     className={`flex-1 h-0.5 mx-2 ${
-                      index + 1 < step ? 'bg-blue-500' : 'bg-white/10'
+                      index + 1 < step ? 'bg-blue-600' : 'bg-gray-800'
                     }`}
                   />
                 )}
               </React.Fragment>
             ))}
           </div>
-          <p className="text-center text-white/70 text-sm">
+          <p className="text-center text-gray-400 text-sm">
             Step {step} of {totalSteps}
           </p>
         </div>
 
         {/* Content */}
-        <div className="max-w-md mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl"
-          >
+        <motion.div 
+          className="max-w-md mx-auto w-full flex-1 flex flex-col"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 shadow-xl">
             {children}
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
+        
+        <div className="h-16" /> {/* Bottom spacing */}
+      </div>
+      
+      {/* Background elements */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.1),rgba(0,0,0,0))]" />
+        <div className="absolute inset-0 bg-dot-pattern opacity-5" />
       </div>
     </div>
   );
