@@ -14,7 +14,7 @@ const DashboardLayout: React.FC = () => {
   return (
     <div className="flex min-h-screen">
       <WillTankSidebar isCollapsed={isCollapsed} onToggle={handleSidebarToggle} />
-      <div className={`flex-1 transition-all duration-200 ${isCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <div className={`flex-1 transition-all duration-200 ${isCollapsed ? 'ml-16' : 'ml-64'} p-0`}>
         <main className="min-h-screen bg-background w-full">
           <Outlet />
         </main>
