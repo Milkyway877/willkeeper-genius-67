@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Logo } from '@/components/ui/logo/Logo';
 import { 
   fadeInUp, 
   glowPulse, 
@@ -10,7 +12,7 @@ import {
   scanLine,
   holographicReveal
 } from '@/components/auth/animations';
-import { Fingerprint, Eye, EyeOff, Key, Mail, Shield, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Key, Mail, Shield, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -52,10 +54,10 @@ export default function Login() {
   };
   
   return (
-    <div className="relative min-h-screen w-full bg-black overflow-hidden flex items-center justify-center p-4">
+    <div className="relative min-h-screen w-full bg-gray-900 overflow-hidden flex items-center justify-center p-4">
       {/* Dynamic background elements */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.1),rgba(0,0,0,0.5))]"></div>
+      <div className="absolute inset-0 opacity-40">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.3),rgba(0,0,0,0.7))]"></div>
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={`particle-${i}`}
@@ -80,15 +82,9 @@ export default function Login() {
         ))}
       </div>
       
-      {/* Scan line effect */}
-      <motion.div 
-        className="absolute inset-x-0 h-40 bg-gradient-to-b from-blue-500/10 to-transparent z-10 pointer-events-none"
-        {...scanLine}
-      />
-      
       {/* Holographic container */}
       <motion.div
-        className="w-full max-w-md relative z-20 bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-[0_0_40px_rgba(59,130,246,0.1)]"
+        className="w-full max-w-md relative z-20 bg-white/10 backdrop-blur-xl border border-white/30 rounded-2xl p-8 shadow-[0_0_40px_rgba(14,165,233,0.2)]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -102,19 +98,14 @@ export default function Login() {
             className="mb-8 text-center"
             {...fadeInUp}
           >
-            <motion.div 
-              className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 p-4 border border-white/20"
-              {...glowPulse}
-            >
-              <Shield className="w-8 h-8 text-white" />
-            </motion.div>
+            <Logo size="md" color="white" className="mx-auto" />
             <motion.h1 
-              className="text-3xl font-bold text-white mb-2"
+              className="text-3xl font-bold text-white mt-6 mb-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              Access Portal
+              Welcome Back
             </motion.h1>
             <motion.p 
               className="text-blue-300"
@@ -122,7 +113,7 @@ export default function Login() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              Enter your credentials to continue
+              Sign in to your WillTank account
             </motion.p>
           </motion.div>
           
@@ -148,10 +139,10 @@ export default function Login() {
                   <Mail className="absolute left-3 top-3 h-5 w-5 text-blue-400" />
                   <Input
                     type="email"
-                    placeholder="Neural ID (Email)"
+                    placeholder="Email Address"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
                   />
                 </div>
                 {formErrors.email && <p className="text-red-400 text-sm mt-1">{formErrors.email}</p>}
@@ -163,10 +154,10 @@ export default function Login() {
                   <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Access Key (Password)"
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
+                    className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
                   />
                   <button 
                     type="button"
@@ -183,18 +174,6 @@ export default function Login() {
                 {formErrors.password && <p className="text-red-400 text-sm mt-1">{formErrors.password}</p>}
               </motion.div>
               
-              {/* Biometric options */}
-              <motion.div variants={fadeInUp} className="flex justify-center">
-                <motion.button 
-                  type="button"
-                  className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-indigo-600/30 to-blue-600/30 backdrop-blur-md border border-white/10 text-white"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Fingerprint className="w-6 h-6" />
-                </motion.button>
-              </motion.div>
-              
               {/* Submit button */}
               <motion.div variants={fadeInUp} className="pt-2">
                 <Button 
@@ -205,26 +184,14 @@ export default function Login() {
                   {loading ? (
                     <div className="flex items-center justify-center">
                       <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      <span>Authenticating</span>
+                      <span>Signing In</span>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center">
-                      <span className="mr-2">Access System</span>
+                      <span className="mr-2">Sign In</span>
                       <ArrowRight className="h-5 w-5" />
                     </div>
                   )}
-                  
-                  {/* Animated border effect when button is hovered */}
-                  <motion.div 
-                    className="absolute inset-0 opacity-0 hover:opacity-100"
-                    whileHover={{ opacity: 1 }}
-                  >
-                    <div className="absolute inset-0 border-2 border-white opacity-20"></div>
-                    <div className="absolute top-0 left-0 w-2 h-2 bg-white rounded-full"></div>
-                    <div className="absolute top-0 right-0 w-2 h-2 bg-white rounded-full"></div>
-                    <div className="absolute bottom-0 left-0 w-2 h-2 bg-white rounded-full"></div>
-                    <div className="absolute bottom-0 right-0 w-2 h-2 bg-white rounded-full"></div>
-                  </motion.div>
                 </Button>
               </motion.div>
             </motion.div>
@@ -232,15 +199,15 @@ export default function Login() {
           
           {/* Link to signup */}
           <motion.div 
-            className="mt-8 text-center text-gray-400"
+            className="mt-8 text-center text-gray-300"
             variants={fadeInUp}
             initial="initial"
             animate="animate"
             transition={{ delay: 0.6 }}
           >
-            No neural profile?{' '}
+            Don't have an account?{' '}
             <Link to="/auth/signup" className="text-blue-400 hover:text-blue-300 transition-colors">
-              Initialize profile
+              Create account
             </Link>
           </motion.div>
         </div>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Logo } from '@/components/ui/logo/Logo';
 import { 
   fadeInUp, 
   floatElement, 
@@ -113,7 +114,7 @@ export default function Signup() {
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
+            className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
         </div>
         {formErrors.name && <p className="text-red-400 text-sm mt-1">{formErrors.name}</p>}
@@ -128,7 +129,7 @@ export default function Signup() {
             placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
+            className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
         </div>
         {formErrors.email && <p className="text-red-400 text-sm mt-1">{formErrors.email}</p>}
@@ -142,7 +143,7 @@ export default function Signup() {
           className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl relative overflow-hidden border border-white/20"
         >
           <div className="flex items-center justify-center">
-            <span className="mr-2">Continue Account Setup</span>
+            <span className="mr-2">Continue</span>
             <ArrowRight className="h-5 w-5" />
           </div>
           
@@ -186,7 +187,7 @@ export default function Signup() {
             placeholder="Create Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
+            className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
           <button 
             type="button"
@@ -212,7 +213,7 @@ export default function Signup() {
             placeholder="Confirm Password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
+            className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
           <button 
             type="button"
@@ -231,9 +232,9 @@ export default function Signup() {
       
       {/* Password strength indicator */}
       <motion.div variants={fadeInUp} className="pt-2">
-        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+        <div className="bg-white/10 rounded-lg p-3 border border-white/20">
           <div className="text-sm text-gray-300 mb-2">Password Strength:</div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-2 bg-white/20 rounded-full overflow-hidden">
             <div 
               className={`h-full rounded-full ${
                 password.length > 12 ? 'bg-green-500' : 
@@ -269,7 +270,7 @@ export default function Signup() {
             </div>
           ) : (
             <div className="flex items-center justify-center">
-              <span className="mr-2">Complete Account Setup</span>
+              <span className="mr-2">Create Account</span>
               <ArrowRight className="h-5 w-5" />
             </div>
           )}
@@ -279,10 +280,10 @@ export default function Signup() {
   );
   
   return (
-    <div className="relative min-h-screen w-full bg-black overflow-hidden flex items-center justify-center p-4">
+    <div className="relative min-h-screen w-full bg-gray-900 overflow-hidden flex items-center justify-center p-4">
       {/* Dynamic background elements */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(67,56,202,0.15),rgba(0,0,0,0.5))]"></div>
+      <div className="absolute inset-0 opacity-40">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(14,165,233,0.3),rgba(0,0,0,0.7))]"></div>
         <motion.div 
           className="absolute inset-0"
           initial={{ backgroundPosition: "0% 0%" }}
@@ -322,7 +323,7 @@ export default function Signup() {
       
       {/* Holographic container */}
       <motion.div
-        className="w-full max-w-md relative z-20 bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-[0_0_40px_rgba(59,130,246,0.1)]"
+        className="w-full max-w-md relative z-20 bg-white/10 backdrop-blur-xl border border-white/30 rounded-2xl p-8 shadow-[0_0_40px_rgba(14,165,233,0.2)]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -336,6 +337,9 @@ export default function Signup() {
             className="mb-8 text-center"
             {...fadeInUp}
           >
+            {/* Logo */}
+            <Logo size="md" color="white" className="mx-auto mb-6" />
+            
             {/* Step indicator */}
             <motion.div className="flex items-center justify-center gap-3 mb-6">
               {[1, 2].map((stepNumber) => (
@@ -346,7 +350,7 @@ export default function Signup() {
                         ? 'bg-blue-600 border-blue-400 text-white'
                         : stepNumber < step
                           ? 'bg-green-600 border-green-400 text-white'
-                          : 'bg-white/5 border-white/20 text-gray-400'
+                          : 'bg-white/10 border-white/20 text-gray-400'
                     }`}
                     whileHover={stepNumber < step ? { scale: 1.1 } : {}}
                     onClick={() => stepNumber < step && setStep(stepNumber)}
@@ -377,7 +381,7 @@ export default function Signup() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              {step === 1 ? "Enter your account details" : "Secure your account"}
+              {step === 1 ? "Join WillTank today" : "Secure your WillTank account"}
             </motion.p>
           </motion.div>
           
@@ -390,7 +394,7 @@ export default function Signup() {
           {/* Link to login */}
           {step < 2 && (
             <motion.div 
-              className="mt-8 text-center text-gray-400"
+              className="mt-8 text-center text-gray-300"
               variants={fadeInUp}
               initial="initial"
               animate="animate"
@@ -398,7 +402,7 @@ export default function Signup() {
             >
               Already have an account?{' '}
               <Link to="/auth/login" className="text-blue-400 hover:text-blue-300 transition-colors">
-                Log in
+                Sign in
               </Link>
             </motion.div>
           )}
@@ -407,4 +411,3 @@ export default function Signup() {
     </div>
   );
 }
-
