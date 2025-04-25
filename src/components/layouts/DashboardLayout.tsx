@@ -12,15 +12,11 @@ const DashboardLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      <div className={`transition-all duration-200 ${isCollapsed ? 'w-16' : 'w-64'}`}>
-        <WillTankSidebar isCollapsed={isCollapsed} onToggle={handleSidebarToggle} />
+    <div className="flex min-h-screen bg-background">
+      <WillTankSidebar isCollapsed={isCollapsed} onToggle={handleSidebarToggle} />
+      <div className="flex-1">
+        <Outlet />
       </div>
-      <main className="flex-1 overflow-auto">
-        <div className="min-h-screen w-full">
-          <Outlet />
-        </div>
-      </main>
     </div>
   );
 };

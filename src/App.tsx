@@ -11,7 +11,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/Dashboard'; // Updated import
+import Dashboard from '@/pages/Dashboard';
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/settings/Settings';
 import Security from '@/pages/dashboard/Security';
@@ -67,15 +67,17 @@ function App() {
                 <Route path="/help" element={<Help />} />
                 
                 {/* Auth Routes */}
-                <Route path="/auth">
-                  <Route path="login" element={<Login />} />
-                  <Route path="signup" element={<Signup />} />
-                  <Route path="verify" element={<AccountVerification />} />
-                  {/* Onboarding route - requires auth but not onboarding completion */}
-                  <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
-                    <Route path="onboarding" element={<Onboarding />} />
-                  </Route>
-                </Route>
+                <Route path="/auth/login" element={<Login />} />
+                <Route path="/auth/signup" element={<Signup />} />
+                <Route path="/auth/verify" element={<AccountVerification />} />
+                <Route 
+                  path="/auth/onboarding" 
+                  element={
+                    <RouteGuard requireAuth={true} requireOnboarding={false}>
+                      <Onboarding />
+                    </RouteGuard>
+                  } 
+                />
                 
                 {/* Corporate Pages */}
                 <Route path="/corporate" element={<Corporate />} />
@@ -89,14 +91,12 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/security" element={<Security />} />
                     <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/pages/encryption/Encryption" element={<Encryption />} />
-                    <Route path="/pages/executors/Executors" element={<Executors />} />
-                    <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
-                    <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+                    <Route path="/encryption" element={<Encryption />} />
+                    <Route path="/executors" element={<Executors />} />
+                    <Route path="/ai-assistance" element={<AIAssistance />} />
+                    <Route path="/id-security" element={<IDSecurity />} />
                     <Route path="/tank" element={<Tank />} />
-                    <Route path="/pages/billing/Billing" element={<Billing />} />
-                    <Route path="/pages/notifications/Notifications" element={<Notifications />} />
-                    <Route path="/corporate" element={<Corporate />} />
+                    <Route path="/billing" element={<Billing />} />
                     <Route path="/messages" element={<FutureMessages />} />
                     <Route path="/messages/create" element={<CreateMessage />} />
                     <Route path="/messages/edit/:id" element={<EditMessage />} />
@@ -105,7 +105,6 @@ function App() {
                     <Route path="/vault/create" element={<CreateVaultItem />} />
                     <Route path="/vault/edit/:id" element={<EditVaultItem />} />
                     <Route path="/vault/view/:id" element={<ViewVaultItem />} />
-                    <Route path="/help" element={<Help />} />
                   </Route>
                 </Route>
 

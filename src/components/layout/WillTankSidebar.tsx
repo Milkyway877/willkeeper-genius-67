@@ -208,9 +208,9 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
   }
   
   return (
-    <aside className={`sticky top-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 ${
+    <aside className={`sticky top-0 h-screen border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all duration-200 ${
       isCollapsed ? 'w-16' : 'w-64'
-    } transition-all duration-200`}>
+    }`}>
       <div className="flex h-full flex-col">
         <div className={`flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-4 ${
           isCollapsed ? 'justify-center' : 'justify-between'
