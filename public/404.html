@@ -5,6 +5,14 @@
   <meta charset="utf-8">
   <title>Redirecting...</title>
   <script>
+    // Self-executing function to detect the current origin
+    const getSiteOrigin = function() {
+      // Get current origin (with protocol)
+      const origin = window.location.origin;
+      console.log("Current origin:", origin);
+      return origin;
+    };
+    
     // Single Page Apps for GitHub Pages and other static hosts
     // This script ensures proper routing even on direct page loading or refresh
     (function(){
