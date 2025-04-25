@@ -43,7 +43,7 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
     {
       title: 'My Will',
       icon: FileText,
-      href: '/dashboard/will',
+      href: '/will',
     },
     {
       title: 'Will Templates',

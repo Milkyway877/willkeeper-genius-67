@@ -12,10 +12,10 @@ import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import Dashboard from '@/pages/Dashboard'; // Updated import
 import Profile from '@/pages/dashboard/Profile';
-import Settings from '@/pages/dashboard/Settings';
+import Settings from '@/pages/settings/Settings';
 import Security from '@/pages/dashboard/Security';
-import Notifications from '@/pages/dashboard/Notifications';
-import Wills from '@/pages/dashboard/Wills';
+import Notifications from '@/pages/notifications/Notifications';
+import Wills from '@/pages/wills/Wills';
 import CreateWill from '@/pages/dashboard/CreateWill';
 import EditWill from '@/pages/dashboard/EditWill';
 import ViewWill from '@/pages/dashboard/ViewWill';
@@ -30,6 +30,15 @@ import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 import NotFound from '@/pages/NotFound';
 import AccountVerification from '@/pages/auth/AccountVerification';
 import Onboarding from '@/pages/auth/Onboarding';
+import Will from '@/pages/will/Will';
+import Templates from '@/pages/templates/Templates';
+import Encryption from '@/pages/encryption/Encryption';
+import Executors from '@/pages/executors/Executors';
+import AIAssistance from '@/pages/ai/AIAssistance';
+import IDSecurity from '@/pages/security/IDSecurity';
+import Tank from '@/pages/tank/Tank';
+import Billing from '@/pages/billing/Billing';
+import Corporate from '@/pages/Corporate';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -57,25 +66,35 @@ function App() {
               
               {/* Protected Dashboard Routes */}
               <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
-                <Route path="/dashboard" element={<DashboardLayout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="profile" element={<Profile />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="security" element={<Security />} />
-                  <Route path="notifications" element={<Notifications />} />
-                  <Route path="wills" element={<Wills />} />
-                  <Route path="wills/create" element={<CreateWill />} />
-                  <Route path="wills/edit/:id" element={<EditWill />} />
-                  <Route path="wills/view/:id" element={<ViewWill />} />
-                  <Route path="messages" element={<FutureMessages />} />
-                  <Route path="messages/create" element={<CreateMessage />} />
-                  <Route path="messages/edit/:id" element={<EditMessage />} />
-                  <Route path="messages/view/:id" element={<ViewMessage />} />
-                  <Route path="vault" element={<LegacyVault />} />
-                  <Route path="vault/create" element={<CreateVaultItem />} />
-                  <Route path="vault/edit/:id" element={<EditVaultItem />} />
-                  <Route path="vault/view/:id" element={<ViewVaultItem />} />
-                </Route>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/security" element={<Security />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/wills" element={<Wills />} />
+                <Route path="/will/create" element={<CreateWill />} />
+                <Route path="/will/edit/:id" element={<EditWill />} />
+                <Route path="/will/view/:id" element={<ViewWill />} />
+                <Route path="/will/:id" element={<Will />} />
+                <Route path="/will/new" element={<Will />} />
+                <Route path="/will" element={<Wills />} />
+                <Route path="/templates" element={<Templates />} />
+                <Route path="/pages/encryption/Encryption" element={<Encryption />} />
+                <Route path="/pages/executors/Executors" element={<Executors />} />
+                <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
+                <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+                <Route path="/tank" element={<Tank />} />
+                <Route path="/pages/billing/Billing" element={<Billing />} />
+                <Route path="/pages/notifications/Notifications" element={<Notifications />} />
+                <Route path="/corporate" element={<Corporate />} />
+                <Route path="/messages" element={<FutureMessages />} />
+                <Route path="/messages/create" element={<CreateMessage />} />
+                <Route path="/messages/edit/:id" element={<EditMessage />} />
+                <Route path="/messages/view/:id" element={<ViewMessage />} />
+                <Route path="/vault" element={<LegacyVault />} />
+                <Route path="/vault/create" element={<CreateVaultItem />} />
+                <Route path="/vault/edit/:id" element={<EditVaultItem />} />
+                <Route path="/vault/view/:id" element={<ViewVaultItem />} />
               </Route>
 
               {/* 404 Route */}
