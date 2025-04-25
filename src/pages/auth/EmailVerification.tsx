@@ -72,18 +72,18 @@ export default function EmailVerification() {
       // If code is valid, proceed with account activation
       try {
         // Get the user data by email
-        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({
-          page: 1,
-          perPage: 1, 
-          query: email
+        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers({
+          filter: {
+            email: email
+          }
         });
         
-        if (listError || !users || users.length === 0) {
+        if (listError || !usersData || usersData.users.length === 0) {
           console.error("Error finding user:", listError || "No user found");
           throw new Error("Failed to find user account");
         }
         
-        const userId = users[0].id;
+        const userId = usersData.users[0].id;
         
         // Mark user as verified in the profile
         const { error: updateError } = await supabase
@@ -184,7 +184,7 @@ export default function EmailVerification() {
                       render={({ slots }) => (
                         <InputOTPGroup>
                           {slots.map((slot, i) => (
-                            <InputOTPSlot key={i} {...slot} />
+                            <InputOTPSlot key={i} {...slot} index={i} />
                           ))}
                         </InputOTPGroup>
                       )}

@@ -62,32 +62,31 @@ export function SignUpForm() {
         return;
       }
 
-      // First check if user already exists
-      const { data, error: getUserError } = await supabase.auth.admin.getUserByEmail(values.email);
-      
-      if (getUserError) {
-        // If the error is not "User not found", then it's a real error
-        if (!getUserError.message.includes("User not found")) {
-          console.error("Error checking for existing user:", getUserError);
+      // First check if user already exists by using the auth.signUp method with email check only
+      try {
+        // Try to get users matching the email
+        const { data: usersData, error: listError } = await supabase.auth.admin.listUsers({
+          filter: {
+            email: values.email
+          }
+        });
+        
+        if (listError) {
+          // If there's an error listing users, log it but continue with signup attempt
+          console.error("Error checking for existing user:", listError);
+        } else if (usersData && usersData.users.length > 0) {
+          // If we found users with this email, show an error
           toast({
-            title: "Error",
-            description: "Failed to check if account exists. Please try again.",
+            title: "Account already exists",
+            description: "An account with this email already exists. Please sign in instead.",
             variant: "destructive",
           });
           setIsLoading(false);
           return;
         }
-      }
-
-      // If user exists, show error
-      if (data?.user) {
-        toast({
-          title: "Account already exists",
-          description: "An account with this email already exists. Please sign in instead.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+      } catch (checkError) {
+        console.error("Error during user existence check:", checkError);
+        // Continue with signup attempt
       }
 
       // Create the user in Supabase auth but disable auto confirmation
