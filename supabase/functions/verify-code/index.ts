@@ -141,6 +141,7 @@ serve(async (req) => {
     console.log("Redirect destination:", redirectTo);
     
     // Create user session and return session data
+    // Important: Set redirectTo to the onboarding page
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email!,

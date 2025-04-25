@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SignupData {
@@ -117,34 +116,23 @@ export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
       throw new Error(response.error.message || 'Error verifying code');
     }
 
-    // Handle the auth link if it exists
+    // Stop any automatic redirects - we want to handle this manually
     if (response.data?.authLink) {
       console.log("Received auth link:", response.data.authLink);
       
-      // If the auth link is a full URL with our origin, use it directly
-      if (response.data.authLink.startsWith(origin)) {
-        window.location.href = response.data.authLink;
-      } 
-      // Otherwise if it's a magic link with hash fragments, use special handling
-      else if (response.data.authLink.includes('#access_token=')) {
-        // Extract the hash part and store it
+      // If the auth link is a full URL with our origin, extract the token
+      if (response.data.authLink.includes('#access_token=')) {
+        // Extract the hash part and store it for the Supabase client to use
         const hashPart = response.data.authLink.substring(response.data.authLink.indexOf('#'));
         sessionStorage.setItem('supabase.auth.token', hashPart);
         
-        // Check if we have a specific redirect path
-        if (response.data.redirectTo) {
-          window.location.href = `${origin}${response.data.redirectTo}`;
-        } else {
-          window.location.href = origin;
-        }
-      }
-      // Fallback to direct navigation
+        // Don't navigate - let the app handle it based on the token
+        console.log("Stored auth token for processing, will NOT redirect automatically");
+      } 
+      // Otherwise, we'll use the link directly but prevent automatic navigation
       else {
-        window.location.href = response.data.authLink;
+        console.log("Will NOT redirect automatically - letting the app handle it");
       }
-    } else if (response.data?.redirectTo) {
-      // If we have a redirect path but no auth link
-      window.location.href = `${origin}${response.data.redirectTo}`;
     }
 
     return { data: response.data, error: null };

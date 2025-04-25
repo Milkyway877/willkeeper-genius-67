@@ -9,6 +9,7 @@ import { AuthLayout } from '@/components/auth/AuthLayout';
 import { fadeInUp } from '@/components/auth/animations';
 import { useToast } from "@/hooks/use-toast";
 import { verifyCode, sendVerificationEmail } from "@/services/authService";
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AccountVerification() {
   const [loading, setLoading] = useState(false);
@@ -46,6 +47,23 @@ export default function AccountVerification() {
     }
   }, [resendCooldown]);
 
+  // Set up auth state change listener to handle successful verification
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed in verification page:", event);
+      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        // Redirect to onboarding after successful verification and sign in
+        setTimeout(() => {
+          navigate('/auth/onboarding', { replace: true });
+        }, 500);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
   const handleVerification = async (code: string) => {
     setLoading(true);
     setError(null);
@@ -74,16 +92,9 @@ export default function AccountVerification() {
         title: isLogin ? "Login successful!" : "Account verified successfully!",
         description: `Welcome${email ? ` ${email}` : ''} to WillTank.`,
       });
-
-      // Verification successful - auth redirection is handled directly in the verifyCode function
-      // If for some reason it doesn't redirect, we'll redirect to /auth/onboarding
-      setTimeout(() => {
-        // This is a fallback, verifyCode should handle the redirect
-        if (window.location.pathname.includes('/auth/verify')) {
-          navigate('/auth/onboarding', { replace: true });
-        }
-      }, 2000);
       
+      console.log("Verification successful, waiting for auth state change");
+      // The auth state listener will handle the redirect
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       toast({

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
@@ -40,14 +39,26 @@ export default function Onboarding() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { profile, refreshProfile } = useUserProfile();
+  const { profile, refreshProfile, user } = useUserProfile();
   const totalSteps = 4;
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Onboarding page loaded", { 
+      profile, 
+      user: user ? "exists" : "null", 
+      isActivated: profile?.is_activated 
+    });
+  }, [profile, user]);
 
   // Check if user is already onboarded and redirect if necessary
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       if (profile?.is_activated) {
+        console.log("User is already activated, redirecting to dashboard");
         navigate('/dashboard');
+      } else {
+        console.log("User is not activated, staying on onboarding page");
       }
     };
     
@@ -55,6 +66,18 @@ export default function Onboarding() {
       checkOnboardingStatus();
     }
   }, [profile, navigate]);
+
+  // Keep refreshing the profile until we have it
+  useEffect(() => {
+    if (!profile && user) {
+      console.log("No profile found but user exists, refreshing profile");
+      const interval = setInterval(() => {
+        refreshProfile();
+      }, 2000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [profile, user, refreshProfile]);
 
   const handleGoalSelection = (goals: UserGoals) => {
     setSelectedGoals(goals);
