@@ -1,11 +1,17 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Generate a UUID v4 string using the Web Crypto API
+ */
+function generateUUID(): string {
+  return crypto.randomUUID();
+}
 
 export const uploadWillDocument = async (willId: string, file: File, description?: string) => {
   try {
     const fileExt = file.name.split('.').pop();
-    const filePath = `${willId}/${uuidv4()}.${fileExt}`;
+    const filePath = `${willId}/${generateUUID()}.${fileExt}`;
     
     const { data, error } = await supabase.storage
       .from('will_documents')
@@ -38,7 +44,7 @@ export const uploadWillDocument = async (willId: string, file: File, description
 
 export const uploadWillVideo = async (willId: string, videoBlob: Blob) => {
   try {
-    const filePath = `${willId}/${uuidv4()}.webm`;
+    const filePath = `${willId}/${generateUUID()}.webm`;
     
     const { data, error } = await supabase.storage
       .from('will_videos')
