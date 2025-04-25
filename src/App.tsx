@@ -49,6 +49,7 @@ function App() {
                 <Route path="login" element={<Login />} />
                 <Route path="signup" element={<Signup />} />
                 <Route path="verify" element={<AccountVerification />} />
+                {/* Onboarding route - requires auth but not onboarding completion */}
                 <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
                   <Route path="onboarding" element={<Onboarding />} />
                 </Route>

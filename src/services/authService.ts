@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SignupData {
@@ -129,12 +130,21 @@ export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
         // Extract the hash part and store it
         const hashPart = response.data.authLink.substring(response.data.authLink.indexOf('#'));
         sessionStorage.setItem('supabase.auth.token', hashPart);
-        window.location.href = '/';
+        
+        // Check if we have a specific redirect path
+        if (response.data.redirectTo) {
+          window.location.href = response.data.redirectTo;
+        } else {
+          window.location.href = '/';
+        }
       }
       // Fallback to direct navigation
       else {
         window.location.href = response.data.authLink;
       }
+    } else if (response.data?.redirectTo) {
+      // If we have a redirect path but no auth link
+      window.location.href = response.data.redirectTo;
     }
 
     return { data: response.data, error: null };

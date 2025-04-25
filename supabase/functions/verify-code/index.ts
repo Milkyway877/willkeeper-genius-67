@@ -118,17 +118,29 @@ serve(async (req) => {
     }
 
     // Extract origin from request or use provided origin
-    const clientOrigin = origin || req.headers.get('origin') || req.headers.get('referer')?.replace(/\/[^/]*$/, '') || '';
-    console.log("Using origin for redirection:", clientOrigin);
+    // First try to get origin from the Origin header
+    const requestOrigin = req.headers.get('origin');
+    // Then try from the Referer header
+    const refererUrl = req.headers.get('referer');
+    const refererOrigin = refererUrl ? new URL(refererUrl).origin : null;
+    // Finally, use the provided origin or a default
+    const clientOrigin = origin || requestOrigin || refererOrigin || '';
+    
+    console.log("Detected origins:", {
+      requestOrigin,
+      refererOrigin,
+      providedOrigin: origin,
+      finalOrigin: clientOrigin
+    });
     
     // Default to a fallback URL if we can't determine the origin
-    const baseUrl = clientOrigin || 'https://lovable.dev';
-    const redirectPath = `/auth/onboarding`;
-    const redirectTo = `${baseUrl}${redirectPath}`;
+    const baseUrl = clientOrigin || 'https://willrank.dev';
+    const onboardingPath = `/auth/onboarding`;
+    const redirectTo = `${baseUrl}${onboardingPath}`;
     
     console.log("Redirect destination:", redirectTo);
     
-    // Create user session and return session data - using the latest redirect approach
+    // Create user session and return session data
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email!,
@@ -169,7 +181,8 @@ serve(async (req) => {
           email: user.email
         },
         isNewUser: user.created_at === user.updated_at, // If created_at equals updated_at, user is new
-        authLink: sessionData.properties?.action_link
+        authLink: sessionData.properties?.action_link,
+        redirectTo: onboardingPath
       }),
       { 
         status: 200, 
@@ -177,7 +190,7 @@ serve(async (req) => {
       }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in verify-code function:", error);
     return new Response(
       JSON.stringify({ error: error.message }),

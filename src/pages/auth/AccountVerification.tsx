@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -75,7 +76,14 @@ export default function AccountVerification() {
       });
 
       // Verification successful - auth redirection is handled directly in the verifyCode function
-      // No need to navigate here as the auth link handles it
+      // If for some reason it doesn't redirect, we'll redirect to /auth/onboarding
+      setTimeout(() => {
+        // This is a fallback, verifyCode should handle the redirect
+        if (window.location.pathname.includes('/auth/verify')) {
+          navigate('/auth/onboarding', { replace: true });
+        }
+      }, 2000);
+      
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       toast({

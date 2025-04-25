@@ -24,6 +24,19 @@ export function RouteGuard({
     }
   }, [loading]);
 
+  // Add debug logs
+  useEffect(() => {
+    if (!loading) {
+      console.log("RouteGuard state:", {
+        path: location.pathname,
+        requireAuth,
+        requireOnboarding,
+        user: user ? "exists" : "null",
+        profile: profile ? `activated: ${profile.is_activated}` : "null",
+      });
+    }
+  }, [loading, location.pathname, requireAuth, requireOnboarding, user, profile]);
+
   if (isLoading) {
     // Show a loading indicator while checking auth status
     return (
@@ -35,6 +48,7 @@ export function RouteGuard({
 
   // Authentication check
   if (requireAuth && !user) {
+    console.log("Redirecting to login: No authenticated user");
     // Redirect to login if auth is required but user is not logged in
     return <Navigate to="/auth/login" state={{ from: location.pathname }} replace />;
   }
@@ -44,6 +58,7 @@ export function RouteGuard({
     // Redirect to onboarding if user is logged in but hasn't completed onboarding
     // Skip if the user is already on the onboarding page
     if (!location.pathname.includes('/auth/onboarding')) {
+      console.log("Redirecting to onboarding: User not activated");
       return <Navigate to="/auth/onboarding" replace />;
     }
   }
@@ -52,6 +67,7 @@ export function RouteGuard({
   if (user && location.pathname.startsWith('/auth/') && 
       !location.pathname.includes('/auth/onboarding') &&
       !location.pathname.includes('/auth/verify')) {
+    console.log("Redirecting to dashboard: Authenticated user on auth page");
     return <Navigate to="/dashboard" replace />;
   }
 

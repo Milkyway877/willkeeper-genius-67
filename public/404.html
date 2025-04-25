@@ -8,12 +8,19 @@
     // Single Page Apps for GitHub Pages and other static hosts
     // This script handles redirects for auth tokens and other URL fragments
     (function(){
+      console.log("404.html redirect handler started");
+      
       // Get the full path including hash fragments
       const path = window.location.pathname + window.location.search + window.location.hash;
+      console.log("Current path:", path);
+      
+      // Check if there's an auth token in the URL
       const hasAccessToken = window.location.hash && window.location.hash.includes('access_token');
+      console.log("Has access token:", hasAccessToken);
       
       // Special handling for access tokens
       if (hasAccessToken) {
+        console.log("Storing auth token and redirecting to root");
         // Store the complete hash in session storage and redirect to root
         // This ensures the auth token is properly processed
         sessionStorage.setItem('supabase.auth.token', window.location.hash);
@@ -21,6 +28,7 @@
       } 
       // If this is not the index page and doesn't have a token, handle normal redirects
       else if (path !== '/' && !hasAccessToken) {
+        console.log("Storing path for redirect:", path);
         sessionStorage.setItem('redirect_path', path);
         window.location.href = '/';
       }
