@@ -88,17 +88,14 @@ export const logout = async () => {
 
 export const sendVerificationEmail = async ({ email, name, isLogin }: VerifyEmailData) => {
   try {
-    console.log(`Sending verification email to: ${email}, isLogin: ${isLogin}`);
     const response = await supabase.functions.invoke('verify-email', {
       body: { email, name, isLogin }
     });
 
     if (response.error) {
-      console.error('Error response from verify-email function:', response.error);
       throw new Error(response.error.message || 'Error sending verification email');
     }
 
-    console.log('Verification email sent successfully:', response.data);
     return { data: response.data, error: null };
   } catch (error: any) {
     console.error('Send verification email error:', error);
@@ -108,42 +105,19 @@ export const sendVerificationEmail = async ({ email, name, isLogin }: VerifyEmai
 
 export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
   try {
-    console.log(`Verifying code: ${code} for email: ${email}, isLogin: ${isLogin}`);
-    
-    // Add additional headers and better error handling
     const response = await supabase.functions.invoke('verify-code', {
-      body: { email, code, isLogin },
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      body: { email, code, isLogin }
     });
 
     if (response.error) {
-      console.error('Error response from verify-code function:', response.error);
       throw new Error(response.error.message || 'Error verifying code');
     }
 
-    if (!response.data) {
-      console.error('No data returned from verify-code function');
-      throw new Error('No response data from verification service');
+    if (response.data?.authLink) {
+      // If we have an auth link, use it to automatically sign in the user
+      window.location.href = response.data.authLink;
     }
 
-    console.log('Code verified successfully:', response.data);
-    
-    // If we received session data, set it directly
-    if (response.data.session) {
-      try {
-        await supabase.auth.setSession({
-          access_token: response.data.session.access_token,
-          refresh_token: response.data.session.refresh_token
-        });
-        console.log("Session set successfully from API response");
-      } catch (sessionError) {
-        console.error("Error setting session:", sessionError);
-        // Continue anyway, as we'll return the data for manual handling
-      }
-    }
-    
     return { data: response.data, error: null };
   } catch (error: any) {
     console.error('Verify code error:', error);
@@ -155,11 +129,6 @@ export const logUserActivity = async (activityType: string, details?: any) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) {
-      console.log('No user found, not logging activity');
-      return;
-    }
-    
     await supabase.functions.invoke('log-activity', {
       body: {
         userId: user?.id,
@@ -167,8 +136,6 @@ export const logUserActivity = async (activityType: string, details?: any) => {
         details
       }
     });
-    
-    console.log(`Activity logged: ${activityType}`);
   } catch (error) {
     console.error('Error logging activity:', error);
     // Don't throw, as this is not critical for the app

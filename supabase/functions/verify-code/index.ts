@@ -26,27 +26,9 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Verify-code function called");
-    
-    // Parse request body
-    let requestData: VerifyCodeRequest;
-    try {
-      requestData = await req.json();
-    } catch (parseError) {
-      console.error("Error parsing request body:", parseError);
-      return new Response(
-        JSON.stringify({ error: "Invalid request format" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
-    
-    const { email, code, isLogin } = requestData;
+    const { email, code, isLogin }: VerifyCodeRequest = await req.json();
     
     if (!email || !code) {
-      console.error("Missing required fields:", { email, code });
       return new Response(
         JSON.stringify({ error: "Email and code are required" }),
         { 
@@ -55,8 +37,6 @@ serve(async (req) => {
         }
       );
     }
-
-    console.log(`Verifying code for email: ${email}, isLogin: ${isLogin}`);
 
     // Create a Supabase client with the service role key
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
@@ -71,16 +51,12 @@ serve(async (req) => {
     
     if (userError) {
       console.error("Error fetching users:", userError.message);
-      return new Response(
-        JSON.stringify({ error: "Could not verify code: " + userError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Could not verify code");
     }
 
     const user = userData.users.find(u => u.email === email);
     
     if (!user) {
-      console.error("User not found for email:", email);
       return new Response(
         JSON.stringify({ error: "User does not exist" }),
         { 
@@ -89,8 +65,6 @@ serve(async (req) => {
         }
       );
     }
-
-    console.log("Found user:", user.id);
 
     // Check if the verification code is valid
     const { data: verificationData, error: verificationError } = await supabaseAdmin
@@ -116,8 +90,6 @@ serve(async (req) => {
       );
     }
 
-    console.log("Verification data found:", verificationData.id);
-
     // Mark the verification code as used
     const { error: updateError } = await supabaseAdmin
       .from('email_verifications')
@@ -129,13 +101,8 @@ serve(async (req) => {
     
     if (updateError) {
       console.error("Error updating verification:", updateError.message);
-      return new Response(
-        JSON.stringify({ error: "Could not update verification status: " + updateError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("Could not update verification status");
     }
-
-    console.log("Verification marked as used");
 
     // Update user profile status
     const { error: profileError } = await supabaseAdmin
@@ -145,86 +112,72 @@ serve(async (req) => {
     
     if (profileError) {
       console.error("Error updating profile:", profileError.message);
-      // Don't fail the whole process for this error, just log it
-    } else {
-      console.log("User profile updated");
+      throw new Error("Could not update profile status");
     }
 
-    // Create direct sign-in credentials
-    try {
-      const { data: signInData, error: signInError } = await supabaseAdmin.auth.admin.createSession({
-        userId: user.id,
-        properties: {
-          custom_claim: 'verified_user'
-        }
+    // Extract origin from request headers for redirection
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.replace(/\/[^/]*$/, '') || '';
+    console.log("Origin for redirection:", origin);
+    
+    // If origin is empty, use a default URL
+    const baseUrl = origin || 'https://lovable.dev';
+    const redirectPath = `/auth/onboarding`;
+    
+    // Create user session and return session data
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: user.email!,
+      options: {
+        redirectTo: `${baseUrl}${redirectPath}`
+      }
+    });
+    
+    if (sessionError) {
+      console.error("Error creating session:", sessionError.message);
+      throw new Error("Could not create user session");
+    }
+
+    console.log("Generated auth link:", sessionData.properties?.action_link);
+
+    // Log the verification activity
+    const { error: activityError } = await supabaseAdmin
+      .from('user_activity')
+      .insert({
+        user_id: user.id,
+        activity_type: isLogin ? 'email_verification_login' : 'email_verification_signup',
+        details: { email: email },
+        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown'
       });
-
-      if (signInError) {
-        console.error("Error creating session:", signInError.message);
-        throw new Error("Could not create user session: " + signInError.message);
-      }
-
-      console.log("Created session successfully");
-
-      // Log the verification activity
-      try {
-        await supabaseAdmin
-          .from('user_activity')
-          .insert({
-            user_id: user.id,
-            activity_type: isLogin ? 'email_verification_login' : 'email_verification_signup',
-            details: { email: email },
-            ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown'
-          });
-          
-        console.log("Activity logged");
-      } catch (activityError) {
-        console.error("Error logging activity:", activityError);
-        // Don't fail the whole process for this error
-      }
-
-      // Return the response with auth data
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Email verified successfully",
-          user: {
-            id: user.id,
-            email: user.email
-          },
-          session: signInData.session,
-          isNewUser: !isLogin
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    } catch (sessionError) {
-      console.error("Error in session creation:", sessionError);
-      // Fall back to just responding with success but no session
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Email verified successfully, but session couldn't be created",
-          user: {
-            id: user.id,
-            email: user.email
-          },
-          isNewUser: !isLogin
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
+    
+    if (activityError) {
+      console.error("Error logging activity:", activityError.message);
+      // Don't throw, just log the error as this is not critical
     }
+
+    // Return the response with auth link
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "Email verified successfully",
+        user: {
+          id: user.id,
+          email: user.email
+        },
+        isNewUser: user.created_at === user.updated_at, // If created_at equals updated_at, user is new
+        authLink: sessionData.properties?.action_link
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
+    );
+
   } catch (error) {
     console.error("Error in verify-code function:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
+      JSON.stringify({ error: error.message }),
       { 
-        status: 200, // Still return 200 to prevent API calls from failing, but include error in body
+        status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       }
     );
