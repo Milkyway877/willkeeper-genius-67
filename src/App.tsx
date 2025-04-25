@@ -7,6 +7,7 @@ import { UserProfileProvider } from '@/contexts/UserProfileContext';
 import { RouteGuard } from '@/components/auth/RouteGuard';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { SidebarProvider } from '@/contexts/SidebarContext';
 
 // Pages
 import Index from '@/pages/Index';
@@ -60,62 +61,70 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="willtank-theme">
         <UserProfileProvider>
-          <Router>
-            <div className="min-h-screen bg-background">
-              <Routes>
-                {/* Public Routes - No auth required */}
-                <Route path="/" element={<Index />} />
-                <Route path="/help" element={<Help />} />
-                
-                {/* Auth Routes */}
-                <Route path="/auth">
-                  <Route path="login" element={<Login />} />
-                  <Route path="signup" element={<Signup />} />
-                  <Route path="verify" element={<AccountVerification />} />
-                </Route>
-                
-                {/* Onboarding route - requires auth but not onboarding completion */}
-                <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
-                  <Route path="/auth/onboarding" element={<Onboarding />} />
-                </Route>
-                
-                {/* Corporate Pages */}
-                <Route path="/corporate" element={<Corporate />} />
-                <Route path="/corporate/documentation" element={<Documentation />} />
-                
-                {/* Protected Dashboard Routes */}
-                <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
-                  <Route element={<DashboardLayout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/security" element={<Security />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/pages/encryption/Encryption" element={<Encryption />} />
-                    <Route path="/pages/executors/Executors" element={<Executors />} />
-                    <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
-                    <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
-                    <Route path="/tank" element={<Tank />} />
-                    <Route path="/pages/billing/Billing" element={<Billing />} />
-                    <Route path="/pages/notifications/Notifications" element={<Notifications />} />
-                    <Route path="/corporate" element={<Corporate />} />
-                    <Route path="/messages" element={<FutureMessages />} />
-                    <Route path="/messages/create" element={<CreateMessage />} />
-                    <Route path="/messages/edit/:id" element={<EditMessage />} />
-                    <Route path="/messages/view/:id" element={<ViewMessage />} />
-                    <Route path="/vault" element={<LegacyVault />} />
-                    <Route path="/vault/create" element={<CreateVaultItem />} />
-                    <Route path="/vault/edit/:id" element={<EditVaultItem />} />
-                    <Route path="/vault/view/:id" element={<ViewVaultItem />} />
+          <SidebarProvider>
+            <Router>
+              <div className="min-h-screen bg-background">
+                <Routes>
+                  {/* Public Routes - No auth required */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/help" element={<Help />} />
+                  
+                  {/* Auth Routes */}
+                  <Route path="/auth">
+                    <Route path="login" element={<Login />} />
+                    <Route path="signup" element={<Signup />} />
+                    <Route path="verify" element={<AccountVerification />} />
                   </Route>
-                </Route>
+                  
+                  {/* Onboarding route - requires auth but not onboarding completion */}
+                  <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
+                    <Route path="/auth/onboarding" element={<Onboarding />} />
+                  </Route>
+                  
+                  {/* Corporate Pages */}
+                  <Route path="/corporate" element={<Corporate />} />
+                  <Route path="/corporate/documentation" element={<Documentation />} />
+                  
+                  {/* Protected Dashboard Routes */}
+                  <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
+                    <Route element={<DashboardLayout />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/security" element={<Security />} />
+                      <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/pages/encryption" element={<Encryption />} />
+                      <Route path="/pages/executors" element={<Executors />} />
+                      <Route path="/pages/ai" element={<AIAssistance />} />
+                      <Route path="/pages/security" element={<IDSecurity />} />
+                      <Route path="/tank" element={<Tank />} />
+                      <Route path="/pages/billing" element={<Billing />} />
+                      <Route path="/pages/notifications" element={<Notifications />} />
+                      <Route path="/messages" element={<FutureMessages />} />
+                      <Route path="/messages/create" element={<CreateMessage />} />
+                      <Route path="/messages/edit/:id" element={<EditMessage />} />
+                      <Route path="/messages/view/:id" element={<ViewMessage />} />
+                      <Route path="/vault" element={<LegacyVault />} />
+                      <Route path="/vault/create" element={<CreateVaultItem />} />
+                      <Route path="/vault/edit/:id" element={<EditVaultItem />} />
+                      <Route path="/vault/view/:id" element={<ViewVaultItem />} />
+                      <Route path="/help" element={<Help />} />
+                      <Route path="/pages/encryption/Encryption" element={<Encryption />} />
+                      <Route path="/pages/executors/Executors" element={<Executors />} />
+                      <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
+                      <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+                      <Route path="/pages/billing/Billing" element={<Billing />} />
+                      <Route path="/pages/notifications/Notifications" element={<Notifications />} />
+                    </Route>
+                  </Route>
 
-                {/* 404 Route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <Toaster />
-            </div>
-          </Router>
+                  {/* 404 Route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+              </div>
+            </Router>
+          </SidebarProvider>
         </UserProfileProvider>
       </ThemeProvider>
       {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -213,7 +214,7 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       animate={{ width: isCollapsed ? 64 : 256 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "h-screen border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 sticky top-0",
+        "h-screen border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 sticky top-0 flex flex-col",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
