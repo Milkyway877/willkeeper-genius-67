@@ -134,7 +134,7 @@ serve(async (req) => {
     });
     
     // Default to a fallback URL if we can't determine the origin
-    const baseUrl = clientOrigin || 'https://willrank.dev';
+    const baseUrl = clientOrigin || 'https://willtank.dev';
     const onboardingPath = `/auth/onboarding`;
     const redirectTo = `${baseUrl}${onboardingPath}`;
     

@@ -58,17 +58,16 @@ export function RouteGuard({
     return <Navigate to="/auth/login" state={{ from: location.pathname }} replace />;
   }
 
-  // Onboarding check
+  // Onboarding check - ONLY redirect if not already on the onboarding path
   if (requireAuth && requireOnboarding && user && profile && !profile.is_activated) {
-    // Redirect to onboarding if user is logged in but hasn't completed onboarding
-    // Skip if the user is already on the onboarding page
+    // Only redirect if not already on onboarding page
     if (!location.pathname.includes('/auth/onboarding')) {
       console.log("Redirecting to onboarding: User not activated");
       return <Navigate to="/auth/onboarding" replace />;
     }
   }
 
-  // Redirect logged-in users away from auth pages
+  // Redirect logged-in users away from auth pages except onboarding and verify
   if (user && location.pathname.startsWith('/auth/') && 
       !location.pathname.includes('/auth/onboarding') &&
       !location.pathname.includes('/auth/verify')) {

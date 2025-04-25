@@ -133,9 +133,9 @@ export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
         
         // Check if we have a specific redirect path
         if (response.data.redirectTo) {
-          window.location.href = response.data.redirectTo;
+          window.location.href = `${origin}${response.data.redirectTo}`;
         } else {
-          window.location.href = '/';
+          window.location.href = origin;
         }
       }
       // Fallback to direct navigation
@@ -144,7 +144,7 @@ export const verifyCode = async ({ email, code, isLogin }: VerifyCodeData) => {
       }
     } else if (response.data?.redirectTo) {
       // If we have a redirect path but no auth link
-      window.location.href = response.data.redirectTo;
+      window.location.href = `${origin}${response.data.redirectTo}`;
     }
 
     return { data: response.data, error: null };
