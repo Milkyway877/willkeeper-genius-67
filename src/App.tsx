@@ -12,7 +12,7 @@ import { SidebarProvider } from '@/contexts/SidebarContext';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/dashboard/Dashboard';
+import Dashboard from '@/pages/Dashboard';
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/dashboard/Settings';
 import Security from '@/pages/dashboard/Security';
