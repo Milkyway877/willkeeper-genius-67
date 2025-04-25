@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { motion } from 'framer-motion';
+import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -39,6 +41,8 @@ export default function EmailVerification() {
     setVerificationAttempts(prev => prev + 1);
     
     try {
+      console.log("Verifying code:", values.code, "for email:", email);
+      
       // First verify the code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
@@ -49,6 +53,8 @@ export default function EmailVerification() {
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
         .single();
+
+      console.log("Verification query result:", { data: verificationData, error: verificationError });
 
       if (verificationError || !verificationData) {
         toast({
@@ -155,6 +161,8 @@ export default function EmailVerification() {
       // Generate a new verification code
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
+      console.log("Resending verification code to:", email);
+      
       // Send verification email
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
@@ -164,7 +172,10 @@ export default function EmailVerification() {
         }
       });
       
+      console.log("Email function response:", { data: emailData, error: emailError });
+      
       if (emailError) {
+        console.error("Error invoking send-verification function:", emailError);
         throw new Error("Failed to send verification code");
       }
       
@@ -180,6 +191,7 @@ export default function EmailVerification() {
         });
       
       if (storeError) {
+        console.error("Error storing verification code:", storeError);
         throw new Error("Failed to process verification");
       }
       
@@ -223,16 +235,14 @@ export default function EmailVerification() {
                 <FormItem className="space-y-3">
                   <FormLabel>Verification Code</FormLabel>
                   <FormControl>
-                    <InputOTP
-                      maxLength={6}
-                      {...field}
-                    >
-                      <InputOTPGroup>
-                        {Array.from({ length: 6 }).map((_, i) => (
-                          <InputOTPSlot key={i} index={i} />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
+                    <TwoFactorInput 
+                      onSubmit={(code) => {
+                        field.onChange(code);
+                        form.handleSubmit(handleFormSubmit)();
+                      }}
+                      loading={isLoading}
+                      autoSubmit={false}
+                    />
                   </FormControl>
                 </FormItem>
               )}

@@ -37,7 +37,7 @@ serve(async (req) => {
 
     const emailResponse = await resend.emails.send({
       from: "WillTank <noreply@willtank.app>",
-      to: email,
+      to: [email],
       subject: subject,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -60,6 +60,8 @@ serve(async (req) => {
         </div>
       `,
     });
+
+    console.log("Email sent successfully:", emailResponse);
 
     return new Response(JSON.stringify(emailResponse), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

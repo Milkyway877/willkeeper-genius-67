@@ -80,6 +80,7 @@ export function SignUpForm() {
       }
       
       const verificationCode = generateVerificationCode();
+      console.log("Generated verification code:", verificationCode);
       
       // First create a user account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
@@ -107,6 +108,8 @@ export function SignUpForm() {
       console.log("User account created successfully");
 
       try {
+        console.log("Attempting to send verification email to:", data.email);
+        
         // Send verification email through the edge function
         const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
           body: {
@@ -116,8 +119,10 @@ export function SignUpForm() {
           }
         });
 
+        console.log("Email function response:", { data: emailData, error: emailError });
+
         if (emailError) {
-          console.error("Error sending verification email:", emailError);
+          console.error("Error invoking send-verification function:", emailError);
           throw new Error("Failed to send verification email");
         }
         
