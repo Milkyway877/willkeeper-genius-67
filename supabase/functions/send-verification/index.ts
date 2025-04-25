@@ -35,8 +35,12 @@ serve(async (req) => {
       actionText = "complete your sign-in";
     }
 
+    // Use a verified sender domain or Resend's default domain
+    const fromEmail = "onboarding@resend.dev";
+    const fromName = "WillTank";
+
     const emailResponse = await resend.emails.send({
-      from: "WillTank <noreply@willtank.app>",
+      from: `${fromName} <${fromEmail}>`,
       to: [email],
       subject: subject,
       html: `
