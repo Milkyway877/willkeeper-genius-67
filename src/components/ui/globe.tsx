@@ -46,6 +46,7 @@ export function Globe({
   const pointerInteracting = useRef(null)
   const pointerInteractionMovement = useRef(0)
   const [r, setR] = useState(0)
+  const [isCanvasReady, setIsCanvasReady] = useState(false)
 
   const updatePointerInteraction = (value: any) => {
     pointerInteracting.current = value
@@ -75,23 +76,55 @@ export function Globe({
   const onResize = () => {
     if (canvasRef.current) {
       width = canvasRef.current.offsetWidth
+      setIsCanvasReady(true)
     }
   }
 
   useEffect(() => {
+    // Initialize resize handler
     window.addEventListener("resize", onResize)
-    onResize()
-
-    const globe = createGlobe(canvasRef.current!, {
-      ...config,
-      width: width * 2,
-      height: width * 2,
-      onRender,
-    })
-
-    setTimeout(() => (canvasRef.current!.style.opacity = "1"))
-    return () => globe.destroy()
+    
+    // Initial size calculation with a small delay to ensure DOM is ready
+    const initTimeout = setTimeout(() => {
+      onResize()
+    }, 100)
+    
+    return () => {
+      window.removeEventListener("resize", onResize)
+      clearTimeout(initTimeout)
+    }
   }, [])
+
+  useEffect(() => {
+    // Only create the globe when the canvas is ready and has dimensions
+    if (!isCanvasReady || !canvasRef.current) return;
+    
+    // Ensure width is properly set before creating the globe
+    if (width <= 0) {
+      width = canvasRef.current.offsetWidth || 300; // Fallback width
+    }
+    
+    try {
+      const globe = createGlobe(canvasRef.current, {
+        ...config,
+        width: width * 2,
+        height: width * 2,
+        onRender,
+      });
+
+      // Fade in the globe
+      setTimeout(() => {
+        if (canvasRef.current) {
+          canvasRef.current.style.opacity = "1";
+        }
+      }, 200);
+
+      // Clean up
+      return () => globe.destroy();
+    } catch (error) {
+      console.error("Error creating globe:", error);
+    }
+  }, [isCanvasReady, config, onRender]);
 
   return (
     <div
