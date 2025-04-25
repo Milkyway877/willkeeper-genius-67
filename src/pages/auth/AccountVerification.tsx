@@ -1,15 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 import { Shield, ArrowLeft, Mail } from 'lucide-react';
-import { AuthLayout } from '@/components/auth/AuthLayout';
-import { fadeInUp } from '@/components/auth/animations';
-import { useToast } from "@/hooks/use-toast";
+import { Logo } from "@/components/ui/logo/Logo";
+import { SecurityTipsPanel } from "@/components/ui/security-tips-panel";
 import { verifyCode, sendVerificationEmail } from "@/services/authService";
-import { supabase } from '@/integrations/supabase/client';
+import { useToast } from "@/hooks/use-toast";
 
 export default function AccountVerification() {
   const [loading, setLoading] = useState(false);
@@ -19,14 +17,11 @@ export default function AccountVerification() {
   const location = useLocation();
   const { toast } = useToast();
 
-  // Get email and isLogin from location state or URL parameters
   const getStateFromLocation = () => {
-    // First try to get from location state
     if (location.state?.email) {
       return location.state;
     }
     
-    // Otherwise try to parse from URL parameters
     const params = new URLSearchParams(location.search);
     const email = params.get('email') || '';
     const isLogin = params.get('isLogin') === 'true';
@@ -37,7 +32,6 @@ export default function AccountVerification() {
 
   const { email, isLogin, message } = getStateFromLocation();
 
-  // Set up cooldown timer for resend button
   useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => {
@@ -47,7 +41,6 @@ export default function AccountVerification() {
     }
   }, [resendCooldown]);
 
-  // Set up auth state change listener to handle successful verification
   useEffect(() => {
     console.log("Setting up auth state listener in verification page");
     
@@ -56,7 +49,6 @@ export default function AccountVerification() {
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log("Detected sign in, will redirect to onboarding shortly");
-        // Add a delay to ensure the state is fully processed
         setTimeout(() => {
           console.log("Redirecting to onboarding now");
           navigate('/auth/onboarding', { replace: true });
@@ -77,7 +69,6 @@ export default function AccountVerification() {
     try {
       console.log("Verifying code for:", email, "isLogin:", isLogin);
       
-      // Call the verify code endpoint
       const { data, error: verifyError } = await verifyCode({ 
         email, 
         code,
@@ -102,8 +93,6 @@ export default function AccountVerification() {
       
       console.log("Verification successful, auth data:", data);
       
-      // If we received auth link but no automatic redirect happened,
-      // manually navigate to onboarding after a short delay
       if (data?.authLink) {
         console.log("Received auth link, will manually navigate to onboarding after delay");
         setTimeout(() => {
@@ -144,7 +133,6 @@ export default function AccountVerification() {
         return;
       }
 
-      // Set cooldown for 60 seconds
       setResendCooldown(60);
 
       toast({
@@ -167,80 +155,85 @@ export default function AccountVerification() {
   };
 
   return (
-    <AuthLayout title={isLogin ? "Verify Your Login" : "Verify Your Account"}>
-      <motion.div
-        className="w-full max-w-md space-y-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Icon and Description */}
-        <motion.div 
-          className="text-center space-y-4"
-          variants={fadeInUp}
-        >
-          <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center">
-            <Shield className="w-8 h-8 text-blue-500" />
-          </div>
-          <p className="text-muted-foreground">
-            {message}
-          </p>
-          {email && (
-            <p className="text-sm font-medium text-blue-500">
-              {email}
+    <div className="min-h-screen w-full bg-gray-950 flex">
+      <div className="hidden md:flex md:w-1/2 bg-black relative overflow-hidden">
+        <SecurityTipsPanel />
+      </div>
+      
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 md:p-8">
+        <div className="mb-6">
+          <Logo size="lg" color="white" showSlogan />
+        </div>
+        
+        <div className="max-w-md w-full mx-auto rounded-none md:rounded-2xl p-4 md:p-8 shadow-input bg-gray-800">
+          <motion.div 
+            className="text-center space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center">
+              <Shield className="w-8 h-8 text-blue-500" />
+            </div>
+            <h2 className="text-xl font-bold text-white">
+              {isLogin ? "Verify Your Login" : "Verify Your Account"}
+            </h2>
+            <p className="text-muted-foreground">
+              {message}
             </p>
-          )}
-        </motion.div>
+            {email && (
+              <p className="text-sm font-medium text-blue-500">
+                {email}
+              </p>
+            )}
+          </motion.div>
 
-        {/* Verification Code Input */}
-        <motion.div 
-          className="space-y-4"
-          variants={fadeInUp}
-        >
-          <TwoFactorInput
-            onSubmit={handleVerification}
-            loading={loading}
-            error={error}
-          />
+          <div className="mt-8 space-y-4">
+            <TwoFactorInput
+              onSubmit={handleVerification}
+              loading={loading}
+              error={error}
+            />
 
-          {/* Action Buttons */}
-          <div className="space-y-3 pt-4">
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={handleResendCode}
-              disabled={loading || resendCooldown > 0}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              {resendCooldown > 0 
-                ? `Resend code in ${resendCooldown}s` 
-                : 'Resend verification code'}
-            </Button>
+            <div className="space-y-3 pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-foreground"
+                onClick={handleResendCode}
+                disabled={loading || resendCooldown > 0}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                {resendCooldown > 0 
+                  ? `Resend code in ${resendCooldown}s` 
+                  : 'Resend verification code'}
+              </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoBack}
-              disabled={loading}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to {isLogin ? 'login' : 'signup'}
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleGoBack}
+                disabled={loading}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to {isLogin ? 'login' : 'signup'}
+              </Button>
+            </div>
           </div>
-        </motion.div>
 
-        {/* Security Note */}
-        <motion.div
-          className="mt-8 text-center text-sm text-muted-foreground"
-          variants={fadeInUp}
-        >
-          <p>
-            This additional step helps us keep your WillTank account secure.
-          </p>
-        </motion.div>
-      </motion.div>
-    </AuthLayout>
+          <motion.div
+            className="mt-8 text-center text-sm text-muted-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <p>
+              This additional step helps us keep your WillTank account secure.
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    </div>
   );
 }
