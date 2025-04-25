@@ -3,18 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const sendVerificationEmail = async (email: string, type: 'signup' | 'login', firstName?: string) => {
   try {
-    console.log('Sending verification email to:', email, 'type:', type);
-    
     const { data, error } = await supabase.functions.invoke('send-verification-email', {
       body: { email, type, firstName },
     });
 
-    if (error) {
-      console.error('Error sending verification email:', error);
-      throw error;
-    }
-    
-    console.log('Verification email sent successfully:', data);
+    if (error) throw error;
     return { success: true, data };
   } catch (error) {
     console.error('Error sending verification email:', error);

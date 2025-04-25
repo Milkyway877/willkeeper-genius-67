@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { motion } from 'framer-motion';
 import { verifyCode, sendVerificationEmail } from '@/utils/email';
-import { Loader2 } from 'lucide-react';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -32,13 +31,8 @@ export default function EmailVerification() {
   useEffect(() => {
     if (!email) {
       navigate('/auth/signup');
-      toast({
-        title: "Missing email",
-        description: "We couldn't find your email. Please try signing up again.",
-        variant: "destructive",
-      });
     }
-  }, [email, navigate, toast]);
+  }, [email, navigate]);
 
   const handleFormSubmit = async (values: { code: string }) => {
     if (!email) return;
@@ -69,42 +63,53 @@ export default function EmailVerification() {
         return;
       }
       
-      // If successful, mark user as verified in user_profiles
-      try {
-        // Get session to verify user
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      // If successful, create a session
+      const { data: sessionData, error: sessionError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: form.getValues('code') // We need to implement a better way to handle this
+      });
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        navigate('/auth/signin', { state: { verifiedEmail: email } });
         
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          throw sessionError;
-        }
+        toast({
+          title: "Email verified",
+          description: "Your email has been successfully verified. You can now sign in.",
+          variant: "default",
+        });
         
-        if (sessionData?.session?.user) {
-          await supabase
-            .from('user_profiles')
-            .update({ activation_complete: true, email_verified: true })
-            .eq('id', sessionData.session.user.id);
-        }
-      } catch (profileError) {
-        console.error("Error updating profile:", profileError);
-        // Continue anyway - this is not critical
+        setIsLoading(false);
+        return;
       }
       
-      // Success flow
+      // Mark user as verified in the profile
+      if (sessionData.user) {
+        try {
+          await supabase
+            .from('user_profiles')
+            .update({ activation_complete: true })
+            .eq('id', sessionData.user.id);
+        } catch (profileError) {
+          console.error("Error updating profile:", profileError);
+        }
+      }
+      
+      // If successful
       toast({
         title: "Email verified",
-        description: "Your email has been successfully verified. You can now sign in.",
+        description: "Your email has been successfully verified.",
         variant: "default",
       });
       
-      // Navigate to sign in
-      navigate('/auth/signin', { state: { verifiedEmail: email } });
+      // Navigate to dashboard
+      navigate('/dashboard');
       
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error during email verification:", error);
       toast({
         title: "Verification error",
-        description: error?.message || "An unexpected error occurred. Please try again later.",
+        description: "An unexpected error occurred. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -118,9 +123,6 @@ export default function EmailVerification() {
     setResendLoading(true);
     
     try {
-      // Reset verification attempts
-      setVerificationAttempts(0);
-      
       // Use our custom verification email sending
       await sendVerificationEmail(email, 'signup');
       
@@ -131,11 +133,10 @@ export default function EmailVerification() {
       
       // Reset the form
       form.reset({ code: '' });
-    } catch (error: any) {
-      console.error("Error resending code:", error);
+    } catch (error) {
       toast({
         title: "Error",
-        description: error?.message || "Failed to send a new code. Please try again later.",
+        description: "Failed to send a new code. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -146,7 +147,7 @@ export default function EmailVerification() {
   return (
     <AuthLayout
       title="Verify Your Email"
-      subtitle={`We've sent a verification code to ${email || 'your email'}. Please enter the code below to verify your account.`}
+      subtitle={`We've sent a verification code to ${email}. Please enter the code below to verify your account.`}
       rightPanel={<VerificationInfoPanel />}
     >
       <motion.div
@@ -185,11 +186,7 @@ export default function EmailVerification() {
               className="w-full"
               disabled={isLoading || form.watch('code').length !== 6}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
-                </>
-              ) : "Verify Email"}
+              {isLoading ? "Verifying..." : "Verify Email"}
             </Button>
           </form>
         </Form>
@@ -203,11 +200,7 @@ export default function EmailVerification() {
               onClick={handleResendCode}
               disabled={resendLoading}
             >
-              {resendLoading ? (
-                <>
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin inline" /> Sending...
-                </>
-              ) : "Resend Code"}
+              {resendLoading ? "Sending..." : "Resend Code"}
             </Button>
           </p>
         </div>
