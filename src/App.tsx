@@ -1,13 +1,22 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth, AuthProvider } from '@/hooks/use-auth';
 
 // Public Pages
 import Index from '@/pages/Index';
+import SignUp from '@/pages/auth/SignUp';
+import SignIn from '@/pages/auth/SignIn';
+import Recover from '@/pages/auth/Recover';
+import ResetPassword from '@/pages/auth/ResetPassword';
+import EmailVerification from '@/pages/auth/EmailVerification';
+import AuthCallback from '@/pages/auth/AuthCallback';
+import VerifyEmailBanner from '@/pages/auth/VerifyEmailBanner';
 
-// Protected Pages - will need to be updated once new auth system is implemented
+// Protected Pages
 import Dashboard from '@/pages/dashboard/Dashboard';
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/dashboard/Settings';
@@ -28,8 +37,29 @@ import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
-function App() {
+function AppContent() {
+  const { user, isLoading } = useAuth();
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSessionChecked(true);
+    };
+
+    checkSession();
+  }, []);
+
+  if (!sessionChecked && isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-willtank-600"></div>
+      </div>
+    );
+  }
+
   return (
     <ThemeProvider defaultTheme="light" storageKey="willtank-theme">
       <Router>
@@ -38,8 +68,22 @@ function App() {
             <Routes>
               <Route path="/" element={<Index />} />
               
-              {/* Dashboard Routes - these will need auth protection once new auth system is implemented */}
-              <Route path="/dashboard" element={<DashboardLayout />}>
+              {/* Auth Routes */}
+              <Route path="/auth">
+                <Route path="signup" element={<SignUp />} />
+                <Route path="signin" element={<SignIn />} />
+                <Route path="recover" element={<Recover />} />
+                <Route path="reset-password" element={<ResetPassword />} />
+                <Route path="verify-email" element={<EmailVerification />} />
+                <Route path="auth-callback" element={<AuthCallback />} />
+              </Route>
+              
+              {/* Protected Dashboard Routes */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
                 <Route index element={<Dashboard />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="settings" element={<Settings />} />
@@ -79,6 +123,14 @@ function App() {
         </div>
       </Router>
     </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
