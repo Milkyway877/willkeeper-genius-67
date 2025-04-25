@@ -10,26 +10,27 @@ import { RouteGuard } from '@/components/auth/RouteGuard';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/Dashboard'; // Updated import
-import Profile from '@/pages/dashboard/Profile';
-import Settings from '@/pages/dashboard/Settings';
+import Dashboard from '@/pages/Dashboard'; 
+import Profile from '@/pages/settings/Profile';
+import Settings from '@/pages/settings/Settings';
 import Security from '@/pages/dashboard/Security';
-import Notifications from '@/pages/dashboard/Notifications';
-import Wills from '@/pages/dashboard/Wills';
-import CreateWill from '@/pages/dashboard/CreateWill';
-import EditWill from '@/pages/dashboard/EditWill';
-import ViewWill from '@/pages/dashboard/ViewWill';
-import FutureMessages from '@/pages/dashboard/FutureMessages';
-import CreateMessage from '@/pages/dashboard/CreateMessage';
-import EditMessage from '@/pages/dashboard/EditMessage';
-import ViewMessage from '@/pages/dashboard/ViewMessage';
-import LegacyVault from '@/pages/dashboard/LegacyVault';
-import CreateVaultItem from '@/pages/dashboard/CreateVaultItem';
-import EditVaultItem from '@/pages/dashboard/EditVaultItem';
-import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
+import Notifications from '@/pages/notifications/Notifications';
+import Wills from '@/pages/wills/Wills';
+import CreateWill from '@/pages/will/WillCreation';
+import EditWill from '@/pages/will/WillCreation';
+import ViewWill from '@/pages/will/Will';
+import FutureMessages from '@/pages/tank/Tank';
+import CreateMessage from '@/pages/tank/TankCreation';
+import EditMessage from '@/pages/tank/TankCreation';
+import ViewMessage from '@/pages/tank/Tank';
+import LegacyVault from '@/pages/tank/components/TankLegacyVault';
+import CreateVaultItem from '@/pages/tank/components/vault/AddVaultItem';
+import EditVaultItem from '@/pages/tank/components/vault/AddVaultItem';
+import ViewVaultItem from '@/pages/tank/components/vault/VaultItem';
 import NotFound from '@/pages/NotFound';
 import AccountVerification from '@/pages/auth/AccountVerification';
 import Onboarding from '@/pages/auth/Onboarding';
+import Templates from '@/pages/templates/Templates';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -67,6 +68,7 @@ function App() {
                   <Route path="wills/create" element={<CreateWill />} />
                   <Route path="wills/edit/:id" element={<EditWill />} />
                   <Route path="wills/view/:id" element={<ViewWill />} />
+                  <Route path="templates" element={<Templates />} />
                   <Route path="messages" element={<FutureMessages />} />
                   <Route path="messages/create" element={<CreateMessage />} />
                   <Route path="messages/edit/:id" element={<EditMessage />} />
@@ -77,6 +79,12 @@ function App() {
                   <Route path="vault/view/:id" element={<ViewVaultItem />} />
                 </Route>
               </Route>
+              
+              {/* Additional Routes */}
+              <Route path="/will/create" element={<CreateWill />} />
+              <Route path="/will/edit/:id" element={<EditWill />} />
+              <Route path="/will/view/:id" element={<ViewWill />} />
+              <Route path="/will/new" element={<CreateWill />} />
 
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />
