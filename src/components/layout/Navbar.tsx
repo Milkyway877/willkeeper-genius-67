@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -214,7 +213,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link to="/auth/signin" className="w-full">Sign in</Link>
+                        <Link to="/auth/login" className="w-full">Sign in</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/auth/signup" className="w-full">Sign up</Link>
@@ -223,7 +222,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </DropdownMenu>
                 ) : (
                   <>
-                    <Link to="/auth/signin" className="ml-4">
+                    <Link to="/auth/login" className="ml-4">
                       <Button variant="ghost">Sign in</Button>
                     </Link>
                     <Link to="/auth/signup">
