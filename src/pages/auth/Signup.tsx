@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -82,10 +81,10 @@ export default function Signup() {
     if (validateStep2()) {
       setLoading(true);
       
-      // Simulate registration delay
+      // Simulate registration delay and redirect to verification
       setTimeout(() => {
         setLoading(false);
-        navigate('/dashboard');
+        navigate('/auth/verify');
       }, 2000);
     }
   };

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -28,6 +27,7 @@ import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import AccountVerification from '@/pages/auth/AccountVerification';
 
 function App() {
   return (
@@ -40,6 +40,7 @@ function App() {
             {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/signup" element={<Signup />} />
+            <Route path="/auth/verify" element={<AccountVerification />} />
             
             {/* Dashboard Routes */}
             <Route path="/dashboard" element={<DashboardLayout />}>
