@@ -11,14 +11,14 @@ export const sendVerificationEmail = async (email: string, type: 'signup' | 'log
 
     if (error) {
       console.error('Error invoking send-verification-email function:', error);
-      throw error;
+      return { success: false, error };
     }
     
     console.log('Verification email function response:', data);
     return { success: true, data };
   } catch (error) {
     console.error('Error sending verification email:', error);
-    throw error;
+    return { success: false, error };
   }
 };
 
@@ -38,7 +38,7 @@ export const verifyCode = async (email: string, code: string, type: 'signup' | '
 
     if (error) {
       console.error('Error querying verification code:', error);
-      throw error;
+      return { valid: false, message: 'Error checking verification code', error };
     }
     
     if (!data) {
@@ -61,6 +61,6 @@ export const verifyCode = async (email: string, code: string, type: 'signup' | '
     return { valid: true };
   } catch (error) {
     console.error('Error verifying code:', error);
-    throw error;
+    return { valid: false, message: 'Error verifying code', error };
   }
 };

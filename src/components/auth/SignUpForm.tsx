@@ -63,17 +63,24 @@ export function SignUpForm() {
       }
 
       // First check if user already exists
-      const { data: { users }, error: getUserError } = await supabase.auth.admin.listUsers({
-        filter: {
-          email: values.email,
-        },
-      });
-
+      const { data, error: getUserError } = await supabase.auth.admin.getUserByEmail(values.email);
+      
       if (getUserError) {
-        console.error("Error checking for existing user:", getUserError);
+        // If the error is not "User not found", then it's a real error
+        if (!getUserError.message.includes("User not found")) {
+          console.error("Error checking for existing user:", getUserError);
+          toast({
+            title: "Error",
+            description: "Failed to check if account exists. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
 
-      if (users && users.length > 0) {
+      // If user exists, show error
+      if (data?.user) {
         toast({
           title: "Account already exists",
           description: "An account with this email already exists. Please sign in instead.",
@@ -120,12 +127,23 @@ export function SignUpForm() {
 
       // Send our custom verification email
       try {
-        await sendVerificationEmail(
+        const { success, error } = await sendVerificationEmail(
           values.email,
           'signup',
           values.firstName
         );
 
+        if (!success) {
+          console.error("Email sending error:", error);
+          toast({
+            title: "Account created but verification email failed",
+            description: "Your account was created, but we couldn't send a verification email. Please try again or contact support.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
         // Success! Redirect to verification page
         toast({
           title: "Account created",
@@ -139,12 +157,10 @@ export function SignUpForm() {
         
         toast({
           title: "Account created but verification email failed",
-          description: "Your account was created, but we couldn't send a verification email. Please contact support.",
+          description: "Your account was created, but we couldn't send a verification email. Please try again or contact support.",
           variant: "destructive",
         });
-        
-        // Still redirect to verification in case they got the email anyway
-        navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
+        setIsLoading(false);
       }
       
     } catch (error: any) {
@@ -154,7 +170,6 @@ export function SignUpForm() {
         description: error?.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };

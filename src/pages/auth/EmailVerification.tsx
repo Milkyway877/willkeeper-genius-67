@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
 import { useForm } from 'react-hook-form';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { motion } from 'framer-motion';
@@ -34,6 +34,11 @@ export default function EmailVerification() {
     }
   }, [email, navigate]);
 
+  // If no email provided, show redirect instead of white screen
+  if (!email) {
+    return <Navigate to="/auth/signup" replace />;
+  }
+
   const handleFormSubmit = async (values: { code: string }) => {
     if (!email) return;
     
@@ -42,7 +47,7 @@ export default function EmailVerification() {
     
     try {
       console.log(`Attempting to verify code for ${email}: ${values.code}`);
-      const { valid, message } = await verifyCode(email, values.code, 'signup');
+      const { valid, message, error } = await verifyCode(email, values.code, 'signup');
       
       if (!valid) {
         toast({
@@ -66,54 +71,37 @@ export default function EmailVerification() {
       
       // If code is valid, proceed with account activation
       try {
-        // Get the user's ID
-        const { data: userData, error: userError } = await supabase.auth.admin.listUsers({
-          filter: {
-            email: email,
-          },
+        // Get the user data by email
+        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({
+          page: 1,
+          perPage: 1, 
+          query: email
         });
         
-        if (userError || !userData?.users?.[0]?.id) {
-          console.error("Error getting user:", userError);
+        if (listError || !users || users.length === 0) {
+          console.error("Error finding user:", listError || "No user found");
           throw new Error("Failed to find user account");
         }
         
-        const userId = userData.users[0].id;
+        const userId = users[0].id;
         
         // Mark user as verified in the profile
-        await supabase
+        const { error: updateError } = await supabase
           .from('user_profiles')
           .update({ activation_complete: true })
           .eq('id', userId);
+          
+        if (updateError) {
+          console.error("Error updating user profile:", updateError);
+        }
         
-        // Try to sign in the user
-        const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: values.code // This won't work but we'll handle it below
+        // Try to sign in the user after verification
+        toast({
+          title: "Email verified",
+          description: "Your email has been successfully verified. You can now sign in.",
         });
         
-        if (signInError) {
-          console.log("Sign in failed as expected, redirect to sign in page:", signInError);
-          
-          // This is expected - we redirect to sign in
-          toast({
-            title: "Email verified",
-            description: "Your email has been successfully verified. You can now sign in.",
-          });
-          
-          navigate('/auth/signin', { state: { verifiedEmail: email } });
-          return;
-        }
-        
-        // In the unlikely case sign-in worked, head to dashboard
-        if (sessionData?.user) {
-          toast({
-            title: "Email verified",
-            description: "Your email has been successfully verified.",
-          });
-          
-          navigate('/dashboard');
-        }
+        navigate('/auth/signin', { state: { verifiedEmail: email } });
       } catch (error) {
         console.error("Error during account activation:", error);
         toast({
@@ -142,7 +130,11 @@ export default function EmailVerification() {
     
     try {
       // Use our custom verification email sending
-      await sendVerificationEmail(email, 'signup');
+      const { success, error } = await sendVerificationEmail(email, 'signup');
+      
+      if (!success) {
+        throw new Error(error?.message || "Failed to send verification code");
+      }
       
       toast({
         title: "Code sent",
@@ -192,7 +184,7 @@ export default function EmailVerification() {
                       render={({ slots }) => (
                         <InputOTPGroup>
                           {slots.map((slot, i) => (
-                            <InputOTPSlot key={i} {...slot} index={i} />
+                            <InputOTPSlot key={i} {...slot} />
                           ))}
                         </InputOTPGroup>
                       )}

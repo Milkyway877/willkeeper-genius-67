@@ -78,7 +78,18 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
-    const { email, type, firstName }: EmailRequest = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (error) {
+      console.error("Failed to parse request body:", error);
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { email, type, firstName }: EmailRequest = requestBody;
 
     if (!email || !type) {
       console.error("Missing required parameters: email and type");
@@ -95,21 +106,31 @@ const handler = async (req: Request): Promise<Response> => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     // Check if user is already in the verification table
-    const { data: existingCodes } = await supabase
+    const { data: existingCodes, error: fetchError } = await supabase
       .from('email_verification_codes')
       .select('*')
       .eq('email', email)
       .eq('type', type)
       .eq('used', false);
 
+    if (fetchError) {
+      console.error('Error checking for existing codes:', fetchError);
+      throw new Error('Failed to check for existing verification codes');
+    }
+
     // If there are existing codes, update them to be used (expired)
     if (existingCodes && existingCodes.length > 0) {
-      await supabase
+      const { error: updateError } = await supabase
         .from('email_verification_codes')
         .update({ used: true })
         .eq('email', email)
         .eq('type', type)
         .eq('used', false);
+      
+      if (updateError) {
+        console.error('Error updating existing codes:', updateError);
+        // Continue anyway
+      }
     }
 
     // Insert the new verification code
@@ -138,10 +159,21 @@ const handler = async (req: Request): Promise<Response> => {
         html: createEmailHtml(verificationCode, firstName),
       });
 
+      if (!emailResponse || !emailResponse.id) {
+        console.error('Email sending failed with no error but no ID returned');
+        throw new Error('Failed to send email - no confirmation received');
+      }
+
       console.log('Email sent successfully:', emailResponse);
 
       return new Response(
-        JSON.stringify({ message: "Verification code sent successfully" }),
+        JSON.stringify({ 
+          success: true,
+          message: "Verification code sent successfully",
+          data: {
+            email_id: emailResponse.id
+          }
+        }),
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -149,12 +181,15 @@ const handler = async (req: Request): Promise<Response> => {
       );
     } catch (emailError) {
       console.error("Error sending email:", emailError);
-      throw new Error(`Email sending failed: ${emailError.message}`);
+      throw new Error(`Email sending failed: ${emailError.message || 'Unknown email error'}`);
     }
   } catch (error) {
     console.error("Error in send-verification-email function:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message || "An unexpected error occurred" 
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
