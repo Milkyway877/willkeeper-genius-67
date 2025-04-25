@@ -115,12 +115,20 @@ serve(async (req) => {
       throw new Error("Could not update profile status");
     }
 
+    // Extract origin from request headers for redirection
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.replace(/\/[^/]*$/, '') || '';
+    console.log("Origin for redirection:", origin);
+    
+    // If origin is empty, use a default URL
+    const baseUrl = origin || 'https://lovable.dev';
+    const redirectPath = `/auth/onboarding`;
+    
     // Create user session and return session data
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email!,
       options: {
-        redirectTo: `${req.headers.get('origin')}/auth/onboarding`
+        redirectTo: `${baseUrl}${redirectPath}`
       }
     });
     
@@ -128,6 +136,8 @@ serve(async (req) => {
       console.error("Error creating session:", sessionError.message);
       throw new Error("Could not create user session");
     }
+
+    console.log("Generated auth link:", sessionData.properties?.action_link);
 
     // Log the verification activity
     const { error: activityError } = await supabaseAdmin

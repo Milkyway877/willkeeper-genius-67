@@ -27,6 +27,7 @@ import LegacyVault from '@/pages/dashboard/LegacyVault';
 import CreateVaultItem from '@/pages/dashboard/CreateVaultItem';
 import EditVaultItem from '@/pages/dashboard/EditVaultItem';
 import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
+import NotFound from '@/pages/NotFound';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -75,6 +76,9 @@ function App() {
                   <Route path="vault/view/:id" element={<ViewVaultItem />} />
                 </Route>
               </Route>
+
+              {/* 404 Route */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
             <Toaster />
           </div>

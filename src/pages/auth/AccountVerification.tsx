@@ -61,8 +61,14 @@ export default function AccountVerification() {
         description: `Welcome${email ? ` ${email}` : ''} to WillTank.`,
       });
 
-      // The auth link handling is done in the verifyCode function
-      // that will redirect the user automatically
+      // Check if we have an auth link from the API
+      if (data?.authLink) {
+        // Use window.location.href to ensure full page reload and proper auth handling
+        window.location.href = data.authLink;
+      } else {
+        // Fallback navigation if no auth link is provided
+        navigate(isLogin ? '/dashboard' : '/auth/onboarding');
+      }
     } catch (err: any) {
       setError(err.message || "Verification failed. Please try again.");
       toast({
