@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -89,7 +88,7 @@ export default function Login() {
       
       {/* Holographic container */}
       <motion.div
-        className="w-full max-w-md relative z-20 glassmorphism border border-white/20 rounded-2xl p-8 backdrop-blur-xl"
+        className="w-full max-w-md relative z-20 bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-[0_0_40px_rgba(59,130,246,0.1)]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -104,13 +103,13 @@ export default function Login() {
             {...fadeInUp}
           >
             <motion.div 
-              className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 p-4"
+              className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 p-4 border border-white/20"
               {...glowPulse}
             >
               <Shield className="w-8 h-8 text-white" />
             </motion.div>
             <motion.h1 
-              className="text-3xl font-bold text-white mb-1"
+              className="text-3xl font-bold text-white mb-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -146,13 +145,13 @@ export default function Login() {
               {/* Email field */}
               <motion.div variants={fadeInUp}>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-blue-400" />
                   <Input
                     type="email"
                     placeholder="Neural ID (Email)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-black/40 border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500"
+                    className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
                   />
                 </div>
                 {formErrors.email && <p className="text-red-400 text-sm mt-1">{formErrors.email}</p>}
@@ -167,7 +166,7 @@ export default function Login() {
                     placeholder="Access Key (Password)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 bg-black/40 border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500"
+                    className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
                   />
                   <button 
                     type="button"
@@ -201,7 +200,7 @@ export default function Login() {
                 <Button 
                   type="submit"
                   disabled={loading}
-                  className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl relative overflow-hidden"
+                  className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl relative overflow-hidden border border-white/20"
                 >
                   {loading ? (
                     <div className="flex items-center justify-center">

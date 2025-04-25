@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -109,13 +108,13 @@ export default function Signup() {
       {/* Name field */}
       <motion.div variants={fadeInUp}>
         <div className="relative">
-          <CircleUser className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+          <CircleUser className="absolute left-3 top-3 h-5 w-5 text-blue-400" />
           <Input
             type="text"
             placeholder="Neural Identifier (Full Name)"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="pl-10 bg-black/40 border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500"
+            className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
         </div>
         {formErrors.name && <p className="text-red-400 text-sm mt-1">{formErrors.name}</p>}
@@ -130,7 +129,7 @@ export default function Signup() {
             placeholder="Neural Connection (Email)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="pl-10 bg-black/40 border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500"
+            className="pl-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
         </div>
         {formErrors.email && <p className="text-red-400 text-sm mt-1">{formErrors.email}</p>}
@@ -141,7 +140,7 @@ export default function Signup() {
         <Button 
           type="button"
           onClick={handleNextStep}
-          className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl relative overflow-hidden"
+          className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl relative overflow-hidden border border-white/20"
         >
           <div className="flex items-center justify-center">
             <span className="mr-2">Continue Neural Interface Setup</span>
@@ -188,7 +187,7 @@ export default function Signup() {
             placeholder="Neural Security Key (Password)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="pl-10 pr-10 bg-black/40 border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500"
+            className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
           <button 
             type="button"
@@ -214,7 +213,7 @@ export default function Signup() {
             placeholder="Confirm Neural Security Key"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="pl-10 pr-10 bg-black/40 border-white/10 text-white placeholder-gray-500 focus-visible:ring-blue-500"
+            className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder-gray-400 focus-visible:ring-blue-500"
           />
           <button 
             type="button"
@@ -397,7 +396,7 @@ export default function Signup() {
       
       {/* Holographic container */}
       <motion.div
-        className="w-full max-w-md relative z-20 glassmorphism border border-white/20 rounded-2xl p-8 backdrop-blur-xl"
+        className="w-full max-w-md relative z-20 bg-black/40 backdrop-blur-xl border border-white/20 rounded-2xl p-8 shadow-[0_0_40px_rgba(59,130,246,0.1)]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -416,12 +415,12 @@ export default function Signup() {
               {[1, 2, 3].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
                   <motion.div 
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center border ${
                       stepNumber === step
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-600 border-blue-400 text-white'
                         : stepNumber < step
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-800 text-gray-400'
+                          ? 'bg-green-600 border-green-400 text-white'
+                          : 'bg-white/5 border-white/20 text-gray-400'
                     }`}
                     whileHover={stepNumber < step ? { scale: 1.1 } : {}}
                     onClick={() => stepNumber < step && setStep(stepNumber)}
@@ -432,7 +431,7 @@ export default function Signup() {
                   {stepNumber < 3 && (
                     <div 
                       className={`w-10 h-0.5 ${
-                        stepNumber < step ? 'bg-green-600' : 'bg-gray-700'
+                        stepNumber < step ? 'bg-green-600' : 'bg-white/10'
                       }`}
                     />
                   )}
