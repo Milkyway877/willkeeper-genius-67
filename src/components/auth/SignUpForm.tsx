@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -93,49 +94,60 @@ export function SignUpForm() {
         return;
       }
 
-      // Send verification email through the edge function
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: data.email,
-          code: verificationCode,
-          type: 'signup'
-        }
-      });
+      console.log("User account created successfully");
 
-      if (emailError) {
-        console.error("Error sending verification email:", emailError);
-        throw new Error("Failed to send verification email");
-      }
-
-      // Store verification code directly using SQL query
-      const { error: insertError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: data.email,
-          code: verificationCode,
-          type: 'signup',
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
+      try {
+        // Send verification email through the edge function
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+          body: {
+            email: data.email,
+            code: verificationCode,
+            type: 'signup'
+          }
         });
 
-      if (insertError) {
-        console.error("Error storing verification code:", insertError);
+        if (emailError) {
+          console.error("Error sending verification email:", emailError);
+          throw new Error("Failed to send verification email");
+        }
+        
+        console.log("Verification email sent successfully");
+
+        // Store verification code
+        const { error: insertError } = await supabase
+          .from('email_verification_codes')
+          .insert({
+            email: data.email,
+            code: verificationCode,
+            type: 'signup',
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+            used: false
+          });
+
+        if (insertError) {
+          console.error("Error storing verification code:", insertError);
+          throw new Error("Failed to create verification code");
+        }
+        
+        console.log("Verification code stored successfully");
+        
         toast({
-          title: "Registration error",
-          description: "Failed to create verification code. Please try again.",
+          title: "Verification email sent",
+          description: "Please check your email for the verification code.",
+        });
+        
+        // Navigate to verification page with email
+        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
+      } catch (error: any) {
+        // If verification process fails, but user is created
+        console.error("Error in verification process:", error);
+        toast({
+          title: "Verification setup failed",
+          description: "Account created, but we couldn't set up verification. Please try signing in.",
           variant: "destructive",
         });
-        setIsLoading(false);
-        return;
+        navigate("/auth/signin");
       }
-      
-      toast({
-        title: "Verification email sent",
-        description: "Please check your email for the verification code.",
-      });
-      
-      // Navigate to verification page with email
-      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
     } catch (error: any) {
       console.error("Error during signup:", error);
       toast({
