@@ -20,21 +20,15 @@ export const sendVerificationEmail = async (email: string, type: 'signup' | 'log
     if (data && data.success === true) {
       return { success: true, data };
     } else {
-      const errorMessage = data?.error || 'Email sending failed';
-      console.error('Email sending failed with response:', data, 'Error:', errorMessage);
+      console.error('Email sending failed with response:', data);
       return { 
         success: false, 
-        error: { message: errorMessage } 
+        error: (data && data.error) ? { message: data.error } : { message: 'Email sending failed' }
       };
     }
   } catch (error) {
     console.error('Error sending verification email:', error);
-    return { 
-      success: false, 
-      error: { 
-        message: error instanceof Error ? error.message : 'Unknown error sending verification email'
-      } 
-    };
+    return { success: false, error };
   }
 };
 
@@ -77,9 +71,6 @@ export const verifyCode = async (email: string, code: string, type: 'signup' | '
     return { valid: true };
   } catch (error) {
     console.error('Error verifying code:', error);
-    return { 
-      valid: false, 
-      message: error instanceof Error ? error.message : 'Error verifying code'
-    };
+    return { valid: false, message: 'Error verifying code', error };
   }
 };
