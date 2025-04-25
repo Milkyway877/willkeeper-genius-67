@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -51,10 +52,27 @@ export function SignUpForm() {
     setIsLoading(true);
     
     try {
+      // Check if email already exists
+      const { data: existingUsers, error: existingError } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('email', data.email)
+        .single();
+        
+      if (existingUsers) {
+        toast({
+          title: "Email already registered",
+          description: "This email address is already in use. Please use a different email or try to login.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
       const verificationCode = generateVerificationCode();
       
       // Send verification email
-      const emailResponse = await supabase.functions.invoke('send-verification', {
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
           email: data.email,
           code: verificationCode,
@@ -62,9 +80,12 @@ export function SignUpForm() {
         }
       });
 
-      if (emailResponse.error) {
-        throw new Error(emailResponse.error.message);
+      if (emailError) {
+        console.error("Error sending verification email:", emailError);
+        throw new Error("Failed to send verification email");
       }
+
+      console.log("Verification email sent successfully");
 
       // Store verification code in Supabase
       const { error: verificationError } = await supabase
@@ -74,9 +95,11 @@ export function SignUpForm() {
           code: verificationCode,
           type: 'signup',
           expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
         });
 
       if (verificationError) {
+        console.error("Error storing verification code:", verificationError);
         throw verificationError;
       }
 
@@ -99,6 +122,7 @@ export function SignUpForm() {
           description: error.message,
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
       
@@ -109,13 +133,14 @@ export function SignUpForm() {
       
       // Navigate to verification page with email
       navigate(`/auth/verification?email=${encodeURIComponent(data.email)}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error during signup:", error);
       toast({
         title: "Registration failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
@@ -249,7 +274,7 @@ export function SignUpForm() {
           </Button>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
-            <p className="font-medium">After signing up, you'll receive an email verification link. Please verify your email to access your account.</p>
+            <p className="font-medium">After signing up, you'll need to verify your email with the 6-digit code we send you.</p>
           </div>
         </form>
       </Form>

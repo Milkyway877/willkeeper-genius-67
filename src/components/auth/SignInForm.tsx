@@ -60,6 +60,10 @@ export function SignInForm() {
       password: '',
     },
   });
+  
+  const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
 
   const onSubmit = async (data: SignInFormInputs) => {
     try {
@@ -77,22 +81,13 @@ export function SignInForm() {
         return;
       }
       
+      // We'll first check if the credentials are valid without signing in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
       
       if (authError) {
-        if (authError.message.toLowerCase().includes('email not confirmed')) {
-          toast({
-            title: "Email not verified",
-            description: "Please check your inbox and click the verification link before signing in.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
         toast({
           title: "Authentication failed",
           description: authError.message,
@@ -102,31 +97,62 @@ export function SignInForm() {
         return;
       }
       
-      if (!authData.user) {
-        toast({
-          title: "Authentication failed",
-          description: "User not found",
-          variant: "destructive",
+      // User exists and password is correct, now proceed with verification
+      // Sign out the user to require verification
+      await supabase.auth.signOut();
+      
+      // Generate and send verification code
+      const verificationCode = generateVerificationCode();
+      
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+        body: {
+          email: data.email,
+          code: verificationCode,
+          type: 'login'
+        }
+      });
+      
+      if (emailError) {
+        throw new Error("Failed to send verification code");
+      }
+      
+      // Store verification code in database
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: data.email,
+          code: verificationCode,
+          type: 'login',
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
         });
-        setIsLoading(false);
-        return;
+      
+      if (storeError) {
+        console.error("Error storing verification code:", storeError);
+        throw new Error("Failed to process verification");
       }
       
       toast({
-        title: "Sign in successful",
-        description: "Redirecting to your dashboard...",
+        title: "Verification code sent",
+        description: "Please check your email for the verification code.",
       });
       
-      // After successful authentication, redirect to dashboard
-      navigate('/dashboard');
-    } catch (error) {
+      // Save user credentials in session storage for verification page
+      sessionStorage.setItem('auth_email', data.email);
+      sessionStorage.setItem('auth_password', data.password);
+      
+      // Navigate to verification page
+      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
+      
+    } catch (error: any) {
       console.error("Sign in error:", error);
       
       toast({
         title: "Sign in failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -145,33 +171,44 @@ export function SignInForm() {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+      const verificationCode = generateVerificationCode();
+      
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+        body: {
+          email: email,
+          code: verificationCode,
+          type: 'login'
         }
       });
       
-      if (error) {
-        toast({
-          title: "Failed to resend verification",
-          description: error.message,
-          variant: "destructive",
+      if (emailError) {
+        throw new Error("Failed to send verification code");
+      }
+      
+      // Store verification code
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: email,
+          code: verificationCode,
+          type: 'login',
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
         });
-        setIsLoading(false);
-        return;
+      
+      if (storeError) {
+        throw new Error("Failed to process verification");
       }
       
       toast({
         title: "Verification email sent",
         description: "Please check your inbox for the verification link.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error resending verification:", error);
       toast({
         title: "Failed to resend verification",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -251,19 +288,10 @@ export function SignInForm() {
             >
               Forgot password?
             </Link>
-            
-            <button
-              type="button"
-              onClick={handleResendVerification}
-              className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
-              disabled={isLoading}
-            >
-              Resend verification email
-            </button>
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">Make sure to use the email address you registered with and verify your email before signing in.</p>
+            <p className="font-medium">After signing in, you'll need to verify your login with a 6-digit code sent to your email.</p>
           </div>
         </div>
       </form>

@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
@@ -16,6 +15,7 @@ export default function EmailVerification() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const email = searchParams.get('email');
+  const type = searchParams.get('type') || 'signup';
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
@@ -46,7 +46,7 @@ export default function EmailVerification() {
         .select('*')
         .eq('email', email)
         .eq('code', values.code)
-        .eq('type', 'signup')
+        .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
         .single();
@@ -65,6 +65,7 @@ export default function EmailVerification() {
             variant: "destructive",
           });
         }
+        setIsLoading(false);
         return;
       }
 
@@ -74,25 +75,71 @@ export default function EmailVerification() {
         .update({ used: true })
         .eq('id', verificationData.id);
 
-      // Update user profile
-      await supabase
-        .from('user_profiles')
-        .update({ activation_complete: true })
-        .eq('email', email);
-      
-      toast({
-        title: "Email verified",
-        description: "Your email has been successfully verified.",
-        variant: "default",
-      });
-      
-      // Navigate to dashboard
-      navigate('/dashboard');
-    } catch (error) {
+      if (type === 'signup') {
+        // For signup flow
+        // Update user profile
+        await supabase
+          .from('user_profiles')
+          .update({ activation_complete: true })
+          .eq('email', email);
+        
+        toast({
+          title: "Email verified",
+          description: "Your email has been successfully verified. You can now sign in.",
+          variant: "default",
+        });
+        
+        // Navigate to signin
+        navigate('/auth/signin');
+      } else {
+        // For login flow
+        // Get credentials from session storage
+        const storedEmail = sessionStorage.getItem('auth_email');
+        const storedPassword = sessionStorage.getItem('auth_password');
+        
+        if (storedEmail && storedPassword) {
+          // Sign in the user
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: storedEmail,
+            password: storedPassword,
+          });
+          
+          if (authError) {
+            toast({
+              title: "Sign in failed",
+              description: authError.message,
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
+          
+          // Clear stored credentials
+          sessionStorage.removeItem('auth_email');
+          sessionStorage.removeItem('auth_password');
+          
+          toast({
+            title: "Login successful",
+            description: "You have been successfully verified and logged in.",
+            variant: "default",
+          });
+          
+          // Navigate to dashboard
+          navigate('/dashboard');
+        } else {
+          toast({
+            title: "Authentication error",
+            description: "Login session expired. Please log in again.",
+            variant: "destructive",
+          });
+          navigate('/auth/signin');
+        }
+      }
+    } catch (error: any) {
       console.error('Error during email verification:', error);
       toast({
         title: "Verification error",
-        description: "An unexpected error occurred. Please try again later.",
+        description: error.message || "An unexpected error occurred. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -106,18 +153,35 @@ export default function EmailVerification() {
     setResendLoading(true);
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email
+      // Generate a new verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Send verification email
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+        body: {
+          email: email,
+          code: verificationCode,
+          type: type
+        }
       });
       
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
+      if (emailError) {
+        throw new Error("Failed to send verification code");
+      }
+      
+      // Store verification code
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: email,
+          code: verificationCode,
+          type: type,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
         });
-        return;
+      
+      if (storeError) {
+        throw new Error("Failed to process verification");
       }
       
       toast({
@@ -127,10 +191,11 @@ export default function EmailVerification() {
       
       // Reset the form
       form.reset({ code: '' });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error resending code:", error);
       toast({
         title: "Error",
-        description: "Failed to send a new code. Please try again later.",
+        description: error.message || "Failed to send a new code. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -141,7 +206,7 @@ export default function EmailVerification() {
   return (
     <AuthLayout
       title="Verify Your Email"
-      subtitle={`We've sent a verification code to ${email}. Please enter the code below to verify your account.`}
+      subtitle={`We've sent a verification code to ${email}. Please enter the code below to ${type === 'signup' ? 'complete your registration' : 'login'}.`}
       rightPanel={<VerificationInfoPanel />}
     >
       <motion.div

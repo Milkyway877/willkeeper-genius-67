@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
@@ -23,15 +24,26 @@ serve(async (req) => {
 
     console.log(`Sending ${type} verification email to ${email} with code ${code}`);
 
+    let subject = "Verify your email";
+    let actionText = "verify your email";
+    
+    if (type === 'signup') {
+      subject = "Verify your WillTank account";
+      actionText = "complete your account setup";
+    } else if (type === 'login') {
+      subject = "Login verification code";
+      actionText = "complete your sign-in";
+    }
+
     const emailResponse = await resend.emails.send({
       from: "WillTank <noreply@willtank.app>",
       to: email,
-      subject: type === 'signup' ? "Verify your WillTank account" : "Verify your email",
+      subject: subject,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #1a1a1a;">Welcome to WillTank</h2>
           <p style="color: #4a4a4a; font-size: 16px; line-height: 1.5;">
-            Please use the following verification code to complete your ${type === 'signup' ? 'account setup' : 'email verification'}:
+            Please use the following verification code to ${actionText}:
           </p>
           <div style="background-color: #f4f4f4; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
             <span style="font-size: 32px; letter-spacing: 8px; font-weight: bold; color: #1a1a1a;">
