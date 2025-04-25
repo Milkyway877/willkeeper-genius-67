@@ -67,7 +67,6 @@ function App() {
                 <Routes>
                   {/* Public Routes - No auth required */}
                   <Route path="/" element={<Index />} />
-                  <Route path="/help" element={<Help />} />
                   
                   {/* Auth Routes */}
                   <Route path="/auth">
@@ -84,6 +83,7 @@ function App() {
                   {/* Corporate Pages */}
                   <Route path="/corporate" element={<Corporate />} />
                   <Route path="/corporate/documentation" element={<Documentation />} />
+                  <Route path="/help" element={<Help />} />
                   
                   {/* Protected Dashboard Routes */}
                   <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
