@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,6 +13,8 @@ import {
   glitchText
 } from '@/components/auth/animations';
 import { CircleUser, Key, Mail, ShieldCheck, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { signUp, logUserActivity } from '@/services/authService';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Signup() {
   const [step, setStep] = useState(1);
@@ -30,6 +33,7 @@ export default function Signup() {
   }>({});
   
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const validateStep1 = () => {
     const errors: {name?: string; email?: string} = {};
@@ -77,15 +81,57 @@ export default function Signup() {
     setStep(step - 1);
   };
   
-  const handleCompleteSignup = () => {
-    if (validateStep2()) {
-      setLoading(true);
+  const handleCompleteSignup = async () => {
+    if (!validateStep2()) return;
+    
+    setLoading(true);
+    
+    try {
+      // Log the signup attempt
+      await logUserActivity('signup_attempt', { email });
       
-      // Simulate registration delay and redirect to verification
-      setTimeout(() => {
+      // Call signup service
+      const { data, error } = await signUp({ 
+        email, 
+        password,
+        name
+      });
+      
+      if (error) {
+        // Handle specific error cases
+        if (error.includes('User already registered')) {
+          toast({
+            title: "Signup failed",
+            description: "This email is already registered. Please login instead.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Signup failed",
+            description: error,
+            variant: "destructive"
+          });
+        }
         setLoading(false);
-        navigate('/auth/verify');
-      }, 2000);
+        return;
+      }
+      
+      // Redirect to verification page
+      navigate('/auth/verify', {
+        state: {
+          email,
+          isLogin: false,
+          message: "We've sent a verification code to your email. Please enter it to complete your registration."
+        }
+      });
+      
+    } catch (err: any) {
+      toast({
+        title: "Signup error",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
+      setLoading(false);
     }
   };
   

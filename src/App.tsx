@@ -1,7 +1,10 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { UserProfileProvider } from '@/contexts/UserProfileContext';
+import { RouteGuard } from '@/components/auth/RouteGuard';
 
 // Pages
 import Index from '@/pages/Index';
@@ -33,23 +36,57 @@ import Onboarding from '@/pages/auth/Onboarding';
 function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="willtank-theme">
-      <Router>
-        <div className="min-h-screen bg-background">
-          <Routes>
-            <Route path="/" element={<Index />} />
-            
-            {/* Auth Routes */}
-            <Route path="/auth/login" element={<Login />} />
-            <Route path="/auth/signup" element={<Signup />} />
-            <Route path="/auth/verify" element={<AccountVerification />} />
-            <Route path="/auth/onboarding" element={<Onboarding />} />
-            
-            {/* Protected Dashboard Routes */}
-            <Route path="/dashboard/*" element={<DashboardLayout />} />
-          </Routes>
-          <Toaster />
-        </div>
-      </Router>
+      <UserProfileProvider>
+        <Router>
+          <div className="min-h-screen bg-background">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Index />} />
+              
+              {/* Auth Routes */}
+              <Route path="/auth">
+                <Route path="login" element={<Login />} />
+                <Route path="signup" element={<Signup />} />
+                <Route path="verify" element={<AccountVerification />} />
+                <Route path="onboarding" element={
+                  <RouteGuard requireAuth={true} requireOnboarding={false}>
+                    <Onboarding />
+                  </RouteGuard>
+                } />
+              </Route>
+              
+              {/* Protected Dashboard Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <RouteGuard requireAuth={true} requireOnboarding={true}>
+                    <DashboardLayout />
+                  </RouteGuard>
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="security" element={<Security />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="wills" element={<Wills />} />
+                <Route path="wills/create" element={<CreateWill />} />
+                <Route path="wills/edit/:id" element={<EditWill />} />
+                <Route path="wills/view/:id" element={<ViewWill />} />
+                <Route path="messages" element={<FutureMessages />} />
+                <Route path="messages/create" element={<CreateMessage />} />
+                <Route path="messages/edit/:id" element={<EditMessage />} />
+                <Route path="messages/view/:id" element={<ViewMessage />} />
+                <Route path="vault" element={<LegacyVault />} />
+                <Route path="vault/create" element={<CreateVaultItem />} />
+                <Route path="vault/edit/:id" element={<EditVaultItem />} />
+                <Route path="vault/view/:id" element={<ViewVaultItem />} />
+              </Route>
+            </Routes>
+            <Toaster />
+          </div>
+        </Router>
+      </UserProfileProvider>
     </ThemeProvider>
   );
 }

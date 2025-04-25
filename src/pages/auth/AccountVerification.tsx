@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,12 @@ import { Shield, ArrowLeft, Mail } from 'lucide-react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { fadeInUp } from '@/components/auth/animations';
 import { useToast } from "@/hooks/use-toast";
+import { verifyCode, sendVerificationEmail } from "@/services/authService";
 
 export default function AccountVerification() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -22,27 +24,92 @@ export default function AccountVerification() {
     message: "We've sent a verification code to your email address. Please enter it below to complete your account setup."
   };
 
+  // Set up cooldown timer for resend button
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown(resendCooldown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
   const handleVerification = async (code: string) => {
     setLoading(true);
     setError(null);
 
-    // Simulate verification delay
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      // Call the verify code endpoint
+      const { data, error: verifyError } = await verifyCode({ 
+        email, 
+        code,
+        isLogin
+      });
+
+      if (verifyError) {
+        setError(verifyError);
+        toast({
+          title: "Verification failed",
+          description: verifyError,
+          variant: "destructive"
+        });
+        return;
+      }
+
       toast({
         title: isLogin ? "Login successful!" : "Account verified successfully!",
         description: `Welcome${email ? ` ${email}` : ''} to WillTank.`,
       });
-      // Redirect to onboarding for new users, dashboard for existing users
-      navigate(isLogin ? '/dashboard' : '/auth/onboarding');
-    }, 1500);
+
+      // The auth link handling is done in the verifyCode function
+      // that will redirect the user automatically
+    } catch (err: any) {
+      setError(err.message || "Verification failed. Please try again.");
+      toast({
+        title: "Verification error",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResendCode = () => {
-    toast({
-      title: "Verification code resent",
-      description: `We've sent a new code to ${email || 'your email address'}.`,
-    });
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
+    
+    setLoading(true);
+    try {
+      const { data, error: sendError } = await sendVerificationEmail({
+        email,
+        isLogin
+      });
+
+      if (sendError) {
+        toast({
+          title: "Failed to resend code",
+          description: sendError,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Set cooldown for 60 seconds
+      setResendCooldown(60);
+
+      toast({
+        title: "Verification code resent",
+        description: `We've sent a new code to ${email || 'your email address'}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Failed to resend code",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoBack = () => {
@@ -93,10 +160,12 @@ export default function AccountVerification() {
               variant="ghost"
               className="w-full"
               onClick={handleResendCode}
-              disabled={loading}
+              disabled={loading || resendCooldown > 0}
             >
               <Mail className="mr-2 h-4 w-4" />
-              Resend verification code
+              {resendCooldown > 0 
+                ? `Resend code in ${resendCooldown}s` 
+                : 'Resend verification code'}
             </Button>
 
             <Button

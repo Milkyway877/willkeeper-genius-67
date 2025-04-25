@@ -36,6 +36,30 @@ export type Database = {
         }
         Relationships: []
       }
+      death_verification_logs: {
+        Row: {
+          action: string
+          details: Json | null
+          id: string
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       email_verification_codes: {
         Row: {
           code: string
@@ -66,6 +90,39 @@ export type Database = {
           type?: string
           used?: boolean | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      email_verifications: {
+        Row: {
+          code: string
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          is_used: boolean | null
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          is_used?: boolean | null
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          is_used?: boolean | null
+          user_id?: string
+          verified_at?: string | null
         }
         Relationships: []
       }
@@ -129,42 +186,84 @@ export type Database = {
         }
         Relationships: []
       }
+      user_activity: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           activation_complete: boolean | null
+          avatar_url: string | null
           country: string | null
           created_at: string | null
           date_of_birth: string | null
           email: string | null
           first_name: string | null
+          full_name: string | null
           id: string
           last_name: string | null
+          onboarding_completed: boolean | null
           phone_number: string | null
           updated_at: string | null
+          verification_status: string | null
         }
         Insert: {
           activation_complete?: boolean | null
+          avatar_url?: string | null
           country?: string | null
           created_at?: string | null
           date_of_birth?: string | null
           email?: string | null
           first_name?: string | null
+          full_name?: string | null
           id: string
           last_name?: string | null
+          onboarding_completed?: boolean | null
           phone_number?: string | null
           updated_at?: string | null
+          verification_status?: string | null
         }
         Update: {
           activation_complete?: boolean | null
+          avatar_url?: string | null
           country?: string | null
           created_at?: string | null
           date_of_birth?: string | null
           email?: string | null
           first_name?: string | null
+          full_name?: string | null
           id?: string
           last_name?: string | null
+          onboarding_completed?: boolean | null
           phone_number?: string | null
           updated_at?: string | null
+          verification_status?: string | null
         }
         Relationships: []
       }

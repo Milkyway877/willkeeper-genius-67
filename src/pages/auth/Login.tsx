@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -13,6 +14,8 @@ import {
 } from '@/components/auth/animations';
 import { Eye, EyeOff, Key, Mail, Shield, ArrowRight } from 'lucide-react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
+import { login, logUserActivity } from '@/services/authService';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -21,6 +24,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<{email?: string; password?: string}>({});
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const validateForm = () => {
     const errors: {email?: string; password?: string} = {};
@@ -46,9 +50,33 @@ export default function Login() {
     
     setLoading(true);
     
-    // Simulate login and redirect to verification
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      // Log the login attempt
+      await logUserActivity('login_attempt', { email });
+      
+      // Call login service
+      const { data, error } = await login({ email, password });
+      
+      if (error) {
+        // Handle specific error cases
+        if (error.includes('Invalid login credentials')) {
+          toast({
+            title: "Login failed",
+            description: "Invalid email or password.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Login failed",
+            description: error,
+            variant: "destructive"
+          });
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // Redirect to verification
       navigate('/auth/verify', { 
         state: { 
           email,
@@ -56,7 +84,15 @@ export default function Login() {
           message: "Please verify your email to continue to your account."
         }
       });
-    }, 1500);
+      
+    } catch (err: any) {
+      toast({
+        title: "Login error",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
   };
   
   return (
