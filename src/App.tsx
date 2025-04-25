@@ -10,30 +10,29 @@ import { RouteGuard } from '@/components/auth/RouteGuard';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/Dashboard'; 
-import Profile from '@/pages/settings/Profile';
-import Settings from '@/pages/settings/Settings';
+import Dashboard from '@/pages/Dashboard'; // Updated import
+import Profile from '@/pages/dashboard/Profile';
+import Settings from '@/pages/dashboard/Settings';
 import Security from '@/pages/dashboard/Security';
-import Notifications from '@/pages/notifications/Notifications';
-import Wills from '@/pages/wills/Wills';
-import CreateWill from '@/pages/will/WillCreation';
-import EditWill from '@/pages/will/WillCreation';
-import ViewWill from '@/pages/will/Will';
-import FutureMessages from '@/pages/tank/Tank';
-import CreateMessage from '@/pages/tank/TankCreation';
-import EditMessage from '@/pages/tank/TankCreation';
-import ViewMessage from '@/pages/tank/Tank';
-import { TankLegacyVault } from '@/pages/tank/components/TankLegacyVault';
-import { AddVaultItem } from '@/pages/tank/components/vault/AddVaultItem';
-import { VaultItem } from '@/pages/tank/components/vault/VaultItem';
+import Notifications from '@/pages/dashboard/Notifications';
+import Wills from '@/pages/dashboard/Wills';
+import CreateWill from '@/pages/dashboard/CreateWill';
+import EditWill from '@/pages/dashboard/EditWill';
+import ViewWill from '@/pages/dashboard/ViewWill';
+import FutureMessages from '@/pages/dashboard/FutureMessages';
+import CreateMessage from '@/pages/dashboard/CreateMessage';
+import EditMessage from '@/pages/dashboard/EditMessage';
+import ViewMessage from '@/pages/dashboard/ViewMessage';
+import LegacyVault from '@/pages/dashboard/LegacyVault';
+import CreateVaultItem from '@/pages/dashboard/CreateVaultItem';
+import EditVaultItem from '@/pages/dashboard/EditVaultItem';
+import ViewVaultItem from '@/pages/dashboard/ViewVaultItem';
 import NotFound from '@/pages/NotFound';
 import AccountVerification from '@/pages/auth/AccountVerification';
 import Onboarding from '@/pages/auth/Onboarding';
-import Templates from '@/pages/templates/Templates';
 
 // Layout Components
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Layout } from '@/components/layout/Layout';
 
 function App() {
   return (
@@ -43,63 +42,44 @@ function App() {
           <div className="min-h-screen bg-background">
             <Routes>
               {/* Public Routes - No auth required */}
-              <Route element={<Layout forceAuthenticated={false} />}>
-                <Route path="/" element={<Index />} />
-              </Route>
+              <Route path="/" element={<Index />} />
               
               {/* Auth Routes */}
-              <Route element={<Layout forceAuthenticated={false} />}>
-                <Route path="/auth">
-                  <Route path="login" element={<Login />} />
-                  <Route path="signup" element={<Signup />} />
-                  <Route path="verify" element={<AccountVerification />} />
-                  {/* Onboarding route - requires auth but not onboarding completion */}
-                  <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
-                    <Route path="onboarding" element={<Onboarding />} />
-                  </Route>
+              <Route path="/auth">
+                <Route path="login" element={<Login />} />
+                <Route path="signup" element={<Signup />} />
+                <Route path="verify" element={<AccountVerification />} />
+                {/* Onboarding route - requires auth but not onboarding completion */}
+                <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
+                  <Route path="onboarding" element={<Onboarding />} />
                 </Route>
               </Route>
               
               {/* Protected Dashboard Routes */}
               <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
-                <Route element={<Layout forceAuthenticated={true} />}>
-                  <Route path="/dashboard" element={<DashboardLayout />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="profile" element={<Profile />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="security" element={<Security />} />
-                    <Route path="notifications" element={<Notifications />} />
-                    <Route path="wills" element={<Wills />} />
-                    <Route path="wills/create" element={<CreateWill />} />
-                    <Route path="wills/edit/:id" element={<EditWill />} />
-                    <Route path="wills/view/:id" element={<ViewWill />} />
-                    <Route path="templates" element={<Templates />} />
-                    <Route path="messages" element={<FutureMessages />} />
-                    <Route path="messages/create" element={<CreateMessage />} />
-                    <Route path="messages/edit/:id" element={<EditMessage />} />
-                    <Route path="messages/view/:id" element={<ViewMessage />} />
-                    <Route path="vault" element={<TankLegacyVault />} />
-                    <Route path="vault/create" element={<AddVaultItem mode="create" />} />
-                    <Route path="vault/edit/:id" element={<AddVaultItem mode="edit" />} />
-                    <Route path="vault/view/:id" element={<VaultItem mode="view" />} />
-                  </Route>
-                </Route>
-              </Route>
-              
-              {/* Additional Routes - These should be added to the dashboard layout instead */}
-              <Route element={<RouteGuard requireAuth={true} requireOnboarding={true} />}>
-                <Route element={<Layout forceAuthenticated={true} />}>
-                  <Route path="/will/create" element={<CreateWill />} />
-                  <Route path="/will/edit/:id" element={<EditWill />} />
-                  <Route path="/will/view/:id" element={<ViewWill />} />
-                  <Route path="/will/new" element={<CreateWill />} />
+                <Route path="/dashboard" element={<DashboardLayout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="security" element={<Security />} />
+                  <Route path="notifications" element={<Notifications />} />
+                  <Route path="wills" element={<Wills />} />
+                  <Route path="wills/create" element={<CreateWill />} />
+                  <Route path="wills/edit/:id" element={<EditWill />} />
+                  <Route path="wills/view/:id" element={<ViewWill />} />
+                  <Route path="messages" element={<FutureMessages />} />
+                  <Route path="messages/create" element={<CreateMessage />} />
+                  <Route path="messages/edit/:id" element={<EditMessage />} />
+                  <Route path="messages/view/:id" element={<ViewMessage />} />
+                  <Route path="vault" element={<LegacyVault />} />
+                  <Route path="vault/create" element={<CreateVaultItem />} />
+                  <Route path="vault/edit/:id" element={<EditVaultItem />} />
+                  <Route path="vault/view/:id" element={<ViewVaultItem />} />
                 </Route>
               </Route>
 
               {/* 404 Route */}
-              <Route element={<Layout forceAuthenticated={false} />}>
-                <Route path="*" element={<NotFound />} />
-              </Route>
+              <Route path="*" element={<NotFound />} />
             </Routes>
             <Toaster />
           </div>

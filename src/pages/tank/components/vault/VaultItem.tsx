@@ -6,38 +6,15 @@ import { LegacyVaultItem } from '../../types';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { useParams } from 'react-router-dom';
 
 interface VaultItemProps {
-  item?: LegacyVaultItem;
-  onView?: (item: LegacyVaultItem) => void;
-  onEdit?: (item: LegacyVaultItem) => void;
-  onDelete?: (id: string) => void;
-  mode?: 'default' | 'view';
+  item: LegacyVaultItem;
+  onView: (item: LegacyVaultItem) => void;
+  onEdit: (item: LegacyVaultItem) => void;
+  onDelete: (id: string) => void;
 }
 
-export const VaultItem: React.FC<VaultItemProps> = ({ 
-  item, 
-  onView, 
-  onEdit, 
-  onDelete,
-  mode = 'default'
-}) => {
-  const { id } = useParams();
-  
-  // If in view mode and no item is provided, render a placeholder for the single item view
-  if (mode === 'view') {
-    return (
-      <div>
-        <h2>View Vault Item</h2>
-        <p>Viewing vault item with ID: {id}</p>
-      </div>
-    );
-  }
-  
-  // If no item is provided in default mode, don't render
-  if (!item) return null;
-  
+export const VaultItem: React.FC<VaultItemProps> = ({ item, onView, onEdit, onDelete }) => {
   const getTypeIcon = () => {
     switch (item.type) {
       case 'story':
@@ -70,23 +47,23 @@ export const VaultItem: React.FC<VaultItemProps> = ({
 
   const handleView = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onView && onView(item);
+    onView(item);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onEdit && onEdit(item);
+    onEdit(item);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDelete && onDelete(item.id);
+    onDelete(item.id);
   };
 
   return (
     <Card 
       className="h-full flex flex-col hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onView ? () => onView(item) : undefined}
+      onClick={handleView}
     >
       <CardContent className="flex-grow pt-6">
         <div className="flex justify-between items-start mb-2">
@@ -101,27 +78,21 @@ export const VaultItem: React.FC<VaultItemProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {onView && (
-                <DropdownMenuItem onClick={handleView}>
-                  <Eye size={14} className="mr-2" />
-                  View
-                </DropdownMenuItem>
-              )}
-              {onEdit && (
-                <DropdownMenuItem onClick={handleEdit}>
-                  <Edit size={14} className="mr-2" />
-                  Edit
-                </DropdownMenuItem>
-              )}
-              {onDelete && (
-                <DropdownMenuItem 
-                  className="text-red-600 focus:text-red-600"
-                  onClick={handleDelete}
-                >
-                  <Trash2 size={14} className="mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={handleView}>
+                <Eye size={14} className="mr-2" />
+                View
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleEdit}>
+                <Edit size={14} className="mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600"
+                onClick={handleDelete}
+              >
+                <Trash2 size={14} className="mr-2" />
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
