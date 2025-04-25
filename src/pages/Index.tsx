@@ -1,27 +1,37 @@
-
 import React from 'react';
-import { Navbar } from '@/components/layout/Navbar';
-import { Hero } from '@/components/home/Hero';
-import { ServicesSection } from '@/components/home/ServicesSection';
-import { SecuritySection } from '@/components/home/SecuritySection';
-import { FeatureCarousel } from '@/components/home/FeatureCarousel';
-import { InfoCards } from '@/components/home/InfoCards';
-import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
-import { motion } from 'framer-motion';
-import { ArrowRight, Users, BarChart, Briefcase, Map, FileCheck, Phone } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Footer } from '@/components/layout/Footer';
+import { Button } from '@/components/ui/button';
 
 export default function Index() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
+    <div className="flex flex-col min-h-screen">
+      <header className="bg-white shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="text-2xl font-bold text-gray-800">WillTank</div>
+          <nav>
+            <Link to="/dashboard">
+              <Button variant="outline">Dashboard</Button>
+            </Link>
+          </nav>
+        </div>
+      </header>
       
-      <main className="flex-1">
-        <Hero />
-        
-        <ServicesSection />
+      <main className="flex-grow">
+        <section className="py-20 bg-gradient-to-b from-white to-gray-100">
+          <div className="container mx-auto px-4 text-center">
+            <h1 className="text-5xl font-bold mb-6">Secure Your Legacy</h1>
+            <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
+              Create, manage, and securely store your will and important documents with bank-grade encryption.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Link to="/dashboard">
+                <Button size="lg" className="px-8">
+                  Dashboard
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
         
         <section id="features" className="py-20 bg-gray-50">
           <FeatureCarousel />
@@ -204,9 +214,13 @@ export default function Index() {
         </motion.section>
       </main>
       
-      <Footer />
-      
-      <FloatingAssistant />
+      <footer className="bg-gray-800 text-white py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <p>&copy; {new Date().getFullYear()} WillTank. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
