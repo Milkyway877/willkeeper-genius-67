@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -187,8 +188,8 @@ export default function AIAssistantPage() {
   
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <Card className="border shadow-sm">
-        <CardHeader className="bg-willtank-50 border-b">
+      <Card className="border shadow-sm flex flex-col" style={{ height: "80vh" }}>
+        <CardHeader className="bg-willtank-50 border-b shrink-0">
           <CardTitle className="flex items-center text-willtank-700">
             <Bot className="mr-2 h-5 w-5" />
             WillTank AI Assistant
@@ -198,107 +199,105 @@ export default function AIAssistantPage() {
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="p-0">
-          <div className="flex flex-col h-[60vh]">
-            <ScrollArea className="flex-1 p-4">
-              <AnimatePresence initial={false}>
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+        <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1 p-4">
+            <AnimatePresence initial={false}>
+              {messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] p-3 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-willtank-100 text-willtank-900'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
                   >
-                    <div
-                      className={`max-w-[85%] p-3 rounded-lg ${
-                        message.role === 'user'
-                          ? 'bg-willtank-100 text-willtank-900'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      <div className="flex items-center mb-1">
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${
-                            message.role === 'user' ? 'bg-willtank-200' : 'bg-gray-200'
-                          }`}
-                        >
-                          {message.role === 'user' ? (
-                            <User className="h-3.5 w-3.5" />
-                          ) : (
-                            <Bot className="h-3.5 w-3.5" />
-                          )}
-                        </div>
-                        <span className="text-xs font-medium">
-                          {message.role === 'user' ? 'You' : 'Assistant'}
-                        </span>
-                        <span className="text-xs text-gray-500 ml-2">
-                          {typeof message.timestamp === 'string'
-                            ? new Date(message.timestamp).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : message.timestamp.toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                        </span>
+                    <div className="flex items-center mb-1">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${
+                          message.role === 'user' ? 'bg-willtank-200' : 'bg-gray-200'
+                        }`}
+                      >
+                        {message.role === 'user' ? (
+                          <User className="h-3.5 w-3.5" />
+                        ) : (
+                          <Bot className="h-3.5 w-3.5" />
+                        )}
                       </div>
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                      {message.role === 'assistant' && (
-                        <div className="flex justify-end mt-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => handleCopyMessage(message.content)}
-                          >
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy
-                          </Button>
-                        </div>
-                      )}
+                      <span className="text-xs font-medium">
+                        {message.role === 'user' ? 'You' : 'Assistant'}
+                      </span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        {typeof message.timestamp === 'string'
+                          ? new Date(message.timestamp).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : message.timestamp.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                      </span>
                     </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <div ref={chatEndRef} />
-            </ScrollArea>
-            
-            <div className="p-4 border-t">
-              <form onSubmit={handleSendMessage} className="flex flex-col gap-3">
-                <Textarea
-                  ref={messageInputRef}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Ask about wills, digital assets, or estate planning..."
-                  className="min-h-[80px] resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                />
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" size="sm" onClick={handleClearChat}>
-                    <Trash2 className="h-4 w-4 mr-1" /> Clear Chat
-                  </Button>
-                  <Button type="submit" size="sm" disabled={loading || !query.trim()}>
-                    {loading ? (
-                      <>
-                        <span className="animate-spin mr-2">◌</span>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        Send <Send className="h-4 w-4 ml-1" />
-                      </>
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    {message.role === 'assistant' && (
+                      <div className="flex justify-end mt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => handleCopyMessage(message.content)}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </Button>
+                      </div>
                     )}
-                  </Button>
-                </div>
-              </form>
-            </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            <div ref={chatEndRef} />
+          </ScrollArea>
+          
+          <div className="p-4 border-t mt-auto">
+            <form onSubmit={handleSendMessage} className="flex flex-col gap-3">
+              <Textarea
+                ref={messageInputRef}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Ask about wills, digital assets, or estate planning..."
+                className="min-h-[80px] resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
+              />
+              <div className="flex justify-between">
+                <Button type="button" variant="outline" size="sm" onClick={handleClearChat}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Clear Chat
+                </Button>
+                <Button type="submit" size="sm" disabled={loading || !query.trim()}>
+                  {loading ? (
+                    <>
+                      <span className="animate-spin mr-2">◌</span>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Send <Send className="h-4 w-4 ml-1" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </div>
         </CardContent>
       </Card>

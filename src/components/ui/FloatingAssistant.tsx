@@ -104,9 +104,10 @@ export function FloatingAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.8 }}
             transition={{ duration: 0.2 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-4 max-w-sm w-full border border-gray-200 dark:border-gray-700"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-lg mb-4 max-w-sm w-full border border-gray-200 dark:border-gray-700 flex flex-col"
+            style={{ height: '400px' }}
           >
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="font-medium">Skyler</h3>
               <button
                 onClick={() => setIsOpen(false)}
@@ -116,38 +117,42 @@ export function FloatingAssistant() {
               </button>
             </div>
             
-            {response && (
-              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-4 text-sm">
-                <p className="text-gray-700 dark:text-gray-200">{response}</p>
+            <div className="flex-grow overflow-y-auto p-4">
+              {response && (
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-4 text-sm">
+                  <p className="text-gray-700 dark:text-gray-200">{response}</p>
+                </div>
+              )}
+              
+              <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                How can I help you today with your will or documents?
+              </p>
+            </div>
+            
+            <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex">
+                <input
+                  type="text"
+                  placeholder="Ask a question..."
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isLoading}
+                />
+                <button 
+                  className={`bg-black text-white dark:bg-white dark:text-black px-3 py-2 rounded-r-md text-sm font-medium flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}
+                  onClick={handleSendMessage}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <span className="animate-spin h-4 w-4 border-2 border-white dark:border-black border-t-transparent rounded-full mr-1"></span>
+                  ) : (
+                    <Send size={14} className="mr-1" />
+                  )}
+                  Send
+                </button>
               </div>
-            )}
-            
-            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-              How can I help you today with your will or documents?
-            </p>
-            
-            <div className="flex">
-              <input
-                type="text"
-                placeholder="Ask a question..."
-                className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-              />
-              <button 
-                className={`bg-black text-white dark:bg-white dark:text-black px-3 py-2 rounded-r-md text-sm font-medium flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'}`}
-                onClick={handleSendMessage}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="animate-spin h-4 w-4 border-2 border-white dark:border-black border-t-transparent rounded-full mr-1"></span>
-                ) : (
-                  <Send size={14} className="mr-1" />
-                )}
-                Send
-              </button>
             </div>
           </motion.div>
         )}

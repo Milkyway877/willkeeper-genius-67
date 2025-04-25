@@ -297,6 +297,41 @@ export type Database = {
         }
         Relationships: []
       }
+      will_ai_conversations: {
+        Row: {
+          conversation_data: Json
+          created_at: string | null
+          extracted_entities: Json | null
+          id: string
+          updated_at: string | null
+          will_id: string
+        }
+        Insert: {
+          conversation_data: Json
+          created_at?: string | null
+          extracted_entities?: Json | null
+          id?: string
+          updated_at?: string | null
+          will_id: string
+        }
+        Update: {
+          conversation_data?: Json
+          created_at?: string | null
+          extracted_entities?: Json | null
+          id?: string
+          updated_at?: string | null
+          will_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_ai_conversations_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       will_beneficiaries: {
         Row: {
           beneficiary_name: string
@@ -332,6 +367,107 @@ export type Database = {
           },
         ]
       }
+      will_contacts: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          role: string
+          updated_at: string | null
+          will_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          role: string
+          updated_at?: string | null
+          will_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+          will_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_contacts_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      will_documents: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          description: string | null
+          document_type: string
+          file_path: string
+          file_size: number | null
+          id: string
+          name: string
+          related_contact_id: string | null
+          updated_at: string | null
+          will_id: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          document_type: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          name: string
+          related_contact_id?: string | null
+          updated_at?: string | null
+          will_id: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          document_type?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          name?: string
+          related_contact_id?: string | null
+          updated_at?: string | null
+          will_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_documents_related_contact_id_fkey"
+            columns: ["related_contact_id"]
+            isOneToOne: false
+            referencedRelation: "will_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "will_documents_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       will_executors: {
         Row: {
           created_at: string | null
@@ -360,6 +496,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "will_executors_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      will_videos: {
+        Row: {
+          created_at: string | null
+          duration: number | null
+          file_path: string
+          id: string
+          thumbnail_path: string | null
+          transcript: string | null
+          updated_at: string | null
+          will_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration?: number | null
+          file_path: string
+          id?: string
+          thumbnail_path?: string | null
+          transcript?: string | null
+          updated_at?: string | null
+          will_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration?: number | null
+          file_path?: string
+          id?: string
+          thumbnail_path?: string | null
+          transcript?: string | null
+          updated_at?: string | null
+          will_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_videos_will_id_fkey"
             columns: ["will_id"]
             isOneToOne: false
             referencedRelation: "wills"
