@@ -66,6 +66,9 @@ const createEmailHtml = (code: string, firstName?: string) => {
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  // Add more detailed logging to help diagnose issues
+  console.log("Received request to send verification email");
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -75,6 +78,18 @@ const handler = async (req: Request): Promise<Response> => {
     // Get Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    
+    console.log("SUPABASE_URL available:", !!supabaseUrl);
+    console.log("SUPABASE_SERVICE_ROLE_KEY available:", !!supabaseServiceKey);
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing required environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse the request body
@@ -100,6 +115,15 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Processing verification email for ${email}, type: ${type}`);
+
+    // Check if RESEND_API_KEY is available
+    if (!Deno.env.get("RESEND_API_KEY")) {
+      console.error("RESEND_API_KEY is not set");
+      return new Response(
+        JSON.stringify({ success: false, error: "Email service configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Generate a verification code
     const verificationCode = generateVerificationCode();
@@ -135,7 +159,7 @@ const handler = async (req: Request): Promise<Response> => {
       
       if (updateError) {
         console.error('Error updating existing codes:', updateError);
-        // We'll continue anyway since this isn't critical
+        // Continue anyway since this isn't critical
       }
     }
 
@@ -164,12 +188,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     try {
+      console.log("Attempting to send email via Resend...");
       const emailResponse = await resend.emails.send({
         from: "WillTank <support@willtank.com>",
         to: [email],
         subject: type === 'signup' ? "Verify Your WillTank Account" : "Your WillTank Login Code",
         html: createEmailHtml(verificationCode, firstName),
       });
+
+      // Add detailed logging for the email response
+      console.log('Full email response:', JSON.stringify(emailResponse));
 
       if (!emailResponse || !emailResponse.id) {
         console.error('Email sending failed with no error but no ID returned');
@@ -199,6 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     } catch (emailError: any) {
       console.error("Error sending email:", emailError);
+      console.error("Error details:", emailError.message, emailError.stack);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -212,6 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
   } catch (error: any) {
     console.error("Error in send-verification-email function:", error);
+    console.error("Error details:", error.message, error.stack);
     return new Response(
       JSON.stringify({ 
         success: false,

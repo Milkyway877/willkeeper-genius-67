@@ -11,6 +11,8 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { motion } from 'framer-motion';
 import { verifyCode, sendVerificationEmail } from '@/utils/email';
 import { supabase } from '@/integrations/supabase/client';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ export default function EmailVerification() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const { toast } = useToast();
   
   const form = useForm({
@@ -40,24 +43,21 @@ export default function EmailVerification() {
   }
 
   const handleFormSubmit = async (values: { code: string }) => {
-    if (!email) return;
+    if (!email || !values.code) return;
     
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
+    setVerificationError(null);
     
     try {
       console.log(`Attempting to verify code for ${email}: ${values.code}`);
       const { valid, message, error } = await verifyCode(email, values.code, 'signup');
       
       if (!valid) {
-        toast({
-          title: "Verification failed",
-          description: message || "Invalid or expired code. Please try again.",
-          variant: "destructive",
-        });
+        setVerificationError(message || "Invalid or expired code. Please try again.");
         
         // If too many attempts, suggest getting a new code
-        if (verificationAttempts >= 3) {
+        if (verificationAttempts >= 2) {
           toast({
             title: "Too many attempts",
             description: "Please request a new verification code.",
@@ -113,11 +113,7 @@ export default function EmailVerification() {
       }
     } catch (error) {
       console.error("Error during email verification:", error);
-      toast({
-        title: "Verification error",
-        description: "An unexpected error occurred. Please try again later.",
-        variant: "destructive",
-      });
+      setVerificationError("An unexpected error occurred. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -127,13 +123,18 @@ export default function EmailVerification() {
     if (!email) return;
     
     setResendLoading(true);
+    setVerificationError(null);
     
     try {
+      console.log("Attempting to resend verification code to:", email);
       // Use our custom verification email sending
       const { success, error } = await sendVerificationEmail(email, 'signup');
       
       if (!success) {
-        throw new Error(error?.message || "Failed to send verification code");
+        console.error("Failed to resend verification code:", error);
+        setVerificationError(error?.message || "Failed to send verification code. Please try again later.");
+        setResendLoading(false);
+        return;
       }
       
       toast({
@@ -147,11 +148,7 @@ export default function EmailVerification() {
       setVerificationAttempts(0);
     } catch (error) {
       console.error("Failed to resend verification code:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send a new code. Please try again later.",
-        variant: "destructive",
-      });
+      setVerificationError("Failed to send a new code. Please try again later.");
     } finally {
       setResendLoading(false);
     }
@@ -169,6 +166,14 @@ export default function EmailVerification() {
         transition={{ duration: 0.3 }}
         className="w-full"
       >
+        {verificationError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{verificationError}</AlertDescription>
+          </Alert>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
             <FormField
@@ -184,7 +189,7 @@ export default function EmailVerification() {
                       render={({ slots }) => (
                         <InputOTPGroup>
                           {slots.map((slot, i) => (
-                            <InputOTPSlot key={i} {...slot} index={i} />
+                            <InputOTPSlot key={i} {...slot} />
                           ))}
                         </InputOTPGroup>
                       )}

@@ -16,11 +16,13 @@ import Captcha from './Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
 import { signUpSchema } from './SignUpSchemas';
 import { sendVerificationEmail } from '@/utils/email';
+import { AlertCircle } from 'lucide-react';
 
 export function SignUpForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const { captchaRef, validateCaptcha } = useCaptcha();
   
   const form = useForm<z.infer<typeof signUpSchema>>({
@@ -37,6 +39,8 @@ export function SignUpForm() {
   
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     try {
+      // Reset any previous errors
+      setVerificationError(null);
       setIsLoading(true);
 
       // Check for honeypot field
@@ -126,6 +130,7 @@ export function SignUpForm() {
 
       // Send our custom verification email
       try {
+        console.log("Attempting to send verification email to:", values.email);
         const { success, error } = await sendVerificationEmail(
           values.email,
           'signup',
@@ -134,12 +139,12 @@ export function SignUpForm() {
 
         if (!success) {
           console.error("Email sending error:", error);
-          toast({
-            title: "Account created but verification email failed",
-            description: "Your account was created, but we couldn't send a verification email. Please try again or contact support.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
+          // Store the error for display but don't stop account creation
+          setVerificationError(error?.message || "Could not send verification email. Please try again later.");
+          
+          // Even with email error, we want to redirect to verification page
+          // where they can request a new code
+          navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
           return;
         }
         
@@ -154,12 +159,12 @@ export function SignUpForm() {
       } catch (emailError: any) {
         console.error("Email sending error:", emailError);
         
-        toast({
-          title: "Account created but verification email failed",
-          description: "Your account was created, but we couldn't send a verification email. Please try again or contact support.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
+        // Store the error for display but don't stop account creation
+        setVerificationError(emailError?.message || "Could not send verification email. Please try again later.");
+        
+        // Even with email error, we want to redirect to verification page
+        // where they can request a new code
+        navigate(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
       }
       
     } catch (error: any) {
@@ -176,6 +181,16 @@ export function SignUpForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {verificationError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Error sending verification email</p>
+              <p className="text-sm">{verificationError}</p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
