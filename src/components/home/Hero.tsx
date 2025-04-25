@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,15 @@ import { motion } from 'framer-motion';
 import { Globe } from '@/components/ui/globe';
 
 export function Hero() {
+  // Track if component is mounted to prevent flickering
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    // Small delay to ensure everything renders properly
+    const timeout = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(timeout);
+  }, []);
+
   return (
     <section className="relative min-h-screen overflow-hidden flex items-center bg-black">
       {/* Subtle overlay pattern for texture */}
@@ -106,10 +116,10 @@ export function Hero() {
           <motion.div 
             className="relative flex justify-center items-center lg:justify-end h-[600px]"
             initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={{ opacity: mounted ? 1 : 0, scale: mounted ? 1 : 0.9 }}
             transition={{ delay: 0.2, duration: 0.8 }}
           >
-            <Globe />
+            {mounted && <Globe />}
             <div className="pointer-events-none absolute inset-0 h-full bg-[radial-gradient(circle_at_50%_200%,rgba(0,0,0,0.2),rgba(255,255,255,0))]" />
           </motion.div>
         </div>

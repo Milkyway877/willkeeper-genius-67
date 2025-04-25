@@ -46,7 +46,10 @@ export function Globe({
   const pointerInteracting = useRef(null)
   const pointerInteractionMovement = useRef(0)
   const [r, setR] = useState(0)
-  const [isCanvasReady, setIsCanvasReady] = useState(false)
+  
+  // Track whether component is mounted
+  const isMounted = useRef(false)
+  const globeCreated = useRef(false)
 
   const updatePointerInteraction = (value: any) => {
     pointerInteracting.current = value
@@ -73,58 +76,70 @@ export function Globe({
     [r],
   )
 
-  const onResize = () => {
-    if (canvasRef.current) {
-      width = canvasRef.current.offsetWidth
-      setIsCanvasReady(true)
-    }
-  }
-
+  // Initialize the globe with proper timing
   useEffect(() => {
-    // Initialize resize handler
-    window.addEventListener("resize", onResize)
+    // Set mounted flag
+    isMounted.current = true
     
-    // Initial size calculation with a small delay to ensure DOM is ready
-    const initTimeout = setTimeout(() => {
-      onResize()
-    }, 100)
-    
-    return () => {
-      window.removeEventListener("resize", onResize)
-      clearTimeout(initTimeout)
-    }
-  }, [])
-
-  useEffect(() => {
-    // Only create the globe when the canvas is ready and has dimensions
-    if (!isCanvasReady || !canvasRef.current) return;
-    
-    // Ensure width is properly set before creating the globe
-    if (width <= 0) {
-      width = canvasRef.current.offsetWidth || 300; // Fallback width
+    // Handle resizing
+    const handleResize = () => {
+      if (canvasRef.current && isMounted.current) {
+        width = canvasRef.current.offsetWidth || 600
+      }
     }
     
-    try {
-      const globe = createGlobe(canvasRef.current, {
-        ...config,
-        width: width * 2,
-        height: width * 2,
-        onRender,
-      });
-
-      // Fade in the globe
-      setTimeout(() => {
-        if (canvasRef.current) {
-          canvasRef.current.style.opacity = "1";
+    window.addEventListener("resize", handleResize)
+    
+    // Initial sizing after DOM is fully loaded
+    const initializeGlobe = () => {
+      if (!canvasRef.current || !isMounted.current || globeCreated.current) return
+      
+      handleResize()
+      
+      // Only proceed if we have valid dimensions
+      if (width <= 0) return
+      
+      try {
+        // Mark as created to prevent duplicate creation
+        globeCreated.current = true
+        
+        const globe = createGlobe(canvasRef.current, {
+          ...config,
+          width: width * 2,
+          height: width * 2,
+          onRender,
+        })
+        
+        // Fade in with slight delay to ensure rendering is complete
+        setTimeout(() => {
+          if (canvasRef.current && isMounted.current) {
+            canvasRef.current.style.opacity = "1"
+          }
+        }, 300)
+        
+        return () => {
+          if (globe) {
+            globe.destroy()
+          }
         }
-      }, 200);
-
-      // Clean up
-      return () => globe.destroy();
-    } catch (error) {
-      console.error("Error creating globe:", error);
+      } catch (error) {
+        console.error("Failed to create globe:", error)
+      }
     }
-  }, [isCanvasReady, config, onRender]);
+    
+    // Try immediate initialization
+    initializeGlobe()
+    
+    // Fallback initialization with timeout to ensure DOM is ready
+    const timeoutId = setTimeout(initializeGlobe, 500)
+    
+    // Clean up
+    return () => {
+      isMounted.current = false
+      window.removeEventListener("resize", handleResize)
+      clearTimeout(timeoutId)
+    }
+  }, [config, onRender])
 
   return (
     <div
