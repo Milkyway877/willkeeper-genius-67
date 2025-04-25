@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -15,7 +14,6 @@ import { createWill, Will } from '@/services/willService';
 import { Book, FileText, User, Video, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
-// Template options for the wizard
 const templates = [
   {
     id: 'traditional',
@@ -40,7 +38,6 @@ const templates = [
   }
 ];
 
-// Steps in the will creation process
 const steps = [
   { id: 'template', title: 'Choose Template' },
   { id: 'ai-conversation', title: 'AI Assistant' },
@@ -55,7 +52,6 @@ export default function WillWizardPage() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
-  // State
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [responses, setResponses] = useState<Record<string, any>>({});
@@ -67,19 +63,17 @@ export default function WillWizardPage() {
   const [progress, setProgress] = useState(0);
   const [willId, setWillId] = useState<string | null>(null);
 
-  // Load template from URL if available
   useEffect(() => {
     const templateParam = searchParams.get('template');
     if (templateParam) {
       const template = templates.find(t => t.id === templateParam || t.id === templateParam.toLowerCase());
       if (template) {
         setSelectedTemplate(template);
-        setCurrentStep(1); // Skip to AI conversation
+        setCurrentStep(1);
       }
     }
   }, [searchParams]);
 
-  // Handle template selection
   const handleSelectTemplate = (template: any) => {
     setSelectedTemplate(template);
     setCurrentStep(prev => prev + 1);
@@ -90,12 +84,10 @@ export default function WillWizardPage() {
     });
   };
 
-  // Handle AI conversation completion
-  const handleConversationComplete = (allResponses: Record<string, any>, generatedContent: string) => {
+  const handleConversationComplete = async (allResponses: Record<string, any>, generatedContent: string) => {
     setResponses(allResponses);
     setGeneratedWill(generatedContent);
     
-    // Extract potential contacts from responses
     const extractedContacts = extractContactsFromResponses(allResponses);
     setContacts(extractedContacts);
     
@@ -107,11 +99,9 @@ export default function WillWizardPage() {
     });
   };
 
-  // Extract potential contacts from AI conversation responses
   const extractContactsFromResponses = (responses: Record<string, any>) => {
     const contacts = [];
     
-    // Extract executor
     if (responses.executorName) {
       contacts.push({
         id: `executor-${Date.now()}`,
@@ -123,7 +113,6 @@ export default function WillWizardPage() {
       });
     }
     
-    // Extract alternate executor
     if (responses.alternateExecutorName) {
       contacts.push({
         id: `alt-executor-${Date.now()}`,
@@ -135,7 +124,6 @@ export default function WillWizardPage() {
       });
     }
     
-    // Extract guardian
     if (responses.guardianName) {
       contacts.push({
         id: `guardian-${Date.now()}`,
@@ -147,10 +135,8 @@ export default function WillWizardPage() {
       });
     }
     
-    // Extract beneficiaries from residual estate
     if (responses.residualEstate) {
       const text = responses.residualEstate;
-      // Simple regex to extract names that might be beneficiaries
       const potentialNames = text.match(/[A-Z][a-z]+ [A-Z][a-z]+/g);
       if (potentialNames) {
         potentialNames.forEach((name, index) => {
@@ -169,19 +155,27 @@ export default function WillWizardPage() {
     return contacts;
   };
 
-  // Handle contacts collection completion
-  const handleContactsComplete = (updatedContacts: any[]) => {
-    setContacts(updatedContacts);
-    setCurrentStep(prev => prev + 1);
-    
-    toast({
-      title: "Contacts Saved",
-      description: `Contact information for ${updatedContacts.length} individuals has been saved.`,
-    });
+  const handleContactsComplete = async (updatedContacts: any[]) => {
+    try {
+      await saveWillContacts(willId!, updatedContacts);
+      setContacts(updatedContacts);
+      setCurrentStep(prev => prev + 1);
+      
+      toast({
+        title: "Contacts Saved",
+        description: `Contact information for ${updatedContacts.length} individuals has been saved.`,
+      });
+    } catch (error) {
+      console.error('Error saving contacts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save contacts. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  // Handle documents upload completion
-  const handleDocumentsComplete = (uploadedDocuments: any[]) => {
+  const handleDocumentsComplete = async (uploadedDocuments: any[]) => {
     setDocuments(uploadedDocuments);
     setCurrentStep(prev => prev + 1);
     
@@ -191,9 +185,8 @@ export default function WillWizardPage() {
     });
   };
 
-  // Handle video recording completion
-  const handleVideoComplete = (blob: Blob) => {
-    setVideoBlob(blob);
+  const handleVideoComplete = async (videoData: any) => {
+    setVideoBlob(videoData);
     setCurrentStep(prev => prev + 1);
     
     toast({
@@ -202,12 +195,10 @@ export default function WillWizardPage() {
     });
   };
 
-  // Handle will finalization
   const handleFinalizeWill = async () => {
     setIsCreatingWill(true);
     
     try {
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 95) {
@@ -218,11 +209,10 @@ export default function WillWizardPage() {
         });
       }, 200);
       
-      // Create the will
       const will: Omit<Will, 'id' | 'created_at' | 'updated_at'> = {
         title: responses.fullName ? `Will of ${responses.fullName}` : 'My Will',
         status: 'active',
-        document_url: 'generated-will.pdf', // In real implementation, this would be the URL to the generated PDF
+        document_url: 'generated-will.pdf',
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,
         content: generatedWill
@@ -241,7 +231,6 @@ export default function WillWizardPage() {
           description: "Your will has been generated, finalized, and saved securely.",
         });
         
-        // Navigate to the created will after a short delay
         setTimeout(() => {
           navigate(`/will/${createdWill.id}`);
         }, 1500);
@@ -262,7 +251,6 @@ export default function WillWizardPage() {
     }
   };
 
-  // Render current step
   const renderStep = () => {
     switch (steps[currentStep].id) {
       case 'template':
@@ -283,8 +271,7 @@ export default function WillWizardPage() {
         return (
           <AIQuestionFlow
             selectedTemplate={selectedTemplate}
-            responses={responses}
-            setResponses={setResponses}
+            willId={willId!}
             onComplete={handleConversationComplete}
           />
         );
@@ -292,6 +279,7 @@ export default function WillWizardPage() {
       case 'contacts':
         return (
           <ContactsCollection
+            willId={willId!}
             contacts={contacts}
             onComplete={handleContactsComplete}
           />
@@ -300,8 +288,7 @@ export default function WillWizardPage() {
       case 'documents':
         return (
           <DocumentsUploader
-            contacts={contacts}
-            responses={responses}
+            willId={willId!}
             onComplete={handleDocumentsComplete}
           />
         );
@@ -309,7 +296,8 @@ export default function WillWizardPage() {
       case 'video':
         return (
           <VideoRecorder
-            onRecordingComplete={handleVideoComplete}
+            willId={willId!}
+            onComplete={handleVideoComplete}
           />
         );
       
@@ -359,7 +347,7 @@ export default function WillWizardPage() {
         return null;
     }
   };
-  
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -371,7 +359,6 @@ export default function WillWizardPage() {
           </p>
         </div>
         
-        {/* Progress indicator */}
         {currentStep > 0 && (
           <div className="mb-8">
             <div className="flex justify-between mb-2">
@@ -425,7 +412,6 @@ export default function WillWizardPage() {
           </CardContent>
         </Card>
         
-        {/* Navigation buttons */}
         {currentStep > 0 && currentStep < steps.length - 1 && (
           <div className="mt-6 flex justify-between">
             <Button
