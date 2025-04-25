@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -200,72 +201,76 @@ export default function AIAssistantPage() {
         
         <CardContent className="p-0">
           <div className="flex flex-col h-[60vh]">
-            <ScrollArea className="flex-1 p-4">
-              <AnimatePresence initial={false}>
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[85%] p-3 rounded-lg ${
-                        message.role === 'user'
-                          ? 'bg-willtank-100 text-willtank-900'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
+            {/* Fixed the message display area structure to ensure the input remains at the bottom */}
+            <div className="flex-1 relative">
+              <ScrollArea className="absolute inset-0 p-4">
+                <AnimatePresence initial={false}>
+                  {messages.map((message) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className="flex items-center mb-1">
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${
-                            message.role === 'user' ? 'bg-willtank-200' : 'bg-gray-200'
-                          }`}
-                        >
-                          {message.role === 'user' ? (
-                            <User className="h-3.5 w-3.5" />
-                          ) : (
-                            <Bot className="h-3.5 w-3.5" />
-                          )}
-                        </div>
-                        <span className="text-xs font-medium">
-                          {message.role === 'user' ? 'You' : 'Assistant'}
-                        </span>
-                        <span className="text-xs text-gray-500 ml-2">
-                          {typeof message.timestamp === 'string'
-                            ? new Date(message.timestamp).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : message.timestamp.toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                        </span>
-                      </div>
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                      {message.role === 'assistant' && (
-                        <div className="flex justify-end mt-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => handleCopyMessage(message.content)}
+                      <div
+                        className={`max-w-[85%] p-3 rounded-lg ${
+                          message.role === 'user'
+                            ? 'bg-willtank-100 text-willtank-900'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        <div className="flex items-center mb-1">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${
+                              message.role === 'user' ? 'bg-willtank-200' : 'bg-gray-200'
+                            }`}
                           >
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy
-                          </Button>
+                            {message.role === 'user' ? (
+                              <User className="h-3.5 w-3.5" />
+                            ) : (
+                              <Bot className="h-3.5 w-3.5" />
+                            )}
+                          </div>
+                          <span className="text-xs font-medium">
+                            {message.role === 'user' ? 'You' : 'Assistant'}
+                          </span>
+                          <span className="text-xs text-gray-500 ml-2">
+                            {typeof message.timestamp === 'string'
+                              ? new Date(message.timestamp).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : message.timestamp.toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <div ref={chatEndRef} />
-            </ScrollArea>
+                        <div className="whitespace-pre-wrap">{message.content}</div>
+                        {message.role === 'assistant' && (
+                          <div className="flex justify-end mt-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => handleCopyMessage(message.content)}
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copy
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                <div ref={chatEndRef} />
+              </ScrollArea>
+            </div>
             
-            <div className="p-4 border-t">
+            {/* Fixed position input area */}
+            <div className="p-4 border-t mt-auto">
               <form onSubmit={handleSendMessage} className="flex flex-col gap-3">
                 <Textarea
                   ref={messageInputRef}
