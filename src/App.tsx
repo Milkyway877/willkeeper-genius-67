@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -11,7 +12,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Index from '@/pages/Index';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
-import Dashboard from '@/pages/Dashboard'; // Updated import
+import Dashboard from '@/pages/Dashboard';
 import Profile from '@/pages/dashboard/Profile';
 import Settings from '@/pages/settings/Settings';
 import Security from '@/pages/dashboard/Security';
@@ -71,10 +72,11 @@ function App() {
                   <Route path="login" element={<Login />} />
                   <Route path="signup" element={<Signup />} />
                   <Route path="verify" element={<AccountVerification />} />
-                  {/* Onboarding route - requires auth but not onboarding completion */}
-                  <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
-                    <Route path="onboarding" element={<Onboarding />} />
-                  </Route>
+                </Route>
+                
+                {/* Onboarding route - requires auth but not onboarding completion */}
+                <Route element={<RouteGuard requireAuth={true} requireOnboarding={false} />}>
+                  <Route path="/auth/onboarding" element={<Onboarding />} />
                 </Route>
                 
                 {/* Corporate Pages */}
@@ -105,7 +107,6 @@ function App() {
                     <Route path="/vault/create" element={<CreateVaultItem />} />
                     <Route path="/vault/edit/:id" element={<EditVaultItem />} />
                     <Route path="/vault/view/:id" element={<ViewVaultItem />} />
-                    <Route path="/help" element={<Help />} />
                   </Route>
                 </Route>
 

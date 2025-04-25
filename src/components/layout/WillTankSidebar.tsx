@@ -208,13 +208,13 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
   }
   
   return (
-    <motion.aside
+    <motion.div
       initial={{ width: isCollapsed ? 64 : 256 }}
       animate={{ width: isCollapsed ? 64 : 256 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800",
-        isCollapsed ? "items-center" : ""
+        "h-screen border-r border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800 sticky top-0",
+        isCollapsed ? "w-16" : "w-64"
       )}
     >
       <div 
@@ -301,6 +301,6 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
           )}
         </button>
       </div>
-    </motion.aside>
+    </motion.div>
   );
 }
