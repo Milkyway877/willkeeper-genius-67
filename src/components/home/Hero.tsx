@@ -1,38 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Globe } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { motion, useAnimation } from 'framer-motion';
-import { RotatingGlobe } from './RotatingGlobe';
+import { motion } from 'framer-motion';
+import { Globe } from '@/components/ui/globe';
 
 export function Hero() {
-  const controls = useAnimation();
-  
-  useEffect(() => {
-    const animateBackground = async () => {
-      await controls.start({
-        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-        transition: { 
-          repeat: Infinity, 
-          duration: 25, // Slower animation
-          ease: "easeInOut" 
-        }
-      });
-    };
-    
-    animateBackground();
-  }, [controls]);
-
   return (
-    <motion.section 
-      className="relative min-h-screen overflow-hidden flex items-center"
-      animate={controls}
-      style={{
-        background: 'linear-gradient(135deg, #000000, #1c2e40, #000000, #162435, #000000)',
-        backgroundSize: '400% 400%',
-      }}
-    >
+    <section className="relative min-h-screen overflow-hidden flex items-center bg-black">
       {/* Subtle overlay pattern for texture */}
       <div className="absolute inset-0 dot-pattern opacity-[0.05] z-10"></div>
       
@@ -129,33 +104,19 @@ export function Hero() {
           
           {/* Right content - Globe */}
           <motion.div 
-            className="flex justify-center items-center lg:justify-end"
+            className="relative flex justify-center items-center lg:justify-end h-[600px]"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
           >
-            <div className="relative w-full max-w-xl">
-              <motion.div 
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 blur-3xl"
-                animate={{ 
-                  opacity: [0.5, 0.8, 0.5],
-                  scale: [0.8, 1.05, 0.8],
-                  rotate: 360
-                }}
-                transition={{ 
-                  repeat: Infinity, 
-                  duration: 20,
-                  ease: "linear" 
-                }}
-              ></motion.div>
-              <RotatingGlobe />
-            </div>
+            <Globe />
+            <div className="pointer-events-none absolute inset-0 h-full bg-[radial-gradient(circle_at_50%_200%,rgba(0,0,0,0.2),rgba(255,255,255,0))]" />
           </motion.div>
         </div>
       </div>
       
       {/* Bottom gradient overlay */}
       <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent z-10"></div>
-    </motion.section>
+    </section>
   );
 }
