@@ -103,6 +103,7 @@ export default function App() {
             <Route path="/tank" element={<Tank />} />
             <Route path="/tank/create" element={<TankCreation />} />
             <Route path="/tank/message/:id" element={<TankMessageDetail />} />
+            <Route path="/tank/edit/:id" element={<TankCreation />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

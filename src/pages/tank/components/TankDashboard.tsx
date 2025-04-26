@@ -3,16 +3,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Pencil, Clock, Send, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Eye, Pencil, Clock, Send, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { Message, MessageStatus, MessageType, MessageCategory } from '../types';
-import { getFutureMessages } from '@/services/tankService';
+import { getFutureMessages, deleteFutureMessage } from '@/services/tankService';
 import { MessagePreview } from './preview/MessagePreview';
+import { useToast } from '@/hooks/use-toast';
 
 export const TankDashboard: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewMessage, setPreviewMessage] = useState<Message | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   useEffect(() => {
     const loadMessages = async () => {
@@ -39,6 +42,35 @@ export const TankDashboard: React.FC = () => {
     
     loadMessages();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      setDeletingId(id);
+      const success = await deleteFutureMessage(id);
+      if (success) {
+        setMessages(messages.filter(message => message.id !== id));
+        toast({
+          title: "Message deleted",
+          description: "Your message has been successfully deleted.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the message. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const getStatusColor = (status: MessageStatus) => {
     switch (status) {
@@ -119,6 +151,19 @@ export const TankDashboard: React.FC = () => {
                     className="text-xs"
                   >
                     View Details
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs text-red-500 hover:text-red-600"
+                    onClick={() => handleDelete(message.id)}
+                    disabled={deletingId === message.id}
+                  >
+                    {deletingId === message.id ? (
+                      <span className="flex items-center">Deleting...</span>
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
                   </Button>
                 </div>
               </div>
