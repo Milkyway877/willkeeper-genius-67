@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -257,9 +256,9 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     if (requiredContactsCollected && !aiConfirmedCompletion) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage?.role === 'user') {
-        const completionMessage = {
+        const completionMessage: Message = {
           id: `completion-${Date.now()}`,
-          role: 'assistant',
+          role: 'assistant' as MessageRole,
           content: "Great! I've collected all the necessary contact information. You can now click the Continue button to proceed to the next stage.",
           timestamp: new Date()
         };
