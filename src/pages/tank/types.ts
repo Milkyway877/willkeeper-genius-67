@@ -1,6 +1,8 @@
+
 export type MessageType = 'letter' | 'video' | 'audio' | 'document';
 export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
 export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
+export type MessageCategory = 'letter' | 'story' | 'confession' | 'wishes' | 'advice';
 
 export interface Message {
   id: string | number;
@@ -10,19 +12,7 @@ export interface Message {
   deliveryDate: string;
   status: MessageStatus;
   preview?: string;
-}
-
-export type VaultItemType = 'story' | 'confession' | 'wishes' | 'advice';
-
-export interface LegacyVaultItem {
-  id: string;
-  title: string;
-  type: VaultItemType;
-  preview: string;
-  document_url: string;
-  createdAt: string;
-  created_at: string;
-  encryptionStatus: boolean;
+  category: MessageCategory;
 }
 
 export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
@@ -39,5 +29,3 @@ export interface PlanDetails {
 }
 
 export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
-
-export type DBLegacyVaultItem = LegacyVaultItem;

@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { TimerReset, Plus } from 'lucide-react';
 import { TankDashboard } from './components/TankDashboard';
 import { TankAnalytics } from './components/TankAnalytics';
-import { TankLegacyVault } from './components/TankLegacyVault';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Tank() {
@@ -15,7 +14,6 @@ export default function Tank() {
   const [activeTab, setActiveTab] = useState('dashboard');
   
   useEffect(() => {
-    // Add a page title for SEO and accessibility
     document.title = 'The Tank - Your Time Capsule';
   }, []);
 
@@ -46,7 +44,6 @@ export default function Tank() {
           <TabsList className="mb-6">
             <TabsTrigger value="dashboard">Messages Dashboard</TabsTrigger>
             <TabsTrigger value="analytics">Analytics & Status</TabsTrigger>
-            <TabsTrigger value="legacy">Legacy Vault</TabsTrigger>
           </TabsList>
           
           <AnimatePresence mode="wait">
@@ -63,10 +60,6 @@ export default function Tank() {
               
               <TabsContent value="analytics" className="space-y-6">
                 <TankAnalytics />
-              </TabsContent>
-              
-              <TabsContent value="legacy" className="space-y-6">
-                <TankLegacyVault />
               </TabsContent>
             </motion.div>
           </AnimatePresence>
