@@ -7,16 +7,8 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 export type NotificationPriority = 'low' | 'medium' | 'high';
 
 export function useNotificationManager() {
-  // Try to use the notifications context if available
-  let notificationsContext;
-  try {
-    notificationsContext = useNotifications();
-  } catch (error) {
-    console.warn("NotificationsContext not available, some features may be limited");
-    notificationsContext = null;
-  }
+  const { fetchNotifications } = useNotifications();
 
-  // Function to generate a reliable notification with both toast and persistent storage
   const notify = useCallback(async (
     type: 'success' | 'warning' | 'info' | 'security',
     title: string, 
@@ -35,15 +27,19 @@ export function useNotificationManager() {
       return null;
     }
     
-    // Create a persistent notification if priority is medium or high
+    // Create a persistent notification
     try {
-      console.log(`Creating ${type} notification: ${title}`);
-      return await createSystemNotification(type, { title, description });
+      const notification = await createSystemNotification(type, { title, description });
+      // Refresh notifications list if available
+      if (fetchNotifications) {
+        fetchNotifications();
+      }
+      return notification;
     } catch (error) {
       console.error(`Failed to create ${type} notification:`, error);
       return null;
     }
-  }, []);
+  }, [fetchNotifications]);
 
   // Convenience methods for different notification types
   const notifySuccess = useCallback((title: string, description: string, priority: NotificationPriority = 'medium') => {
@@ -62,87 +58,11 @@ export function useNotificationManager() {
     return notify('security', title, description, priority);
   }, [notify]);
 
-  // Common actions that should trigger notifications
-  const notifyWillCreated = useCallback((willTitle?: string) => {
-    return notifySuccess(
-      'Will Created', 
-      `Your will "${willTitle || 'Untitled'}" has been successfully created.`
-    );
-  }, [notifySuccess]);
-
-  const notifyWillUpdated = useCallback((willTitle?: string) => {
-    return notifySuccess(
-      'Will Updated', 
-      `Your will "${willTitle || 'Untitled'}" has been successfully updated.`
-    );
-  }, [notifySuccess]);
-
-  const notifyDocumentUploaded = useCallback((docTitle?: string) => {
-    return notifyInfo(
-      'Document Uploaded', 
-      `"${docTitle || 'Your document'}" has been successfully uploaded.`
-    );
-  }, [notifyInfo]);
-
-  const notifySubscriptionChanged = useCallback((planName?: string, status?: string) => {
-    return notifySuccess(
-      'Subscription Updated', 
-      `Your subscription ${planName ? `to ${planName}` : ''} is now ${status || 'active'}.`
-    );
-  }, [notifySuccess]);
-
-  const notifyBeneficiaryAdded = useCallback((name?: string) => {
-    return notifyInfo(
-      'Beneficiary Added', 
-      `${name || 'A new beneficiary'} has been added to your will.`
-    );
-  }, [notifyInfo]);
-
-  const notifyExecutorAdded = useCallback((name?: string) => {
-    return notifyInfo(
-      'Executor Added', 
-      `${name || 'A new executor'} has been added to your will.`
-    );
-  }, [notifyInfo]);
-
-  const notifyWelcome = useCallback(() => {
-    return notifyInfo(
-      'Welcome to WillTank', 
-      'Thank you for joining. Get started by creating your first will and securing your legacy.',
-      'high'
-    );
-  }, [notifyInfo]);
-
-  const notifySecurityAlert = useCallback((description: string) => {
-    return notifySecurity(
-      'Security Alert',
-      description
-    );
-  }, [notifySecurity]);
-
   return {
-    // Generic notification methods
     notify,
     notifySuccess,
     notifyInfo,
     notifyWarning,
-    notifySecurity,
-    
-    // Action-specific notification methods
-    notifyWillCreated,
-    notifyWillUpdated,
-    notifyDocumentUploaded,
-    notifySubscriptionChanged,
-    notifyBeneficiaryAdded,
-    notifyExecutorAdded,
-    notifyWelcome,
-    notifySecurityAlert,
-    
-    // Pass through any context data that might be useful
-    unreadCount: notificationsContext?.unreadCount || 0,
-    hasUnread: notificationsContext?.hasUnread || false,
-    fetchNotifications: notificationsContext?.fetchNotifications,
-    markAsRead: notificationsContext?.markAsRead,
-    markAllAsRead: notificationsContext?.markAllAsRead
+    notifySecurity
   };
 }
