@@ -958,7 +958,7 @@ Witnesses: [Witness 1], [Witness 2]`;
         )}
       </Card>
       
-      <style jsx>{`
+      <style>{`
         .pulse-animation {
           animation: pulse 2s infinite;
           box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);

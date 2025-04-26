@@ -12,7 +12,6 @@ import { Book, FileText, User, Video, ArrowLeft, Sparkles, Save, Copy } from 'lu
 import { motion } from 'framer-motion';
 import { TemplateCard } from './components/TemplateCard';
 
-// Enhanced templates with more options
 const templates = [
   {
     id: 'traditional',
@@ -134,7 +133,6 @@ export default function WillCreationAI() {
     setPhase('review');
     
     try {
-      // Save will to the database
       const will = {
         title: data.responses.fullName ? `Will of ${data.responses.fullName}` : 'My Will',
         status: 'draft',
@@ -146,13 +144,10 @@ export default function WillCreationAI() {
       
       await createWill(will);
       
-      // Save contacts and documents if provided
       if (data.contacts && data.contacts.length > 0) {
-        // Save contacts code would go here
       }
       
       if (data.documents && data.documents.length > 0) {
-        // Save documents code would go here
       }
       
     } catch (error) {
@@ -166,7 +161,6 @@ export default function WillCreationAI() {
     setIsSaving(true);
     
     try {
-      // Update the will content
       const will = {
         title: willData.responses.fullName ? `Will of ${willData.responses.fullName}` : 'My Will',
         status: 'active',
@@ -284,13 +278,11 @@ export default function WillCreationAI() {
         </CardHeader>
         <CardContent>
           <div className={`${splitView ? 'flex flex-col md:flex-row gap-6' : 'space-y-6'}`}>
-            {/* Preview section */}
             <div className={`${splitView ? 'w-full md:w-1/2' : ''} border rounded-md p-6 bg-gray-50`}>
               <h3 className="font-medium mb-4">Document Preview</h3>
               <WillPreview content={editableContent} />
             </div>
             
-            {/* Editable section */}
             {splitView && (
               <div className="w-full md:w-1/2 border rounded-md p-6">
                 <h3 className="font-medium mb-4">Edit Document</h3>
@@ -302,7 +294,6 @@ export default function WillCreationAI() {
               </div>
             )}
             
-            {/* Supporting documents */}
             {willData?.documents && willData.documents.length > 0 && (
               <div className="mt-8 border rounded-md p-6">
                 <h3 className="font-medium mb-4">Supporting Documents</h3>
@@ -321,7 +312,6 @@ export default function WillCreationAI() {
               </div>
             )}
             
-            {/* Video testament */}
             {willData?.videoBlob && (
               <div className="mt-8 border rounded-md p-6">
                 <h3 className="font-medium mb-4">Video Testament</h3>
@@ -388,8 +378,7 @@ export default function WillCreationAI() {
         {phase === 'review' && renderReview()}
       </div>
       
-      <style>
-        {`
+      <style>{`
         .pulse-animation {
           animation: pulse 2s infinite;
         }
@@ -405,8 +394,7 @@ export default function WillCreationAI() {
             box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
           }
         }
-        `}
-      </style>
+      `}</style>
     </Layout>
   );
 }
