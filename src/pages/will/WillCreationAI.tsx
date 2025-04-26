@@ -12,6 +12,7 @@ import { Book, FileText, User, Video, ArrowLeft, Sparkles, Save, Copy } from 'lu
 import { motion } from 'framer-motion';
 import { TemplateCard } from './components/TemplateCard';
 import { templates } from './config/wizardSteps';
+import { clearWillProgress } from '@/services/willProgressService';
 
 export default function WillCreationAI() {
   const navigate = useNavigate();
