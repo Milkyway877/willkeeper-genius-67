@@ -26,7 +26,8 @@ export const TankDashboard: React.FC = () => {
           deliveryDate: msg.delivery_date,
           status: msg.status as MessageStatus,
           preview: msg.preview || '',
-          category: (msg.category as MessageCategory) || 'letter'
+          category: (msg.category as MessageCategory) || 'letter',
+          messageUrl: msg.message_url
         }));
         setMessages(formattedMessages);
       } catch (error) {

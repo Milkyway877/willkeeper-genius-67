@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MessageType } from '../../types';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Video, Mic, File } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MessagePreviewProps {
   open: boolean;
@@ -22,13 +22,33 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
   content,
   messageUrl
 }) => {
+  const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchVideoUrl = async () => {
+      if (messageType === 'video' && messageUrl) {
+        try {
+          const { data: { publicUrl } } = supabase.storage
+            .from('future-videos')
+            .getPublicUrl(messageUrl);
+          
+          setVideoUrl(publicUrl);
+        } catch (error) {
+          console.error('Error getting video URL:', error);
+        }
+      }
+    };
+
+    fetchVideoUrl();
+  }, [messageType, messageUrl]);
+
   const renderContent = () => {
     switch (messageType) {
       case 'video':
-        return messageUrl ? (
+        return videoUrl ? (
           <div className="aspect-video rounded-lg overflow-hidden bg-black">
             <video 
-              src={messageUrl} 
+              src={videoUrl} 
               controls 
               className="w-full h-full"
               controlsList="nodownload"
