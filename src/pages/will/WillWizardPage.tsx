@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -11,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createWill } from '@/services/willService';
 import { ArrowRight } from 'lucide-react';
 import { useWillProgress } from '@/services/willProgressService';
-import { steps } from './config/wizardSteps';
+import { steps, templates } from './config/wizardSteps';
 import { WillWizardSteps } from './components/WillWizardSteps';
 import { WillTemplateSelection } from './components/WillTemplateSelection';
 import { WillReviewStep } from './components/WillReviewStep';
