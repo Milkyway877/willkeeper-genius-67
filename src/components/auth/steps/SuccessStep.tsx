@@ -9,13 +9,16 @@ import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 export function SuccessStep() {
   const navigate = useNavigate();
-  const { notifyWelcome, notifyInfo, notifySecurity } = useNotificationManager();
+  const { notifySuccess, notifyInfo, notifySecurity } = useNotificationManager();
   
   useEffect(() => {
     // Send welcome notifications when this component mounts
     const sendWelcomeNotifications = async () => {
       // Main welcome notification
-      await notifyWelcome();
+      await notifySuccess(
+        "Welcome to WillTank",
+        "Your secure digital legacy platform. Get started by exploring the dashboard."
+      );
       
       // Getting started notification
       await notifyInfo(
@@ -32,7 +35,7 @@ export function SuccessStep() {
     };
     
     sendWelcomeNotifications();
-  }, [notifyWelcome, notifyInfo, notifySecurity]);
+  }, [notifySuccess, notifyInfo, notifySecurity]);
   
   return (
     <motion.div key="success" {...fadeInUp} className="text-center py-8">

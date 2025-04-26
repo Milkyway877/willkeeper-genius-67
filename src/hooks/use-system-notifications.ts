@@ -11,7 +11,26 @@ export type NotificationEventType =
   | 'beneficiary_added' 
   | 'executor_added' 
   | 'item_saved' 
-  | 'will_deleted';
+  | 'will_deleted'
+  | 'will_created';
+
+// Mapping of event types to standard notification types
+const eventTypeToNotificationType = (eventType: NotificationEventType): 'success' | 'warning' | 'info' | 'security' => {
+  switch (eventType) {
+    case 'will_updated':
+    case 'will_created':
+    case 'item_saved':
+      return 'success';
+    case 'security_key_generated':
+      return 'security';
+    case 'document_uploaded':
+    case 'beneficiary_added':
+    case 'executor_added':
+    case 'will_deleted':
+    default:
+      return 'info';
+  }
+};
 
 export function useSystemNotifications() {
   const notifySuccess = useCallback(async (title: string, description: string) => {
@@ -127,8 +146,10 @@ export function useSystemNotifications() {
 
   // Create a generic method to notify by event type
   const notifyByEventType = useCallback(async (eventType: NotificationEventType, details?: { title?: string, description?: string, itemId?: string }) => {
+    const notificationType = eventTypeToNotificationType(eventType);
+    
     try {
-      return await createSystemNotification(eventType, { 
+      return await createSystemNotification(notificationType, { 
         title: details?.title || `Event: ${eventType}`, 
         description: details?.description || 'An event has occurred in your account.' 
       });

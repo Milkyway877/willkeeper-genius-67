@@ -58,11 +58,20 @@ export function useNotificationManager() {
     return notify('security', title, description, priority);
   }, [notify]);
 
+  // Add welcome notification helper
+  const notifyWelcome = useCallback(() => {
+    return notifySuccess(
+      'Welcome to WillTank',
+      'Your secure digital legacy platform. Get started by exploring the dashboard.'
+    );
+  }, [notifySuccess]);
+
   return {
     notify,
     notifySuccess,
     notifyInfo,
     notifyWarning,
-    notifySecurity
+    notifySecurity,
+    notifyWelcome
   };
 }

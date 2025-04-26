@@ -8,6 +8,7 @@ import { NotificationDropdown } from './NotificationDropdown';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Menu,
   Search,
@@ -19,6 +20,15 @@ import {
   ChevronDown,
   MenuIcon,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface NavbarProps {
   isAuthenticated?: boolean;

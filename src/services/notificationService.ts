@@ -56,6 +56,34 @@ export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   }
 };
 
+// Add the missing function for marking all notifications as read
+export const markAllNotificationsAsRead = async (): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.warn('User not authenticated, cannot mark notifications as read');
+      return false;
+    }
+    
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', session.user.id)
+      .eq('read', false);
+      
+    if (error) {
+      console.error('Error marking all notifications as read:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in markAllNotificationsAsRead:', error);
+    return false;
+  }
+};
+
 export const createSystemNotification = async (
   type: 'success' | 'warning' | 'info' | 'security',
   details: { title: string, description: string }
@@ -90,4 +118,12 @@ export const createSystemNotification = async (
     console.error('Error in createSystemNotification:', error);
     return null;
   }
+};
+
+// Add welcome notification helper function
+export const createWelcomeNotification = async (): Promise<Notification | null> => {
+  return createSystemNotification('success', {
+    title: 'Welcome to WillTank',
+    description: 'Your secure digital legacy platform. Get started by exploring the dashboard.'
+  });
 };
