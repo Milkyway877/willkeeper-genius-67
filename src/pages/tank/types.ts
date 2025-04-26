@@ -26,29 +26,3 @@ export interface LegacyVaultItem {
   encryptionStatus: boolean;
 }
 
-// Database schema type with additional is_encrypted field
-export interface DBLegacyVaultItem {
-  id: string;
-  title: string;
-  document_url: string;
-  preview: string | null;
-  category: string | null;
-  created_at: string;
-  is_encrypted?: boolean;
-  user_id?: string;
-}
-
-// Subscription types for billing
-export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
-export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
-
-export interface PlanDetails {
-  name: string;
-  price: {
-    monthly: number;
-    yearly: number;
-    lifetime?: number;
-  };
-  features: string[];
-  description: string;
-}

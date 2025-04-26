@@ -1,41 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  FileText, 
-  Video, 
-  FileAudio, 
-  File, 
-  MoreVertical, 
-  Calendar, 
-  Edit, 
-  Trash2, 
-  Play, 
-  SendHorizonal,
-  Shield,
-  AlarmClock,
-  Loader2
-} from 'lucide-react';
+import { Search, Filter, FileText, Video, FileAudio, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Message, MessageStatus, MessageType } from '../types';
-import { getFutureMessages, deleteFutureMessage, updateFutureMessage, FutureMessage } from '@/services/tankService';
-
-const convertToMessage = (dbMessage: FutureMessage): Message => ({
-  id: dbMessage.id,
-  type: (dbMessage.message_type || 'letter') as MessageType,
-  title: dbMessage.title || 'Untitled Message',
-  recipient: dbMessage.recipient_name,
-  deliveryDate: dbMessage.delivery_date,
-  status: dbMessage.status.toLowerCase() as MessageStatus,
-  preview: dbMessage.preview || undefined
-});
+import { getFutureMessages } from '@/services/tankService';
 
 const getTypeIcon = (type: MessageType) => {
   switch (type) {
@@ -73,120 +46,40 @@ export const TankDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getFutureMessages();
-        const formattedMessages = data.map(convertToMessage);
-        setMessages(formattedMessages);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading messages:', err);
-        setError('Failed to load messages. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     loadMessages();
   }, []);
   
-  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
+  const loadMessages = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getFutureMessages();
+      setMessages(data.map(msg => ({
+        id: msg.id,
+        type: (msg.message_type || 'letter') as MessageType,
+        title: msg.title || 'Untitled Message',
+        recipient: msg.recipient_name,
+        deliveryDate: msg.delivery_date,
+        status: msg.status.toLowerCase() as MessageStatus,
+        preview: msg.preview || undefined
+      })));
+    } catch (err) {
+      console.error('Error loading messages:', err);
+      toast({
+        title: "Error",
+        description: "Failed to load messages. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const filteredMessages = messages.filter(message => 
     message.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     message.recipient.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
-  const handleEdit = (id: string | number) => {
-    toast({
-      title: "Edit message",
-      description: `Opening message #${id} for editing.`
-    });
-  };
-  
-  const handleDelete = async (id: string | number) => {
-    try {
-      const success = await deleteFutureMessage(id.toString());
-      
-      if (success) {
-        setMessages(messages.filter(message => message.id !== id));
-        toast({
-          title: "Message deleted",
-          description: "The message has been permanently deleted."
-        });
-      } else {
-        throw new Error('Failed to delete message');
-      }
-    } catch (err) {
-      console.error('Error deleting message:', err);
-      toast({
-        title: "Error",
-        description: "Failed to delete the message. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handlePreview = (id: string | number) => {
-    toast({
-      title: "Preview message",
-      description: `Previewing message #${id}.`
-    });
-  };
-  
-  const handleVerify = async (id: string | number) => {
-    try {
-      const updatedMessage = await updateFutureMessage(id.toString(), { status: 'Verified' });
-      
-      if (updatedMessage) {
-        setMessages(messages.map(message => 
-          message.id === id ? { ...message, status: 'verified' } : message
-        ));
-        
-        toast({
-          title: "Message verified",
-          description: "The message has been verified for delivery."
-        });
-      } else {
-        throw new Error('Failed to verify message');
-      }
-    } catch (err) {
-      console.error('Error verifying message:', err);
-      toast({
-        title: "Error",
-        description: "Failed to verify the message. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 text-willtank-600 animate-spin mb-4" />
-        <p className="text-gray-600">Loading your messages...</p>
-      </div>
-    );
-  }
-
-  if (error && messages.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-          <FileText className="h-8 w-8 text-red-500" />
-        </div>
-        <h3 className="text-lg font-medium mb-2">Failed to load messages</h3>
-        <p className="text-gray-500 mb-4">{error}</p>
-        <Button onClick={() => window.location.reload()}>Try Again</Button>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -194,10 +87,10 @@ export const TankDashboard: React.FC = () => {
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
           <Input 
-            placeholder="Search messages by title or recipient..." 
+            placeholder="Search messages..." 
             className="pl-10"
             value={searchQuery}
-            onChange={handleSearch}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Button variant="outline" className="flex-shrink-0">
@@ -207,117 +100,53 @@ export const TankDashboard: React.FC = () => {
       </div>
       
       <div className="space-y-4">
-        {filteredMessages.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-              <FileText className="h-8 w-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium mb-2">No messages found</h3>
-            <p className="text-gray-500 mb-4">Create your first future message to get started.</p>
-            <Button onClick={() => navigate('/tank/create')}>Create Message</Button>
-          </div>
-        ) : (
-          filteredMessages.map((message) => (
-            <Card key={message.id} className="hover:shadow-md transition-shadow">
-              <div className="flex items-start p-4">
-                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4 flex-shrink-0">
-                  {getTypeIcon(message.type)}
+        {filteredMessages.map((message) => (
+          <Card key={message.id} className="p-4">
+            <div className="flex items-start">
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mr-4">
+                {getTypeIcon(message.type)}
+              </div>
+              
+              <div className="flex-grow">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">{message.title}</h3>
+                  {getStatusBadge(message.status)}
                 </div>
                 
-                <div className="flex-grow overflow-hidden">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
-                    <h3 className="font-medium truncate mr-2">{message.title}</h3>
-                    {getStatusBadge(message.status)}
-                  </div>
-                  
-                  <div className="text-sm text-gray-600 mb-2">
-                    <span className="flex items-center">
-                      For: {message.recipient}
-                    </span>
-                  </div>
-                  
-                  <p className="text-sm text-gray-500 line-clamp-2 mb-3">{message.preview}</p>
-                  
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center px-2 py-1 rounded-full bg-gray-100">
-                            <Calendar size={12} className="mr-1" />
-                            <span>{new Date(message.deliveryDate).toLocaleDateString()}</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Scheduled delivery date</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center px-2 py-1 rounded-full bg-gray-100">
-                            <Shield size={12} className="mr-1" />
-                            <span>Encrypted</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>End-to-end encrypted message</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    {message.status === 'scheduled' && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center px-2 py-1 rounded-full bg-gray-100">
-                              <AlarmClock size={12} className="mr-1" />
-                              <span>Auto-verify on</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Set to automatically verify before delivery</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  For: {message.recipient}
+                </p>
                 
-                <div className="ml-4 flex-shrink-0">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical size={16} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handlePreview(message.id)}>
-                        <Play size={14} className="mr-2" />
-                        Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleEdit(message.id)}>
-                        <Edit size={14} className="mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleVerify(message.id)}>
-                        <SendHorizonal size={14} className="mr-2" />
-                        Verify
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleDelete(message.id)}
-                        className="text-red-600 focus:text-red-600"
-                      >
-                        <Trash2 size={14} className="mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                {message.preview && (
+                  <p className="text-sm text-gray-500 line-clamp-2">
+                    {message.preview}
+                  </p>
+                )}
+                
+                <div className="mt-4 text-sm text-gray-500">
+                  Delivery: {new Date(message.deliveryDate).toLocaleDateString()}
                 </div>
               </div>
-            </Card>
-          ))
+            </div>
+          </Card>
+        ))}
+        
+        {filteredMessages.length === 0 && (
+          <div className="text-center py-12">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">No messages found</h3>
+            <p className="text-gray-500 mb-4">
+              {searchQuery ? 
+                "No messages match your search criteria." : 
+                "Create your first future message to get started."
+              }
+            </p>
+            {!searchQuery && (
+              <Button onClick={() => navigate('/tank/create')}>
+                Create Message
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>

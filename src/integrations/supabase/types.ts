@@ -130,8 +130,17 @@ export type Database = {
         Row: {
           content: string | null
           created_at: string | null
+          delivery_date: string | null
+          delivery_event: string | null
+          delivery_type: string | null
           id: string
+          is_encrypted: boolean | null
+          message_type: string | null
+          message_url: string | null
           preview: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          status: string | null
           title: string | null
           updated_at: string | null
           user_id: string
@@ -139,8 +148,17 @@ export type Database = {
         Insert: {
           content?: string | null
           created_at?: string | null
+          delivery_date?: string | null
+          delivery_event?: string | null
+          delivery_type?: string | null
           id?: string
+          is_encrypted?: boolean | null
+          message_type?: string | null
+          message_url?: string | null
           preview?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          status?: string | null
           title?: string | null
           updated_at?: string | null
           user_id: string
@@ -148,8 +166,17 @@ export type Database = {
         Update: {
           content?: string | null
           created_at?: string | null
+          delivery_date?: string | null
+          delivery_event?: string | null
+          delivery_type?: string | null
           id?: string
+          is_encrypted?: boolean | null
+          message_type?: string | null
+          message_url?: string | null
           preview?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          status?: string | null
           title?: string | null
           updated_at?: string | null
           user_id?: string

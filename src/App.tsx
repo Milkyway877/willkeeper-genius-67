@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -47,15 +46,16 @@ import Activity from './pages/activity/Activity';
 // Add global mobile responsive styles
 import './MobileStyles.css';
 
+import Tank from './pages/tank/Tank';
+import TankCreation from './pages/tank/TankCreation';
+
 const queryClient = new QueryClient();
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <NotificationsProvider>
-          <Toaster />
-          <FloatingAssistant />
+      <NotificationsProvider>
+        <QueryClientProvider client={queryClient}>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Home />} />
@@ -98,14 +98,16 @@ function App() {
             {/* Corporate routes */}
             <Route path="/corporate" element={<Corporate />} />
             
+            <Route path="/tank" element={<Tank />} />
+            <Route path="/tank/create" element={<TankCreation />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Toaster />
+          <FloatingAssistant />
           <ReactQueryDevtools initialIsOpen={false} />
-        </NotificationsProvider>
-      </QueryClientProvider>
+        </QueryClientProvider>
+      </NotificationsProvider>
     </BrowserRouter>
   );
 }
-
-export default App;
-

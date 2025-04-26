@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem, VaultItemType } from "../pages/tank/types";
 import { createSystemNotification } from "./notificationService";
@@ -16,7 +15,7 @@ export interface FutureMessage {
   created_at: string;
 }
 
-// Database functions remain the same
+// Database functions for future messages
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
     const { data, error } = await supabase
