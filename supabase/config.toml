@@ -1,10 +1,34 @@
 
 project_id = "ksiinmxsycosnpchutuw"
+[api]
+enabled = true
+[auth]
+enabled = true
+[realtime]
+enabled = true
+[storage]
+enabled = true
+[db]
+enabled = true
+
+[analytics]
+enabled = true
+
+# Edge Functions
+[functions]
+[functions.gpt-will-assistant]
+verify_jwt = false
+
+[functions.will-contacts-assistant]
+verify_jwt = false
+
+[functions.will-documents-assistant]
+verify_jwt = false
+
+[functions.will-video-assistant]
+verify_jwt = false
 
 [functions.ai-assistant]
-verify_jwt = true
-
-[functions.gpt-will-assistant]
 verify_jwt = false
 
 [functions.save-will-conversation]

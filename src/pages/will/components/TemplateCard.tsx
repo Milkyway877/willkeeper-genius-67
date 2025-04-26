@@ -1,119 +1,87 @@
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Eye } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-type TemplateProps = {
+interface TemplateCardProps {
   template: {
     id: string;
     title: string;
     description: string;
     icon: React.ReactNode;
-    tags: string[];
-    sample?: string;
+    tags?: string[];
+    features?: string[];
   };
-  isSelected: boolean;
+  isSelected?: boolean;
   onSelect: () => void;
-};
+}
 
-export function TemplateCard({ template, isSelected, onSelect }: TemplateProps) {
-  const [showPreview, setShowPreview] = useState(false);
-
+export function TemplateCard({ template, isSelected, onSelect }: TemplateCardProps) {
   return (
-    <>
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className={`
-          cursor-pointer border rounded-xl p-6 transition-all duration-200
-          ${isSelected 
-            ? 'border-willtank-500 shadow-md bg-willtank-50' 
-            : 'border-gray-200 hover:border-willtank-300 bg-white'}
-        `}
-        onClick={onSelect}
-      >
-        <div className="flex justify-between items-start mb-4">
-          <div className="h-14 w-14 rounded-full bg-willtank-100 flex items-center justify-center">
+    <Card 
+      className={cn(
+        "transition-all duration-200 hover:shadow-md cursor-pointer overflow-hidden relative h-full",
+        isSelected ? "ring-2 ring-willtank-600 shadow-lg" : ""
+      )}
+      onClick={onSelect}
+    >
+      <div className={cn(
+        "absolute top-0 right-0 w-0 h-0 transition-all duration-300",
+        isSelected ? "border-t-[3rem] border-r-[3rem] border-t-transparent border-r-willtank-600" : "border-t-0 border-r-0"
+      )} />
+      
+      {isSelected && (
+        <div className="absolute top-0 right-0 p-1 text-white z-10">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+      )}
+      
+      <CardContent className="p-5 flex flex-col h-full">
+        <div className="mb-4 flex items-center">
+          <div className="p-2 bg-willtank-50 rounded-md mr-3">
             {template.icon}
           </div>
-          {isSelected && (
-            <div className="bg-willtank-500 text-white h-8 w-8 rounded-full flex items-center justify-center">
-              <Check className="h-5 w-5" />
-            </div>
-          )}
+          <h3 className="font-semibold text-lg">{template.title}</h3>
         </div>
         
-        <h3 className="font-medium text-lg mb-2">{template.title}</h3>
-        <p className="text-gray-600 text-sm mb-4">{template.description}</p>
+        <p className="text-gray-600 text-sm mb-4 flex-grow">{template.description}</p>
         
-        <div className="flex justify-between items-center">
-          <div className="flex flex-wrap gap-2">
+        {template.tags && template.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
             {template.tags.map((tag, index) => (
               <span 
                 key={index} 
-                className="px-2 py-1 bg-willtank-100 text-willtank-700 rounded-full text-xs font-medium"
+                className="text-xs px-2 py-1 bg-willtank-50 text-willtank-700 rounded-full"
               >
                 {tag}
               </span>
             ))}
           </div>
-          
-          {template.sample && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPreview(true);
-              }}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              Preview
-            </Button>
-          )}
-        </div>
-      </motion.div>
-
-      {/* Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{template.title} Preview</DialogTitle>
-          </DialogHeader>
-          
-          <div className="mt-4 border border-gray-200 rounded-lg p-6 bg-white">
-            <div className="mb-6 flex justify-between items-center">
-              <div className="flex items-center">
-                <div className="h-10 w-10 bg-willtank-500 rounded-md flex items-center justify-center mr-3">
-                  <span className="text-white font-bold">W</span>
-                </div>
-                <div>
-                  <p className="text-willtank-700 font-bold">WILLTANK</p>
-                  <p className="text-xs text-gray-500">Legal Document</p>
-                </div>
-              </div>
-              <div className="border-2 border-gray-300 rounded-lg p-2 text-center">
-                <p className="text-xs text-gray-400">Document ID</p>
-                <p className="text-sm font-mono">{Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
-              </div>
-            </div>
-            
-            <div className="prose max-w-none whitespace-pre-wrap font-serif text-sm leading-relaxed text-gray-800 mb-6">
-              {template.sample || "Sample document content would appear here."}
-            </div>
-            
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
-              <Button variant="default" onClick={() => {
-                setShowPreview(false);
-                onSelect();
-              }}>Use This Template</Button>
-              <Button variant="outline" onClick={() => setShowPreview(false)}>Close Preview</Button>
-            </div>
+        )}
+        
+        {template.features && template.features.length > 0 && (
+          <div className="text-sm text-gray-600">
+            <p className="font-medium mb-2">Key features:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              {template.features.map((feature, index) => (
+                <li key={index}>{feature}</li>
+              ))}
+            </ul>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        )}
+        
+        <Button 
+          variant="outline" 
+          className={cn(
+            "mt-4 w-full",
+            isSelected && "bg-willtank-50"
+          )}
+          onClick={onSelect}
+        >
+          {isSelected ? "Selected" : "Select Template"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
