@@ -374,6 +374,67 @@ export function AIQuestionFlow({
     }
   };
   
+  const checkQuestionsComplete = useCallback((templateId: string, responses: Record<string, any>): boolean => {
+    const requiredFields = {
+      traditional: ['fullName', 'maritalStatus', 'executorName', 'residualEstate'],
+      'digital-assets': ['fullName', 'executorName', 'digitalAssetsDetails'],
+      'living-trust': ['fullName', 'trusteeName', 'beneficiaries'],
+      family: ['fullName', 'maritalStatus', 'childrenInfo', 'executorName'],
+      business: ['fullName', 'businessDetails', 'executorName', 'successorDetails'],
+      charity: ['fullName', 'charityDetails', 'executorName', 'distributionPlan']
+    };
+
+    const fieldsToCheck = requiredFields[templateId as keyof typeof requiredFields] || ['fullName'];
+    return fieldsToCheck.every(field => {
+      const value = responses[field];
+      return value && (typeof value === 'string' ? value.trim().length > 0 : true);
+    });
+  }, []);
+
+  const handleAssistantComplete = async (data: any) => {
+    const isComplete = checkQuestionsComplete(selectedTemplate?.id || 'traditional', data.responses);
+    if (!isComplete) {
+      toast({
+        title: "Incomplete Information",
+        description: "Please make sure to answer all required questions before proceeding.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setWillData(data);
+    setEditableContent(data.generatedWill);
+    setPhase('review');
+    
+    try {
+      const will = {
+        title: data.responses.fullName ? `Will of ${data.responses.fullName}` : 'My Will',
+        status: 'draft',
+        document_url: '',
+        template_type: selectedTemplate?.id || 'traditional',
+        ai_generated: true,
+        content: data.generatedWill
+      };
+      
+      await createWill(will);
+      
+    } catch (error) {
+      console.error("Error saving draft will:", error);
+    }
+  };
+
+  const handleStageTransition = () => {
+    if (!checkQuestionsComplete(selectedTemplate?.id || 'traditional', responses)) {
+      toast({
+        title: "Required Information Missing",
+        description: "Please complete all required questions before proceeding.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setPhase('contacts');
+  };
+  
   const checkForCompletion = (lastAiMessage: string) => {
     const completionPhrases = [
       'we have all the information',
@@ -550,6 +611,40 @@ Witnesses: [Witness 1], [Witness 2]`;
     }
   };
 
+  const renderStageControls = () => {
+    const isComplete = checkQuestionsComplete(selectedTemplate?.id || 'traditional', responses);
+    
+    return (
+      <div className="mt-4">
+        {isComplete ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Button
+              onClick={handleStageTransition}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Check className="mr-2 h-4 w-4" />
+              Continue to Next Step
+            </Button>
+            <p className="text-center text-sm text-green-600 mt-2">
+              ✓ All required information has been collected
+            </p>
+          </motion.div>
+        ) : (
+          <Button
+            disabled
+            className="w-full opacity-50 cursor-not-allowed"
+          >
+            Please Complete All Questions
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-[65vh]">
       <Card className="flex-1 flex flex-col overflow-hidden h-full">
@@ -648,101 +743,48 @@ Witnesses: [Witness 1], [Witness 2]`;
           </ScrollArea>
         </CardContent>
         
-        {!allQuestionsAnswered ? (
-          <div className="p-4 border-t flex items-center gap-2">
-            <div className="relative flex-1">
-              <Input
-                placeholder={conversationCompleted ? "Conversation completed. Click Next Step." : "Type your message..."}
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
-                disabled={isProcessing || conversationCompleted}
-                className={`pr-10 ${activeVoiceInput ? 'bg-willtank-50' : ''} ${conversationCompleted ? 'bg-gray-100' : ''}`}
-              />
-              {recordingSupported && !conversationCompleted && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 ${
-                    activeVoiceInput ? 'text-willtank-600' : 'text-gray-400'
-                  }`}
-                  onClick={toggleVoiceInput}
-                  disabled={conversationCompleted}
-                >
-                  {activeVoiceInput ? (
-                    <MicOff className="h-4 w-4" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
-            </div>
-            <Button 
-              onClick={handleSendMessage} 
-              disabled={inputValue.trim() === '' || isProcessing || conversationCompleted}
-              className="shrink-0"
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        ) : (
-          <div className="p-4 border-t">
-            {isGenerating ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">Generating your will document</span>
-                  <span className="text-sm">{progress}%</span>
-                </div>
-                
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-willtank-500 transition-all duration-300 rounded-full"
-                    style={{ width: `${progress}%` }}
-                  ></div>
-                </div>
-                
-                <p className="text-sm text-gray-500">
-                  {progress < 30 && "Analyzing your responses..."}
-                  {progress >= 30 && progress < 60 && "Structuring your will document..."}
-                  {progress >= 60 && progress < 90 && "Generating legal clauses..."}
-                  {progress >= 90 && "Finalizing your document..."}
-                </p>
-              </div>
-            ) : showNextStepButton ? (
-              <div className="text-center">
-                <Button 
-                  onClick={handleNextStep} 
-                  className="w-full pulse-animation"
-                  size="lg"
-                >
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Next Step: Contact Information
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                  You've provided all the necessary information. Proceed to enter contact details for key people in your will.
-                </p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <Button 
-                  onClick={handleGenerateWill} 
-                  className="w-full"
-                  size="lg"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate My Will Document
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                  You've provided all the necessary information. Click to generate your will document.
-                </p>
-              </div>
+        <div className="p-4 border-t">
+          <div className="relative flex-1">
+            <Input
+              placeholder={conversationCompleted ? "Conversation completed. Click Next Step." : "Type your message..."}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
+              disabled={isProcessing || conversationCompleted}
+              className={`pr-10 ${activeVoiceInput ? 'bg-willtank-50' : ''} ${conversationCompleted ? 'bg-gray-100' : ''}`}
+            />
+            {recordingSupported && !conversationCompleted && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 ${
+                  activeVoiceInput ? 'text-willtank-600' : 'text-gray-400'
+                }`}
+                onClick={toggleVoiceInput}
+                disabled={conversationCompleted}
+              >
+                {activeVoiceInput ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
             )}
           </div>
-        )}
+          <Button 
+            onClick={handleSendMessage} 
+            disabled={inputValue.trim() === '' || isProcessing || conversationCompleted}
+            className="shrink-0"
+          >
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+          
+          {messages.length > 5 && renderStageControls()}
+        </div>
       </Card>
       
       <style>
@@ -786,31 +828,4 @@ Witnesses: [Witness 1], [Witness 2]`;
 
         @keyframes dot-flashing {
           0% {
-            background-color: #9880ff;
-          }
-          50%, 100% {
-            background-color: rgba(152, 128, 255, 0.2);
-          }
-        }
-        
-        .pulse-animation {
-          animation: pulse 2s infinite;
-          box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
-        }
-        
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-          }
-        }
-        `}
-      </style>
-    </div>
-  );
-}
+            background-color: #9880ff
