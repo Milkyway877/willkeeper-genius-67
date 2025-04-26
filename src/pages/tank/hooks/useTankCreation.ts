@@ -72,6 +72,8 @@ export const useTankCreation = () => {
         status: 'scheduled',
         delivery_type: deliveryType,
         delivery_date: deliveryDate,
+        message_url: null, // Add missing property
+        delivery_event: null, // Add missing property
       });
       
       clearInterval(interval);
