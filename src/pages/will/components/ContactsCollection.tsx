@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,20 +36,25 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
     address: ''
   });
   const [editing, setEditing] = useState<string | null>(null);
+  // Update the required contacts to include Executor
   const [requiredContacts, setRequiredContacts] = useState<string[]>(['Executor']);
   const [isComplete, setIsComplete] = useState(false);
   const { toast } = useToast();
 
+  // Enhanced check to ensure contacts have required information
   useEffect(() => {
+    // Check if all required roles are present
     const hasAllRequiredRoles = requiredContacts.every(role => 
       contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
     );
     
+    // Additional check to ensure contacts have at least one method of contact
     const contactsHaveInfo = contacts.every(contact => {
       if (requiredContacts.some(role => contact.role.toLowerCase() === role.toLowerCase())) {
+        // For required roles, we need at least email OR phone
         return Boolean(contact.email || contact.phone);
       }
-      return true;
+      return true; // Non-required contacts don't need validation
     });
     
     setIsComplete(hasAllRequiredRoles && contactsHaveInfo && contacts.length > 0);
@@ -64,6 +70,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
       return;
     }
     
+    // Enhanced validation - for required roles, ensure there's at least email or phone
     if (requiredContacts.includes(newContact.role) && !newContact.email && !newContact.phone) {
       toast({
         title: "Contact information required",
@@ -95,6 +102,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   };
 
   const updateContact = (id: string) => {
+    // Enhanced validation - for required roles, ensure there's at least email or phone
     if (requiredContacts.includes(newContact.role) && !newContact.email && !newContact.phone) {
       toast({
         title: "Contact information required",
@@ -166,6 +174,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   };
 
   const handleComplete = () => {
+    // Enhanced validation before completing
     if (!isComplete) {
       const missingRoles = requiredContacts.filter(role => 
         !contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
@@ -224,6 +233,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
+            {/* Input form for new contact */}
             <div className="border rounded-md p-4 bg-gray-50">
               <h3 className="text-md font-medium mb-4">
                 {editing ? "Edit Contact" : "Add New Contact"}
@@ -313,6 +323,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
               </div>
             </div>
             
+            {/* List of added contacts */}
             {contacts.length > 0 ? (
               <div className="space-y-4">
                 <h3 className="text-md font-medium">Added Contacts ({contacts.length})</h3>
@@ -327,6 +338,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                           {requiredContacts.includes(contact.role) && (
                             <Badge variant="secondary" className="text-xs">Required</Badge>
                           )}
+                          {/* Visual indicator for incomplete required contacts */}
                           {requiredContacts.includes(contact.role) && !contact.email && !contact.phone && (
                             <Badge variant="destructive" className="text-xs">Incomplete</Badge>
                           )}
@@ -336,6 +348,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                           {contact.email && <div>{contact.email}</div>}
                           {contact.phone && <div>{contact.phone}</div>}
                           {contact.address && <div className="truncate max-w-md">{contact.address}</div>}
+                          {/* Warning for incomplete required contacts */}
                           {requiredContacts.includes(contact.role) && !contact.email && !contact.phone && (
                             <div className="text-red-500 text-xs mt-1">
                               Please add either email or phone number
@@ -364,6 +377,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
               </div>
             )}
             
+            {/* Completion status */}
             <div className="border-t pt-4 mt-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
