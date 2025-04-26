@@ -17,6 +17,7 @@ export default function Will() {
   const [createdDate, setCreatedDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [currentWill, setCurrentWill] = useState<WillType | null>(null);
+  const [noWillsAvailable, setNoWillsAvailable] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export default function Will() {
       try {
         setIsLoading(true);
         setLoadingError(null);
+        setNoWillsAvailable(false);
         
         // If ID is provided in the URL, fetch that specific will
         if (id) {
@@ -69,14 +71,11 @@ export default function Will() {
             );
             
             // Redirect to the most recent will
-            navigate(`/dashboard/will/${sortedWills[0].id}`);
+            navigate(`/will/${sortedWills[0].id}`, { replace: true });
             return;
           } else {
-            setLoadingError("No wills available");
-            toast({
-              title: "No wills found",
-              description: "You don't have any wills yet. Create your first will to get started.",
-            });
+            // No wills available - this is not an error, just an empty state
+            setNoWillsAvailable(true);
           }
         }
       } catch (error) {
@@ -171,6 +170,44 @@ export default function Will() {
           <div className="flex justify-center items-center py-16">
             <Loader2 className="w-10 h-10 text-willtank-600 animate-spin" />
           </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (noWillsAvailable) {
+    return (
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Will</h1>
+              <p className="text-gray-600">You don't have any wills yet.</p>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button onClick={handleCreateNewWill} variant="default">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Your First Will
+              </Button>
+            </div>
+          </div>
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border border-dashed border-gray-300"
+          >
+            <FileText className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">No wills found</h3>
+            <p className="mt-1 text-sm text-gray-500 text-center max-w-md">
+              You don't have any wills yet. Get started by creating your first will document.
+            </p>
+            <Button onClick={handleCreateNewWill} className="mt-6">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Your First Will
+            </Button>
+          </motion.div>
         </div>
       </Layout>
     );
