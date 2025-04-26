@@ -23,6 +23,51 @@ export const WILL_SECTIONS = {
   ATTACHMENTS: 'attachments',
 };
 
+// Simpler implementations of functions without autosave functionality
+
+// Get progress from memory or empty object
+export const getWillProgress = (willId: string | undefined): WillProgress | null => {
+  // Return default empty progress object
+  return {
+    completedSections: [],
+    lastEdited: new Date()
+  };
+};
+
+// Get all saved will progress entries - simplified
+export const getAllWillProgress = (): Record<string, WillProgress> => {
+  return {};
+};
+
+// Clear progress for a specific will - now a no-op function
+export const clearWillProgress = (willId: string | undefined): void => {
+  // No longer does anything with localStorage
+  console.log('Will progress cleared (simulated)');
+};
+
+// Save progress - now a no-op function
+export const saveWillProgress = (willId: string | undefined, progress: Partial<WillProgress>): void => {
+  // No longer saves to localStorage
+  console.log('Will progress saved (simulated)');
+};
+
+// Hook for accessing will progress in components - simplified
+export function useWillProgress(willId: string | undefined) {
+  // Create simple state management without localStorage
+  const defaultProgress: WillProgress = {
+    completedSections: [],
+    lastEdited: new Date(),
+  };
+  
+  // Just return the default values and a no-op function
+  return { 
+    progress: defaultProgress, 
+    setProgress: (newProgress: Partial<WillProgress>) => {
+      console.log('Will progress updated (simulated)');
+    } 
+  };
+}
+
 // Get suggestions based on progress
 export const getWillSuggestions = (progress: WillProgress): string[] => {
   const suggestions: string[] = [];
