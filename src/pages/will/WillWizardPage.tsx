@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -16,7 +15,6 @@ import { Book, FileText, User, Video, ArrowRight, Check, Loader2, Download, Copy
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 
-// Template options for the wizard
 const templates = [
   {
     id: 'traditional',
@@ -41,7 +39,6 @@ const templates = [
   }
 ];
 
-// Steps in the will creation process
 const steps = [
   { id: 'template', title: 'Choose Template' },
   { id: 'ai-conversation', title: 'AI Assistant' },
@@ -56,7 +53,6 @@ export default function WillWizardPage() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
-  // State
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [responses, setResponses] = useState<Record<string, any>>({});
@@ -70,19 +66,17 @@ export default function WillWizardPage() {
   const [editableContent, setEditableContent] = useState('');
   const [splitView, setSplitView] = useState(false);
 
-  // Load template from URL if available
   useEffect(() => {
     const templateParam = searchParams.get('template');
     if (templateParam) {
       const template = templates.find(t => t.id === templateParam || t.id === templateParam.toLowerCase());
       if (template) {
         setSelectedTemplate(template);
-        setCurrentStep(1); // Skip to AI conversation
+        setCurrentStep(1);
       }
     }
   }, [searchParams]);
 
-  // Handle template selection
   const handleSelectTemplate = (template: any) => {
     setSelectedTemplate(template);
     setCurrentStep(prev => prev + 1);
@@ -93,23 +87,18 @@ export default function WillWizardPage() {
     });
   };
 
-  // Generate a will document from the collected information
   const generateWillDocument = (allResponses: Record<string, any>, allContacts: any[]) => {
     const currentDate = new Date().toLocaleDateString();
     
     let willDocument = "";
     
-    // Title
     willDocument += `LAST WILL AND TESTAMENT\n\n`;
     
-    // Personal information
     willDocument += `I, ${allResponses.fullName || '[NAME]'}, being of sound mind, declare this to be my Last Will and Testament.\n\n`;
     
-    // Revocation clause
     willDocument += `ARTICLE I: REVOCATION\n`;
     willDocument += `I revoke all previous wills and codicils.\n\n`;
     
-    // Family information
     willDocument += `ARTICLE II: FAMILY INFORMATION\n`;
     willDocument += `I am ${allResponses.maritalStatus || '[MARITAL STATUS]'}`;
     if (allResponses.spouseName) {
@@ -123,7 +112,6 @@ export default function WillWizardPage() {
       willDocument += `I have no children.\n\n`;
     }
     
-    // Executor appointment
     willDocument += `ARTICLE III: EXECUTOR\n`;
     const executor = allContacts.find(c => c.role === 'Executor');
     if (executor) {
@@ -152,10 +140,9 @@ export default function WillWizardPage() {
     }
     willDocument += `\n`;
     
-    // Guardian appointment (if applicable)
+    willDocument += `ARTICLE IV: GUARDIAN\n`;
     const guardian = allContacts.find(c => c.role === 'Guardian');
     if (guardian && (allResponses.children && allResponses.children.length > 0)) {
-      willDocument += `ARTICLE IV: GUARDIAN\n`;
       willDocument += `I appoint ${guardian.name} as the Guardian of my minor children.\n`;
       if (guardian.address || guardian.phone || guardian.email) {
         willDocument += `Contact information: `;
@@ -167,37 +154,30 @@ export default function WillWizardPage() {
       willDocument += `\n`;
     }
     
-    // Disposition of property
     willDocument += `ARTICLE V: DISPOSITION OF PROPERTY\n\n`;
     
-    // Specific bequests if any
     if (allResponses.specificBequests) {
       willDocument += `Specific Bequests:\n${allResponses.specificBequests}\n\n`;
     }
     
-    // Residual estate
     if (allResponses.residualEstate) {
       willDocument += `Residual Estate:\n${allResponses.residualEstate}\n\n`;
     } else {
       willDocument += `I give all my remaining property to [BENEFICIARIES].\n\n`;
     }
     
-    // Digital assets section
     willDocument += `ARTICLE VI: DIGITAL ASSETS\n`;
     willDocument += `I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.\n\n`;
     
-    // Funeral wishes if specified
     if (allResponses.funeralWishes) {
       willDocument += `ARTICLE VII: FUNERAL WISHES\n`;
       willDocument += `${allResponses.funeralWishes}\n\n`;
     }
     
-    // Conclusion
     willDocument += `Signed: ${allResponses.fullName || '[NAME]'}\n`;
     willDocument += `Date: ${currentDate}\n`;
     willDocument += `Witnesses: [Witness 1], [Witness 2]\n\n`;
     
-    // Attachments section if documents or video exists
     if (documents.length > 0 || videoBlob) {
       willDocument += `ATTACHMENTS:\n\n`;
       
@@ -219,16 +199,13 @@ export default function WillWizardPage() {
     return willDocument;
   };
 
-  // Handle AI conversation completion
   const handleConversationComplete = (allResponses: Record<string, any>, generatedContent: string) => {
     setResponses(allResponses);
     
-    // Generate the Will document based on responses
     const willDocument = generateWillDocument(allResponses, []);
     setGeneratedWill(willDocument);
     setEditableContent(willDocument);
     
-    // Extract potential contacts from responses
     const extractedContacts = extractContactsFromResponses(allResponses);
     setContacts(extractedContacts);
     
@@ -240,11 +217,9 @@ export default function WillWizardPage() {
     });
   };
 
-  // Extract potential contacts from AI conversation responses
   const extractContactsFromResponses = (responses: Record<string, any>) => {
     const contacts = [];
     
-    // Extract executor
     if (responses.executorName) {
       contacts.push({
         id: `executor-${Date.now()}`,
@@ -256,7 +231,6 @@ export default function WillWizardPage() {
       });
     }
     
-    // Extract alternate executor
     if (responses.alternateExecutorName) {
       contacts.push({
         id: `alt-executor-${Date.now()}`,
@@ -268,7 +242,6 @@ export default function WillWizardPage() {
       });
     }
     
-    // Extract guardian
     if (responses.guardianName) {
       contacts.push({
         id: `guardian-${Date.now()}`,
@@ -280,10 +253,8 @@ export default function WillWizardPage() {
       });
     }
     
-    // Extract beneficiaries from residual estate
     if (responses.residualEstate) {
       const text = responses.residualEstate;
-      // Simple regex to extract names that might be beneficiaries
       const potentialNames = text.match(/[A-Z][a-z]+ [A-Z][a-z]+/g);
       if (potentialNames) {
         potentialNames.forEach((name, index) => {
@@ -302,11 +273,9 @@ export default function WillWizardPage() {
     return contacts;
   };
 
-  // Handle contacts collection completion
   const handleContactsComplete = (updatedContacts: any[]) => {
     setContacts(updatedContacts);
     
-    // Update the generated will with contact information
     const updatedWill = generateWillDocument(responses, updatedContacts);
     setGeneratedWill(updatedWill);
     setEditableContent(updatedWill);
@@ -319,11 +288,9 @@ export default function WillWizardPage() {
     });
   };
 
-  // Handle documents upload completion
   const handleDocumentsComplete = (uploadedDocuments: any[]) => {
     setDocuments(uploadedDocuments);
     
-    // Update the generated will with document information
     const updatedWill = generateWillDocument(responses, contacts);
     setGeneratedWill(updatedWill);
     setEditableContent(updatedWill);
@@ -336,11 +303,9 @@ export default function WillWizardPage() {
     });
   };
 
-  // Handle video recording completion
   const handleVideoComplete = (blob: Blob) => {
     setVideoBlob(blob);
     
-    // Update the generated will with video information
     const updatedWill = generateWillDocument(responses, contacts);
     setGeneratedWill(updatedWill);
     setEditableContent(updatedWill);
@@ -353,12 +318,10 @@ export default function WillWizardPage() {
     });
   };
 
-  // Handle content editing in review step
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditableContent(e.target.value);
   };
 
-  // Copy will content to clipboard
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(editableContent);
     
@@ -368,12 +331,10 @@ export default function WillWizardPage() {
     });
   };
 
-  // Handle will finalization
   const handleFinalizeWill = async () => {
     setIsCreatingWill(true);
     
     try {
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 95) {
@@ -384,17 +345,19 @@ export default function WillWizardPage() {
         });
       }, 200);
       
-      // Create the will
       const will: Omit<Will, 'id' | 'created_at' | 'updated_at'> = {
         title: responses.fullName ? `Will of ${responses.fullName}` : 'My Will',
         status: 'active',
-        document_url: 'generated-will.pdf', // In real implementation, this would be the URL to the generated PDF
+        document_url: 'generated-will.pdf',
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,
-        content: editableContent // Use the edited content
+        content: editableContent
       };
       
       const createdWill = await createWill(will);
+      
+      const { progress: currentProgress, setProgress: setWillProgress } = useWillProgress(willId);
+      setWillProgress({ ...currentProgress, isFinalized: true });
       
       clearInterval(progressInterval);
       setProgress(100);
@@ -407,7 +370,6 @@ export default function WillWizardPage() {
           description: "Your will has been generated, finalized, and saved securely.",
         });
         
-        // Navigate to the created will after a short delay
         setTimeout(() => {
           navigate(`/will/${createdWill.id}`);
         }, 1500);
@@ -428,7 +390,6 @@ export default function WillWizardPage() {
     }
   };
 
-  // Render current step
   const renderStep = () => {
     switch (steps[currentStep].id) {
       case 'template':
@@ -532,7 +493,6 @@ export default function WillWizardPage() {
               </CardContent>
             </Card>
             
-            {/* Summary of collected information */}
             <Card>
               <CardHeader>
                 <CardTitle>Will Details</CardTitle>
@@ -632,7 +592,7 @@ export default function WillWizardPage() {
         return null;
     }
   };
-  
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -644,7 +604,6 @@ export default function WillWizardPage() {
           </p>
         </div>
         
-        {/* Progress indicator */}
         {currentStep > 0 && (
           <div className="mb-8">
             <div className="flex justify-between mb-2">
@@ -698,7 +657,6 @@ export default function WillWizardPage() {
           </CardContent>
         </Card>
         
-        {/* Navigation buttons */}
         {currentStep > 0 && currentStep < steps.length - 1 && (
           <div className="mt-6 flex justify-between">
             <Button

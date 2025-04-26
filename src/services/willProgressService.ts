@@ -8,11 +8,12 @@ export interface WillProgress {
   lastEdited: Date;
   content?: string;
   title?: string;
+  isFinalized?: boolean; // New flag to track if will is finalized
 }
 
 const STORAGE_KEY = 'will_progress';
 
-// Save progress to local storage
+// Save progress to local storage without creating a will record
 export const saveWillProgress = (willId: string | undefined, progress: Partial<WillProgress>): void => {
   try {
     // Get existing progress data
@@ -32,7 +33,10 @@ export const saveWillProgress = (willId: string | undefined, progress: Partial<W
       ...progress,
       lastEdited: new Date(),
       id: willId,
-      completedSections
+      completedSections,
+      // Don't mark as finalized unless explicitly set
+      isFinalized: progress.isFinalized !== undefined ? progress.isFinalized : 
+                   existingProgress[willKey]?.isFinalized || false
     };
     
     // Save back to localStorage

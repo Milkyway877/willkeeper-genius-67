@@ -95,6 +95,28 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       throw new Error('You must be logged in to create a will');
     }
 
+    const { data: existingWills } = await supabase
+      .from('wills')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('status', 'draft')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    if (existingWills && existingWills.length > 0) {
+      const latestWill = existingWills[0];
+      const createdAt = new Date(latestWill.created_at);
+      const now = new Date();
+      const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursSinceCreation < 1 && latestWill.status === 'draft') {
+        return updateWill(latestWill.id, {
+          ...will,
+          status: will.status || 'active'
+        });
+      }
+    }
+
     const willToCreate = {
       ...will,
       user_id: session.user.id,
