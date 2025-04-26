@@ -214,53 +214,59 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     
     let requiredContactsCollected = true;
     
+    // Check for executor details
     if (executorName) {
       const executorDetailsProvided = messages.some(m => 
         m.role === 'user' && 
         (m.content.toLowerCase().includes('executor') || m.content.toLowerCase().includes(executorName.toLowerCase())) &&
-        (m.content.includes('@') || 
-         m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/) || 
-         m.content.match(/\d+ .+[,\s].+/)
-        )
+        (m.content.includes('@') || m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/))
       );
       requiredContactsCollected = requiredContactsCollected && executorDetailsProvided;
     }
     
+    // Check for alternate executor details if one was named
     if (alternateExecutorName) {
       const alternateExecutorDetailsProvided = messages.some(m => 
         m.role === 'user' && 
         (m.content.toLowerCase().includes('alternate') || m.content.toLowerCase().includes(alternateExecutorName.toLowerCase())) &&
-        (m.content.includes('@') || 
-         m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/) || 
-         m.content.match(/\d+ .+[,\s].+/)
-        )
+        (m.content.includes('@') || m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/))
       );
       requiredContactsCollected = requiredContactsCollected && alternateExecutorDetailsProvided;
     }
     
+    // Check for guardian details if one was named
     if (guardianName) {
       const guardianDetailsProvided = messages.some(m => 
         m.role === 'user' && 
         (m.content.toLowerCase().includes('guardian') || m.content.toLowerCase().includes(guardianName.toLowerCase())) &&
-        (m.content.includes('@') || 
-         m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/) || 
-         m.content.match(/\d+ .+[,\s].+/)
-        )
+        (m.content.includes('@') || m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/))
       );
       requiredContactsCollected = requiredContactsCollected && guardianDetailsProvided;
     }
     
+    // Check if AI has confirmed completion
     const aiConfirmedCompletion = messages.some(m => 
       m.role === 'assistant' && 
-      m.content.toLowerCase().includes('all contact information has been collected') &&
-      !messages.some(next => 
-        next.timestamp > m.timestamp && 
-        next.role === 'assistant' && 
-        (next.content.toLowerCase().includes('provide') || next.content.toLowerCase().includes('could you'))
-      )
+      m.content.toLowerCase().includes('all contact information has been collected')
     );
     
-    return requiredContactsCollected && aiConfirmedCompletion;
+    const result = requiredContactsCollected && aiConfirmedCompletion;
+    
+    // If all contacts are collected but AI hasn't confirmed yet, prompt for completion
+    if (requiredContactsCollected && !aiConfirmedCompletion) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.role === 'user') {
+        const completionMessage = {
+          id: `completion-${Date.now()}`,
+          role: 'assistant',
+          content: "Great! I've collected all the necessary contact information. You can now click the Continue button to proceed to the next stage.",
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, completionMessage]);
+      }
+    }
+    
+    return result;
   }, [currentStage, messages, extractedResponses]);
   
   const handleSendMessage = async () => {
@@ -830,232 +836,4 @@ Witnesses: [Witness 1], [Witness 2]`;
                       <div className="flex items-center mb-1">
                         {message.role === 'assistant' ? (
                           <div className="flex items-center">
-                            <Bot className="h-4 w-4 mr-2 text-willtank-600" />
-                            <span className="text-xs font-semibold text-willtank-600">SKYLER</span>
-                          </div>
-                        ) : message.role === 'user' ? (
-                          <div className="flex items-center ml-auto">
-                            <span className="text-xs font-semibold text-gray-200">You</span>
-                            <User className="h-4 w-4 ml-2 text-gray-200" />
-                          </div>
-                        ) : message.role === 'system' ? (
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2 text-willtank-600" />
-                            <span className="text-xs font-semibold text-willtank-600">System</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs font-semibold text-red-800">System</span>
-                        )}
-                      </div>
-                      
-                      {message.type === 'file' ? (
-                        <div className="flex items-center text-sm">
-                          <Paperclip className="h-4 w-4 mr-2" />
-                          <span>Uploaded: {message.fileName}</span>
-                        </div>
-                      ) : message.type === 'video' ? (
-                        <div className="space-y-2">
-                          <p className="text-sm">{message.content}</p>
-                          <video 
-                            src={message.fileUrl} 
-                            controls 
-                            className="w-full h-auto rounded border"
-                            style={{ maxHeight: '200px' }}
-                          />
-                        </div>
-                      ) : (
-                        <p className="whitespace-pre-line text-sm">{message.content}</p>
-                      )}
-                      
-                      <div className="text-xs opacity-70 mt-1 flex justify-end">
-                        {new Date(message.timestamp).toLocaleTimeString()}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-                
-                {isProcessing && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 text-gray-800 p-3 rounded-lg mr-4 rounded-tl-none">
-                      <div className="flex items-center mb-1">
-                        <Bot className="h-4 w-4 mr-2 text-willtank-600" />
-                        <span className="text-xs font-semibold text-willtank-600">SKYLER</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-willtank-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-willtank-400 rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
-                        <div className="w-2 h-2 bg-willtank-400 rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </AnimatePresence>
-              
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-        </CardContent>
-        
-        {currentStage === 'video' && videoRef.current && streamRef.current && (
-          <div className="p-4 border-t bg-gray-50">
-            <div className="relative">
-              <video 
-                ref={videoRef} 
-                className="w-full h-auto rounded border"
-                style={{ maxHeight: '200px' }}
-                muted 
-              />
-              <Button
-                variant="destructive"
-                size="sm"
-                className="absolute bottom-2 right-2"
-                onClick={stopVideoRecording}
-              >
-                Stop Recording
-              </Button>
-            </div>
-          </div>
-        )}
-        
-        {currentStage === 'review' && isGenerating ? (
-          <div className="p-4 border-t">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium">Generating your will document</span>
-                <span className="text-sm">{progress}%</span>
-              </div>
-              
-              <Progress value={progress} className="h-2" />
-              
-              <p className="text-sm text-gray-500">
-                {progress < 30 && "Analyzing your responses..."}
-                {progress >= 30 && progress < 60 && "Structuring your will document..."}
-                {progress >= 60 && progress < 90 && "Generating legal clauses..."}
-                {progress >= 90 && "Finalizing your document..."}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 border-t">
-            <div className="flex items-center space-x-2">
-              <Input
-                placeholder={isProcessing ? "SKYLER is thinking..." : "Type your message..."}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isProcessing}
-                className="flex-grow"
-              />
-              
-              {recordingSupported && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className={isRecording ? "bg-willtank-100 text-willtank-700" : ""}
-                  onClick={toggleVoiceInput}
-                  disabled={isProcessing}
-                >
-                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                </Button>
-              )}
-              
-              {currentStage === 'documents' && (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={handleFileButtonClick}
-                    disabled={isProcessing}
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
-                  
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handleFileChange}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  />
-                </>
-              )}
-              
-              {currentStage === 'video' && !streamRef.current && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={startVideoRecording}
-                  disabled={isProcessing}
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
-              )}
-              
-              <Button
-                type="button"
-                disabled={!inputValue.trim() || isProcessing}
-                size="icon"
-                onClick={handleSendMessage}
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            
-            {messages.some(m => m.id.startsWith('stage-complete')) && (
-              <div className="mt-4">
-                <Button
-                  onClick={handleStageTransition}
-                  className="w-full"
-                  disabled={currentStage === 'contacts' && !checkContactsComplete()}
-                >
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Continue to {getNextStage(currentStage) === 'contacts' ? 'Contact Collection' : 
-                    getNextStage(currentStage) === 'documents' ? 'Document Upload' :
-                    getNextStage(currentStage) === 'video' ? 'Video Testament' : 'Review'}
-                </Button>
-              </div>
-            )}
-            
-            {currentStage === 'review' && !isGenerating && messages.length > 5 && (
-              <div className="mt-4">
-                <Button
-                  onClick={handleGenerateWill}
-                  className="w-full pulse-animation"
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate My Will Document
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
-      
-      <style>{`
-        .pulse-animation {
-          animation: pulse 2s infinite;
-          box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
-        }
-        
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
+                            <Bot className="h-4 w-4 mr-2 text-willtank-600
