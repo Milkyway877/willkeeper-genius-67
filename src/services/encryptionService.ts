@@ -84,7 +84,7 @@ export const createUserSecurity = async () => {
   }
 };
 
-// Generate a random TOTP secret for 2FA
+// Generate a random TOTP secret for 2FA using the edge function
 export const generateTOTPSecret = async () => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -94,32 +94,32 @@ export const generateTOTPSecret = async () => {
       return { secret: '', qrCodeUrl: '' };
     }
     
-    // Generate a new TOTP secret - use base32 encoding which is standard for TOTP
-    const secret = generateRandomBase32(20);
-    
-    // Create a new TOTP object
-    const totp = new otpauth.TOTP({
-      issuer: 'WillTank',
-      label: user.email || 'User',
-      secret: otpauth.Secret.fromBase32(secret),
-      digits: 6,
-      period: 30,
-      algorithm: 'SHA1' // TOTP standard algorithm
+    // Call the edge function to generate a new TOTP secret
+    const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+      body: {
+        action: 'generateSecret',
+        userId: user.id
+      }
     });
     
-    // Generate the Auth URI to use in a QR code
-    const qrCodeUrl = totp.toString();
+    if (error) {
+      console.error('Error generating TOTP secret:', error);
+      return { secret: '', qrCodeUrl: '' };
+    }
     
-    console.log("Generated TOTP secret:", secret, "QR code URL:", qrCodeUrl);
+    console.log("Generated TOTP secret:", data.secret, "QR code URL:", data.qrCodeUrl);
     
-    return { secret, qrCodeUrl };
+    return { 
+      secret: data.secret, 
+      qrCodeUrl: data.qrCodeUrl 
+    };
   } catch (error) {
     console.error('Error generating TOTP secret:', error);
     return { secret: '', qrCodeUrl: '' };
   }
 };
 
-// Validate a TOTP code with improved error handling and debugging
+// Validate a TOTP code using the edge function
 export const validateTOTP = (code: string, secret: string) => {
   try {
     if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
@@ -174,14 +174,14 @@ export const validateTOTP = (code: string, secret: string) => {
   }
 };
 
-// Setup 2FA for the user
+// Setup 2FA for the user using the edge function
 export const setup2FA = async (code: string) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
       console.error("No authenticated user found");
-      return { success: false };
+      return { success: false, error: "User not found" };
     }
     
     // Get existing security record or create one
@@ -190,7 +190,7 @@ export const setup2FA = async (code: string) => {
       securityRecord = await createUserSecurity();
       if (!securityRecord) {
         console.error("Failed to create security record");
-        return { success: false };
+        return { success: false, error: "Failed to create security record" };
       }
     }
     
@@ -201,55 +201,34 @@ export const setup2FA = async (code: string) => {
       secret = newSecret;
     }
     
-    // Validate the code against the secret
-    const isValid = validateTOTP(code, secret);
-    
-    if (!isValid) {
-      console.error('Invalid TOTP code');
-      return { success: false, error: "Invalid verification code" };
+    if (!secret) {
+      console.error("Failed to generate secret");
+      return { success: false, error: "Failed to generate TOTP secret" };
     }
     
-    // Update the user security record
-    const { data, error } = await supabase
-      .from('user_security')
-      .update({ 
-        google_auth_secret: secret,
-        google_auth_enabled: true
-      })
-      .eq('user_id', user.id)
-      .select();
+    // Call the edge function to set up 2FA
+    const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+      body: {
+        action: 'setup',
+        userId: user.id,
+        code: code,
+        secret: secret
+      }
+    });
     
     if (error) {
-      console.error('Error updating user security:', error);
-      return { success: false, error: "Database error" };
+      console.error('Error setting up 2FA:', error);
+      return { success: false, error: error.message };
     }
     
-    // Generate recovery codes
-    const recoveryCodes = Array.from({ length: 8 }, () => generateRecoveryCode());
-    
-    // Insert recovery codes into the database
-    const { error: recoveryError } = await supabase
-      .from('user_recovery_codes')
-      .insert(recoveryCodes.map(code => ({
-        user_id: user.id,
-        code,
-        used: false
-      })));
-    
-    if (recoveryError) {
-      console.error('Error creating recovery codes:', recoveryError);
-      // Even if recovery codes fail, 2FA is enabled
-      return { success: true, recoveryCodes: [] };
-    }
-    
-    return { success: true, recoveryCodes };
+    return data;
   } catch (error) {
     console.error('Error setting up 2FA:', error);
     return { success: false, error: "Unexpected error" };
   }
 };
 
-// Disable 2FA for the user
+// Disable 2FA for the user using the edge function
 export const disable2FA = async (code: string) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -259,40 +238,21 @@ export const disable2FA = async (code: string) => {
       return { success: false, error: "User not found" };
     }
     
-    // Get existing security record
-    const securityRecord = await getUserSecurity();
-    if (!securityRecord) {
-      return { success: false, error: "Security record not found" };
-    }
-    
-    // If 2FA is enabled, validate the code first
-    if (securityRecord.google_auth_enabled && securityRecord.google_auth_secret) {
-      const isValid = validateTOTP(code, securityRecord.google_auth_secret);
-      
-      if (!isValid) {
-        console.error('Invalid TOTP code when disabling 2FA');
-        return { success: false, error: "Invalid verification code" };
+    // Call the edge function to disable 2FA
+    const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+      body: {
+        action: 'disable',
+        userId: user.id,
+        code: code
       }
-    }
-    
-    // Update the user security record - use upsert to handle both insert and update
-    const { error } = await supabase
-      .from('user_security')
-      .upsert({ 
-        user_id: user.id,
-        google_auth_enabled: false,
-        // Keep the existing secret so we don't have to regenerate it if the user enables 2FA again
-        google_auth_secret: securityRecord.google_auth_secret,
-        // Keep the existing encryption key
-        encryption_key: securityRecord.encryption_key || generateRandomString(32)
-      }, { onConflict: 'user_id' });
+    });
     
     if (error) {
       console.error('Error disabling 2FA:', error);
-      return { success: false, error: "Database error: " + error.message };
+      return { success: false, error: error.message };
     }
     
-    return { success: true };
+    return data;
   } catch (error) {
     console.error('Error disabling 2FA:', error);
     return { success: false, error: "Unexpected error" };

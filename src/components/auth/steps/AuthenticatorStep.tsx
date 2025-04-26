@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -92,15 +93,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       console.log("Verifying OTP:", cleanCode);
       console.log("Using authenticator key:", cleanKey);
       
-      const isValid = validateTOTP(cleanCode, cleanKey);
-      console.log("OTP validation result:", isValid);
-      
-      if (!isValid) {
-        setVerificationError("Invalid verification code. Please try again.");
-        setIsLoading(false);
-        return;
-      }
-
+      // Use the edge function to verify the code
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
@@ -109,41 +102,20 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       
       console.log("Setting up 2FA for user:", user.id);
       
-      const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+      // Call the edge function via the setup2FA method
+      const { success, error } = await supabase.functions.invoke('two-factor-auth', {
+        body: {
+          action: 'setup',
+          userId: user.id,
+          code: cleanCode,
+          secret: cleanKey
+        }
+      });
       
-      const { data: existingRecord, error: checkError } = await supabase
-        .from('user_security')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      let dbOperation;
-      if (existingRecord) {
-        dbOperation = supabase
-          .from('user_security')
-          .update({
-            google_auth_enabled: enableTwoFactor,
-            google_auth_secret: cleanKey
-          })
-          .eq('user_id', user.id);
-      } else {
-        dbOperation = supabase
-          .from('user_security')
-          .insert({
-            user_id: user.id,
-            google_auth_enabled: enableTwoFactor,
-            google_auth_secret: cleanKey,
-            encryption_key: encryptionKey
-          });
-      }
-      
-      const { error: insertError } = await dbOperation;
-        
-      if (insertError) {
-        console.error("Error updating security record:", insertError);
-        throw new Error("Failed to update security settings. Database error.");
+      if (!success) {
+        setVerificationError(error || "Failed to set up authenticator. Please try again.");
+        setIsLoading(false);
+        return;
       }
       
       toast({
