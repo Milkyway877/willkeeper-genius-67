@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, FileText, Video, FileAudio, File } from 'lucide-react';
+import { Search, Filter, FileText, Video, FileAudio, File, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Message, MessageStatus, MessageType } from '../types';
-import { getFutureMessages } from '@/services/tankService';
+import { getFutureMessages, deleteFutureMessage } from '@/services/tankService';
 
 const getTypeIcon = (type: MessageType) => {
   switch (type) {
@@ -46,6 +46,7 @@ export const TankDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     loadMessages();
@@ -55,17 +56,20 @@ export const TankDashboard: React.FC = () => {
     try {
       setIsLoading(true);
       const data = await getFutureMessages();
+      console.log('Fetched messages:', data);
       setMessages(data.map(msg => ({
         id: msg.id,
         type: (msg.message_type || 'letter') as MessageType,
         title: msg.title || 'Untitled Message',
-        recipient: msg.recipient_name,
-        deliveryDate: msg.delivery_date,
-        status: msg.status.toLowerCase() as MessageStatus,
+        recipient: msg.recipient_name || 'Unknown Recipient',
+        deliveryDate: msg.delivery_date || new Date().toISOString(),
+        status: (msg.status || 'draft').toLowerCase() as MessageStatus,
         preview: msg.preview || undefined
       })));
+      setError(null);
     } catch (err) {
       console.error('Error loading messages:', err);
+      setError('Failed to load messages. Please try again.');
       toast({
         title: "Error",
         description: "Failed to load messages. Please try again.",
@@ -76,10 +80,37 @@ export const TankDashboard: React.FC = () => {
     }
   };
   
+  const handleDeleteMessage = async (id: string | number) => {
+    try {
+      await deleteFutureMessage(id.toString());
+      setMessages(messages.filter(msg => msg.id !== id));
+      toast({
+        title: "Message deleted",
+        description: "The message has been permanently removed."
+      });
+    } catch (err) {
+      console.error('Error deleting message:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete the message. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
   const filteredMessages = messages.filter(message => 
     message.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     message.recipient.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 text-willtank-600 animate-spin mb-4" />
+        <p className="text-gray-600">Loading your messages...</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -123,8 +154,13 @@ export const TankDashboard: React.FC = () => {
                   </p>
                 )}
                 
-                <div className="mt-4 text-sm text-gray-500">
-                  Delivery: {new Date(message.deliveryDate).toLocaleDateString()}
+                <div className="mt-4 flex justify-between">
+                  <div className="text-sm text-gray-500">
+                    Delivery: {new Date(message.deliveryDate).toLocaleDateString()}
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteMessage(message.id)} className="text-red-500 hover:bg-red-50">
+                    Delete
+                  </Button>
                 </div>
               </div>
             </div>

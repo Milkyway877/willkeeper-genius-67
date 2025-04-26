@@ -1,86 +1,104 @@
 
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { MessageType } from '../types';
-
-export type DeliveryType = 'date' | 'event' | 'posthumous' | null;
+import { createFutureMessage } from '@/services/tankService';
+import { MessageType, DeliveryTrigger } from '../types';
+import { useToast } from '@/hooks/use-toast';
 
 export const useTankCreation = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
-  const [creationType, setCreationType] = useState<MessageType | null>(null);
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>(null);
-  const [messageContent, setMessageContent] = useState<string>('');
-  const [recipientName, setRecipientName] = useState<string>('');
-  const [messageTitle, setMessageTitle] = useState<string>('');
-  const [deliveryDate, setDeliveryDate] = useState<string>('');
+  const [creationType, setCreationType] = useState<MessageType>('letter');
+  const [deliveryType, setDeliveryType] = useState<DeliveryTrigger>('date');
+  const [messageContent, setMessageContent] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [messageTitle, setMessageTitle] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString());
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const handleNext = () => {
-    if (currentStep === 0 && !creationType) {
-      toast({
-        title: "Message Type Required",
-        description: "Please select a message type to continue.",
-        variant: "destructive"
-      });
-      return;
+    if (currentStep < 4) {
+      setCurrentStep(prev => prev + 1);
     }
-    
-    if (currentStep === 2 && !deliveryType) {
-      toast({
-        title: "Delivery Method Required",
-        description: "Please select a delivery method to continue.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setCurrentStep(currentStep + 1);
   };
 
   const handlePrev = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setCurrentStep(currentStep - 1);
-  };
-
-  const handleCancel = () => {
     if (currentStep > 0) {
-      const shouldCancel = window.confirm("Are you sure you want to cancel? Your progress will be lost.");
-      if (shouldCancel) {
-        navigate('/tank');
-      }
-    } else {
-      navigate('/tank');
+      setCurrentStep(prev => prev - 1);
     }
   };
 
-  const handleFinalize = () => {
-    setIsGenerating(true);
-    setProgress(0);
-    
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsGenerating(false);
-          return 100;
-        }
-        return prev + 10;
+  const handleCancel = () => {
+    navigate('/tank');
+  };
+
+  const handleFinalize = async () => {
+    try {
+      setIsGenerating(true);
+      
+      // Simulate progress for UX
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 300);
+
+      // Create the message in the database
+      console.log('Creating message with:', { 
+        title: messageTitle,
+        recipient_name: recipientName,
+        recipient_email: recipientEmail,
+        message_type: creationType,
+        delivery_type: deliveryType,
+        delivery_date: deliveryDate,
+        content: messageContent,
+        preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
       });
-    }, 400);
-    
-    setTimeout(() => {
+      
+      const newMessage = await createFutureMessage({
+        title: messageTitle,
+        recipient_name: recipientName,
+        recipient_email: recipientEmail || 'no-email@example.com',
+        message_type: creationType,
+        content: messageContent,
+        preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
+        status: 'scheduled',
+        delivery_type: deliveryType,
+        delivery_date: deliveryDate,
+      });
+      
       clearInterval(interval);
+      setProgress(100);
+      
+      setTimeout(() => {
+        setIsGenerating(false);
+        if (newMessage) {
+          toast({
+            title: "Message Created",
+            description: "Your message has been scheduled for delivery.",
+          });
+          navigate('/tank');
+        } else {
+          throw new Error('Failed to create message');
+        }
+      }, 500);
+      
+    } catch (error) {
+      console.error('Error finalizing message:', error);
+      setIsGenerating(false);
       toast({
-        title: "Message created successfully",
-        description: "Your future message has been encrypted and securely stored in the Tank."
+        title: "Error",
+        description: "There was an error creating your message. Please try again.",
+        variant: "destructive",
       });
-      navigate('/tank');
-    }, 4500);
+    }
   };
 
   return {
@@ -89,6 +107,7 @@ export const useTankCreation = () => {
     deliveryType,
     messageContent,
     recipientName,
+    recipientEmail,
     messageTitle,
     deliveryDate,
     isGenerating,
@@ -97,11 +116,12 @@ export const useTankCreation = () => {
     setDeliveryType,
     setMessageContent,
     setRecipientName,
+    setRecipientEmail,
     setMessageTitle,
     setDeliveryDate,
     handleNext,
     handlePrev,
     handleCancel,
-    handleFinalize
+    handleFinalize,
   };
 };

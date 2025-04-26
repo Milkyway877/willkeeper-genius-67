@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { LegacyVaultItem as UILegacyVaultItem, DBLegacyVaultItem, VaultItemType } from "../pages/tank/types";
+import { LegacyVaultItem as UILegacyVaultItem, VaultItemType } from "../pages/tank/types";
 import { createSystemNotification } from "./notificationService";
 
 export interface FutureMessage {
@@ -9,15 +10,20 @@ export interface FutureMessage {
   recipient_email: string;
   message_type: string | null;
   preview: string | null;
+  content: string | null;
   message_url: string | null;
   status: string;
+  delivery_type: string | null;
   delivery_date: string;
+  delivery_event: string | null;
   created_at: string;
+  is_encrypted: boolean;
 }
 
 // Database functions for future messages
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
+    console.log('Fetching future messages');
     const { data, error } = await supabase
       .from('future_messages')
       .select('*')
@@ -28,6 +34,7 @@ export const getFutureMessages = async (): Promise<FutureMessage[]> => {
       return [];
     }
     
+    console.log('Future messages data:', data);
     return data || [];
   } catch (error) {
     console.error('Error in getFutureMessages:', error);
@@ -35,8 +42,9 @@ export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   }
 };
 
-export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'created_at'>): Promise<FutureMessage | null> => {
+export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'created_at' | 'is_encrypted'>): Promise<FutureMessage | null> => {
   try {
+    console.log('Creating future message:', message);
     const { data, error } = await supabase
       .from('future_messages')
       .insert(message)
@@ -47,6 +55,8 @@ export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'c
       console.error('Error creating future message:', error);
       return null;
     }
+    
+    console.log('Created message response:', data);
     
     await createSystemNotification('item_saved', {
       title: 'Future Message Created',
@@ -100,8 +110,10 @@ export const deleteFutureMessage = async (id: string): Promise<boolean> => {
   }
 };
 
+// Legacy Vault Items
 export const getLegacyVaultItems = async (): Promise<UILegacyVaultItem[]> => {
   try {
+    console.log('Fetching legacy vault items');
     const { data, error } = await supabase
       .from('legacy_vault')
       .select('*')
@@ -112,12 +124,14 @@ export const getLegacyVaultItems = async (): Promise<UILegacyVaultItem[]> => {
       return [];
     }
     
+    console.log('Legacy vault items:', data);
+    
     return (data || []).map(item => ({
       id: item.id,
       title: item.title,
       type: mapCategoryToType(item.category),
       preview: item.preview || '',
-      document_url: item.document_url,
+      document_url: item.document_url || '',
       createdAt: item.created_at,
       created_at: item.created_at,
       encryptionStatus: item.is_encrypted || false
@@ -155,6 +169,8 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
       is_encrypted: item.encryptionStatus || false // Include encryption status
     };
     
+    console.log('Creating legacy vault item:', dbItem);
+    
     const { data, error } = await supabase
       .from('legacy_vault')
       .insert(dbItem)
@@ -165,6 +181,8 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
       console.error('Error creating legacy vault item:', error);
       return null;
     }
+    
+    console.log('Created legacy vault item response:', data);
     
     await createSystemNotification('document_uploaded', {
       title: 'Legacy Item Added',
@@ -177,7 +195,7 @@ export const createLegacyVaultItem = async (item: Omit<UILegacyVaultItem, 'id' |
       title: data.title,
       type: mapCategoryToType(data.category),
       preview: data.preview || '',
-      document_url: data.document_url,
+      document_url: data.document_url || '',
       createdAt: data.created_at,
       created_at: data.created_at,
       encryptionStatus: data.is_encrypted || false

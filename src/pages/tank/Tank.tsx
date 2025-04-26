@@ -13,6 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 export default function Tank() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  useEffect(() => {
+    // Add a page title for SEO and accessibility
+    document.title = 'The Tank - Your Time Capsule';
+  }, []);
 
   return (
     <Layout>
@@ -37,7 +42,7 @@ export default function Tank() {
           </Button>
         </div>
         
-        <Tabs defaultValue="dashboard" className="mb-6" onValueChange={setActiveTab}>
+        <Tabs defaultValue={activeTab} value={activeTab} className="mb-6" onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="dashboard">Messages Dashboard</TabsTrigger>
             <TabsTrigger value="analytics">Analytics & Status</TabsTrigger>
