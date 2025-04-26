@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.29.0";
-import * as totp from "https://deno.land/x/totp@v1.0.0/mod.ts";
+import { TOTP } from "https://deno.land/x/authenticator@v0.10.0/mod.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -246,16 +246,15 @@ function verifyTOTP(code: string, secret: string): boolean {
     }
     
     // Create TOTP object with the secret
-    const otp = new totp.TOTP({
+    const totp = new TOTP({
       secret: cleanSecret,
       digits: 6,
       algorithm: "SHA1",
       period: 30,
-      timestep: 30,
     });
     
     // Verify with a window of 1 to allow for clock drift
-    return otp.verify({ token: cleanCode, window: 1 });
+    return totp.verify(cleanCode, { window: 1 });
   } catch (error) {
     console.error("Error verifying TOTP:", error);
     return false;

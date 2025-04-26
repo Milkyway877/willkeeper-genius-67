@@ -103,7 +103,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       console.log("Setting up 2FA for user:", user.id);
       
       // Call the edge function via the setup2FA method
-      const { success, error } = await supabase.functions.invoke('two-factor-auth', {
+      const { data, error } = await supabase.functions.invoke('two-factor-auth', {
         body: {
           action: 'setup',
           userId: user.id,
@@ -112,8 +112,14 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         }
       });
       
-      if (!success) {
-        setVerificationError(error || "Failed to set up authenticator. Please try again.");
+      if (error) {
+        console.error("Error calling two-factor-auth function:", error);
+        setVerificationError(error.message || "Failed to set up authenticator. Please try again.");
+        return;
+      }
+      
+      if (!data.success) {
+        setVerificationError(data.error || "Failed to set up authenticator. Please try again.");
         setIsLoading(false);
         return;
       }
