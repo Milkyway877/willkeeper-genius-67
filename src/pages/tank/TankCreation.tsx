@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import { TankAudioCreator } from './components/creators/TankAudioCreator';
 import { TankDocumentCreator } from './components/creators/TankDocumentCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
+import { MessageCategory } from './types';
 
 const steps = [
   {
@@ -78,28 +78,28 @@ export default function TankCreation() {
                  onContentChange={setMessageContent} 
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
-                 onCategoryChange={setMessageCategory}
+                 onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                />;
       case 'video':
         return <TankVideoCreator 
                  onContentChange={setMessageContent}
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
-                 onCategoryChange={setMessageCategory}
+                 onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                />;
       case 'audio':
         return <TankAudioCreator 
                  onContentChange={setMessageContent}
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
-                 onCategoryChange={setMessageCategory}
+                 onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                />;
       case 'document':
         return <TankDocumentCreator 
                  onContentChange={setMessageContent}
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
-                 onCategoryChange={setMessageCategory}
+                 onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                />;
       default:
         return <div>Please select a message type</div>;

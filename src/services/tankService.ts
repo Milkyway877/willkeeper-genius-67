@@ -1,7 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
+import { EventType } from "@/services/notificationService";
 
 export interface FutureMessage {
   id: string;
@@ -107,7 +107,6 @@ export const deleteFutureMessage = async (id: string): Promise<boolean> => {
   }
 };
 
-// Email Delivery Status Methods
 export const markMessageAsDelivered = async (id: string): Promise<boolean> => {
   try {
     const { error } = await supabase
@@ -120,7 +119,7 @@ export const markMessageAsDelivered = async (id: string): Promise<boolean> => {
       return false;
     }
     
-    await createSystemNotification('message_delivered', {
+    await createSystemNotification('message_delivered' as EventType, {
       title: 'Message Delivered',
       description: `Your message has been successfully delivered.`
     });
