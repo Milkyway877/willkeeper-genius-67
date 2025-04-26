@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import * as otpauth from 'otpauth';
 
 // Export interface for EncryptionKey
 export interface EncryptionKey {
@@ -94,25 +93,31 @@ export const generateTOTPSecret = async () => {
       return { secret: '', qrCodeUrl: '' };
     }
     
-    // Generate a new TOTP secret - use base32 encoding which is standard for TOTP
-    const secret = generateRandomBase32(20);
+    console.log("Calling edge function to generate TOTP secret for user:", user.id);
     
-    // Create a new TOTP object
-    const totp = new otpauth.TOTP({
-      issuer: 'WillTank',
-      label: user.email || 'User',
-      secret: otpauth.Secret.fromBase32(secret),
-      digits: 6,
-      period: 30,
-      algorithm: 'SHA1' // TOTP standard algorithm
+    // Call edge function to generate a secret
+    const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+      body: { 
+        action: 'generate', 
+        email: user.email 
+      }
     });
     
-    // Generate the Auth URI to use in a QR code
-    const qrCodeUrl = totp.toString();
+    if (error || !data || !data.success) {
+      console.error('Error generating TOTP secret from edge function:', error || 'Invalid response');
+      
+      // Fallback to generating a local secret if the edge function fails
+      // (This is a backup only - the edge function should handle this)
+      const secret = generateRandomBase32(20);
+      const issuer = encodeURIComponent('WillTank');
+      const label = encodeURIComponent(user.email || 'User');
+      const qrCodeUrl = `otpauth://totp/${issuer}:${label}?issuer=${issuer}&secret=${secret}&algorithm=SHA1&digits=6&period=30`;
+      
+      return { secret, qrCodeUrl };
+    }
     
-    console.log("Generated TOTP secret:", secret, "QR code URL:", qrCodeUrl);
-    
-    return { secret, qrCodeUrl };
+    console.log("Generated TOTP secret:", data.secret, "QR code URL:", data.qrCodeUrl);
+    return { secret: data.secret, qrCodeUrl: data.qrCodeUrl };
   } catch (error) {
     console.error('Error generating TOTP secret:', error);
     return { secret: '', qrCodeUrl: '' };
@@ -120,7 +125,7 @@ export const generateTOTPSecret = async () => {
 };
 
 // Validate a TOTP code with improved error handling and debugging
-export const validateTOTP = (code: string, secret: string) => {
+export const validateTOTP = async (code: string, secret: string) => {
   try {
     if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
       console.error("Invalid code format:", code);
@@ -132,42 +137,28 @@ export const validateTOTP = (code: string, secret: string) => {
       return false;
     }
     
-    console.log("Validating TOTP code:", code, "with secret:", secret);
+    console.log("Validating TOTP code with edge function");
     
-    // Clean up the secret - remove spaces and ensure proper base32 format
-    const cleanSecret = secret.replace(/\s+/g, '').toUpperCase();
+    // Call edge function to validate the code
+    const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+      body: {
+        action: 'validate',
+        code,
+        secret
+      }
+    });
     
-    // Check if the secret is valid base32
-    if (!/^[A-Z2-7]+=*$/.test(cleanSecret)) {
-      console.error("Secret is not valid base32 format:", cleanSecret);
+    if (error) {
+      console.error('Error calling validation edge function:', error);
       return false;
     }
     
-    try {
-      const totp = new otpauth.TOTP({
-        issuer: 'WillTank',
-        label: 'User',
-        secret: otpauth.Secret.fromBase32(cleanSecret),
-        digits: 6,
-        period: 30,
-        algorithm: 'SHA1'
-      });
-      
-      // Verify the TOTP code with a larger window to account for time drift
-      // This will check the current and adjacent time windows (-1, 0, +1)
-      const delta = totp.validate({
-        token: code,
-        window: 1
-      });
-      
-      console.log("TOTP validation result:", delta !== null ? "Valid" : "Invalid");
-      
-      // Return true if the code is valid (delta will be non-null if valid)
-      return delta !== null;
-    } catch (error) {
-      console.error('Error in TOTP validation:', error);
+    if (!data || data.success === undefined) {
+      console.error('Unexpected response from validation:', data);
       return false;
     }
+    
+    return data.success;
   } catch (error) {
     console.error('Error validating TOTP:', error);
     return false;
@@ -202,7 +193,7 @@ export const setup2FA = async (code: string) => {
     }
     
     // Validate the code against the secret
-    const isValid = validateTOTP(code, secret);
+    const isValid = await validateTOTP(code, secret);
     
     if (!isValid) {
       console.error('Invalid TOTP code');
@@ -267,7 +258,7 @@ export const disable2FA = async (code: string) => {
     
     // If 2FA is enabled, validate the code first
     if (securityRecord.google_auth_enabled && securityRecord.google_auth_secret) {
-      const isValid = validateTOTP(code, securityRecord.google_auth_secret);
+      const isValid = await validateTOTP(code, securityRecord.google_auth_secret);
       
       if (!isValid) {
         console.error('Invalid TOTP code when disabling 2FA');

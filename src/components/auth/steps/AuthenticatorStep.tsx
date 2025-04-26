@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +11,6 @@ import { toast } from '@/hooks/use-toast';
 import { fadeInUp } from '../animations';
 import { AuthenticatorInputs, authenticatorSchema } from '../SignUpSchemas';
 import { supabase } from '@/integrations/supabase/client';
-import { validateTOTP, generateTOTPSecret } from '@/services/encryptionService';
 import { QRCode } from '@/components/ui/QRCode';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
@@ -47,16 +47,44 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
 
   const generateNewSecretIfNeeded = async () => {
     try {
-      const { secret, qrCodeUrl } = await generateTOTPSecret();
-      if (secret && qrCodeUrl) {
-        console.log("Generated new TOTP secret and QR code");
-        setLocalKey(secret);
-        setLocalQrCode(qrCodeUrl);
+      setIsLoading(true);
+      
+      // Call our edge function to generate a new secret
+      const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+        body: { action: 'generate' }
+      });
+      
+      if (error) {
+        console.error("Error calling edge function:", error);
+        toast({
+          title: "Error",
+          description: "Failed to generate 2FA secret. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (data && data.success && data.secret && data.qrCodeUrl) {
+        console.log("Generated new TOTP secret and QR code from edge function");
+        setLocalKey(data.secret);
+        setLocalQrCode(data.qrCodeUrl);
       } else {
-        console.error("Failed to generate TOTP secret");
+        console.error("Unexpected response from edge function:", data);
+        toast({
+          title: "Error",
+          description: "Unexpected response when generating 2FA secret.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error("Error generating TOTP secret:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate 2FA secret. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,60 +118,68 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       }
       
       console.log("Verifying OTP:", cleanCode);
-      console.log("Using authenticator key:", cleanKey);
       
-      const isValid = validateTOTP(cleanCode, cleanKey);
-      console.log("OTP validation result:", isValid);
-      
-      if (!isValid) {
-        setVerificationError("Invalid verification code. Please try again.");
-        setIsLoading(false);
-        return;
-      }
-
+      // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
         throw new Error("User not found. Please ensure you're logged in.");
       }
       
-      console.log("Setting up 2FA for user:", user.id);
+      // Call our edge function to validate the code
+      const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+        body: {
+          action: 'validate',
+          code: cleanCode,
+          secret: cleanKey,
+          userId: user.id
+        }
+      });
       
-      const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      
-      const { data: existingRecord, error: checkError } = await supabase
-        .from('user_security')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      let dbOperation;
-      if (existingRecord) {
-        dbOperation = supabase
-          .from('user_security')
-          .update({
-            google_auth_enabled: enableTwoFactor,
-            google_auth_secret: cleanKey
-          })
-          .eq('user_id', user.id);
-      } else {
-        dbOperation = supabase
-          .from('user_security')
-          .insert({
-            user_id: user.id,
-            google_auth_enabled: enableTwoFactor,
-            google_auth_secret: cleanKey,
-            encryption_key: encryptionKey
-          });
+      if (error) {
+        console.error("Error calling validation edge function:", error);
+        throw new Error("Failed to validate code. Server error.");
       }
       
-      const { error: insertError } = await dbOperation;
+      if (!data || data.success === undefined) {
+        console.error("Unexpected response from validation:", data);
+        throw new Error("Received invalid response from server.");
+      }
+      
+      if (!data.success) {
+        setVerificationError("Invalid verification code. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // If we're not enabling 2FA but just validating the code
+      if (!enableTwoFactor) {
+        // Just update the encryption key if needed, but don't enable 2FA
+        const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
         
-      if (insertError) {
-        console.error("Error updating security record:", insertError);
-        throw new Error("Failed to update security settings. Database error.");
+        const { data: existingRecord, error: checkError } = await supabase
+          .from('user_security')
+          .select('id, encryption_key')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (!existingRecord) {
+          // Only create a record if one doesn't exist
+          const { error: insertError } = await supabase
+            .from('user_security')
+            .insert({
+              user_id: user.id,
+              google_auth_enabled: false,
+              google_auth_secret: cleanKey,
+              encryption_key: encryptionKey
+            });
+            
+          if (insertError) {
+            console.error("Error creating security record:", insertError);
+          }
+        }
       }
       
       toast({
