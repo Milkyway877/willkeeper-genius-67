@@ -1,62 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Send,
-  User,
-  Bot,
-  ArrowRight,
-  Loader2,
-  Check,
-  Mic,
-  MicOff,
-  Paperclip,
-  FileText,
-  Video,
-  Camera,
-  Upload,
-  Sparkles,
-} from 'lucide-react';
+import { MessageList } from './chat/MessageList';
+import { InputArea } from './chat/InputArea';
+import { SkylerAssistantProps, Message, Contact, StageType } from './types';
 
 type MessageRole = 'user' | 'assistant' | 'system';
-type StageType = 'information' | 'contacts' | 'documents' | 'video' | 'review';
-
-interface Message {
-  id: string;
-  role: MessageRole;
-  content: string;
-  timestamp: Date;
-  type?: 'text' | 'file' | 'video';
-  fileUrl?: string;
-  fileName?: string;
-}
-
-interface Contact {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  phone: string;
-  address: string;
-}
-
-interface SkylerAssistantProps {
-  templateId: string;
-  templateName: string;
-  onComplete: (data: {
-    responses: Record<string, any>;
-    contacts: Contact[];
-    documents: any[];
-    videoBlob?: Blob;
-    generatedWill: string;
-  }) => void;
-}
 
 export function SkylerAssistant({ templateId, templateName, onComplete }: SkylerAssistantProps) {
   const [currentStage, setCurrentStage] = useState<StageType>('information');
@@ -809,140 +761,34 @@ Witnesses: [Witness 1], [Witness 2]`;
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="p-0 flex-1 overflow-hidden">
-          <ScrollArea className="h-full p-4">
-            <div className="space-y-4">
-              <AnimatePresence initial={false}>
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        message.role === 'user'
-                          ? 'bg-black text-white ml-4 rounded-tr-none'
-                          : message.role === 'assistant'
-                          ? 'bg-gray-100 text-gray-800 mr-4 rounded-tl-none'
-                          : message.role === 'system'
-                          ? 'bg-willtank-50 text-willtank-800 mx-auto border border-willtank-200'
-                          : 'bg-rose-100 text-red-800 mx-auto'
-                      }`}
-                    >
-                      <div className="flex items-center mb-1">
-                        {message.role === 'assistant' ? (
-                          <div className="flex items-center">
-                            <Bot className="h-4 w-4 mr-2 text-willtank-600" />
-                            <span className="text-xs font-semibold">SKYLER</span>
-                          </div>
-                        ) : message.role === 'user' ? (
-                          <div className="flex items-center">
-                            <User className="h-4 w-4 mr-2" />
-                            <span className="text-xs font-semibold">You</span>
-                          </div>
-                        ) : null}
-                        
-                        <div className="ml-auto text-xs text-gray-500">
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        {message.type === 'file' ? (
-                          <div className="flex items-center">
-                            <FileText className="h-5 w-5 mr-2" />
-                            <span>{message.fileName}</span>
-                          </div>
-                        ) : message.type === 'video' ? (
-                          <div>
-                            <video 
-                              src={message.fileUrl} 
-                              controls 
-                              className="w-full h-auto rounded mt-2 mb-2" 
-                              style={{ maxHeight: '200px' }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="whitespace-pre-wrap">{message.content}</div>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
+          <MessageList messages={messages} />
         </CardContent>
-        
-        <div className="flex items-center p-4 border-t">
-          <Button
-            variant="outline"
-            size="icon"
-            className="mr-2"
-            onClick={handleFileButtonClick}
-            disabled={currentStage !== 'documents' || isProcessing}
-          >
-            <Paperclip className="h-5 w-5" />
-          </Button>
-          
-          {recordingSupported && (
-            <Button
-              variant="outline"
-              size="icon"
-              className={`mr-2 ${isRecording ? 'bg-rose-100' : ''}`}
-              onClick={toggleVoiceInput}
-            >
-              {isRecording ? (
-                <MicOff className="h-5 w-5 text-rose-500" />
-              ) : (
-                <Mic className="h-5 w-5" />
-              )}
-            </Button>
-          )}
-          
-          <Input
-            placeholder={isRecording ? "Listening..." : "Type your message..."}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyPress}
-            disabled={isProcessing}
-            className="flex-1"
-          />
-          
-          <Button
-            variant="default"
-            size="icon"
-            className="ml-2"
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isProcessing}
-          >
-            {isProcessing ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
+
+        <InputArea
+          inputValue={inputValue}
+          setInputValue={setInputValue}
+          isProcessing={isProcessing}
+          isRecording={isRecording}
+          recordingSupported={recordingSupported}
+          currentStage={currentStage}
+          onSendMessage={handleSendMessage}
+          onToggleVoiceInput={toggleVoiceInput}
+          onFileButtonClick={handleFileButtonClick}
+        />
       </Card>
-      
+
       <div className="mt-6 flex justify-end">
         <Button 
           onClick={handleStageTransition} 
-          disabled={
-            (currentStage === 'contacts' && !checkContactsComplete()) ||
-            isProcessing
-          }
+          disabled={(currentStage === 'contacts' && !checkContactsComplete()) || isProcessing}
           className="px-6"
         >
           Continue <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
-      
+
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -950,7 +796,7 @@ Witnesses: [Witness 1], [Witness 2]`;
         onChange={handleFileChange} 
         accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       />
-      
+
       <video ref={videoRef} style={{ display: 'none' }} />
     </div>
   );
