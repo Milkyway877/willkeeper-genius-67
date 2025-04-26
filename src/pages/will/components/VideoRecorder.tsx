@@ -1,9 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Video, Camera, StopCircle, PlayCircle, Trash2, Save, RefreshCw } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VideoRecorderProps {
   onRecordingComplete: (blob: Blob) => void;
@@ -26,12 +26,58 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   
   const { toast } = useToast();
 
-  // Initialize camera when component mounts
+  const uploadToStorage = async (blob: Blob) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('User not authenticated');
+      }
+
+      const filename = `${session.user.id}/${Date.now()}.webm`;
+      
+      const { data, error } = await supabase.storage
+        .from('will-videos')
+        .upload(filename, blob, {
+          contentType: 'video/webm',
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      return data.path;
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      throw error;
+    }
+  };
+
+  const saveRecording = async () => {
+    if (recordedBlob) {
+      try {
+        await uploadToStorage(recordedBlob);
+        onRecordingComplete(recordedBlob);
+        toast({
+          title: "Video Saved",
+          description: "Your video testament has been saved successfully."
+        });
+      } catch (error) {
+        console.error('Error saving video:', error);
+        toast({
+          title: "Error Saving Video",
+          description: "There was a problem saving your video. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   useEffect(() => {
     initCamera();
     
     return () => {
-      // Cleanup on unmount
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
@@ -104,11 +150,9 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         setRecordingComplete(true);
       };
       
-      // Start the recording
       mediaRecorderRef.current.start();
       setIsRecording(true);
       
-      // Start timer
       let startTime = Date.now();
       timerIntervalRef.current = window.setInterval(() => {
         setTimer(Math.floor((Date.now() - startTime) / 1000));
@@ -154,16 +198,6 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     setRecordedBlob(null);
     setRecordingComplete(false);
     setTimer(0);
-  };
-  
-  const saveRecording = () => {
-    if (recordedBlob) {
-      onRecordingComplete(recordedBlob);
-      toast({
-        title: "Video Saved",
-        description: "Your video testament has been saved successfully."
-      });
-    }
   };
   
   const formatTime = (seconds: number): string => {
