@@ -57,7 +57,7 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   
   // Default category setting
   useEffect(() => {
-    onCategoryChange('document');
+    onCategoryChange('story');
   }, [onCategoryChange]);
   
   useEffect(() => {
