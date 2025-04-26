@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,8 @@ interface TemplateCardProps {
     id: string;
     title: string;
     description: string;
-    icon: React.ReactNode;
+    icon: React.ComponentType<{ className?: string }>;
+    iconClassName?: string;
     tags?: string[];
     features?: string[];
   };
@@ -18,6 +18,8 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({ template, isSelected, onSelect }: TemplateCardProps) {
+  const Icon = template.icon;
+
   return (
     <Card 
       className={cn(
@@ -40,7 +42,7 @@ export function TemplateCard({ template, isSelected, onSelect }: TemplateCardPro
       <CardContent className="p-5 flex flex-col h-full">
         <div className="mb-4 flex items-center">
           <div className="p-2 bg-willtank-50 rounded-md mr-3">
-            {template.icon}
+            <Icon className={template.iconClassName || "h-6 w-6"} />
           </div>
           <h3 className="font-semibold text-lg">{template.title}</h3>
         </div>

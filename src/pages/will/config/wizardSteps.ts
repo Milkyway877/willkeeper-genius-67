@@ -6,21 +6,24 @@ export const templates = [
     id: 'traditional',
     title: 'Traditional Will',
     description: 'A comprehensive traditional will covering all your assets and wishes.',
-    icon: <Book className="h-6 w-6 text-willtank-600" />,
+    icon: Book,
+    iconClassName: 'h-6 w-6 text-willtank-600',
     tags: ['Most Popular', 'Comprehensive']
   },
   {
     id: 'digital-assets',
     title: 'Digital Assets Will',
     description: 'Specialized will for digital assets like cryptocurrencies, online accounts, and digital memorabilia.',
-    icon: <FileText className="h-6 w-6 text-willtank-600" />,
+    icon: FileText,
+    iconClassName: 'h-6 w-6 text-willtank-600',
     tags: ['Modern', 'Digital Focus']
   },
   {
     id: 'living-trust',
     title: 'Living Trust',
     description: 'Create a living trust to manage your assets during your lifetime and distribute them after death.',
-    icon: <User className="h-6 w-6 text-willtank-600" />,
+    icon: User,
+    iconClassName: 'h-6 w-6 text-willtank-600',
     tags: ['Advanced', 'Legal Protection']
   }
 ];
