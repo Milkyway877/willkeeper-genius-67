@@ -1,9 +1,7 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Logo } from '@/components/ui/logo/Logo';
-import { cn } from '@/lib/utils';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -16,8 +14,6 @@ import {
   LogOut,
   User,
   Settings,
-  HelpCircle,
-  MenuIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,8 +38,12 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const { unreadCount } = useNotifications();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth/signin');
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth/signin');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -60,7 +60,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   return (
     <div className="relative z-10">
       <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
-        <div className="flex h-16 items-center justify-between px-4">
+        <div className="flex h-16 items-center px-4">
           {isAuthenticated && (
             <Button 
               variant="ghost"
@@ -79,9 +79,9 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
             </Link>
           )}
 
-          <div className="flex-grow"></div> {/* This pushes the right-side elements to the right */}
+          <div className="flex-grow"></div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
                 {!showSearchInput ? (
@@ -107,15 +107,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </form>
                 )}
 
-                <div className="relative">
-                  <NotificationDropdown />
-                  {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-willtank-600 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-willtank-600"></span>
-                    </span>
-                  )}
-                </div>
+                <NotificationDropdown />
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -124,29 +116,27 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel className="flex flex-col items-start">
-                      <span>{profile?.full_name || 'User'}</span>
-                      <span className="text-xs text-gray-500 font-normal truncate max-w-full">
-                        {profile?.email}
-                      </span>
+                    <DropdownMenuLabel className="flex flex-col">
+                      <span className="font-semibold">{profile?.full_name || 'User'}</span>
+                      <span className="text-xs text-gray-500 truncate">{profile?.email}</span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/settings/profile" className="w-full cursor-pointer">
+                      <Link to="/settings/profile" className="w-full cursor-pointer flex items-center">
                         <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
+                        Profile
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/settings" className="w-full cursor-pointer">
+                      <Link to="/settings" className="w-full cursor-pointer flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
+                        Settings
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer flex items-center">
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
+                      Log out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
