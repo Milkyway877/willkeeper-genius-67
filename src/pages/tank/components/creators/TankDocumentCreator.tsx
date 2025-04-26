@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  File,
+  File, 
   FileUp, 
   Trash2, 
   Eye, 
@@ -18,10 +17,36 @@ import {
   AlertTriangle,
   FileText,
   User,
-  Tag
+  Tag,
+  Wand2,
+  Palette,
+  SparklesIcon
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { MessageCategory } from '../../types';
+import { useMessageAI } from '../../hooks/useMessageAI';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const documentTemplates = [
+  { 
+    id: 'standard', 
+    name: 'Standard', 
+    icon: <FileText className="h-4 w-4 mr-2" />,
+    description: 'Clean, professional document format'
+  },
+  { 
+    id: 'vintage', 
+    name: 'Vintage', 
+    icon: <Palette className="h-4 w-4 mr-2" />,
+    description: 'Elegant, classic styling'
+  },
+  { 
+    id: 'handwritten', 
+    name: 'Handwritten', 
+    icon: <SparklesIcon className="h-4 w-4 mr-2" />,
+    description: 'Personal, intimate feel'
+  }
+];
 
 interface FileItem {
   id: string;
@@ -45,6 +70,8 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   onCategoryChange
 }) => {
   const { toast } = useToast();
+  const { generateWithAI, isGenerating } = useMessageAI();
+  
   const [title, setTitle] = useState<string>('');
   const [recipient, setRecipient] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -54,6 +81,7 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isEncrypting, setIsEncrypting] = useState<boolean>(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('standard');
   
   // Default category setting
   useEffect(() => {
@@ -76,7 +104,24 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
       onContentChange('');
     }
   }, [files, onContentChange]);
-  
+
+  const handleAIAssist = async () => {
+    const aiPrompt = `Help me create a ${selectedTemplate} document about ${title} for ${recipient}. 
+    Focus on the ${selectedTemplate === 'vintage' ? 'historical and elegant' : 
+      selectedTemplate === 'handwritten' ? 'personal and intimate' : 'clear and professional'} tone.`;
+    
+    const aiContent = await generateWithAI(aiPrompt, 'story');
+    
+    if (aiContent) {
+      setDescription(aiContent);
+      toast({
+        title: "AI Document Generation",
+        description: "Document content generated successfully!",
+        variant: "default"
+      });
+    }
+  };
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
   };
@@ -477,6 +522,59 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
           </Card>
         </div>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center">
+            <Wand2 className="mr-2 h-5 w-5 text-blue-500" />
+            AI Document Styles
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            {documentTemplates.map((template) => (
+              <Button
+                key={template.id}
+                variant={selectedTemplate === template.id ? 'default' : 'outline'}
+                className="flex flex-col items-center justify-center h-full p-4"
+                onClick={() => setSelectedTemplate(template.id)}
+              >
+                {template.icon}
+                <span className="mt-2 font-semibold">{template.name}</span>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  {template.description}
+                </p>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {description && (
+        <div className="bg-gray-50 p-4 rounded-lg border">
+          <p className={`${
+            selectedTemplate === 'vintage' ? 'font-serif text-gray-800' : 
+            selectedTemplate === 'handwritten' ? 'font-handwriting text-gray-900' : 
+            'font-sans'
+          }`}>
+            {description}
+          </p>
+        </div>
+      )}
+
+      <div className="flex justify-between items-center">
+        <Button 
+          onClick={handleAIAssist} 
+          disabled={isGenerating}
+          variant="outline"
+          className="flex items-center"
+        >
+          <SparklesIcon className="mr-2 h-4 w-4" />
+          {isGenerating ? 'Generating...' : 'AI Assist'}
+        </Button>
+      </div>
     </div>
   );
 };
+
+export default TankDocumentCreator;
