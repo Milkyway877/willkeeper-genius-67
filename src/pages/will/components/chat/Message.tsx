@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bot, User } from 'lucide-react';
+import { Bot, User, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface MessageProps {

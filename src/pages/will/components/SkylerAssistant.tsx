@@ -1,8 +1,9 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Bot } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
