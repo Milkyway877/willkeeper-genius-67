@@ -17,7 +17,6 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
-  MessageSquare,
   MenuIcon,
 } from 'lucide-react';
 import {
@@ -132,17 +131,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </form>
                 )}
 
-                <Link to="/pages/ai/AIAssistance" className={cn(
-                  "text-black dark:text-white",
-                  isMobile ? "hidden sm:flex" : ""
-                )}>
-                  <Button variant="ghost" size="icon" aria-label="AI Assistant">
-                    <MessageSquare className="h-5 w-5" />
-                  </Button>
-                </Link>
-
-                <NotificationDropdown />
-
                 <ModeToggle />
                 
                 <DropdownMenu>
@@ -239,3 +227,4 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     </div>
   );
 }
+

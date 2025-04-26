@@ -29,12 +29,6 @@ import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import AuthCallback from './pages/auth/AuthCallback';
 import Dashboard from './pages/Dashboard';
-import WillDashboard from './pages/will/Will';
-import WillWizardPage from './pages/will/WillWizardPage';
-import WillCreation from './pages/will/WillCreation';
-import WillCreationAI from './pages/will/WillCreationAI';
-import WillTemplates from './pages/templates/Templates';
-import WillTank from './pages/tank/Tank';
 import Settings from './pages/settings/Settings';
 import Profile from './pages/settings/Profile';
 import Help from './pages/Help';
@@ -45,25 +39,10 @@ import HowItWorks from './pages/HowItWorks';
 import Security from './pages/Security';
 import Services from './pages/Services';
 
-// Add the Will List page import
-import Wills from './pages/wills/Wills';
-
-// Import the Documentation pages
-import Documentation from './pages/corporate/Documentation';
-import GettingStarted from './pages/corporate/documentation/GettingStarted';
-import UserGuides from './pages/corporate/documentation/UserGuides';
-import API from './pages/corporate/documentation/API';
-
 // Import pages for sidebar links
-import Encryption from './pages/encryption/Encryption';
-import Executors from './pages/executors/Executors';
-import AIAssistance from './pages/ai/AIAssistance';
-import AIAssistantPage from './pages/ai/AIAssistantPage';
 import IDSecurity from './pages/security/IDSecurity';
 import Billing from './pages/billing/Billing';
-import Notifications from './pages/notifications/Notifications';
 import Activity from './pages/activity/Activity';
-import TankCreation from './pages/tank/TankCreation';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
@@ -107,40 +86,17 @@ function App() {
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/will" element={<WillDashboard />} />
-            <Route path="/dashboard/will/:id" element={<WillDashboard />} />
-            <Route path="/will/:id" element={<WillDashboard />} />
-            <Route path="/will/view/:id" element={<WillCreation readOnly={true} />} />
-            <Route path="/will/edit/:id" element={<WillCreation />} />
-            <Route path="/will/create" element={<WillCreationAI />} />
-            <Route path="/will/create/:id" element={<WillCreationAI />} />
-            <Route path="/will/wizard" element={<WillWizardPage />} />
-            <Route path="/wills" element={<Wills />} />
-            <Route path="/templates" element={<WillTemplates />} />
-            <Route path="/tank" element={<WillTank />} />
-            <Route path="/tank/create" element={<TankCreation />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/profile" element={<Profile />} />
             <Route path="/activity" element={<Activity />} />
 
             {/* Routes for sidebar links */}
-            <Route path="/pages/encryption/Encryption" element={<Encryption />} />
-            <Route path="/pages/executors/Executors" element={<Executors />} />
-            <Route path="/pages/ai/AIAssistance" element={<AIAssistance />} />
-            <Route path="/pages/ai/assistant" element={<AIAssistantPage />} />
             <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
             <Route path="/billing" element={<Billing />} />
             <Route path="/pages/billing/Billing" element={<Billing />} />
-            <Route path="/pages/notifications/Notifications" element={<Notifications />} />
 
             {/* Corporate routes */}
             <Route path="/corporate" element={<Corporate />} />
-            <Route path="/corporate/documentation" element={<Documentation />} />
-            
-            {/* Documentation sub-pages */}
-            <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
-            <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
-            <Route path="/corporate/documentation/api" element={<API />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -152,3 +108,4 @@ function App() {
 }
 
 export default App;
+
