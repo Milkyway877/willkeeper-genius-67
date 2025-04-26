@@ -6,8 +6,8 @@ import { Logo } from '@/components/ui/logo/Logo';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
-  LayoutDashboard, FileText, PackageOpen, Lock, Users, Brain, 
-  ShieldCheck, CreditCard, Bell, Settings, HelpCircle, ChevronRight, 
+  LayoutDashboard, ShieldCheck, 
+  CreditCard, Settings, HelpCircle, ChevronRight, 
   Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle
 } from 'lucide-react';
 
