@@ -1,18 +1,18 @@
-
 export type MessageType = 'letter' | 'video' | 'audio' | 'document';
 export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
 export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
 export type MessageCategory = 'letter' | 'story' | 'confession' | 'wishes' | 'advice';
 
 export interface Message {
-  id: string | number;
+  id: string;
   type: MessageType;
   title: string;
   recipient: string;
   deliveryDate: string;
   status: MessageStatus;
-  preview?: string;
+  preview: string;
   category: MessageCategory;
+  messageUrl?: string;
 }
 
 export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';

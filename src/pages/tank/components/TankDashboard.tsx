@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,10 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Clock, Send, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Message, MessageStatus, MessageType, MessageCategory } from '../types';
 import { getFutureMessages } from '@/services/tankService';
+import { MessagePreview } from './preview/MessagePreview';
 
 export const TankDashboard: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewMessage, setPreviewMessage] = useState<Message | null>(null);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -101,7 +102,15 @@ export const TankDashboard: React.FC = () => {
                   <p className="text-sm text-gray-600 mt-2 line-clamp-2">{message.preview}</p>
                 )}
                 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setPreviewMessage(message)}
+                    className="text-xs"
+                  >
+                    Preview
+                  </Button>
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -116,6 +125,17 @@ export const TankDashboard: React.FC = () => {
           </Card>
         ))}
       </div>
+
+      {previewMessage && (
+        <MessagePreview
+          open={!!previewMessage}
+          onClose={() => setPreviewMessage(null)}
+          messageType={previewMessage.type}
+          title={previewMessage.title}
+          content={previewMessage.preview || ''}
+          messageUrl={previewMessage.messageUrl}
+        />
+      )}
     </div>
   );
 };
