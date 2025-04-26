@@ -69,7 +69,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
               className="mr-2"
               aria-label="Toggle sidebar menu"
             >
-              <MenuIcon className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </Button>
           )}
           
