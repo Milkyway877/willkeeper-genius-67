@@ -3,51 +3,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TemplateCard } from './components/TemplateCard';
 import { AIQuestionFlow } from './components/AIQuestionFlow';
 import { ContactsCollection } from './components/ContactsCollection';
 import { DocumentsUploader } from './components/DocumentsUploader';
 import { VideoRecorder } from './components/VideoRecorder';
-import { WillPreview } from './components/WillPreview';
 import { useToast } from '@/hooks/use-toast';
-import { createWill, Will } from '@/services/willService';
-import { Book, FileText, User, Video, ArrowRight, Check, Loader2, Download, Copy } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+import { createWill } from '@/services/willService';
+import { ArrowRight } from 'lucide-react';
 import { useWillProgress } from '@/services/willProgressService';
-
-const templates = [
-  {
-    id: 'traditional',
-    title: 'Traditional Will',
-    description: 'A comprehensive traditional will covering all your assets and wishes.',
-    icon: <Book className="h-6 w-6 text-willtank-600" />,
-    tags: ['Most Popular', 'Comprehensive']
-  },
-  {
-    id: 'digital-assets',
-    title: 'Digital Assets Will',
-    description: 'Specialized will for digital assets like cryptocurrencies, online accounts, and digital memorabilia.',
-    icon: <FileText className="h-6 w-6 text-willtank-600" />,
-    tags: ['Modern', 'Digital Focus']
-  },
-  {
-    id: 'living-trust',
-    title: 'Living Trust',
-    description: 'Create a living trust to manage your assets during your lifetime and distribute them after death.',
-    icon: <User className="h-6 w-6 text-willtank-600" />,
-    tags: ['Advanced', 'Legal Protection']
-  }
-];
-
-const steps = [
-  { id: 'template', title: 'Choose Template' },
-  { id: 'ai-conversation', title: 'AI Assistant' },
-  { id: 'contacts', title: 'Gather Contacts' },
-  { id: 'documents', title: 'Upload Documents' },
-  { id: 'video', title: 'Video Signature' },
-  { id: 'review', title: 'Review & Generate' }
-];
+import { steps } from './config/wizardSteps';
+import { WillWizardSteps } from './components/WillWizardSteps';
+import { WillTemplateSelection } from './components/WillTemplateSelection';
+import { WillReviewStep } from './components/WillReviewStep';
 
 export default function WillWizardPage() {
   const navigate = useNavigate();
@@ -348,7 +315,7 @@ export default function WillWizardPage() {
         });
       }, 200);
       
-      const will: Omit<Will, 'id' | 'created_at' | 'updated_at'> = {
+      const will = {
         title: responses.fullName ? `Will of ${responses.fullName}` : 'My Will',
         status: 'active',
         document_url: 'generated-will.pdf',
@@ -396,16 +363,10 @@ export default function WillWizardPage() {
     switch (steps[currentStep].id) {
       case 'template':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((template) => (
-              <TemplateCard
-                key={template.id}
-                template={template}
-                isSelected={selectedTemplate?.id === template.id}
-                onSelect={() => handleSelectTemplate(template)}
-              />
-            ))}
-          </div>
+          <WillTemplateSelection
+            selectedTemplate={selectedTemplate}
+            onSelect={handleSelectTemplate}
+          />
         );
       
       case 'ai-conversation':
@@ -444,150 +405,21 @@ export default function WillWizardPage() {
       
       case 'review':
         return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Will Preview</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setSplitView(!splitView)}
-                    >
-                      {splitView ? "Single View" : "Split View"}
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopyToClipboard}
-                    >
-                      <Copy className="h-4 w-4 mr-1" />
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-                <CardDescription>
-                  Review your will document before finalizing it.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className={`${splitView ? 'flex flex-col md:flex-row gap-6' : 'space-y-6'}`}>
-                  <div className={`${splitView ? 'w-full md:w-1/2' : ''} border rounded-md p-6 bg-gray-50`}>
-                    <h3 className="font-medium mb-4">Document Preview</h3>
-                    <div className="max-h-[50vh] overflow-y-auto">
-                      <WillPreview content={editableContent} />
-                    </div>
-                  </div>
-                  
-                  {splitView && (
-                    <div className="w-full md:w-1/2 border rounded-md p-6">
-                      <h3 className="font-medium mb-4">Edit Document</h3>
-                      <textarea
-                        value={editableContent}
-                        onChange={handleContentChange}
-                        className="w-full min-h-[50vh] p-4 border rounded-md text-sm font-mono"
-                      ></textarea>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Will Details</CardTitle>
-                <CardDescription>
-                  Summary of the information you've provided
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Personal Information</h4>
-                      <p className="mt-1">{responses.fullName || 'Not specified'}</p>
-                      <p className="text-sm text-gray-500">
-                        {responses.maritalStatus || 'Not specified'}{responses.spouseName ? `, married to ${responses.spouseName}` : ''}
-                      </p>
-                    </div>
-                    
-                    {contacts.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Key People</h4>
-                        <div className="mt-1 space-y-1">
-                          {contacts.map((contact, i) => (
-                            <div key={i} className="flex items-center">
-                              <Badge variant="outline" className="mr-2">{contact.role}</Badge>
-                              <span>{contact.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Attachments</h4>
-                      <div className="mt-1">
-                        {documents.length > 0 ? (
-                          <div className="space-y-1">
-                            {documents.map((doc, i) => (
-                              <div key={i} className="flex items-center">
-                                <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                                <span>{doc.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-500">No documents attached</p>
-                        )}
-                        
-                        {videoBlob && (
-                          <div className="flex items-center mt-2">
-                            <Video className="h-4 w-4 mr-2 text-gray-500" />
-                            <span>Video Testament</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">Template</h4>
-                      <p className="mt-1">{selectedTemplate?.title}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            {isCreatingWill ? (
-              <div className="text-center space-y-4">
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-gray-500">
-                  {progress < 30 && "Generating your will document..."}
-                  {progress >= 30 && progress < 60 && "Processing attachments and video..."}
-                  {progress >= 60 && progress < 90 && "Finalizing document structure..."}
-                  {progress >= 90 && "Securing and saving your will..."}
-                </p>
-                <Button disabled className="mx-auto">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={handleFinalizeWill}
-                className="w-full"
-                size="lg"
-              >
-                <Check className="mr-2 h-4 w-4" />
-                Finalize and Save Will
-              </Button>
-            )}
-          </div>
+          <WillReviewStep
+            editableContent={editableContent}
+            splitView={splitView}
+            setSplitView={setSplitView}
+            handleContentChange={handleContentChange}
+            handleCopyToClipboard={handleCopyToClipboard}
+            responses={responses}
+            contacts={contacts}
+            documents={documents}
+            videoBlob={videoBlob}
+            selectedTemplate={selectedTemplate}
+            isCreatingWill={isCreatingWill}
+            progress={progress}
+            handleFinalizeWill={handleFinalizeWill}
+          />
         );
       
       default:
@@ -606,40 +438,7 @@ export default function WillWizardPage() {
           </p>
         </div>
         
-        {currentStep > 0 && (
-          <div className="mb-8">
-            <div className="flex justify-between mb-2">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex flex-col items-center">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                    index < currentStep 
-                      ? 'bg-willtank-500 text-white' 
-                      : index === currentStep 
-                      ? 'bg-willtank-100 border-2 border-willtank-500 text-willtank-700' 
-                      : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {index < currentStep ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      index + 1
-                    )}
-                  </div>
-                  <span className={`text-xs mt-1 text-center ${
-                    index <= currentStep ? 'text-willtank-600' : 'text-gray-400'
-                  }`}>
-                    {step.title}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="relative h-1 bg-gray-200 rounded-full">
-              <div 
-                className="absolute top-0 left-0 h-1 bg-willtank-500 rounded-full"
-                style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-        )}
+        {currentStep > 0 && <WillWizardSteps currentStep={currentStep} />}
         
         <Card>
           <CardHeader className={currentStep === 0 ? '' : 'pb-0'}>
