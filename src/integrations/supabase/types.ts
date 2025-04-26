@@ -219,6 +219,54 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          billing_period: string | null
+          created_at: string | null
+          end_date: string | null
+          id: string
+          plan: string | null
+          product_id: string | null
+          start_date: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          billing_period?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          plan?: string | null
+          product_id?: string | null
+          start_date?: string | null
+          status: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          billing_period?: string | null
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          plan?: string | null
+          product_id?: string | null
+          start_date?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_activity: {
         Row: {
           activity_type: string

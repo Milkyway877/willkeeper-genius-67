@@ -26,32 +26,6 @@ serve(async (req) => {
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2023-10-16" });
 
   try {
-    const { plan, billingPeriod } = await req.json();
-
-    // Hardcoded prices and product IDs
-    const productMap = {
-      'platinum': {
-        'monthly': 'prod_S2537v7mpccHQI',
-        'yearly': 'prod_S2537v7mpccHQI',
-        'lifetime': 'prod_S2537v7mpccHQI',
-      },
-      'gold': {
-        'monthly': 'prod_S252Aj8D5tFfXg',
-        'yearly': 'prod_S252Aj8D5tFfXg',
-        'lifetime': 'prod_S252Aj8D5tFfXg',
-      },
-      'starter': {
-        'monthly': 'prod_S251guGbh50tje',
-        'yearly': 'prod_S251guGbh50tje',
-        'lifetime': 'prod_S251guGbh50tje',
-      }
-    };
-
-    const productId = productMap[plan][billingPeriod];
-    const product = await stripe.products.retrieve(productId);
-    const prices = await stripe.prices.list({ product: productId, active: true });
-
-    // Get the authenticated user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
@@ -70,39 +44,27 @@ serve(async (req) => {
       });
     }
 
-    // Find or create Stripe customer
-    let customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-    } else {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { user_id: user.id }
+    if (customers.data.length === 0) {
+      return new Response(JSON.stringify({ error: 'No Stripe customer found' }), { 
+        status: 404, 
+        headers: corsHeaders 
       });
-      customerId = customer.id;
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const customerId = customers.data[0].id;
+    const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      line_items: [{ price: prices.data[0].id, quantity: 1 }],
-      mode: billingPeriod === 'lifetime' ? 'payment' : 'subscription',
-      success_url: `${req.headers.get('origin')}/billing?success=true`,
-      cancel_url: `${req.headers.get('origin')}/billing?canceled=true`,
-      metadata: {
-        user_id: user.id,
-        plan: plan,
-        billing_period: billingPeriod
-      }
+      return_url: `${req.headers.get('origin')}/billing`
     });
 
-    return new Response(JSON.stringify({ url: session.url }), { 
+    return new Response(JSON.stringify({ url: portalSession.url }), { 
       status: 200, 
       headers: corsHeaders 
     });
   } catch (error) {
-    console.error('Checkout session error:', error);
+    console.error('Customer portal error:', error);
     return new Response(JSON.stringify({ error: error.message }), { 
       status: 500, 
       headers: corsHeaders 

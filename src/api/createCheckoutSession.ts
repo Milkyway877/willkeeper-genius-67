@@ -4,44 +4,32 @@ import { toast } from 'sonner';
 
 export async function createCheckoutSession(plan: string, billingPeriod: string) {
   try {
-    console.log('Creating checkout session for:', plan, billingPeriod);
-    
-    // Show a loading toast that can be updated later
-    const toastId = toast.loading('Preparing checkout session...');
-    
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { plan, billingPeriod },
+      body: { plan, billingPeriod }
     });
-    
+
     if (error) {
-      console.error('Error invoking create-checkout-session function:', error);
-      toast.error('Payment error', {
+      console.error('Checkout session error:', error);
+      toast.error('Payment processing error', {
         description: `Error creating checkout session: ${error.message}`,
-        id: toastId
       });
-      throw new Error(`Error creating checkout session: ${error.message}`);
+      return { status: 'error', error: error.message };
     }
-    
+
     if (!data?.url) {
-      console.error('No checkout URL returned from server', data);
-      toast.error('Payment error', {
+      console.error('No checkout URL returned from server');
+      toast.error('Payment processing error', {
         description: 'No checkout URL returned from server',
-        id: toastId
       });
-      throw new Error('No checkout URL returned from server');
+      return { status: 'error', error: 'No checkout URL' };
     }
-    
-    toast.success('Redirecting to checkout', {
-      id: toastId
-    });
-    
-    return { url: data.url, status: 'success' };
+
+    return { status: 'success', url: data.url };
   } catch (error) {
-    console.error('Error in createCheckoutSession:', error);
+    console.error('Checkout session error:', error);
     return { 
-      url: '#', 
       status: 'error', 
-      error: error.message || 'An unexpected error occurred' 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
     };
   }
 }

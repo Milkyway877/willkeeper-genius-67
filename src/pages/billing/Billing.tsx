@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -247,6 +246,44 @@ export default function Billing() {
       day: 'numeric'
     });
   };
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      if (data.subscribed) {
+        setSubscription(data);
+      }
+    } catch (error) {
+      console.error('Subscription status error:', error);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const { data } = await supabase.functions.invoke('customer-portal', {
+        body: {}
+      });
+
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Customer portal error:', error);
+      toast.error('Error accessing subscription management');
+    }
+  };
+
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, []);
 
   return (
     <Layout>
