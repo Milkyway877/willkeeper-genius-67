@@ -1,4 +1,3 @@
-
 export type MessageType = 'letter' | 'video' | 'audio' | 'document';
 export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
 export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
@@ -26,3 +25,19 @@ export interface LegacyVaultItem {
   encryptionStatus: boolean;
 }
 
+export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
+
+export interface PlanDetails {
+  name: string;
+  price: {
+    monthly: number;
+    yearly: number;
+    lifetime: number;
+  };
+  features: string[];
+  description: string;
+}
+
+export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
+
+export type DBLegacyVaultItem = LegacyVaultItem;
