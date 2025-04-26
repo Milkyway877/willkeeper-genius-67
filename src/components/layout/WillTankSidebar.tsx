@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -41,29 +40,9 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       href: '/dashboard',
     },
     {
-      title: 'My Will',
-      icon: FileText,
-      href: '/dashboard/will',
-    },
-    {
-      title: 'Will Templates',
-      icon: PackageOpen,
-      href: '/templates',
-    },
-    {
-      title: 'Encryption',
-      icon: Lock,
-      href: '/pages/encryption/Encryption',
-    },
-    {
-      title: 'Executors',
-      icon: Users,
-      href: '/pages/executors/Executors',
-    },
-    {
-      title: 'AI Assistance',
-      icon: Brain,
-      href: '/pages/ai/AIAssistance',
+      title: 'Tank',
+      icon: Archive,
+      href: '/tank',
     },
     {
       title: 'ID Security',
@@ -71,19 +50,9 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       href: '/pages/security/IDSecurity',
     },
     {
-      title: 'Tank',
-      icon: Archive,
-      href: '/tank',
-    },
-    {
       title: 'Billing',
       icon: CreditCard,
       href: '/pages/billing/Billing',
-    },
-    {
-      title: 'Notifications',
-      icon: Bell,
-      href: '/pages/notifications/Notifications',
     },
     {
       title: 'Settings',
