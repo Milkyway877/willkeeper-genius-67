@@ -12,8 +12,9 @@ import { VideoRecorder } from './components/VideoRecorder';
 import { WillPreview } from './components/WillPreview';
 import { useToast } from '@/hooks/use-toast';
 import { createWill, Will } from '@/services/willService';
-import { Book, FileText, User, Video, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { Book, FileText, User, Video, ArrowRight, Check, Loader2, Download, Copy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 
 // Template options for the wizard
 const templates = [
@@ -66,6 +67,8 @@ export default function WillWizardPage() {
   const [isCreatingWill, setIsCreatingWill] = useState(false);
   const [progress, setProgress] = useState(0);
   const [willId, setWillId] = useState<string | null>(null);
+  const [editableContent, setEditableContent] = useState('');
+  const [splitView, setSplitView] = useState(false);
 
   // Load template from URL if available
   useEffect(() => {
@@ -90,10 +93,140 @@ export default function WillWizardPage() {
     });
   };
 
+  // Generate a will document from the collected information
+  const generateWillDocument = (allResponses: Record<string, any>, allContacts: any[]) => {
+    const currentDate = new Date().toLocaleDateString();
+    
+    let willDocument = "";
+    
+    // Title
+    willDocument += `LAST WILL AND TESTAMENT\n\n`;
+    
+    // Personal information
+    willDocument += `I, ${allResponses.fullName || '[NAME]'}, being of sound mind, declare this to be my Last Will and Testament.\n\n`;
+    
+    // Revocation clause
+    willDocument += `ARTICLE I: REVOCATION\n`;
+    willDocument += `I revoke all previous wills and codicils.\n\n`;
+    
+    // Family information
+    willDocument += `ARTICLE II: FAMILY INFORMATION\n`;
+    willDocument += `I am ${allResponses.maritalStatus || '[MARITAL STATUS]'}`;
+    if (allResponses.spouseName) {
+      willDocument += ` and married to ${allResponses.spouseName}`;
+    }
+    willDocument += `.\n`;
+    
+    if (allResponses.children && allResponses.children.length > 0) {
+      willDocument += `I have ${allResponses.children.length} children: ${allResponses.children.join(', ')}.\n\n`;
+    } else {
+      willDocument += `I have no children.\n\n`;
+    }
+    
+    // Executor appointment
+    willDocument += `ARTICLE III: EXECUTOR\n`;
+    const executor = allContacts.find(c => c.role === 'Executor');
+    if (executor) {
+      willDocument += `I appoint ${executor.name} as the Executor of this Will.\n`;
+      if (executor.address || executor.phone || executor.email) {
+        willDocument += `Contact information: `;
+        if (executor.address) willDocument += `Address: ${executor.address}; `;
+        if (executor.phone) willDocument += `Phone: ${executor.phone}; `;
+        if (executor.email) willDocument += `Email: ${executor.email}`;
+        willDocument += `\n`;
+      }
+      
+      const alternateExecutor = allContacts.find(c => c.role === 'Alternate Executor');
+      if (alternateExecutor) {
+        willDocument += `\nIf ${executor.name} is unable or unwilling to serve, I appoint ${alternateExecutor.name} as alternate Executor.\n`;
+        if (alternateExecutor.address || alternateExecutor.phone || alternateExecutor.email) {
+          willDocument += `Contact information: `;
+          if (alternateExecutor.address) willDocument += `Address: ${alternateExecutor.address}; `;
+          if (alternateExecutor.phone) willDocument += `Phone: ${alternateExecutor.phone}; `;
+          if (alternateExecutor.email) willDocument += `Email: ${alternateExecutor.email}`;
+          willDocument += `\n`;
+        }
+      }
+    } else {
+      willDocument += `I appoint [EXECUTOR NAME] as the Executor of this Will.\n`;
+    }
+    willDocument += `\n`;
+    
+    // Guardian appointment (if applicable)
+    const guardian = allContacts.find(c => c.role === 'Guardian');
+    if (guardian && (allResponses.children && allResponses.children.length > 0)) {
+      willDocument += `ARTICLE IV: GUARDIAN\n`;
+      willDocument += `I appoint ${guardian.name} as the Guardian of my minor children.\n`;
+      if (guardian.address || guardian.phone || guardian.email) {
+        willDocument += `Contact information: `;
+        if (guardian.address) willDocument += `Address: ${guardian.address}; `;
+        if (guardian.phone) willDocument += `Phone: ${guardian.phone}; `;
+        if (guardian.email) willDocument += `Email: ${guardian.email}`;
+        willDocument += `\n`;
+      }
+      willDocument += `\n`;
+    }
+    
+    // Disposition of property
+    willDocument += `ARTICLE V: DISPOSITION OF PROPERTY\n\n`;
+    
+    // Specific bequests if any
+    if (allResponses.specificBequests) {
+      willDocument += `Specific Bequests:\n${allResponses.specificBequests}\n\n`;
+    }
+    
+    // Residual estate
+    if (allResponses.residualEstate) {
+      willDocument += `Residual Estate:\n${allResponses.residualEstate}\n\n`;
+    } else {
+      willDocument += `I give all my remaining property to [BENEFICIARIES].\n\n`;
+    }
+    
+    // Digital assets section
+    willDocument += `ARTICLE VI: DIGITAL ASSETS\n`;
+    willDocument += `I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.\n\n`;
+    
+    // Funeral wishes if specified
+    if (allResponses.funeralWishes) {
+      willDocument += `ARTICLE VII: FUNERAL WISHES\n`;
+      willDocument += `${allResponses.funeralWishes}\n\n`;
+    }
+    
+    // Conclusion
+    willDocument += `Signed: ${allResponses.fullName || '[NAME]'}\n`;
+    willDocument += `Date: ${currentDate}\n`;
+    willDocument += `Witnesses: [Witness 1], [Witness 2]\n\n`;
+    
+    // Attachments section if documents or video exists
+    if (documents.length > 0 || videoBlob) {
+      willDocument += `ATTACHMENTS:\n\n`;
+      
+      if (documents.length > 0) {
+        willDocument += `Documents:\n`;
+        documents.forEach(doc => {
+          willDocument += `- ${doc.name} (${doc.category})\n`;
+        });
+        willDocument += `\n`;
+      }
+      
+      if (videoBlob) {
+        willDocument += `Video Testament:\n`;
+        willDocument += `- Video recorded on ${currentDate}\n`;
+        willDocument += `\n`;
+      }
+    }
+    
+    return willDocument;
+  };
+
   // Handle AI conversation completion
   const handleConversationComplete = (allResponses: Record<string, any>, generatedContent: string) => {
     setResponses(allResponses);
-    setGeneratedWill(generatedContent);
+    
+    // Generate the Will document based on responses
+    const willDocument = generateWillDocument(allResponses, []);
+    setGeneratedWill(willDocument);
+    setEditableContent(willDocument);
     
     // Extract potential contacts from responses
     const extractedContacts = extractContactsFromResponses(allResponses);
@@ -172,6 +305,12 @@ export default function WillWizardPage() {
   // Handle contacts collection completion
   const handleContactsComplete = (updatedContacts: any[]) => {
     setContacts(updatedContacts);
+    
+    // Update the generated will with contact information
+    const updatedWill = generateWillDocument(responses, updatedContacts);
+    setGeneratedWill(updatedWill);
+    setEditableContent(updatedWill);
+    
     setCurrentStep(prev => prev + 1);
     
     toast({
@@ -183,6 +322,12 @@ export default function WillWizardPage() {
   // Handle documents upload completion
   const handleDocumentsComplete = (uploadedDocuments: any[]) => {
     setDocuments(uploadedDocuments);
+    
+    // Update the generated will with document information
+    const updatedWill = generateWillDocument(responses, contacts);
+    setGeneratedWill(updatedWill);
+    setEditableContent(updatedWill);
+    
     setCurrentStep(prev => prev + 1);
     
     toast({
@@ -194,11 +339,32 @@ export default function WillWizardPage() {
   // Handle video recording completion
   const handleVideoComplete = (blob: Blob) => {
     setVideoBlob(blob);
+    
+    // Update the generated will with video information
+    const updatedWill = generateWillDocument(responses, contacts);
+    setGeneratedWill(updatedWill);
+    setEditableContent(updatedWill);
+    
     setCurrentStep(prev => prev + 1);
     
     toast({
       title: "Video Testament Recorded",
       description: "Your video testament has been recorded successfully.",
+    });
+  };
+
+  // Handle content editing in review step
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditableContent(e.target.value);
+  };
+
+  // Copy will content to clipboard
+  const handleCopyToClipboard = () => {
+    navigator.clipboard.writeText(editableContent);
+    
+    toast({
+      title: "Copied",
+      description: "Will content copied to clipboard.",
     });
   };
 
@@ -225,7 +391,7 @@ export default function WillWizardPage() {
         document_url: 'generated-will.pdf', // In real implementation, this would be the URL to the generated PDF
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,
-        content: generatedWill
+        content: editableContent // Use the edited content
       };
       
       const createdWill = await createWill(will);
@@ -318,13 +484,120 @@ export default function WillWizardPage() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Will Preview</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Will Preview</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setSplitView(!splitView)}
+                    >
+                      {splitView ? "Single View" : "Split View"}
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyToClipboard}
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+                </div>
                 <CardDescription>
                   Review your will document before finalizing it.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="max-h-[50vh] overflow-y-auto border rounded-md">
-                <WillPreview content={generatedWill} />
+              <CardContent>
+                <div className={`${splitView ? 'flex flex-col md:flex-row gap-6' : 'space-y-6'}`}>
+                  <div className={`${splitView ? 'w-full md:w-1/2' : ''} border rounded-md p-6 bg-gray-50`}>
+                    <h3 className="font-medium mb-4">Document Preview</h3>
+                    <div className="max-h-[50vh] overflow-y-auto">
+                      <WillPreview content={editableContent} />
+                    </div>
+                  </div>
+                  
+                  {splitView && (
+                    <div className="w-full md:w-1/2 border rounded-md p-6">
+                      <h3 className="font-medium mb-4">Edit Document</h3>
+                      <textarea
+                        value={editableContent}
+                        onChange={handleContentChange}
+                        className="w-full min-h-[50vh] p-4 border rounded-md text-sm font-mono"
+                      ></textarea>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Summary of collected information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Will Details</CardTitle>
+                <CardDescription>
+                  Summary of the information you've provided
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Personal Information</h4>
+                      <p className="mt-1">{responses.fullName || 'Not specified'}</p>
+                      <p className="text-sm text-gray-500">
+                        {responses.maritalStatus || 'Not specified'}{responses.spouseName ? `, married to ${responses.spouseName}` : ''}
+                      </p>
+                    </div>
+                    
+                    {contacts.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500">Key People</h4>
+                        <div className="mt-1 space-y-1">
+                          {contacts.map((contact, i) => (
+                            <div key={i} className="flex items-center">
+                              <Badge variant="outline" className="mr-2">{contact.role}</Badge>
+                              <span>{contact.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Attachments</h4>
+                      <div className="mt-1">
+                        {documents.length > 0 ? (
+                          <div className="space-y-1">
+                            {documents.map((doc, i) => (
+                              <div key={i} className="flex items-center">
+                                <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                                <span>{doc.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">No documents attached</p>
+                        )}
+                        
+                        {videoBlob && (
+                          <div className="flex items-center mt-2">
+                            <Video className="h-4 w-4 mr-2 text-gray-500" />
+                            <span>Video Testament</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500">Template</h4>
+                      <p className="mt-1">{selectedTemplate?.title}</p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
             

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Video, Camera, StopCircle, PlayCircle, Trash2, Save, RefreshCw } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface VideoRecorderProps {
   onRecordingComplete: (blob: Blob) => void;
