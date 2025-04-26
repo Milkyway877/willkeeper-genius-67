@@ -1,4 +1,11 @@
+
 import { supabase } from "@/integrations/supabase/client";
+import { createSystemNotification } from "@/services/notificationService";
+import { LegacyVaultItem, VaultItemType } from "@/pages/tank/types";
+
+// Defining UILegacyVaultItem as an alias for LegacyVaultItem
+// This matches the existing usage patterns in the code
+type UILegacyVaultItem = LegacyVaultItem;
 
 export interface FutureMessage {
   id: string;
