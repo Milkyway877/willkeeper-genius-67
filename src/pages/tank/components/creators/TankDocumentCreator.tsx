@@ -21,6 +21,7 @@ import {
   Tag
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { MessageCategory } from '../../types';
 
 interface FileItem {
   id: string;
@@ -34,12 +35,14 @@ interface TankDocumentCreatorProps {
   onContentChange: (content: string) => void;
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
+  onCategoryChange: (category: MessageCategory) => void;
 }
 
 export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({ 
   onContentChange, 
   onTitleChange,
-  onRecipientChange
+  onRecipientChange,
+  onCategoryChange
 }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState<string>('');
@@ -51,6 +54,11 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isEncrypting, setIsEncrypting] = useState<boolean>(false);
+  
+  // Default category setting
+  useEffect(() => {
+    onCategoryChange('document');
+  }, [onCategoryChange]);
   
   useEffect(() => {
     onTitleChange(title);

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,17 +30,20 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { motion } from 'framer-motion';
+import { MessageCategory } from '../../types';
 
 interface TankAudioCreatorProps {
   onContentChange: (content: string) => void;
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
+  onCategoryChange: (category: MessageCategory) => void;
 }
 
 export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({ 
   onContentChange, 
   onTitleChange,
-  onRecipientChange
+  onRecipientChange,
+  onCategoryChange
 }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState<string>('');
@@ -54,6 +56,10 @@ export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [backgroundLevel, setBackgroundLevel] = useState<number>(30);
   const [selectedBackground, setSelectedBackground] = useState<string | null>(null);
+  
+  useEffect(() => {
+    onCategoryChange('story');
+  }, [onCategoryChange]);
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -132,7 +138,6 @@ export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({
       mediaRecorder.start();
       setIsRecording(true);
       
-      // Start timer
       setRecordingTime(0);
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
@@ -162,7 +167,6 @@ export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({
       
       setIsRecording(false);
       
-      // Stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -203,7 +207,6 @@ export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Check if file is audio
     if (!file.type.startsWith('audio/')) {
       toast({
         title: "Invalid File",

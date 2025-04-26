@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,17 +23,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { MessageCategory } from '../../types';
 
 interface TankVideoCreatorProps {
   onContentChange: (content: string) => void;
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
+  onCategoryChange: (category: MessageCategory) => void;
 }
 
 export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({ 
   onContentChange, 
   onTitleChange,
-  onRecipientChange
+  onRecipientChange,
+  onCategoryChange
 }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState<string>('');
@@ -51,6 +53,10 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const [musicVolume, setMusicVolume] = useState(50);
   const [selectedMusic, setSelectedMusic] = useState<string | null>(null);
   const [filters, setFilters] = useState<string[]>([]);
+  
+  useEffect(() => {
+    onCategoryChange('story');
+  }, [onCategoryChange]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
