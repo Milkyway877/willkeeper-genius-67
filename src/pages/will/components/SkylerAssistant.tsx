@@ -208,6 +208,43 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const checkContactsComplete = useCallback(() => {
     if (currentStage !== 'contacts') return false;
     
+    const aiExplicitlyConfirmed = messages.some(m => 
+      m.role === 'assistant' && 
+      (
+        m.content.toLowerCase().includes('all contact information has been collected successfully') ||
+        m.content.toLowerCase().includes('contact collection phase is complete') ||
+        m.content.toLowerCase().includes('contact collection phase is now complete') ||
+        m.content.toLowerCase().includes('fantastic! thank you for confirming')
+      ) &&
+      !messages.some(next => 
+        next.timestamp > m.timestamp && 
+        next.role === 'assistant' && 
+        (
+          next.content.toLowerCase().includes('could you provide') || 
+          next.content.toLowerCase().includes('can you give me') ||
+          next.content.toLowerCase().includes('please provide')
+        )
+      )
+    );
+    
+    if (aiExplicitlyConfirmed) {
+      return true;
+    }
+    
+    const aiStillAsking = messages.some(m => 
+      m.role === 'assistant' && 
+      (
+        m.content.toLowerCase().includes('could you provide') || 
+        m.content.toLowerCase().includes('can you give me') ||
+        m.content.toLowerCase().includes('please provide')
+      ) &&
+      !messages.some(next => next.timestamp > m.timestamp && next.role === 'user')
+    );
+    
+    if (aiStillAsking) {
+      return false;
+    }
+    
     const executorName = extractedResponses.executorName;
     const alternateExecutorName = extractedResponses.alternateExecutorName;
     const guardianName = extractedResponses.guardianName;
@@ -250,17 +287,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       requiredContactsCollected = requiredContactsCollected && guardianDetailsProvided;
     }
     
-    const aiConfirmedCompletion = messages.some(m => 
-      m.role === 'assistant' && 
-      m.content.toLowerCase().includes('all contact information has been collected') &&
-      !messages.some(next => 
-        next.timestamp > m.timestamp && 
-        next.role === 'assistant' && 
-        (next.content.toLowerCase().includes('provide') || next.content.toLowerCase().includes('could you'))
-      )
-    );
-    
-    return requiredContactsCollected && aiConfirmedCompletion;
+    return requiredContactsCollected && !aiStillAsking;
   }, [currentStage, messages, extractedResponses]);
   
   const handleSendMessage = async () => {
@@ -401,7 +428,9 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       "that covers all the essential information",
       "now ready for the next step",
       "let's proceed to the next stage",
-      "now i have all the information needed"
+      "now i have all the information needed",
+      "contact collection phase is complete",
+      "fantastic! thank you for confirming"
     ];
     
     const phraseMatches = completionPhrases.some(phrase => 
@@ -415,7 +444,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
                                   aiResponse.toLowerCase().includes('please provide') ||
                                   aiResponse.toLowerCase().includes('can you give me');
       
-      isComplete = phraseMatches && !hasFollowUpQuestion && checkContactsComplete();
+      isComplete = phraseMatches && !hasFollowUpQuestion;
     } else {
       isComplete = phraseMatches || messages.length >= 15;
     }
