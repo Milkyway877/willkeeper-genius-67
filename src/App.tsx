@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -48,6 +49,7 @@ import './MobileStyles.css';
 
 import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
+import TankMessageDetail from './pages/tank/TankMessageDetail';
 
 const queryClient = new QueryClient();
 
@@ -100,6 +102,7 @@ export default function App() {
             
             <Route path="/tank" element={<Tank />} />
             <Route path="/tank/create" element={<TankCreation />} />
+            <Route path="/tank/message/:id" element={<TankMessageDetail />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
