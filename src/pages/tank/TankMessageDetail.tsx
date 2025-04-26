@@ -231,10 +231,11 @@ export default function TankMessageDetail() {
                   </p>
                   <p className="text-xs text-gray-500">
                     <Tag className="h-3 w-3 inline mr-1" />
-                    {message.category === 'letter' ? 'Personal letter' : 
-                     message.category === 'video' ? 'Video message' :
-                     message.category === 'audio' ? 'Audio recording' : 
-                     message.category === 'story' ? 'Story or legacy content' : 'Document package'}
+                    {message.type === 'video' ? 'Video message' :
+                     message.type === 'audio' ? 'Audio recording' :
+                     message.category === 'letter' ? 'Personal letter' : 
+                     message.category === 'story' ? 'Story or legacy content' : 
+                     'Document package'}
                   </p>
                 </div>
               </div>
