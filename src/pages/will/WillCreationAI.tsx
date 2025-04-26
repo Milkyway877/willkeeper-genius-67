@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -11,6 +10,7 @@ import { SkylerAssistant } from './components/SkylerAssistant';
 import { WillPreview } from './components/WillPreview';
 import { Book, FileText, User, Video, ArrowLeft, Sparkles, Save, Copy } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { TemplateCard } from './components/TemplateCard';
 
 // Enhanced templates with more options
 const templates = [
@@ -228,51 +228,11 @@ export default function WillCreationAI() {
                 whileHover={{ scale: 1.02 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card
-                  className={`cursor-pointer hover:shadow-md transition-all h-full ${
-                    selectedTemplate?.id === template.id ? 'ring-2 ring-willtank-600' : ''
-                  }`}
-                  onClick={() => handleTemplateSelect(template)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center mb-4">
-                      <div className="bg-willtank-50 p-2 rounded-full">
-                        {template.icon}
-                      </div>
-                      <h3 className="font-medium ml-3">{template.title}</h3>
-                    </div>
-                    
-                    <p className="text-gray-600 text-sm mb-4">{template.description}</p>
-                    
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {template.tags?.map((tag, index) => (
-                        <span 
-                          key={index} 
-                          className="text-xs px-2 py-1 bg-willtank-50 text-willtank-700 rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    <div className="text-sm text-gray-600">
-                      <p className="font-medium mb-2">Key features:</p>
-                      <ul className="list-disc pl-5 space-y-1">
-                        {template.features?.map((feature, index) => (
-                          <li key={index}>{feature}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    
-                    <Button 
-                      className="w-full mt-4"
-                      variant="outline"
-                      onClick={() => handleTemplateSelect(template)}
-                    >
-                      Select Template
-                    </Button>
-                  </CardContent>
-                </Card>
+                <TemplateCard 
+                  template={template}
+                  isSelected={selectedTemplate?.id === template.id}
+                  onSelect={() => handleTemplateSelect(template)}
+                />
               </motion.div>
             ))}
           </div>
@@ -428,7 +388,8 @@ export default function WillCreationAI() {
         {phase === 'review' && renderReview()}
       </div>
       
-      <style jsx>{`
+      <style>
+        {`
         .pulse-animation {
           animation: pulse 2s infinite;
         }
@@ -444,7 +405,8 @@ export default function WillCreationAI() {
             box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
           }
         }
-      `}</style>
+        `}
+      </style>
     </Layout>
   );
 }

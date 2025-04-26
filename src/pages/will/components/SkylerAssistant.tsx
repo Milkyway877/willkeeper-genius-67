@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-// Message types
 type MessageRole = 'user' | 'assistant' | 'system';
 type StageType = 'information' | 'contacts' | 'documents' | 'video' | 'review';
 
@@ -73,7 +71,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   
-  // References
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -81,14 +78,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   
-  // State for voice input
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSupported, setRecordingSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
   
   const { toast } = useToast();
   
-  // Initialize the chat based on template
   useEffect(() => {
     const welcomeMessage = getWelcomeMessage(templateId, templateName);
     setMessages([{
@@ -98,21 +93,18 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       timestamp: new Date()
     }]);
     
-    // Check if speech recognition is supported
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       setRecordingSupported(true);
     }
   }, [templateId, templateName]);
   
-  // Auto-scroll to the latest message
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
   
-  // Get welcome message based on template type
   const getWelcomeMessage = (templateId: string, templateName: string) => {
     let welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant. I'll guide you through creating a ${templateName}. Let's start with the basics: What is your full legal name?`;
     
@@ -131,7 +123,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     return welcomeMessage;
   };
   
-  // Initialize speech recognition
   const initSpeechRecognition = useCallback(() => {
     if (!recordingSupported) return;
     
@@ -159,7 +150,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   }, [recordingSupported]);
   
-  // Toggle voice input
   const toggleVoiceInput = useCallback(() => {
     if (isRecording) {
       if (recognitionRef.current) {
@@ -175,12 +165,10 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   }, [isRecording, initSpeechRecognition]);
   
-  // Extract information from the conversation
   const extractInformation = useCallback(() => {
     const userMessages = messages.filter(m => m.role === 'user').map(m => m.content);
     const responses: Record<string, any> = {};
     
-    // Extract full name
     const nameMatch = userMessages.find(msg => 
       /^(my name is|I am|I'm) ([A-Z][a-z]+ [A-Z][a-z]+)/i.test(msg)
     );
@@ -192,7 +180,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       }
     }
     
-    // Extract marital status
     const maritalStatusMatch = userMessages.find(msg => 
       /(single|married|divorced|widowed)/i.test(msg) && 
       /status/i.test(msg)
@@ -204,7 +191,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       else if (maritalStatusMatch.match(/widowed/i)) responses.maritalStatus = 'Widowed';
     }
     
-    // Extract more information based on template type
     if (templateId === 'digital-assets') {
       const digitalAssetsMatch = userMessages.find(msg => 
         /(cryptocurrency|crypto|bitcoin|ethereum|nft|digital assets|online accounts)/i.test(msg)
@@ -219,7 +205,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     return responses;
   }, [messages, templateId]);
   
-  // Handle sending a message
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
     
@@ -242,7 +227,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token || '';
       
-      // Use the appropriate edge function based on the current stage
       let functionName = 'gpt-will-assistant';
       let requestBody: any = {
         query: inputValue,
@@ -271,7 +255,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         functionName = 'will-video-assistant';
       }
       
-      // Call the Edge Function
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: requestBody
       });
@@ -291,10 +274,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       
       setMessages(prev => [...prev, aiMessage]);
       
-      // Check for stage completion phrases
       checkForStageCompletion(aiResponse);
       
-      // Extract information and save conversation
       const responses = extractInformation();
       
       if (session?.user?.id) {
@@ -331,7 +312,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
           console.error("Error calling save-will-conversation function:", saveError);
         }
       }
-      
     } catch (error) {
       console.error("Error processing message:", error);
       
@@ -354,7 +334,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Check for completion phrases to transition between stages
   const checkForStageCompletion = (aiResponse: string) => {
     const completionPhrases = [
       "we have all the information",
@@ -369,17 +348,14 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     
     const isComplete = completionPhrases.some(phrase => 
       aiResponse.toLowerCase().includes(phrase.toLowerCase())
-    ) || messages.length >= 15; // Also consider message count as a potential trigger
+    ) || messages.length >= 15;
     
     if (isComplete) {
-      // Add a system message indicating stage completion
-      const nextStage = getNextStage(currentStage);
-      
       setTimeout(() => {
         const stageCompleteMessage: Message = {
           id: `stage-complete-${Date.now()}`,
           role: 'system',
-          content: getStageCompletionMessage(currentStage, nextStage),
+          content: getStageCompletionMessage(currentStage, getNextStage(currentStage)),
           timestamp: new Date()
         };
         
@@ -388,7 +364,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Get the next stage
   const getNextStage = (currentStage: StageType): StageType => {
     switch (currentStage) {
       case 'information':
@@ -404,7 +379,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Get stage completion message
   const getStageCompletionMessage = (currentStage: StageType, nextStage: StageType) => {
     switch (currentStage) {
       case 'information':
@@ -420,13 +394,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Handle stage transition
   const handleStageTransition = () => {
     const nextStage = getNextStage(currentStage);
     
     setCurrentStage(nextStage);
     
-    // Add a welcome message for the new stage
     setTimeout(() => {
       const welcomeMessage: Message = {
         id: `welcome-${nextStage}-${Date.now()}`,
@@ -439,7 +411,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }, 500);
   };
   
-  // Get welcome message for a stage
   const getStageWelcomeMessage = (stage: StageType) => {
     switch (stage) {
       case 'contacts':
@@ -455,12 +426,10 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Handle file upload button click
   const handleFileButtonClick = () => {
     fileInputRef.current?.click();
   };
   
-  // Handle file selection
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -468,7 +437,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const file = files[0];
     
     try {
-      // Create a user message about uploading the document
       const userMessage: Message = {
         id: `user-upload-${Date.now()}`,
         role: 'user',
@@ -480,7 +448,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       
       setMessages(prev => [...prev, userMessage]);
       
-      // Upload the file to Supabase Storage
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       
@@ -499,12 +466,10 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         throw new Error(`Error uploading file: ${uploadError.message}`);
       }
       
-      // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('will-documents')
         .getPublicUrl(filePath);
       
-      // Add the document to the state
       const newDocument = {
         id: `doc-${Date.now()}`,
         name: file.name,
@@ -516,7 +481,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       
       setDocuments(prev => [...prev, newDocument]);
       
-      // Create an assistant message acknowledging the upload
       const assistantMessage: Message = {
         id: `assistant-upload-${Date.now()}`,
         role: 'assistant',
@@ -536,13 +500,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       });
     }
     
-    // Reset the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
   
-  // Handle video recording
   const startVideoRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -567,10 +529,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         const blob = new Blob(chunksRef.current, { type: 'video/webm' });
         setVideoBlob(blob);
         
-        // Create a URL for the recorded video
         const videoURL = URL.createObjectURL(blob);
         
-        // Add a message with the recorded video
         const videoMessage: Message = {
           id: `video-${Date.now()}`,
           role: 'user',
@@ -582,7 +542,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         
         setMessages(prev => [...prev, videoMessage]);
         
-        // Add an assistant response
         const assistantMessage: Message = {
           id: `assistant-video-${Date.now()}`,
           role: 'assistant',
@@ -592,7 +551,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         
         setMessages(prev => [...prev, assistantMessage]);
         
-        // Stop all tracks
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
           streamRef.current = null;
@@ -601,7 +559,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       
       mediaRecorderRef.current.start();
       
-      // Add a message indicating recording has started
       const recordingMessage: Message = {
         id: `recording-start-${Date.now()}`,
         role: 'system',
@@ -622,14 +579,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Stop video recording
   const stopVideoRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
   };
   
-  // Handle key press for sending messages
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -637,12 +592,10 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Generate the will document
   const handleGenerateWill = async () => {
     setIsGenerating(true);
     
     try {
-      // Simulate progress
       let progress = 0;
       const progressInterval = setInterval(() => {
         progress += 5;
@@ -652,10 +605,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         setProgress(progress);
       }, 200);
       
-      // Extract information
       const finalResponses = extractInformation();
       
-      // Generate will content based on template type
       const generatedWillContent = generateWillContent(templateId, finalResponses);
       setGeneratedWill(generatedWillContent);
       
@@ -663,7 +614,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         clearInterval(progressInterval);
         setProgress(100);
         
-        // Add a completion message
         const completionMessage: Message = {
           id: `completion-${Date.now()}`,
           role: 'system',
@@ -673,7 +623,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         
         setMessages(prev => [...prev, completionMessage]);
         
-        // Notify parent component of completion
         onComplete({
           responses: finalResponses,
           contacts,
@@ -698,7 +647,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   };
   
-  // Generate will content based on template type and responses
   const generateWillContent = (templateId: string, responses: Record<string, any>) => {
     if (templateId === 'digital-assets') {
       return `DIGITAL ASSET WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
@@ -821,7 +769,6 @@ Witnesses: [Witness 1], [Witness 2]`;
                         )}
                       </div>
                       
-                      {/* Message content based on type */}
                       {message.type === 'file' ? (
                         <div className="flex items-center text-sm">
                           <Paperclip className="h-4 w-4 mr-2" />
@@ -870,7 +817,6 @@ Witnesses: [Witness 1], [Witness 2]`;
           </ScrollArea>
         </CardContent>
         
-        {/* Video recording section */}
         {currentStage === 'video' && videoRef.current && streamRef.current && (
           <div className="p-4 border-t bg-gray-50">
             <div className="relative">
@@ -892,7 +838,6 @@ Witnesses: [Witness 1], [Witness 2]`;
           </div>
         )}
         
-        {/* Input area */}
         {currentStage === 'review' && isGenerating ? (
           <div className="p-4 border-t">
             <div className="space-y-4">
@@ -914,7 +859,6 @@ Witnesses: [Witness 1], [Witness 2]`;
         ) : (
           <div className="p-4 border-t">
             <div className="flex items-center space-x-2">
-              {/* Regular text input */}
               <Input
                 placeholder={isProcessing ? "SKYLER is thinking..." : "Type your message..."}
                 value={inputValue}
@@ -924,7 +868,6 @@ Witnesses: [Witness 1], [Witness 2]`;
                 className="flex-grow"
               />
               
-              {/* Voice input button */}
               {recordingSupported && (
                 <Button
                   type="button"
@@ -938,7 +881,6 @@ Witnesses: [Witness 1], [Witness 2]`;
                 </Button>
               )}
               
-              {/* Document upload button for the documents stage */}
               {currentStage === 'documents' && (
                 <>
                   <Button
@@ -961,7 +903,6 @@ Witnesses: [Witness 1], [Witness 2]`;
                 </>
               )}
               
-              {/* Video recording button for the video stage */}
               {currentStage === 'video' && !streamRef.current && (
                 <Button
                   type="button"
@@ -974,7 +915,6 @@ Witnesses: [Witness 1], [Witness 2]`;
                 </Button>
               )}
               
-              {/* Send message button */}
               <Button
                 type="button"
                 disabled={!inputValue.trim() || isProcessing}
@@ -989,7 +929,6 @@ Witnesses: [Witness 1], [Witness 2]`;
               </Button>
             </div>
             
-            {/* Stage completion or will generation buttons */}
             {messages.some(m => m.id.startsWith('stage-complete')) && (
               <div className="mt-4">
                 <Button
