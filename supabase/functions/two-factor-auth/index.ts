@@ -10,7 +10,16 @@ const corsHeaders = {
 
 function generateTOTP(secret: string, counter: number): string {
   try {
-    const key = base32.decode(secret.toUpperCase().replace(/\s/g, ''));
+    // Clean up the secret to ensure it's valid base32
+    const cleanSecret = secret.toUpperCase().replace(/\s/g, '');
+    
+    // Ensure we have a valid base32 string (length must be a multiple of 8)
+    let paddedSecret = cleanSecret;
+    while (paddedSecret.length % 8 !== 0) {
+      paddedSecret += '=';
+    }
+    
+    const key = base32.decode(paddedSecret);
     
     // Convert counter to buffer
     const buffer = new ArrayBuffer(8);
@@ -51,10 +60,15 @@ function validateTOTP(token: string, secret: string): boolean {
     return false;
   }
 
+  // Clean up and pad the secret if needed
   const cleanSecret = secret.replace(/\s+/g, '').toUpperCase();
+  let paddedSecret = cleanSecret;
+  while (paddedSecret.length % 8 !== 0) {
+    paddedSecret += '=';
+  }
   
-  if (!/^[A-Z2-7]+=*$/.test(cleanSecret)) {
-    console.error("Invalid base32 secret format:", cleanSecret);
+  if (!/^[A-Z2-7]+=*$/.test(paddedSecret)) {
+    console.error("Invalid base32 secret format:", paddedSecret);
     return false;
   }
 
@@ -65,7 +79,7 @@ function validateTOTP(token: string, secret: string): boolean {
   for (let i = -1; i <= 1; i++) {
     const counter = Math.floor((now / timeStep)) + i;
     try {
-      const generatedToken = generateTOTP(cleanSecret, counter);
+      const generatedToken = generateTOTP(paddedSecret, counter);
       if (generatedToken === token) {
         return true;
       }
@@ -126,19 +140,37 @@ serve(async (req) => {
       const isValid = validateTOTP(code, secret);
       
       if (isValid && userId) {
-        // Update user security settings in the database
-        const { error: securityError } = await supabase
+        // Check if a record exists for this user
+        const { data: existingRecord, error: queryError } = await supabase
           .from('user_security')
-          .upsert({ 
-            user_id: userId,
-            google_auth_secret: secret.replace(/\s+/g, ''),
-            google_auth_enabled: true,
-            encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
-              .map(b => b.toString(16).padStart(2, '0'))
-              .join('')
-          }, { 
-            onConflict: 'user_id'
-          });
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+        
+        let updateOperation;
+        const securityRecord = {
+          user_id: userId,
+          google_auth_secret: secret.replace(/\s+/g, ''),
+          google_auth_enabled: true,
+          encryption_key: Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('')
+        };
+        
+        if (existingRecord) {
+          // Update existing record
+          updateOperation = supabase
+            .from('user_security')
+            .update(securityRecord)
+            .eq('user_id', userId);
+        } else {
+          // Insert new record
+          updateOperation = supabase
+            .from('user_security')
+            .insert([securityRecord]);
+        }
+        
+        const { error: securityError } = await updateOperation;
           
         if (securityError) {
           console.error('Error updating security settings:', securityError);
@@ -157,6 +189,12 @@ serve(async (req) => {
           return code;
         });
 
+        // Delete any existing recovery codes
+        await supabase
+          .from('user_recovery_codes')
+          .delete()
+          .eq('user_id', userId);
+          
         // Store recovery codes in the database
         const { error: recoveryError } = await supabase
           .from('user_recovery_codes')

@@ -53,6 +53,8 @@ export default function IDSecurity() {
     qrCodeUrl: ''
   });
   const [enableTwoFactor, setEnableTwoFactor] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [setupComplete, setSetupComplete] = useState(false);
 
   useEffect(() => {
     fetchSecurityData();
@@ -92,16 +94,6 @@ export default function IDSecurity() {
       
       console.log("Setting up 2FA with code:", cleanCode, "and secret:", totp.secret);
       
-      // Verify the code against the current secret
-      const isValid = validateTOTP(cleanCode, totp.secret);
-      
-      if (!isValid) {
-        console.error("Invalid TOTP code during setup");
-        setVerificationError('Invalid verification code. Please try again.');
-        setSetting2FA(false);
-        return;
-      }
-      
       // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
@@ -111,36 +103,32 @@ export default function IDSecurity() {
       
       console.log("Setting up 2FA for user:", user.id);
       
-      // Generate a random encryption key if needed
-      const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+      // Call our edge function to validate and store the 2FA settings
+      const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+        body: {
+          action: 'validate',
+          code: cleanCode,
+          secret: totp.secret,
+          userId: user.id
+        }
+      });
       
-      // Check if a security record already exists
-      const { data: existingRecord, error: checkError } = await supabase
-        .from('user_security')
-        .select('id, encryption_key')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      const finalEncryptionKey = existingRecord?.encryption_key || encryptionKey;
-      
-      // Use upsert to handle both insert and update cases
-      const { error: upsertError } = await supabase
-        .from('user_security')
-        .upsert({
-          user_id: user.id,
-          google_auth_enabled: enableTwoFactor,
-          google_auth_secret: totp.secret,
-          encryption_key: finalEncryptionKey
-        }, { onConflict: 'user_id' });
-      
-      if (upsertError) {
-        console.error("Error updating security record:", upsertError);
-        throw new Error("Failed to update security settings. Database error.");
+      if (error) {
+        console.error("Error calling edge function:", error);
+        throw new Error("Failed to call validation service. Please try again later.");
       }
       
-      console.log("2FA setup successful, enabled:", enableTwoFactor);
+      if (!data.success) {
+        setVerificationError('Invalid verification code. Please try again.');
+        setSetting2FA(false);
+        return;
+      }
+      
+      // Store recovery codes if returned
+      if (data.recoveryCodes && data.recoveryCodes.length > 0) {
+        setRecoveryCodes(data.recoveryCodes);
+        setSetupComplete(true);
+      }
       
       toast({
         title: "Two-factor authentication " + (enableTwoFactor ? "enabled" : "configured"),
@@ -151,7 +139,6 @@ export default function IDSecurity() {
       
       await fetchSecurityData(); // Refresh security data
       
-      // Success! Proceed to next step
     } catch (error) {
       console.error("Error setting up authenticator:", error);
       setVerificationError(
@@ -233,173 +220,220 @@ export default function IDSecurity() {
           </TabsList>
           
           <TabsContent value="2fa">
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="flex items-center">
-                      <Smartphone className="h-5 w-5 mr-2 text-willtank-600" /> 
-                      Two-Factor Authentication
-                    </CardTitle>
-                    <CardDescription>
-                      Add an extra layer of security to your account with two-factor authentication.
-                    </CardDescription>
-                  </div>
+            {setupComplete ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Shield className="h-5 w-5 mr-2 text-willtank-600" /> 
+                    Setup Complete
+                  </CardTitle>
+                  <CardDescription>
+                    Two-factor authentication has been successfully set up.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Alert className="bg-green-50 border-green-200 mb-4">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertTitle className="text-green-800">Success!</AlertTitle>
+                    <AlertDescription className="text-green-700">
+                      Your account is now protected with two-factor authentication.
+                    </AlertDescription>
+                  </Alert>
                   
-                  {!loading && security !== null && (
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        checked={enableTwoFactor} 
-                        disabled={loading || setting2FA}
-                        onCheckedChange={toggleTwoFactor}
-                      />
-                      {enableTwoFactor ? (
-                        <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                          Enabled
-                        </span>
-                      ) : (
-                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          Disabled
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              
-              <CardContent>
-                {loading ? (
-                  <div className="flex justify-center py-8">
-                    <RefreshCw className="h-8 w-8 animate-spin text-willtank-500" />
-                  </div>
-                ) : security?.google_auth_enabled ? (
                   <div className="space-y-4">
-                    <Alert className="bg-green-50 border-green-200">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <AlertTitle className="text-green-800">Two-factor authentication is enabled</AlertTitle>
-                      <AlertDescription className="text-green-700">
-                        Your account is protected with an additional layer of security.
-                      </AlertDescription>
-                    </Alert>
-                    
-                    <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                      <h3 className="font-medium mb-2">Authentication app</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        You're using an authenticator app to generate verification codes.
+                    <div>
+                      <h3 className="font-medium">Save your recovery codes</h3>
+                      <p className="text-sm text-gray-600 mt-1 mb-3">
+                        Store these recovery codes in a safe place. They allow you to regain access to your account if you lose your authenticator device.
                       </p>
                       
-                      <Dialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
-                            <Lock className="mr-2 h-4 w-4" /> Disable 2FA
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
-                            <DialogDescription>
-                              This will reduce the security of your account. Are you sure you want to continue?
-                            </DialogDescription>
-                          </DialogHeader>
-                          
-                          <div className="py-4">
-                            <Alert variant="destructive" className="mb-4">
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertTitle>Security Warning</AlertTitle>
-                              <AlertDescription>
-                                Disabling two-factor authentication will make your account more vulnerable to unauthorized access.
-                              </AlertDescription>
-                            </Alert>
-                            
-                            <p className="text-sm mb-2">
-                              Enter the verification code from your authenticator app to confirm:
-                            </p>
-                            
-                            <TwoFactorInput 
-                              onSubmit={handle2FADisable} 
-                              loading={disabling2FA}
-                              error={verificationError}
-                            />
-                          </div>
-                          
-                          <DialogFooter>
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setShowDisableDialog(false)}
-                              disabled={disabling2FA}
-                            >
-                              Cancel
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <div className="bg-gray-50 p-4 rounded-md border border-gray-200 font-mono text-sm">
+                        {recoveryCodes.map((code, i) => (
+                          <div key={i} className="mb-1">{code}</div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <Alert className="bg-amber-50 border-amber-200">
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
-                      <AlertTitle className="text-amber-800">Two-factor authentication is not enabled</AlertTitle>
-                      <AlertDescription className="text-amber-700">
-                        Enable two-factor authentication to add an extra layer of security to your account.
-                      </AlertDescription>
-                    </Alert>
                     
-                    <div className="border border-gray-200 rounded-md p-6">
-                      <h3 className="text-lg font-medium mb-4">Set up authenticator app</h3>
+                    <Button 
+                      onClick={() => {
+                        setSetupComplete(false);
+                        fetchSecurityData();
+                      }}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="flex items-center">
+                        <Smartphone className="h-5 w-5 mr-2 text-willtank-600" /> 
+                        Two-Factor Authentication
+                      </CardTitle>
+                      <CardDescription>
+                        Add an extra layer of security to your account with two-factor authentication.
+                      </CardDescription>
+                    </div>
+                    
+                    {!loading && security !== null && (
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          checked={enableTwoFactor} 
+                          disabled={loading || setting2FA}
+                          onCheckedChange={toggleTwoFactor}
+                        />
+                        {enableTwoFactor ? (
+                          <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                            Enabled
+                          </span>
+                        ) : (
+                          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            Disabled
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                
+                <CardContent>
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <RefreshCw className="h-8 w-8 animate-spin text-willtank-500" />
+                    </div>
+                  ) : security?.google_auth_enabled ? (
+                    <div className="space-y-4">
+                      <Alert className="bg-green-50 border-green-200">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertTitle className="text-green-800">Two-factor authentication is enabled</AlertTitle>
+                        <AlertDescription className="text-green-700">
+                          Your account is protected with an additional layer of security.
+                        </AlertDescription>
+                      </Alert>
                       
-                      <ol className="space-y-6">
-                        <li className="flex">
-                          <span className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-willtank-100 text-willtank-600 font-medium mr-3">1</span>
-                          <div>
-                            <p className="font-medium">Download and install an authenticator app</p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              We recommend Google Authenticator, Microsoft Authenticator, or Authy.
-                            </p>
-                          </div>
-                        </li>
+                      <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                        <h3 className="font-medium mb-2">Authentication app</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                          You're using an authenticator app to generate verification codes.
+                        </p>
                         
-                        <li className="flex">
-                          <span className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-willtank-100 text-willtank-600 font-medium mr-3">2</span>
-                          <div>
-                            <p className="font-medium">Scan this QR code with your authenticator app</p>
+                        <Dialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                              <Lock className="mr-2 h-4 w-4" /> Disable 2FA
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+                              <DialogDescription>
+                                This will reduce the security of your account. Are you sure you want to continue?
+                              </DialogDescription>
+                            </DialogHeader>
                             
-                            <div className="bg-white p-4 border border-gray-200 rounded-md mt-2 inline-block">
-                              <QRCode
-                                value={totp.qrCodeUrl}
-                                size={180}
+                            <div className="py-4">
+                              <Alert variant="destructive" className="mb-4">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Security Warning</AlertTitle>
+                                <AlertDescription>
+                                  Disabling two-factor authentication will make your account more vulnerable to unauthorized access.
+                                </AlertDescription>
+                              </Alert>
+                              
+                              <p className="text-sm mb-2">
+                                Enter the verification code from your authenticator app to confirm:
+                              </p>
+                              
+                              <TwoFactorInput 
+                                onSubmit={handle2FADisable} 
+                                loading={disabling2FA}
+                                error={verificationError}
                               />
                             </div>
                             
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-600 mb-1">Or enter this setup key manually:</p>
-                              <div className="bg-gray-50 p-2 rounded border border-gray-200 font-mono text-sm break-all">
-                                {totp.secret}
+                            <DialogFooter>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => setShowDisableDialog(false)}
+                                disabled={disabling2FA}
+                              >
+                                Cancel
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <Alert className="bg-amber-50 border-amber-200">
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                        <AlertTitle className="text-amber-800">Two-factor authentication is not enabled</AlertTitle>
+                        <AlertDescription className="text-amber-700">
+                          Enable two-factor authentication to add an extra layer of security to your account.
+                        </AlertDescription>
+                      </Alert>
+                      
+                      <div className="border border-gray-200 rounded-md p-6">
+                        <h3 className="text-lg font-medium mb-4">Set up authenticator app</h3>
+                        
+                        <ol className="space-y-6">
+                          <li className="flex">
+                            <span className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-willtank-100 text-willtank-600 font-medium mr-3">1</span>
+                            <div>
+                              <p className="font-medium">Download and install an authenticator app</p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                We recommend Google Authenticator, Microsoft Authenticator, or Authy.
+                              </p>
+                            </div>
+                          </li>
+                          
+                          <li className="flex">
+                            <span className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-willtank-100 text-willtank-600 font-medium mr-3">2</span>
+                            <div>
+                              <p className="font-medium">Scan this QR code with your authenticator app</p>
+                              
+                              <div className="bg-white p-4 border border-gray-200 rounded-md mt-2 inline-block">
+                                <QRCode
+                                  value={totp.qrCodeUrl}
+                                  size={180}
+                                />
+                              </div>
+                              
+                              <div className="mt-2">
+                                <p className="text-sm text-gray-600 mb-1">Or enter this setup key manually:</p>
+                                <div className="bg-gray-50 p-2 rounded border border-gray-200 font-mono text-sm break-all">
+                                  {totp.secret}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </li>
-                        
-                        <li className="flex">
-                          <span className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-willtank-100 text-willtank-600 font-medium mr-3">3</span>
-                          <div>
-                            <p className="font-medium">Enter the 6-digit verification code from your app</p>
-                            <div className="mt-2">
-                              <TwoFactorInput 
-                                onSubmit={handle2FASetup} 
-                                loading={setting2FA}
-                                error={verificationError}
-                                autoSubmit={false}
-                              />
+                          </li>
+                          
+                          <li className="flex">
+                            <span className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-willtank-100 text-willtank-600 font-medium mr-3">3</span>
+                            <div>
+                              <p className="font-medium">Enter the 6-digit verification code from your app</p>
+                              <div className="mt-2">
+                                <TwoFactorInput 
+                                  onSubmit={handle2FASetup} 
+                                  loading={setting2FA}
+                                  error={verificationError}
+                                  autoSubmit={false}
+                                />
+                              </div>
                             </div>
-                          </div>
-                        </li>
-                      </ol>
+                          </li>
+                        </ol>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="recovery">

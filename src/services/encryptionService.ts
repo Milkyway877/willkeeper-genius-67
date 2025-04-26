@@ -200,15 +200,36 @@ export const setup2FA = async (code: string) => {
       return { success: false, error: "Invalid verification code" };
     }
     
-    // Update the user security record
-    const { data, error } = await supabase
+    // Get the existing record first to check if it exists
+    const { data: existingRecord } = await supabase
       .from('user_security')
-      .update({ 
-        google_auth_secret: secret,
-        google_auth_enabled: true
-      })
+      .select('id')
       .eq('user_id', user.id)
-      .select();
+      .maybeSingle();
+    
+    let securityOperation;
+    if (existingRecord) {
+      // Update existing record
+      securityOperation = supabase
+        .from('user_security')
+        .update({ 
+          google_auth_secret: secret,
+          google_auth_enabled: true
+        })
+        .eq('user_id', user.id);
+    } else {
+      // Insert new record
+      securityOperation = supabase
+        .from('user_security')
+        .insert([{ 
+          user_id: user.id,
+          google_auth_secret: secret,
+          google_auth_enabled: true,
+          encryption_key: generateRandomString(32)
+        }]);
+    }
+    
+    const { error } = await securityOperation;
     
     if (error) {
       console.error('Error updating user security:', error);
@@ -217,6 +238,12 @@ export const setup2FA = async (code: string) => {
     
     // Generate recovery codes
     const recoveryCodes = Array.from({ length: 8 }, () => generateRecoveryCode());
+    
+    // Clean up existing recovery codes
+    await supabase
+      .from('user_recovery_codes')
+      .delete()
+      .eq('user_id', user.id);
     
     // Insert recovery codes into the database
     const { error: recoveryError } = await supabase
@@ -266,17 +293,26 @@ export const disable2FA = async (code: string) => {
       }
     }
     
-    // Update the user security record - use upsert to handle both insert and update
+    // Check if a record exists
+    const { data: existingData } = await supabase
+      .from('user_security')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (!existingData) {
+      console.error('No security record found when disabling 2FA');
+      return { success: false, error: "Security record not found" };
+    }
+    
+    // Update the user security record
     const { error } = await supabase
       .from('user_security')
-      .upsert({ 
-        user_id: user.id,
+      .update({ 
         google_auth_enabled: false,
         // Keep the existing secret so we don't have to regenerate it if the user enables 2FA again
-        google_auth_secret: securityRecord.google_auth_secret,
-        // Keep the existing encryption key
-        encryption_key: securityRecord.encryption_key || generateRandomString(32)
-      }, { onConflict: 'user_id' });
+      })
+      .eq('user_id', user.id);
     
     if (error) {
       console.error('Error disabling 2FA:', error);
@@ -513,13 +549,13 @@ export const updateEncryptionKeyStatus = async (keyId: string, status: string): 
 
 // Helper function to generate a random base32 string (standard for TOTP)
 const generateRandomBase32 = (length: number) => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; // Base32 character set
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; // Base32 character set
   let result = '';
   const randomValues = new Uint8Array(length);
   crypto.getRandomValues(randomValues);
   
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(randomValues[i] % chars.length);
+    result += charset.charAt(randomValues[i] % charset.length);
   }
   return result;
 };
