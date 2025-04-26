@@ -27,6 +27,7 @@ import AuthResetPassword from './pages/auth/ResetPassword';
 import AccountActivation from './pages/auth/AccountActivation';
 import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
+import AuthCallback from './pages/auth/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import WillDashboard from './pages/will/Will';
 import WillWizardPage from './pages/will/WillWizardPage';
@@ -102,6 +103,7 @@ function App() {
             <Route path="/auth/reset-password" element={<AuthResetPassword />} />
             <Route path="/auth/activate" element={<AccountActivation />} />
             <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             
             {/* Dashboard routes */}
             <Route path="/dashboard" element={<Dashboard />} />
