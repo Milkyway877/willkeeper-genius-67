@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -836,4 +837,122 @@ Witnesses: [Witness 1], [Witness 2]`;
                       <div className="flex items-center mb-1">
                         {message.role === 'assistant' ? (
                           <div className="flex items-center">
-                            <Bot className="h-4 w-4 mr-2 text-willtank-600
+                            <Bot className="h-4 w-4 mr-2 text-willtank-600" />
+                            <span className="text-xs font-semibold">SKYLER</span>
+                          </div>
+                        ) : message.role === 'user' ? (
+                          <div className="flex items-center">
+                            <User className="h-4 w-4 mr-2" />
+                            <span className="text-xs font-semibold">You</span>
+                          </div>
+                        ) : null}
+                        
+                        <div className="ml-auto text-xs text-gray-500">
+                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        {message.type === 'file' ? (
+                          <div className="flex items-center">
+                            <FileText className="h-5 w-5 mr-2" />
+                            <span>{message.fileName}</span>
+                          </div>
+                        ) : message.type === 'video' ? (
+                          <div>
+                            <video 
+                              src={message.fileUrl} 
+                              controls 
+                              className="w-full h-auto rounded mt-2 mb-2" 
+                              style={{ maxHeight: '200px' }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="whitespace-pre-wrap">{message.content}</div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+        </CardContent>
+        
+        <div className="flex items-center p-4 border-t">
+          <Button
+            variant="outline"
+            size="icon"
+            className="mr-2"
+            onClick={handleFileButtonClick}
+            disabled={currentStage !== 'documents' || isProcessing}
+          >
+            <Paperclip className="h-5 w-5" />
+          </Button>
+          
+          {recordingSupported && (
+            <Button
+              variant="outline"
+              size="icon"
+              className={`mr-2 ${isRecording ? 'bg-rose-100' : ''}`}
+              onClick={toggleVoiceInput}
+            >
+              {isRecording ? (
+                <MicOff className="h-5 w-5 text-rose-500" />
+              ) : (
+                <Mic className="h-5 w-5" />
+              )}
+            </Button>
+          )}
+          
+          <Input
+            placeholder={isRecording ? "Listening..." : "Type your message..."}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyPress}
+            disabled={isProcessing}
+            className="flex-1"
+          />
+          
+          <Button
+            variant="default"
+            size="icon"
+            className="ml-2"
+            onClick={handleSendMessage}
+            disabled={!inputValue.trim() || isProcessing}
+          >
+            {isProcessing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+      </Card>
+      
+      <div className="mt-6 flex justify-end">
+        <Button 
+          onClick={handleStageTransition} 
+          disabled={
+            (currentStage === 'contacts' && !checkContactsComplete()) ||
+            isProcessing
+          }
+          className="px-6"
+        >
+          Continue <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+      
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        onChange={handleFileChange} 
+        accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      />
+      
+      <video ref={videoRef} style={{ display: 'none' }} />
+    </div>
+  );
+}
