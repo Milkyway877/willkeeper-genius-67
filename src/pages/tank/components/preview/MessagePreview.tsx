@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MessageType } from '../../types';
@@ -28,11 +29,17 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
     const fetchVideoUrl = async () => {
       if (messageType === 'video' && messageUrl) {
         try {
-          const { data: { publicUrl } } = supabase.storage
+          console.log("Fetching video URL for:", messageUrl);
+          const { data } = supabase.storage
             .from('future-videos')
             .getPublicUrl(messageUrl);
           
-          setVideoUrl(publicUrl);
+          if (data?.publicUrl) {
+            console.log("Video public URL:", data.publicUrl);
+            setVideoUrl(data.publicUrl);
+          } else {
+            console.error("Failed to get public URL");
+          }
         } catch (error) {
           console.error('Error getting video URL:', error);
         }
@@ -57,7 +64,9 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
             </video>
           </div>
         ) : (
-          <div className="text-center p-4 text-gray-500">Video not available</div>
+          <div className="text-center p-4 text-gray-500">
+            {messageUrl ? "Loading video..." : "Video not available"}
+          </div>
         );
       
       case 'audio':

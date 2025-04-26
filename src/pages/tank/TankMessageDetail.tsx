@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -33,7 +32,8 @@ export default function TankMessageDetail() {
             deliveryDate: foundMessage.delivery_date,
             status: foundMessage.status as MessageStatus,
             preview: foundMessage.preview || '',
-            category: foundMessage.category || 'letter'
+            category: foundMessage.category || 'letter',
+            messageUrl: foundMessage.message_url
           });
         } else {
           toast({
@@ -154,14 +154,14 @@ export default function TankMessageDetail() {
 
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold mb-2">{message.title}</h1>
+            <h1 className="text-3xl font-bold mb-2">{message?.title}</h1>
             <div className="flex items-center">
-              <Badge className={getStatusColor(message.status) + " mr-2"}>
-                {message.status}
+              <Badge className={getStatusColor(message?.status || 'draft') + " mr-2"}>
+                {message?.status}
               </Badge>
               <span className="flex items-center text-sm text-gray-600">
-                {getTypeIcon(message.type)}
-                <span className="ml-1 capitalize">{message.type}</span>
+                {getTypeIcon(message?.type || 'letter')}
+                <span className="ml-1 capitalize">{message?.type}</span>
               </span>
             </div>
           </div>
@@ -169,7 +169,7 @@ export default function TankMessageDetail() {
           <div className="flex gap-2">
             <Button 
               variant="outline"
-              onClick={() => navigate(`/tank/edit/${message.id}`)}
+              onClick={() => navigate(`/tank/edit/${message?.id}`)}
             >
               Edit Message
             </Button>

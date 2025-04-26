@@ -32,6 +32,8 @@ export const TankDashboard: React.FC = () => {
           category: (msg.category as MessageCategory) || 'letter',
           messageUrl: msg.message_url
         }));
+        
+        console.log("Formatted messages with URLs:", formattedMessages);
         setMessages(formattedMessages);
       } catch (error) {
         console.error('Error loading messages:', error);
@@ -139,7 +141,10 @@ export const TankDashboard: React.FC = () => {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => setPreviewMessage(message)}
+                    onClick={() => {
+                      console.log("Previewing message:", message);
+                      setPreviewMessage(message);
+                    }}
                     className="text-xs"
                   >
                     Preview
