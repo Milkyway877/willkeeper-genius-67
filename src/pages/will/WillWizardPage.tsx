@@ -14,6 +14,7 @@ import { createWill, Will } from '@/services/willService';
 import { Book, FileText, User, Video, ArrowRight, Check, Loader2, Download, Copy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { useWillProgress } from '@/services/willProgressService';
 
 const templates = [
   {
@@ -65,6 +66,8 @@ export default function WillWizardPage() {
   const [willId, setWillId] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState('');
   const [splitView, setSplitView] = useState(false);
+
+  const { progress: willProgress, setProgress: setWillProgress } = useWillProgress(willId);
 
   useEffect(() => {
     const templateParam = searchParams.get('template');
@@ -356,8 +359,7 @@ export default function WillWizardPage() {
       
       const createdWill = await createWill(will);
       
-      const { progress: currentProgress, setProgress: setWillProgress } = useWillProgress(willId);
-      setWillProgress({ ...currentProgress, isFinalized: true });
+      setWillProgress({ ...willProgress, isFinalized: true });
       
       clearInterval(progressInterval);
       setProgress(100);
