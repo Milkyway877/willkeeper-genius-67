@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -80,8 +79,7 @@ export default function EmailVerification() {
         .eq('id', verificationData.id);
 
       if (type === 'signup') {
-        // For signup flow
-        // Update user profile to mark activation as complete
+        // For signup flow - update user profile to mark activation as complete
         await supabase
           .from('user_profiles')
           .update({ activation_complete: true })
@@ -89,12 +87,12 @@ export default function EmailVerification() {
         
         toast({
           title: "Email verified",
-          description: "Your email has been successfully verified. You can now sign in.",
+          description: "Your email has been successfully verified. Welcome to WillTank!",
           variant: "default",
         });
         
-        // Fixed: Redirect to signin instead of signup
-        navigate('/auth/signin');
+        // Direct to dashboard after successful signup verification
+        navigate('/dashboard');
       } else {
         // For login flow
         // Get credentials from session storage
