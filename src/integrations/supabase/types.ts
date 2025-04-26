@@ -185,30 +185,69 @@ export type Database = {
       }
       legacy_vault: {
         Row: {
+          category: string | null
           content: string | null
           created_at: string | null
+          document_url: string | null
           id: string
+          is_encrypted: boolean | null
           preview: string | null
           title: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          category?: string | null
           content?: string | null
           created_at?: string | null
+          document_url?: string | null
           id?: string
+          is_encrypted?: boolean | null
           preview?: string | null
           title?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          category?: string | null
           content?: string | null
           created_at?: string | null
+          document_url?: string | null
           id?: string
+          is_encrypted?: boolean | null
           preview?: string | null
           title?: string | null
           updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      legacy_vault_ai_suggestions: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_type: string
+          prompt: string
+          suggestion: string
+          used: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_type: string
+          prompt: string
+          suggestion: string
+          used?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_type?: string
+          prompt?: string
+          suggestion?: string
+          used?: boolean | null
           user_id?: string | null
         }
         Relationships: []

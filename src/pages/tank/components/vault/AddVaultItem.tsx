@@ -11,6 +11,7 @@ import { createLegacyVaultItem } from '@/services/tankService';
 import { LegacyVaultItem, VaultItemType } from '../../types';
 import { FileText, Save, Plus, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useVaultAI } from '../../hooks/useVaultAI';
 
 interface AddVaultItemProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
   const [documentUrl, setDocumentUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [useAI, setUseAI] = useState(false);
+  const { generateWithAI, isGenerating } = useVaultAI();
 
   const resetForm = () => {
     setTitle('');
@@ -41,7 +43,7 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
     onClose();
   };
 
-  const generateWithAI = async () => {
+  const generateWithAIHandler = async () => {
     if (!title.trim()) {
       toast({
         title: "Title required",
@@ -53,24 +55,23 @@ export const AddVaultItem: React.FC<AddVaultItemProps> = ({ isOpen, onClose, onI
 
     setIsLoading(true);
     try {
-      // Simulate AI generation (in a real app, this would call an AI service)
-      setTimeout(() => {
-        const aiPreview = `This is an AI-generated preview for "${title}". It's a ${type} that contains important information to be preserved for future generations.`;
-        setPreview(aiPreview);
-        setDocumentUrl('https://example.com/ai-generated-document');
-        
+      const prompt = `Generate a ${type} about "${title}". Include relevant details and make it personal and meaningful.`;
+      const suggestion = await generateWithAI(prompt, type);
+      
+      if (suggestion) {
+        setPreview(suggestion);
         toast({
           title: "AI content generated",
           description: "Content has been created based on your title and type."
         });
-        setIsLoading(false);
-      }, 1000);
+      }
     } catch (error) {
       toast({
         title: "AI generation failed",
         description: "There was an error generating content. Please try again or create manually.",
         variant: "destructive"
       });
+    } finally {
       setIsLoading(false);
     }
   };
