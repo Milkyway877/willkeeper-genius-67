@@ -11,6 +11,40 @@ export interface Notification {
   created_at: string;
 }
 
+// Event types that can be used by other services
+export type EventType = 
+  | 'success' | 'warning' | 'info' | 'security'
+  | 'will_updated' | 'will_created' | 'will_deleted'
+  | 'document_uploaded' | 'security_key_generated' 
+  | 'beneficiary_added' | 'executor_added' 
+  | 'item_saved';
+
+// Map specific event types to standard notification types
+export const mapEventTypeToNotificationType = (
+  eventType: EventType
+): 'success' | 'warning' | 'info' | 'security' => {
+  switch (eventType) {
+    case 'success':
+    case 'will_created':
+    case 'will_updated':
+    case 'item_saved':
+      return 'success';
+    case 'warning':
+      return 'warning';
+    case 'info':
+    case 'document_uploaded':
+    case 'beneficiary_added':
+    case 'executor_added':
+    case 'will_deleted':
+      return 'info';
+    case 'security':
+    case 'security_key_generated':
+      return 'security';
+    default:
+      return 'info'; // Default to info for unknown types
+  }
+};
+
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -85,7 +119,7 @@ export const markAllNotificationsAsRead = async (): Promise<boolean> => {
 };
 
 export const createSystemNotification = async (
-  type: 'success' | 'warning' | 'info' | 'security',
+  eventType: EventType,
   details: { title: string, description: string }
 ): Promise<Notification | null> => {
   try {
@@ -95,6 +129,9 @@ export const createSystemNotification = async (
       console.warn('No user logged in, skipping notification creation');
       return null;
     }
+    
+    // Map the event type to a standard notification type
+    const type = mapEventTypeToNotificationType(eventType);
     
     const { data, error } = await supabase
       .from('notifications')

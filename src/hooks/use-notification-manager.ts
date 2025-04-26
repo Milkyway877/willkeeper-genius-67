@@ -1,7 +1,7 @@
 
 import { useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
-import { createSystemNotification } from '@/services/notificationService';
+import { createSystemNotification, EventType } from '@/services/notificationService';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
 export type NotificationPriority = 'low' | 'medium' | 'high';
@@ -10,7 +10,7 @@ export function useNotificationManager() {
   const { fetchNotifications } = useNotifications();
 
   const notify = useCallback(async (
-    type: 'success' | 'warning' | 'info' | 'security',
+    eventType: EventType,
     title: string, 
     description: string,
     priority: NotificationPriority = 'medium'
@@ -19,7 +19,7 @@ export function useNotificationManager() {
     toast({
       title,
       description,
-      variant: type === 'security' ? 'destructive' : 'default',
+      variant: eventType === 'security' || eventType === 'security_key_generated' ? 'destructive' : 'default',
     });
     
     // Don't store low priority notifications
@@ -29,14 +29,14 @@ export function useNotificationManager() {
     
     // Create a persistent notification
     try {
-      const notification = await createSystemNotification(type, { title, description });
+      const notification = await createSystemNotification(eventType, { title, description });
       // Refresh notifications list if available
       if (fetchNotifications) {
         fetchNotifications();
       }
       return notification;
     } catch (error) {
-      console.error(`Failed to create ${type} notification:`, error);
+      console.error(`Failed to create ${eventType} notification:`, error);
       return null;
     }
   }, [fetchNotifications]);

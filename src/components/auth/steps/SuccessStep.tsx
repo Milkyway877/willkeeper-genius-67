@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, BadgeCheck, Key } from 'lucide-react';
@@ -9,16 +8,13 @@ import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 export function SuccessStep() {
   const navigate = useNavigate();
-  const { notifySuccess, notifyInfo, notifySecurity } = useNotificationManager();
+  const { notifySuccess, notifyInfo, notifySecurity, notifyWelcome } = useNotificationManager();
   
   useEffect(() => {
     // Send welcome notifications when this component mounts
     const sendWelcomeNotifications = async () => {
-      // Main welcome notification
-      await notifySuccess(
-        "Welcome to WillTank",
-        "Your secure digital legacy platform. Get started by exploring the dashboard."
-      );
+      // Main welcome notification using the helper
+      await notifyWelcome();
       
       // Getting started notification
       await notifyInfo(
@@ -35,7 +31,7 @@ export function SuccessStep() {
     };
     
     sendWelcomeNotifications();
-  }, [notifySuccess, notifyInfo, notifySecurity]);
+  }, [notifySuccess, notifyInfo, notifySecurity, notifyWelcome]);
   
   return (
     <motion.div key="success" {...fadeInUp} className="text-center py-8">

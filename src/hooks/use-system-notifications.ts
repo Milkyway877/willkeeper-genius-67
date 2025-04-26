@@ -1,18 +1,10 @@
 
 import { useCallback } from 'react';
-import { createSystemNotification } from '@/services/notificationService';
+import { createSystemNotification, EventType } from '@/services/notificationService';
 import { toast } from '@/components/ui/use-toast';
 
 // Define the supported event types for better TypeScript support
-export type NotificationEventType = 
-  | 'will_updated' 
-  | 'document_uploaded' 
-  | 'security_key_generated' 
-  | 'beneficiary_added' 
-  | 'executor_added' 
-  | 'item_saved' 
-  | 'will_deleted'
-  | 'will_created';
+export type NotificationEventType = EventType;
 
 // Mapping of event types to standard notification types
 const eventTypeToNotificationType = (eventType: NotificationEventType): 'success' | 'warning' | 'info' | 'security' => {
@@ -20,13 +12,17 @@ const eventTypeToNotificationType = (eventType: NotificationEventType): 'success
     case 'will_updated':
     case 'will_created':
     case 'item_saved':
+    case 'success':
       return 'success';
     case 'security_key_generated':
+    case 'security':
       return 'security';
     case 'document_uploaded':
     case 'beneficiary_added':
     case 'executor_added':
     case 'will_deleted':
+    case 'info':
+    case 'warning':
     default:
       return 'info';
   }
@@ -105,51 +101,49 @@ export function useSystemNotifications() {
   const notifyWillUpdated = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Will Updated';
     const description = details?.description || 'Your will has been successfully updated.';
-    return notifySuccess(title, description);
-  }, [notifySuccess]);
+    return await createSystemNotification('will_updated', { title, description });
+  }, []);
 
   const notifyDocumentUploaded = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Document Uploaded';
     const description = details?.description || 'A new document has been uploaded to your account.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createSystemNotification('document_uploaded', { title, description });
+  }, []);
 
   const notifySecurityKeyGenerated = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Security Key Generated';
     const description = details?.description || 'A new security key has been generated for your account.';
-    return notifySecurity(title, description);
-  }, [notifySecurity]);
+    return await createSystemNotification('security_key_generated', { title, description });
+  }, []);
 
   const notifyBeneficiaryAdded = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Beneficiary Added';
     const description = details?.description || 'A new beneficiary has been added to your will.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createSystemNotification('beneficiary_added', { title, description });
+  }, []);
 
   const notifyExecutorAdded = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Executor Added';
     const description = details?.description || 'A new executor has been added to your will.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createSystemNotification('executor_added', { title, description });
+  }, []);
 
   const notifyItemSaved = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Item Saved';
     const description = details?.description || 'Your item has been saved successfully.';
-    return notifySuccess(title, description);
-  }, [notifySuccess]);
+    return await createSystemNotification('item_saved', { title, description });
+  }, []);
   
   const notifyWillDeleted = useCallback(async (details?: { title?: string, description?: string, itemId?: string }) => {
     const title = details?.title || 'Will Deleted';
     const description = details?.description || 'Your will has been deleted.';
-    return notifyInfo(title, description);
-  }, [notifyInfo]);
+    return await createSystemNotification('will_deleted', { title, description });
+  }, []);
 
   // Create a generic method to notify by event type
   const notifyByEventType = useCallback(async (eventType: NotificationEventType, details?: { title?: string, description?: string, itemId?: string }) => {
-    const notificationType = eventTypeToNotificationType(eventType);
-    
     try {
-      return await createSystemNotification(notificationType, { 
+      return await createSystemNotification(eventType, { 
         title: details?.title || `Event: ${eventType}`, 
         description: details?.description || 'An event has occurred in your account.' 
       });
