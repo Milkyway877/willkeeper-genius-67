@@ -32,6 +32,8 @@ export function QRCode({
     }
     
     try {
+      console.log("Generating QR code for value:", value);
+      
       // Create QR code
       const qrCode = new QRCodeStyling({
         width: size,
@@ -74,7 +76,6 @@ export function QRCode({
       }
       
       qrCode.append(ref.current);
-      console.log("QR code generated successfully for value:", value);
     } catch (error) {
       console.error("Error generating QR code:", error);
     }

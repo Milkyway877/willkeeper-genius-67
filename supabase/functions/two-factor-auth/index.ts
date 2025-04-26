@@ -69,6 +69,9 @@ serve(async (req) => {
         const userEmail = userId ? await getUserEmail(supabase, userId) : "user";
         const qrCodeUrl = generateTotpUrl(newSecret, userEmail);
         
+        console.log("Generated new TOTP secret:", newSecret);
+        console.log("Generated QR code URL:", qrCodeUrl);
+        
         responseData = { success: true, secret: newSecret, qrCodeUrl };
         break;
         

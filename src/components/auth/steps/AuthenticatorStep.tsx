@@ -48,9 +48,11 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
 
   const generateNewSecretIfNeeded = async () => {
     try {
+      setIsLoading(true);
       const { secret, qrCodeUrl } = await generateTOTPSecret();
       if (secret && qrCodeUrl) {
-        console.log("Generated new TOTP secret and QR code");
+        console.log("Generated new TOTP secret:", secret);
+        console.log("Generated QR code URL:", qrCodeUrl);
         setLocalKey(secret);
         setLocalQrCode(qrCodeUrl);
       } else {
@@ -58,6 +60,8 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       }
     } catch (error) {
       console.error("Error generating TOTP secret:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -175,10 +179,16 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
                   2. Scan this QR code with your authenticator app:
                 </p>
                 <div className="flex justify-center bg-white p-2 border border-slate-200 rounded-md">
-                  <QRCode 
-                    value={localQrCode} 
-                    size={200}
-                  />
+                  {localQrCode ? (
+                    <QRCode 
+                      value={localQrCode} 
+                      size={200}
+                    />
+                  ) : (
+                    <div className="h-[200px] w-[200px] flex items-center justify-center bg-gray-100">
+                      <span className="text-gray-500">Loading QR code...</span>
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -188,13 +198,14 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
                 </p>
                 <div className="relative">
                   <div className="p-2 bg-slate-50 border border-slate-200 rounded-md font-mono text-center break-all select-all text-sm">
-                    {localKey}
+                    {localKey || "Loading key..."}
                   </div>
                   <button
                     type="button"
                     className="absolute top-2 right-2 p-1 bg-slate-100 rounded hover:bg-slate-200"
                     onClick={copyToClipboard}
                     aria-label="Copy to clipboard"
+                    disabled={!localKey}
                   >
                     <Copy size={14} className={copied ? "text-green-500" : ""} />
                   </button>

@@ -94,6 +94,8 @@ export const generateTOTPSecret = async () => {
       return { secret: '', qrCodeUrl: '' };
     }
     
+    console.log("Calling edge function to generate TOTP secret for user:", user.id);
+    
     // Call the edge function to generate a new TOTP secret
     const { data, error } = await supabase.functions.invoke('two-factor-auth', {
       body: {
@@ -107,7 +109,13 @@ export const generateTOTPSecret = async () => {
       return { secret: '', qrCodeUrl: '' };
     }
     
-    console.log("Generated TOTP secret:", data.secret, "QR code URL:", data.qrCodeUrl);
+    if (!data || !data.secret || !data.qrCodeUrl) {
+      console.error('Incomplete data returned from edge function:', data);
+      return { secret: '', qrCodeUrl: '' };
+    }
+    
+    console.log("Generated TOTP secret:", data.secret);
+    console.log("Generated QR code URL:", data.qrCodeUrl);
     
     return { 
       secret: data.secret, 
