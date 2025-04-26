@@ -20,6 +20,7 @@ import {
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { createWill } from '@/services/willService';
 
 type Message = {
   id: string;
@@ -392,50 +393,6 @@ export function AIQuestionFlow({
     });
   }, []);
 
-  const handleAssistantComplete = async (data: any) => {
-    const isComplete = checkQuestionsComplete(selectedTemplate?.id || 'traditional', data.responses);
-    if (!isComplete) {
-      toast({
-        title: "Incomplete Information",
-        description: "Please make sure to answer all required questions before proceeding.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setWillData(data);
-    setEditableContent(data.generatedWill);
-    setPhase('review');
-    
-    try {
-      const will = {
-        title: data.responses.fullName ? `Will of ${data.responses.fullName}` : 'My Will',
-        status: 'draft',
-        document_url: '',
-        template_type: selectedTemplate?.id || 'traditional',
-        ai_generated: true,
-        content: data.generatedWill
-      };
-      
-      await createWill(will);
-      
-    } catch (error) {
-      console.error("Error saving draft will:", error);
-    }
-  };
-
-  const handleStageTransition = () => {
-    if (!checkQuestionsComplete(selectedTemplate?.id || 'traditional', responses)) {
-      toast({
-        title: "Required Information Missing",
-        description: "Please complete all required questions before proceeding.",
-        variant: "destructive"
-      });
-      return;
-    }
-    setPhase('contacts');
-  };
-  
   const checkForCompletion = (lastAiMessage: string) => {
     const completionPhrases = [
       'we have all the information',
@@ -788,7 +745,7 @@ Witnesses: [Witness 1], [Witness 2]`;
         </div>
       </Card>
       
-      <style jsx>{`
+      <style>{`
         .dot-flashing {
           position: relative;
           width: 10px;
