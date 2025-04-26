@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -111,13 +110,11 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
     
     try {
       const cleanCode = code.replace(/\s+/g, '');
-      const cleanKey = localKey.replace(/\s+/g, '');
+      console.log("Setting up 2FA with code:", cleanCode, "and secret:", localKey);
       
-      if (!cleanKey) {
+      if (!localKey) {
         throw new Error("Missing authenticator key. Please refresh the page and try again.");
       }
-      
-      console.log("Verifying OTP:", cleanCode);
       
       // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -126,12 +123,14 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         throw new Error("User not found. Please ensure you're logged in.");
       }
       
+      console.log("Setting up 2FA for user:", user.id);
+      
       // Call our edge function to validate the code
       const { data, error } = await supabase.functions.invoke('two-factor-auth', {
         body: {
           action: 'validate',
           code: cleanCode,
-          secret: cleanKey,
+          secret: localKey,
           userId: user.id
         }
       });
@@ -140,6 +139,8 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         console.error("Error calling validation edge function:", error);
         throw new Error("Failed to validate code. Server error.");
       }
+      
+      console.log("Edge function response:", data);
       
       if (!data || data.success === undefined) {
         console.error("Unexpected response from validation:", data);
@@ -172,7 +173,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
             .insert({
               user_id: user.id,
               google_auth_enabled: false,
-              google_auth_secret: cleanKey,
+              google_auth_secret: localKey.replace(/\s+/g, ''),
               encryption_key: encryptionKey
             });
             

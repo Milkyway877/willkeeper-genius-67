@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -103,12 +102,15 @@ export default function IDSecurity() {
       
       console.log("Setting up 2FA for user:", user.id);
       
+      // Clean up secret - remove spaces
+      const cleanSecret = totp.secret.replace(/\s+/g, '');
+      
       // Call our edge function to validate and store the 2FA settings
       const { data, error } = await supabase.functions.invoke('two-factor-auth', {
         body: {
           action: 'validate',
           code: cleanCode,
-          secret: totp.secret,
+          secret: cleanSecret,
           userId: user.id
         }
       });
@@ -133,10 +135,8 @@ export default function IDSecurity() {
       }
       
       toast({
-        title: "Two-factor authentication " + (enableTwoFactor ? "enabled" : "configured"),
-        description: enableTwoFactor 
-          ? "Your account is now protected with 2FA." 
-          : "You can enable 2FA later in your security settings.",
+        title: "Two-factor authentication enabled",
+        description: "Your account is now protected with 2FA.",
       });
       
       await fetchSecurityData(); // Refresh security data

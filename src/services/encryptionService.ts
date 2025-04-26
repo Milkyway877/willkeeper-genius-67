@@ -170,7 +170,7 @@ export const setup2FA = async (code: string) => {
     
     if (!user) {
       console.error("No authenticated user found");
-      return { success: false };
+      return { success: false, error: "User not found" };
     }
     
     // Get existing security record or create one
@@ -179,7 +179,7 @@ export const setup2FA = async (code: string) => {
       securityRecord = await createUserSecurity();
       if (!securityRecord) {
         console.error("Failed to create security record");
-        return { success: false };
+        return { success: false, error: "Failed to create security record" };
       }
     }
     
@@ -190,12 +190,18 @@ export const setup2FA = async (code: string) => {
       secret = newSecret;
     }
     
+    // Clean up code and secret
+    const cleanCode = code.replace(/\s+/g, '');
+    const cleanSecret = secret.replace(/\s+/g, '');
+    
+    console.log("Setting up 2FA with code:", cleanCode, "and secret:", cleanSecret);
+    
     // Validate the code against the secret
     const { data, error } = await supabase.functions.invoke('two-factor-auth', {
       body: {
         action: 'validate',
-        code: code,
-        secret: secret,
+        code: cleanCode,
+        secret: cleanSecret,
         userId: user.id
       }
     });
@@ -204,6 +210,8 @@ export const setup2FA = async (code: string) => {
       console.error('Error calling validation edge function:', error);
       return { success: false, error: "Server error: " + error.message };
     }
+    
+    console.log("Edge function response:", data);
     
     if (!data || !data.success) {
       console.error('Invalid TOTP code');
@@ -218,7 +226,7 @@ export const setup2FA = async (code: string) => {
     return { success: true };
   } catch (error) {
     console.error('Error setting up 2FA:', error);
-    return { success: false, error: "Unexpected error" };
+    return { success: false, error: error instanceof Error ? error.message : "Unexpected error" };
   }
 };
 
