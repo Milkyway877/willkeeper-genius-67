@@ -1,41 +1,36 @@
 
 project_id = "ksiinmxsycosnpchutuw"
+
 [api]
 enabled = true
-[auth]
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
 enabled = true
-[realtime]
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
 enabled = true
+port = 54324
+
 [storage]
 enabled = true
-[db]
-enabled = true
 
-[analytics]
+[auth]
 enabled = true
+site_url = "http://localhost:3000"
 
-# Edge Functions
 [functions]
-[functions.gpt-will-assistant]
-verify_jwt = false
+[functions.message-ai]
+verify_jwt = true
 
-[functions.will-contacts-assistant]
-verify_jwt = false
+[functions.send-future-message]
+verify_jwt = true
 
-[functions.will-documents-assistant]
-verify_jwt = false
-
-[functions.will-video-assistant]
-verify_jwt = false
-
-[functions.ai-assistant]
-verify_jwt = false
-
-[functions.save-will-conversation]
-verify_jwt = false
-
-[functions.send-verification]
-verify_jwt = false
-
-[functions.two-factor-auth]
+[functions.check-scheduled-messages]
 verify_jwt = false

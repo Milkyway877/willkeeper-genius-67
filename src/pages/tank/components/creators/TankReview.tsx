@@ -1,133 +1,119 @@
 
 import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { MessageType } from '../../types';
-import { Check, AlertCircle } from 'lucide-react';
+import { Progress } from "@/components/ui/progress";
+import { DeliveryTrigger, MessageType } from '../../types';
+import { Check, Clock, Mail } from 'lucide-react';
 
 interface TankReviewProps {
-  messageType: MessageType | null;
+  messageType: MessageType;
   title: string;
   recipient: string;
-  deliveryType: string | null;
+  recipientEmail: string;
+  deliveryType: DeliveryTrigger;
   deliveryDate: string;
-  onFinalize: () => void;
   isGenerating: boolean;
   progress: number;
+  onFinalize: () => void;
 }
 
-export const TankReview = ({
+export const TankReview: React.FC<TankReviewProps> = ({
   messageType,
   title,
   recipient,
+  recipientEmail,
   deliveryType,
   deliveryDate,
-  onFinalize,
   isGenerating,
-  progress
-}: TankReviewProps) => {
-  const formatDeliveryType = (type: string | null): string => {
-    if (!type) return "Not specified";
-    
-    switch(type) {
-      case 'date':
-        return 'Date-based';
-      case 'event':
-        return 'Event-based';
-      case 'posthumous':
-        return 'Posthumous';
-      default:
-        return type.charAt(0).toUpperCase() + type.slice(1);
+  progress,
+  onFinalize
+}) => {
+  const formatDeliveryType = (type: DeliveryTrigger) => {
+    switch (type) {
+      case 'date': return 'On Specific Date';
+      case 'event': return 'Upon Event Trigger';
+      case 'posthumous': return 'Posthumous Delivery';
+      default: return type;
     }
   };
   
-  if (isGenerating) {
-    return (
-      <div className="text-center py-10">
-        <div className="mb-6">
-          <div className="animate-spin w-16 h-16 border-4 border-willtank-500 border-t-transparent rounded-full mx-auto"></div>
-        </div>
-        <h3 className="text-xl font-semibold mb-2">Creating Your Future Message</h3>
-        <p className="text-gray-600 mb-8">Please wait while we secure your message in the Tank...</p>
-        
-        <div className="max-w-md mx-auto mb-4">
-          <Progress value={progress} className="h-2" />
-          <div className="text-right text-sm text-gray-500 mt-1">{progress}%</div>
-        </div>
-      </div>
-    );
-  }
-  
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="p-6">
-        <h3 className="text-xl font-semibold mb-4">Review Your Message</h3>
-        <p className="text-gray-600 mb-6">Please review the details of your future message before finalizing.</p>
-        
-        <div className="space-y-5">
-          <div className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-            <div className="flex-grow">
-              <p className="text-gray-500 text-sm mb-1">Message Type</p>
-              <p className="font-medium">{messageType?.charAt(0).toUpperCase()}{messageType?.slice(1) || 'Not specified'}</p>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-            <div className="flex-grow">
-              <p className="text-gray-500 text-sm mb-1">Message Title</p>
-              <p className="font-medium">{title || 'Untitled'}</p>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-            <div className="flex-grow">
-              <p className="text-gray-500 text-sm mb-1">Recipient</p>
-              <p className="font-medium">{recipient || 'Not specified'}</p>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-            <div className="flex-grow">
-              <p className="text-gray-500 text-sm mb-1">Delivery Method</p>
-              <p className="font-medium">{formatDeliveryType(deliveryType)}</p>
-            </div>
-          </div>
-          
-          {deliveryDate && (
-            <div className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-              <div className="flex-grow">
-                <p className="text-gray-500 text-sm mb-1">Delivery Date</p>
-                <p className="font-medium">{deliveryDate}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="space-y-6">
+      <h2 className="text-lg font-medium">Review Your Message</h2>
       
-      <div className="bg-gray-50 p-4 rounded-b-lg border-t border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:justify-between gap-3 items-center">
-          <div className="flex items-center">
-            {messageType && title && deliveryType ? (
-              <div className="flex items-center text-green-600">
-                <Check className="h-5 w-5 mr-1" />
-                <span className="text-sm">All required fields are completed</span>
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <div>
+            <h3 className="font-medium text-gray-800">Message Details</h3>
+            <div className="mt-2 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Type:</span>
+                <span className="font-medium capitalize">{messageType}</span>
               </div>
-            ) : (
-              <div className="flex items-center text-amber-600">
-                <AlertCircle className="h-5 w-5 mr-1" />
-                <span className="text-sm">Some required fields are missing</span>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Title:</span>
+                <span className="font-medium">{title}</span>
               </div>
-            )}
+            </div>
           </div>
           
+          <div>
+            <h3 className="font-medium text-gray-800">Recipient Information</h3>
+            <div className="mt-2 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Name:</span>
+                <span className="font-medium">{recipient}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Email:</span>
+                <span className="font-medium">{recipientEmail}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-medium text-gray-800">Delivery Information</h3>
+            <div className="mt-2 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Method:</span>
+                <span className="font-medium">{formatDeliveryType(deliveryType)}</span>
+              </div>
+              {deliveryType === 'date' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Scheduled For:</span>
+                  <span className="font-medium">{new Date(deliveryDate).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <div className="flex flex-col items-center justify-center pt-4">
+        {!isGenerating && (
           <Button 
             onClick={onFinalize}
-            disabled={!messageType || !title || !deliveryType}
-            className="sm:ml-auto"
+            className="w-full md:w-auto md:min-w-[200px] bg-willtank-600 hover:bg-willtank-700 text-white"
           >
-            Finalize & Save Message
+            Finalize and Schedule
           </Button>
-        </div>
+        )}
+        
+        {isGenerating && (
+          <div className="w-full space-y-4 text-center">
+            <Progress value={progress} className="w-full" />
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+              {progress < 50 && <Clock className="animate-pulse h-4 w-4" />}
+              {progress >= 50 && progress < 100 && <Mail className="animate-bounce h-4 w-4" />}
+              {progress === 100 && <Check className="text-green-500 h-4 w-4" />}
+              
+              {progress < 50 && "Preparing your message..."}
+              {progress >= 50 && progress < 100 && "Setting up delivery..."}
+              {progress === 100 && "Message scheduled successfully!"}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,298 +1,157 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  FileText, 
-  Image, 
-  Sparkles, 
-  MessageCircle, 
-  Heart, 
-  FileUp, 
-  Save, 
-  User
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Wand2, Loader2 } from 'lucide-react';
+import { useMessageAI } from '../../hooks/useMessageAI';
+import { MessageCategory } from '../../types';
 
 interface TankLetterCreatorProps {
   onContentChange: (content: string) => void;
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
+  onCategoryChange?: (category: MessageCategory) => void;
 }
 
-export const TankLetterCreator: React.FC<TankLetterCreatorProps> = ({ 
-  onContentChange, 
+export const TankLetterCreator: React.FC<TankLetterCreatorProps> = ({
+  onContentChange,
   onTitleChange,
-  onRecipientChange
+  onRecipientChange,
+  onCategoryChange
 }) => {
-  const { toast } = useToast();
-  const [letterContent, setLetterContent] = useState<string>('');
-  const [title, setTitle] = useState<string>('');
-  const [recipient, setRecipient] = useState<string>('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('elegant');
-  const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
-  const [showSuggestion, setShowSuggestion] = useState<boolean>(false);
-  
-  useEffect(() => {
-    onContentChange(letterContent);
-  }, [letterContent, onContentChange]);
-  
-  useEffect(() => {
-    onTitleChange(title);
-  }, [title, onTitleChange]);
-  
-  useEffect(() => {
-    onRecipientChange(recipient);
-  }, [recipient, onRecipientChange]);
-  
+  const [title, setTitle] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [content, setContent] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [category, setCategory] = useState<MessageCategory>('letter');
+  const { generateWithAI, isGenerating } = useMessageAI();
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setLetterContent(e.target.value);
-    
-    // Show AI suggestion after some typing
-    if (e.target.value.length > 50 && !showSuggestion) {
-      setTimeout(() => {
-        setShowSuggestion(true);
-      }, 1500);
-    }
+    setContent(e.target.value);
+    onContentChange(e.target.value);
   };
-  
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
+    onTitleChange(e.target.value);
   };
-  
+
   const handleRecipientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRecipient(e.target.value);
+    onRecipientChange(e.target.value);
   };
-  
-  const handleTemplateSelect = (template: string) => {
-    setSelectedTemplate(template);
-    toast({
-      title: "Template Applied",
-      description: `The ${template} template has been applied.`
-    });
+
+  const handleCategoryChange = (value: string) => {
+    setCategory(value as MessageCategory);
+    if (onCategoryChange) {
+      onCategoryChange(value as MessageCategory);
+    }
   };
-  
-  const handleEnhanceContent = () => {
-    setIsEnhancing(true);
+
+  const handleGenerateContent = async () => {
+    if (!prompt.trim()) return;
     
-    // Simulate AI enhancement
-    setTimeout(() => {
-      const enhancedContent = `Dear ${recipient || '[Recipient]'},
-
-I hope this message finds you well. As I write this letter to be delivered to you in the future, I'm filled with a deep sense of emotion and reflection.
-
-${letterContent}
-
-There are so many things I wish to share with you, and I hope this letter captures the depth of my feelings. Life is a precious journey, and I'm grateful that you've been a part of mine.
-
-With all my love and best wishes for your future,
-[Your Name]`;
-      
-      setLetterContent(enhancedContent);
-      setIsEnhancing(false);
-      
-      toast({
-        title: "Content Enhanced",
-        description: "AI has improved the emotional resonance of your letter."
-      });
-    }, 2000);
-  };
-  
-  const handleAddAttachment = () => {
-    toast({
-      title: "Attachment Feature",
-      description: "You can add photos and documents to your letter."
-    });
-  };
-  
-  const handleSaveDraft = () => {
-    toast({
-      title: "Draft Saved",
-      description: "Your letter has been saved as a draft."
-    });
+    const generatedContent = await generateWithAI(prompt, category);
+    if (generatedContent) {
+      setContent(generatedContent);
+      onContentChange(generatedContent);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Message Title</label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="title" className="block mb-2">Message Title</Label>
                 <Input 
                   id="title"
-                  placeholder="e.g. Birthday Wishes for Sarah" 
-                  className="pl-10"
+                  placeholder="My Letter to the Future" 
                   value={title}
                   onChange={handleTitleChange}
                 />
               </div>
-            </div>
-            
-            <div>
-              <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <div>
+                <Label htmlFor="recipient" className="block mb-2">Recipient Name</Label>
                 <Input 
                   id="recipient"
-                  placeholder="e.g. Sarah Williams" 
-                  className="pl-10"
+                  placeholder="Who is this message for?" 
                   value={recipient}
                   onChange={handleRecipientChange}
                 />
               </div>
             </div>
-          </div>
-          
-          <div>
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">Your Message</label>
-            <Textarea 
-              id="content"
-              placeholder="Type your heartfelt message here. Our AI will help enhance the emotional impact..." 
-              className="min-h-[300px] resize-none"
-              value={letterContent}
-              onChange={handleContentChange}
-            />
-          </div>
-          
-          {showSuggestion && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-willtank-50 border border-willtank-200 rounded-lg p-3 text-sm"
-            >
-              <div className="flex items-start">
-                <Sparkles className="h-5 w-5 text-willtank-600 mr-2 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-willtank-700 mb-1">AI Writing Suggestion</p>
-                  <p className="text-gray-600 mb-2">Try adding more personal memories or specific qualities you admire about the recipient to make your message more meaningful.</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-willtank-600 border-willtank-200 hover:bg-willtank-50"
-                    onClick={handleEnhanceContent}
-                    disabled={isEnhancing}
-                  >
-                    {isEnhancing ? 'Enhancing...' : 'Enhance My Message'}
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-          
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleAddAttachment}>
-              <Image size={16} className="mr-2" />
-              Add Photo
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleAddAttachment}>
-              <FileUp size={16} className="mr-2" />
-              Attach Document
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleEnhanceContent} disabled={isEnhancing}>
-              <Sparkles size={16} className="mr-2" />
-              {isEnhancing ? 'Enhancing...' : 'AI Enhance'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleSaveDraft}>
-              <Save size={16} className="mr-2" />
-              Save Draft
-            </Button>
-          </div>
-        </div>
-        
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Template Selection</CardTitle>
-            </CardHeader>
             
-            <CardContent>
-              <Tabs defaultValue="elegant" className="w-full" onValueChange={handleTemplateSelect}>
-                <TabsList className="grid grid-cols-4 mb-6">
-                  <TabsTrigger value="elegant">Elegant</TabsTrigger>
-                  <TabsTrigger value="handwritten">Handwritten</TabsTrigger>
-                  <TabsTrigger value="galactic">Galactic</TabsTrigger>
-                  <TabsTrigger value="vintage">Vintage</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="elegant" className="mt-0">
-                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-100 rounded-xl p-6 min-h-[300px] font-serif">
-                    <div className="text-center mb-4">
-                      <h3 className="text-xl font-medium text-blue-800">{title || "Your Message Title"}</h3>
-                      <p className="text-blue-600">For: {recipient || "Recipient Name"}</p>
-                    </div>
-                    
-                    <div className="border-t border-b border-blue-200 py-4 my-4 whitespace-pre-line">
-                      {letterContent || "Your elegant message will appear here..."}
-                    </div>
-                    
-                    <div className="text-right text-blue-600 italic">
-                      With love and care,
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="handwritten" className="mt-0">
-                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-6 min-h-[300px] font-handwriting">
-                    <div className="mb-4">
-                      <h3 className="text-xl font-medium text-amber-800">{title || "Your Message Title"}</h3>
-                      <p className="text-amber-700">Dear {recipient || "Friend"},</p>
-                    </div>
-                    
-                    <div className="py-4 my-4 whitespace-pre-line leading-relaxed text-amber-900">
-                      {letterContent || "Your handwritten-style message will appear here..."}
-                    </div>
-                    
-                    <div className="text-right text-amber-800">
-                      Yours truly,
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="galactic" className="mt-0">
-                  <div className="bg-gradient-to-br from-indigo-900 to-purple-900 text-white border border-purple-700 rounded-xl p-6 min-h-[300px] font-futuristic">
-                    <div className="text-center mb-4">
-                      <h3 className="text-xl font-medium text-purple-300">{title || "Your Message Title"}</h3>
-                      <p className="text-indigo-300">Transmission for: {recipient || "Recipient Name"}</p>
-                    </div>
-                    
-                    <div className="border-t border-b border-purple-700 py-4 my-4 whitespace-pre-line">
-                      {letterContent || "Your futuristic message will appear here..."}
-                    </div>
-                    
-                    <div className="text-right text-purple-300">
-                      Transmitted with care,
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="vintage" className="mt-0">
-                  <div className="bg-amber-100 border-4 border-double border-amber-800 rounded-xl p-6 min-h-[300px] font-oldstyle">
-                    <div className="text-center mb-4">
-                      <h3 className="text-xl font-medium text-amber-900">{title || "Your Message Title"}</h3>
-                      <p className="text-amber-800">For the attention of: {recipient || "Recipient Name"}</p>
-                    </div>
-                    
-                    <div className="border-t border-b border-amber-800 py-4 my-4 whitespace-pre-line text-amber-950">
-                      {letterContent || "Your vintage-style message will appear here..."}
-                    </div>
-                    
-                    <div className="text-right text-amber-800">
-                      With fondest regards,
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            <div>
+              <Label htmlFor="category" className="block mb-2">Message Category</Label>
+              <Select value={category} onValueChange={handleCategoryChange}>
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select message type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="letter">Personal Letter</SelectItem>
+                  <SelectItem value="story">Life Story</SelectItem>
+                  <SelectItem value="confession">Confession</SelectItem>
+                  <SelectItem value="wishes">Wishes & Hopes</SelectItem>
+                  <SelectItem value="advice">Life Advice</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                Selecting a category helps our AI generate more relevant content.
+              </p>
+            </div>
+            
+            <div>
+              <Label htmlFor="content" className="block mb-2">Message Content</Label>
+              <Textarea 
+                id="content"
+                placeholder="Write your message here..." 
+                value={content}
+                onChange={handleContentChange}
+                className="min-h-[250px]"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid gap-4">
+            <Label htmlFor="ai-prompt" className="block font-medium">AI Writing Assistant</Label>
+            <div className="flex gap-2">
+              <Textarea 
+                id="ai-prompt"
+                placeholder="Describe what you want to write about, and our AI will help craft it..." 
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="flex-grow"
+              />
+              <Button 
+                onClick={handleGenerateContent} 
+                className="self-end whitespace-nowrap"
+                disabled={isGenerating || !prompt.trim()}
+              >
+                {isGenerating ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+                ) : (
+                  <><Wand2 className="mr-2 h-4 w-4" /> Generate</>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500">
+              Our AI will help you craft a meaningful message. Examples: "Write a heartfelt letter to my future daughter" or 
+              "Create a message about important life lessons I've learned" or "Write advice for my son when he graduates college"
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

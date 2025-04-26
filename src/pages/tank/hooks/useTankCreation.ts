@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
-import { MessageType, DeliveryTrigger } from '../types';
+import { MessageType, DeliveryTrigger, MessageCategory } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,10 +17,75 @@ export const useTankCreation = () => {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [messageTitle, setMessageTitle] = useState('');
   const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString());
+  const [messageCategory, setMessageCategory] = useState<MessageCategory>('letter');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const handleNext = () => {
+    // Validate required fields before proceeding
+    if (currentStep === 1) {
+      if (!messageTitle.trim()) {
+        toast({
+          title: "Title Required",
+          description: "Please provide a title for your message.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!recipientName.trim()) {
+        toast({
+          title: "Recipient Required",
+          description: "Please provide a recipient name for your message.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!messageContent.trim()) {
+        toast({
+          title: "Content Required",
+          description: "Please write some content for your message.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
+    if (currentStep === 3 && deliveryType === 'date') {
+      const selectedDate = new Date(deliveryDate);
+      const today = new Date();
+      
+      if (selectedDate <= today) {
+        toast({
+          title: "Invalid Date",
+          description: "Please select a future date for your message delivery.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (deliveryType === 'date' && !recipientEmail.trim()) {
+        toast({
+          title: "Email Required",
+          description: "Please provide a recipient email for message delivery.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (recipientEmail.trim() && !emailRegex.test(recipientEmail)) {
+        toast({
+          title: "Invalid Email",
+          description: "Please provide a valid email address.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     if (currentStep < 4) {
       setCurrentStep(prev => prev + 1);
     }
@@ -67,6 +132,7 @@ export const useTankCreation = () => {
         delivery_type: deliveryType,
         delivery_date: deliveryDate,
         content: messageContent,
+        category: messageCategory,
         preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
         user_id: session.user.id,
       });
@@ -74,7 +140,7 @@ export const useTankCreation = () => {
       const newMessage = await createFutureMessage({
         title: messageTitle,
         recipient_name: recipientName,
-        recipient_email: recipientEmail || 'no-email@example.com',
+        recipient_email: recipientEmail,
         message_type: creationType,
         content: messageContent,
         preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
@@ -83,7 +149,8 @@ export const useTankCreation = () => {
         delivery_date: deliveryDate,
         message_url: null,
         delivery_event: null,
-        user_id: session.user.id, // Add the user_id
+        category: messageCategory,
+        user_id: session.user.id,
       });
       
       clearInterval(interval);
@@ -121,6 +188,7 @@ export const useTankCreation = () => {
     recipientName,
     recipientEmail,
     messageTitle,
+    messageCategory,
     deliveryDate,
     isGenerating,
     progress,
@@ -130,6 +198,7 @@ export const useTankCreation = () => {
     setRecipientName,
     setRecipientEmail,
     setMessageTitle,
+    setMessageCategory,
     setDeliveryDate,
     handleNext,
     handlePrev,

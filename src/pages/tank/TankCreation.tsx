@@ -51,7 +51,9 @@ export default function TankCreation() {
     deliveryType,
     messageContent,
     recipientName,
+    recipientEmail,
     messageTitle,
+    messageCategory,
     deliveryDate,
     isGenerating,
     progress,
@@ -59,7 +61,9 @@ export default function TankCreation() {
     setDeliveryType,
     setMessageContent,
     setRecipientName,
+    setRecipientEmail,
     setMessageTitle,
+    setMessageCategory,
     setDeliveryDate,
     handleNext,
     handlePrev,
@@ -74,24 +78,28 @@ export default function TankCreation() {
                  onContentChange={setMessageContent} 
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
+                 onCategoryChange={setMessageCategory}
                />;
       case 'video':
         return <TankVideoCreator 
                  onContentChange={setMessageContent}
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
+                 onCategoryChange={setMessageCategory}
                />;
       case 'audio':
         return <TankAudioCreator 
                  onContentChange={setMessageContent}
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
+                 onCategoryChange={setMessageCategory}
                />;
       case 'document':
         return <TankDocumentCreator 
                  onContentChange={setMessageContent}
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
+                 onCategoryChange={setMessageCategory}
                />;
       default:
         return <div>Please select a message type</div>;
@@ -109,13 +117,17 @@ export default function TankCreation() {
       case 3:
         return <TankDeliverySettings 
                  deliveryType={deliveryType}
+                 deliveryDate={deliveryDate}
+                 recipientEmail={recipientEmail}
                  onDateChange={setDeliveryDate}
+                 onEmailChange={setRecipientEmail}
                />;
       case 4:
         return <TankReview 
                  messageType={creationType} 
                  title={messageTitle}
                  recipient={recipientName}
+                 recipientEmail={recipientEmail}
                  deliveryType={deliveryType}
                  deliveryDate={deliveryDate}
                  onFinalize={handleFinalize}
