@@ -95,33 +95,27 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       throw new Error('You must be logged in to create a will');
     }
 
-    const { data: existingWills } = await supabase
+    const { data: existingDrafts } = await supabase
       .from('wills')
       .select('*')
       .eq('user_id', session.user.id)
       .eq('status', 'draft')
       .order('created_at', { ascending: false })
       .limit(1);
-    
-    if (existingWills && existingWills.length > 0) {
-      const latestWill = existingWills[0];
-      const createdAt = new Date(latestWill.created_at);
-      const now = new Date();
-      const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-      
-      if (hoursSinceCreation < 1 && latestWill.status === 'draft') {
-        return updateWill(latestWill.id, {
-          ...will,
-          status: will.status || 'active'
-        });
-      }
+
+    if (will.status === 'draft' && existingDrafts && existingDrafts.length > 0) {
+      const latestDraft = existingDrafts[0];
+      return updateWill(latestDraft.id, {
+        ...will,
+        status: 'draft'
+      });
     }
 
     const willToCreate = {
       ...will,
       user_id: session.user.id,
       document_url: will.document_url || '',
-      status: will.status || 'active'
+      status: will.status || 'draft'
     };
     
     console.log('Creating will with data:', willToCreate);
@@ -137,13 +131,15 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       return null;
     }
     
-    try {
-      await createSystemNotification('will_created', {
-        title: 'Will Created',
-        description: `Your will "${will.title}" has been created successfully.`
-      });
-    } catch (notifError) {
-      console.error('Error creating notification:', notifError);
+    if (will.status === 'active') {
+      try {
+        await createSystemNotification('will_created', {
+          title: 'Will Created',
+          description: `Your will "${will.title}" has been finalized successfully.`
+        });
+      } catch (notifError) {
+        console.error('Error creating notification:', notifError);
+      }
     }
     
     return data;

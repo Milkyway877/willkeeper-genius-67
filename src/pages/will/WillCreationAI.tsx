@@ -64,14 +64,8 @@ export default function WillCreationAI() {
       
       await createWill(will);
       
-      if (data.contacts && data.contacts.length > 0) {
-      }
-      
-      if (data.documents && data.documents.length > 0) {
-      }
-      
     } catch (error) {
-      console.error("Error saving will data:", error);
+      console.error("Error saving draft will:", error);
     }
   };
 
@@ -93,22 +87,24 @@ export default function WillCreationAI() {
       const createdWill = await createWill(will);
       
       toast({
-        title: "Will Saved",
-        description: "Your will has been successfully saved.",
+        title: "Will Finalized",
+        description: "Your will has been successfully finalized and saved.",
       });
       
       if (createdWill && createdWill.id) {
+        clearWillProgress(createdWill.id);
+        
         setTimeout(() => {
           navigate(`/will/${createdWill.id}`);
         }, 1000);
       }
       
     } catch (error) {
-      console.error("Error saving will:", error);
+      console.error("Error finalizing will:", error);
       
       toast({
         title: "Error",
-        description: "There was a problem saving your will. Please try again.",
+        description: "There was a problem finalizing your will. Please try again.",
         variant: "destructive"
       });
     } finally {
