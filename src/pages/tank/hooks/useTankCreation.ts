@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
 import { MessageType, DeliveryTrigger } from '../types';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useTankCreation = () => {
   const navigate = useNavigate();
@@ -39,6 +40,13 @@ export const useTankCreation = () => {
     try {
       setIsGenerating(true);
       
+      // Get the current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user?.id) {
+        throw new Error('You must be logged in to create messages');
+      }
+      
       // Simulate progress for UX
       const interval = setInterval(() => {
         setProgress(prev => {
@@ -60,6 +68,7 @@ export const useTankCreation = () => {
         delivery_date: deliveryDate,
         content: messageContent,
         preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
+        user_id: session.user.id,
       });
       
       const newMessage = await createFutureMessage({
@@ -72,8 +81,9 @@ export const useTankCreation = () => {
         status: 'scheduled',
         delivery_type: deliveryType,
         delivery_date: deliveryDate,
-        message_url: null, // Add missing property
-        delivery_event: null, // Add missing property
+        message_url: null,
+        delivery_event: null,
+        user_id: session.user.id, // Add the user_id
       });
       
       clearInterval(interval);
@@ -97,7 +107,7 @@ export const useTankCreation = () => {
       setIsGenerating(false);
       toast({
         title: "Error",
-        description: "There was an error creating your message. Please try again.",
+        description: error.message || "There was an error creating your message. Please try again.",
         variant: "destructive",
       });
     }

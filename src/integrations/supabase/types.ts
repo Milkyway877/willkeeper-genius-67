@@ -143,7 +143,7 @@ export type Database = {
           status: string | null
           title: string | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           content?: string | null
@@ -161,7 +161,7 @@ export type Database = {
           status?: string | null
           title?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           content?: string | null
@@ -179,7 +179,7 @@ export type Database = {
           status?: string | null
           title?: string | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -191,7 +191,7 @@ export type Database = {
           preview: string | null
           title: string | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           content?: string | null
@@ -200,7 +200,7 @@ export type Database = {
           preview?: string | null
           title?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           content?: string | null
@@ -209,7 +209,7 @@ export type Database = {
           preview?: string | null
           title?: string | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

@@ -1,10 +1,8 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { LegacyVaultItem as UILegacyVaultItem, VaultItemType } from "../pages/tank/types";
-import { createSystemNotification } from "./notificationService";
 
 export interface FutureMessage {
   id: string;
+  user_id: string;
   title: string | null;
   recipient_name: string;
   recipient_email: string;
@@ -16,11 +14,11 @@ export interface FutureMessage {
   delivery_type: string | null;
   delivery_date: string;
   delivery_event: string | null;
-  created_at: string;
+  created_at: string | null;
+  updated_at: string | null;
   is_encrypted: boolean;
 }
 
-// Database functions for future messages
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   try {
     console.log('Fetching future messages');
@@ -34,7 +32,6 @@ export const getFutureMessages = async (): Promise<FutureMessage[]> => {
       return [];
     }
     
-    console.log('Future messages data:', data);
     return data || [];
   } catch (error) {
     console.error('Error in getFutureMessages:', error);
@@ -42,7 +39,9 @@ export const getFutureMessages = async (): Promise<FutureMessage[]> => {
   }
 };
 
-export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'created_at' | 'is_encrypted'>): Promise<FutureMessage | null> => {
+export const createFutureMessage = async (
+  message: Omit<FutureMessage, 'id' | 'created_at' | 'updated_at' | 'is_encrypted'>
+): Promise<FutureMessage | null> => {
   try {
     console.log('Creating future message:', message);
     const { data, error } = await supabase
@@ -53,20 +52,14 @@ export const createFutureMessage = async (message: Omit<FutureMessage, 'id' | 'c
       
     if (error) {
       console.error('Error creating future message:', error);
-      return null;
+      throw error;
     }
     
     console.log('Created message response:', data);
-    
-    await createSystemNotification('item_saved', {
-      title: 'Future Message Created',
-      description: `Your message "${message.title || 'Untitled'}" has been scheduled for ${new Date(message.delivery_date).toLocaleDateString()}.`
-    });
-    
     return data;
   } catch (error) {
     console.error('Error in createFutureMessage:', error);
-    return null;
+    throw error;
   }
 };
 
