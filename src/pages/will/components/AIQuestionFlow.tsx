@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -623,7 +624,7 @@ Witnesses: [Witness 1], [Witness 2]`;
             transition={{ duration: 0.3 }}
           >
             <Button
-              onClick={handleStageTransition}
+              onClick={handleNextStep}
               className="w-full bg-green-600 hover:bg-green-700 text-white"
             >
               <Check className="mr-2 h-4 w-4" />
@@ -787,8 +788,7 @@ Witnesses: [Witness 1], [Witness 2]`;
         </div>
       </Card>
       
-      <style>
-        {`
+      <style jsx>{`
         .dot-flashing {
           position: relative;
           width: 10px;
@@ -828,4 +828,13 @@ Witnesses: [Witness 1], [Witness 2]`;
 
         @keyframes dot-flashing {
           0% {
-            background-color: #9880ff
+            background-color: #9880ff;
+          }
+          50%, 100% {
+            background-color: rgba(152, 128, 255, 0.2);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
