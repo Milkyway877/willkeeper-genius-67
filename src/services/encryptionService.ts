@@ -98,8 +98,7 @@ export const generateTOTPSecret = async () => {
     // Call edge function to generate a secret
     const { data, error } = await supabase.functions.invoke('two-factor-auth', {
       body: { 
-        action: 'generate', 
-        email: user.email 
+        action: 'generate'
       }
     });
     
@@ -107,7 +106,6 @@ export const generateTOTPSecret = async () => {
       console.error('Error generating TOTP secret from edge function:', error || 'Invalid response');
       
       // Fallback to generating a local secret if the edge function fails
-      // (This is a backup only - the edge function should handle this)
       const secret = generateRandomBase32(20);
       const issuer = encodeURIComponent('WillTank');
       const label = encodeURIComponent(user.email || 'User');
@@ -193,74 +191,31 @@ export const setup2FA = async (code: string) => {
     }
     
     // Validate the code against the secret
-    const isValid = await validateTOTP(code, secret);
+    const { data, error } = await supabase.functions.invoke('two-factor-auth', {
+      body: {
+        action: 'validate',
+        code: code,
+        secret: secret,
+        userId: user.id
+      }
+    });
     
-    if (!isValid) {
+    if (error) {
+      console.error('Error calling validation edge function:', error);
+      return { success: false, error: "Server error: " + error.message };
+    }
+    
+    if (!data || !data.success) {
       console.error('Invalid TOTP code');
       return { success: false, error: "Invalid verification code" };
     }
     
-    // Get the existing record first to check if it exists
-    const { data: existingRecord } = await supabase
-      .from('user_security')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    let securityOperation;
-    if (existingRecord) {
-      // Update existing record
-      securityOperation = supabase
-        .from('user_security')
-        .update({ 
-          google_auth_secret: secret,
-          google_auth_enabled: true
-        })
-        .eq('user_id', user.id);
-    } else {
-      // Insert new record
-      securityOperation = supabase
-        .from('user_security')
-        .insert([{ 
-          user_id: user.id,
-          google_auth_secret: secret,
-          google_auth_enabled: true,
-          encryption_key: generateRandomString(32)
-        }]);
+    // Return recovery codes if they were generated
+    if (data.recoveryCodes && data.recoveryCodes.length > 0) {
+      return { success: true, recoveryCodes: data.recoveryCodes };
     }
     
-    const { error } = await securityOperation;
-    
-    if (error) {
-      console.error('Error updating user security:', error);
-      return { success: false, error: "Database error" };
-    }
-    
-    // Generate recovery codes
-    const recoveryCodes = Array.from({ length: 8 }, () => generateRecoveryCode());
-    
-    // Clean up existing recovery codes
-    await supabase
-      .from('user_recovery_codes')
-      .delete()
-      .eq('user_id', user.id);
-    
-    // Insert recovery codes into the database
-    const { error: recoveryError } = await supabase
-      .from('user_recovery_codes')
-      .insert(recoveryCodes.map(code => ({
-        user_id: user.id,
-        code,
-        used: false
-      })));
-    
-    if (recoveryError) {
-      console.error('Error creating recovery codes:', recoveryError);
-      // Even if recovery codes fail, 2FA is enabled
-      return { success: true, recoveryCodes: [] };
-    }
-    
-    return { success: true, recoveryCodes };
+    return { success: true };
   } catch (error) {
     console.error('Error setting up 2FA:', error);
     return { success: false, error: "Unexpected error" };

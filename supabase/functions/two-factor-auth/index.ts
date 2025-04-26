@@ -2,24 +2,20 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import * as base32 from "https://deno.land/std@0.177.0/encoding/base32.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function generateTOTP(secret: string, counter: number): string {
+async function generateTOTP(secret: string, counter: number): Promise<string> {
   try {
     // Clean up the secret to ensure it's valid base32
     const cleanSecret = secret.toUpperCase().replace(/\s/g, '');
     
-    // Ensure we have a valid base32 string (length must be a multiple of 8)
-    let paddedSecret = cleanSecret;
-    while (paddedSecret.length % 8 !== 0) {
-      paddedSecret += '=';
-    }
-    
-    const key = base32.decode(paddedSecret);
+    // Decode the base32 secret to get the key
+    const key = base32.decode(cleanSecret);
     
     // Convert counter to buffer
     const buffer = new ArrayBuffer(8);
@@ -30,21 +26,16 @@ function generateTOTP(secret: string, counter: number): string {
     }
     
     // Generate HMAC-SHA-1
-    const hmacKey = new Uint8Array(key);
-    const hmac = new Uint8Array(
-      crypto.subtle.digestSync(
-        "SHA-1", 
-        crypto.subtle.hmacKeyGenSync("HMAC", hmacKey)
-      )
-    );
+    const counterBytes = new Uint8Array(buffer);
+    const digest = await hmac("sha1", key, counterBytes);
     
     // Dynamic truncation
-    const offset = hmac[hmac.length - 1] & 0xf;
+    const offset = digest[digest.length - 1] & 0x0f;
     const binary = 
-      ((hmac[offset] & 0x7f) << 24) |
-      ((hmac[offset + 1] & 0xff) << 16) |
-      ((hmac[offset + 2] & 0xff) << 8) |
-      (hmac[offset + 3] & 0xff);
+      ((digest[offset] & 0x7f) << 24) |
+      ((digest[offset + 1] & 0xff) << 16) |
+      ((digest[offset + 2] & 0xff) << 8) |
+      (digest[offset + 3] & 0xff);
     
     // Generate 6-digit code
     const otp = binary % 1000000;
@@ -55,20 +46,17 @@ function generateTOTP(secret: string, counter: number): string {
   }
 }
 
-function validateTOTP(token: string, secret: string): boolean {
+async function validateTOTP(token: string, secret: string): Promise<boolean> {
   if (!token || token.length !== 6 || !/^\d+$/.test(token)) {
     return false;
   }
 
-  // Clean up and pad the secret if needed
+  // Clean up and pad the secret
   const cleanSecret = secret.replace(/\s+/g, '').toUpperCase();
-  let paddedSecret = cleanSecret;
-  while (paddedSecret.length % 8 !== 0) {
-    paddedSecret += '=';
-  }
   
-  if (!/^[A-Z2-7]+=*$/.test(paddedSecret)) {
-    console.error("Invalid base32 secret format:", paddedSecret);
+  // Ensure we have valid base32 characters
+  if (!/^[A-Z2-7]+=*$/.test(cleanSecret)) {
+    console.error("Invalid base32 secret format:", cleanSecret);
     return false;
   }
 
@@ -79,7 +67,7 @@ function validateTOTP(token: string, secret: string): boolean {
   for (let i = -1; i <= 1; i++) {
     const counter = Math.floor((now / timeStep)) + i;
     try {
-      const generatedToken = generateTOTP(paddedSecret, counter);
+      const generatedToken = await generateTOTP(cleanSecret, counter);
       if (generatedToken === token) {
         return true;
       }
@@ -137,7 +125,9 @@ serve(async (req) => {
         );
       }
       
-      const isValid = validateTOTP(code, secret);
+      console.log(`Validating code: ${code} for secret: ${secret}`);
+      const isValid = await validateTOTP(code, secret);
+      console.log(`Validation result: ${isValid}`);
       
       if (isValid && userId) {
         // Check if a record exists for this user
@@ -146,6 +136,8 @@ serve(async (req) => {
           .select('id')
           .eq('user_id', userId)
           .single();
+        
+        console.log("Existing record check:", existingRecord, queryError);
         
         let updateOperation;
         const securityRecord = {
@@ -158,12 +150,14 @@ serve(async (req) => {
         };
         
         if (existingRecord) {
+          console.log("Updating existing record for user:", userId);
           // Update existing record
           updateOperation = supabase
             .from('user_security')
             .update(securityRecord)
             .eq('user_id', userId);
         } else {
+          console.log("Inserting new record for user:", userId);
           // Insert new record
           updateOperation = supabase
             .from('user_security')
@@ -180,6 +174,8 @@ serve(async (req) => {
           );
         }
 
+        console.log("Security settings updated successfully, generating recovery codes");
+        
         // Generate recovery codes
         const recoveryCodes = Array.from({ length: 8 }, () => {
           const code = Array.from(crypto.getRandomValues(new Uint8Array(4)))

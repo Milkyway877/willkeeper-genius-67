@@ -117,6 +117,8 @@ export default function IDSecurity() {
         console.error("Error calling edge function:", error);
         throw new Error("Failed to call validation service. Please try again later.");
       }
+
+      console.log("Edge function response:", data);
       
       if (!data.success) {
         setVerificationError('Invalid verification code. Please try again.');
