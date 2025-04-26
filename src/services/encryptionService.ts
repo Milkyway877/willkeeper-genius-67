@@ -127,7 +127,7 @@ export const generateTOTPSecret = async () => {
   }
 };
 
-// Validate a TOTP code using the edge function
+// Validate a TOTP code
 export const validateTOTP = (code: string, secret: string) => {
   try {
     if (!code || code.length !== 6 || !/^\d+$/.test(code)) {

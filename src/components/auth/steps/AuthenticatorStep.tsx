@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -122,7 +121,7 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
         return;
       }
       
-      if (!data.success) {
+      if (data && !data.success) {
         setVerificationError(data.error || "Failed to set up authenticator. Please try again.");
         setIsLoading(false);
         return;
