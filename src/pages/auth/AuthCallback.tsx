@@ -21,7 +21,7 @@ export default function AuthCallback() {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownTimer);
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true });
             return 0;
           }
           return prev - 1;
@@ -132,7 +132,7 @@ export default function AuthCallback() {
             
             // Redirect to sign in after a delay
             setTimeout(() => {
-              navigate('/auth/signin');
+              navigate('/auth/signin', { replace: true });
             }, 3000);
           }
         }
@@ -143,7 +143,7 @@ export default function AuthCallback() {
         
         // Redirect to sign in after a delay
         setTimeout(() => {
-          navigate('/auth/signin');
+          navigate('/auth/signin', { replace: true });
         }, 3000);
       }
     };

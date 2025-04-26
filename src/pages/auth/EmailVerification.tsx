@@ -29,7 +29,7 @@ export default function EmailVerification() {
 
   useEffect(() => {
     if (!email) {
-      navigate('/auth/signin');
+      navigate('/auth/signin', { replace: true });
     }
   }, [email, navigate]);
 
@@ -83,7 +83,7 @@ export default function EmailVerification() {
         // For signup flow - update user profile to mark activation as complete
         await supabase
           .from('user_profiles')
-          .update({ activation_complete: true })
+          .update({ activation_complete: true, email_verified: true })
           .eq('email', email);
         
         toast({
@@ -93,7 +93,7 @@ export default function EmailVerification() {
         });
         
         // Direct to dashboard after successful signup verification
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         // For login flow
         // Get credentials from session storage
@@ -127,15 +127,15 @@ export default function EmailVerification() {
             variant: "default",
           });
           
-          // Navigate to dashboard
-          navigate('/dashboard');
+          // Navigate to dashboard with replace to prevent back navigation to login
+          navigate('/dashboard', { replace: true });
         } else {
           toast({
             title: "Authentication error",
             description: "Login session expired. Please log in again.",
             variant: "destructive",
           });
-          navigate('/auth/signin');
+          navigate('/auth/signin', { replace: true });
         }
       }
     } catch (error: any) {
