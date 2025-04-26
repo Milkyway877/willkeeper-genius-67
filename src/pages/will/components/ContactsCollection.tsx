@@ -36,17 +36,28 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
     address: ''
   });
   const [editing, setEditing] = useState<string | null>(null);
+  // Update the required contacts to include Executor
   const [requiredContacts, setRequiredContacts] = useState<string[]>(['Executor']);
   const [isComplete, setIsComplete] = useState(false);
   const { toast } = useToast();
 
-  // Check if all required contacts are added
+  // Enhanced check to ensure contacts have required information
   useEffect(() => {
+    // Check if all required roles are present
     const hasAllRequiredRoles = requiredContacts.every(role => 
       contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
     );
     
-    setIsComplete(hasAllRequiredRoles);
+    // Additional check to ensure contacts have at least one method of contact
+    const contactsHaveInfo = contacts.every(contact => {
+      if (requiredContacts.some(role => contact.role.toLowerCase() === role.toLowerCase())) {
+        // For required roles, we need at least email OR phone
+        return Boolean(contact.email || contact.phone);
+      }
+      return true; // Non-required contacts don't need validation
+    });
+    
+    setIsComplete(hasAllRequiredRoles && contactsHaveInfo && contacts.length > 0);
   }, [contacts, requiredContacts]);
 
   const addContact = () => {
@@ -54,6 +65,16 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
       toast({
         title: "Name is required",
         description: "Please provide a name for this contact.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Enhanced validation - for required roles, ensure there's at least email or phone
+    if (requiredContacts.includes(newContact.role) && !newContact.email && !newContact.phone) {
+      toast({
+        title: "Contact information required",
+        description: `As a ${newContact.role}, either an email or phone number is required.`,
         variant: "destructive"
       });
       return;
@@ -81,6 +102,16 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   };
 
   const updateContact = (id: string) => {
+    // Enhanced validation - for required roles, ensure there's at least email or phone
+    if (requiredContacts.includes(newContact.role) && !newContact.email && !newContact.phone) {
+      toast({
+        title: "Contact information required",
+        description: `As a ${newContact.role}, either an email or phone number is required.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const updatedContacts = contacts.map(contact => 
       contact.id === id ? { ...newContact } : contact
     );
@@ -143,18 +174,36 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   };
 
   const handleComplete = () => {
-    // Verify we have all required roles before completing
-    const missingRoles = requiredContacts.filter(role => 
-      !contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
-    );
-    
-    if (missingRoles.length > 0) {
-      toast({
-        title: "Missing required contacts",
-        description: `Please add the following roles: ${missingRoles.join(', ')}`,
-        variant: "destructive"
+    // Enhanced validation before completing
+    if (!isComplete) {
+      const missingRoles = requiredContacts.filter(role => 
+        !contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
+      );
+      
+      const incompleteContacts = contacts.filter(contact => {
+        if (requiredContacts.includes(contact.role) && !contact.email && !contact.phone) {
+          return true;
+        }
+        return false;
       });
-      return;
+      
+      if (missingRoles.length > 0) {
+        toast({
+          title: "Missing required contacts",
+          description: `Please add the following roles: ${missingRoles.join(', ')}`,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (incompleteContacts.length > 0) {
+        toast({
+          title: "Incomplete contact information",
+          description: `Please add email or phone for: ${incompleteContacts.map(c => c.name).join(', ')}`,
+          variant: "destructive"
+        });
+        return;
+      }
     }
     
     onComplete(contacts);
@@ -219,7 +268,12 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Email</Label>
+                  <Label htmlFor="contactEmail">
+                    Email 
+                    {requiredContacts.includes(newContact.role) && !newContact.phone && (
+                      <span className="text-red-500">*</span>
+                    )}
+                  </Label>
                   <Input 
                     id="contactEmail"
                     type="email"
@@ -230,7 +284,12 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="contactPhone">Phone Number</Label>
+                  <Label htmlFor="contactPhone">
+                    Phone Number
+                    {requiredContacts.includes(newContact.role) && !newContact.email && (
+                      <span className="text-red-500">*</span>
+                    )}
+                  </Label>
                   <Input 
                     id="contactPhone"
                     value={newContact.phone}
@@ -279,12 +338,22 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                           {requiredContacts.includes(contact.role) && (
                             <Badge variant="secondary" className="text-xs">Required</Badge>
                           )}
+                          {/* Visual indicator for incomplete required contacts */}
+                          {requiredContacts.includes(contact.role) && !contact.email && !contact.phone && (
+                            <Badge variant="destructive" className="text-xs">Incomplete</Badge>
+                          )}
                         </div>
                         
                         <div className="text-sm text-gray-500 mt-1">
                           {contact.email && <div>{contact.email}</div>}
                           {contact.phone && <div>{contact.phone}</div>}
                           {contact.address && <div className="truncate max-w-md">{contact.address}</div>}
+                          {/* Warning for incomplete required contacts */}
+                          {requiredContacts.includes(contact.role) && !contact.email && !contact.phone && (
+                            <div className="text-red-500 text-xs mt-1">
+                              Please add either email or phone number
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -320,7 +389,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                   ) : (
                     <div className="flex items-center text-amber-600">
                       <AlertCircle className="h-5 w-5 mr-1" />
-                      <span>Required contacts missing</span>
+                      <span>Required contacts missing or incomplete</span>
                     </div>
                   )}
                 </div>

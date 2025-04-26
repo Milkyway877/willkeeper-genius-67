@@ -205,6 +205,64 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     return responses;
   }, [messages, templateId]);
   
+  const checkContactsComplete = useCallback(() => {
+    if (currentStage !== 'contacts') return false;
+    
+    const executorName = extractedResponses.executorName;
+    const alternateExecutorName = extractedResponses.alternateExecutorName;
+    const guardianName = extractedResponses.guardianName;
+    
+    let requiredContactsCollected = true;
+    
+    if (executorName) {
+      const executorDetailsProvided = messages.some(m => 
+        m.role === 'user' && 
+        (m.content.toLowerCase().includes('executor') || m.content.toLowerCase().includes(executorName.toLowerCase())) &&
+        (m.content.includes('@') || 
+         m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/) || 
+         m.content.match(/\d+ .+[,\s].+/)
+        )
+      );
+      requiredContactsCollected = requiredContactsCollected && executorDetailsProvided;
+    }
+    
+    if (alternateExecutorName) {
+      const alternateExecutorDetailsProvided = messages.some(m => 
+        m.role === 'user' && 
+        (m.content.toLowerCase().includes('alternate') || m.content.toLowerCase().includes(alternateExecutorName.toLowerCase())) &&
+        (m.content.includes('@') || 
+         m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/) || 
+         m.content.match(/\d+ .+[,\s].+/)
+        )
+      );
+      requiredContactsCollected = requiredContactsCollected && alternateExecutorDetailsProvided;
+    }
+    
+    if (guardianName) {
+      const guardianDetailsProvided = messages.some(m => 
+        m.role === 'user' && 
+        (m.content.toLowerCase().includes('guardian') || m.content.toLowerCase().includes(guardianName.toLowerCase())) &&
+        (m.content.includes('@') || 
+         m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/) || 
+         m.content.match(/\d+ .+[,\s].+/)
+        )
+      );
+      requiredContactsCollected = requiredContactsCollected && guardianDetailsProvided;
+    }
+    
+    const aiConfirmedCompletion = messages.some(m => 
+      m.role === 'assistant' && 
+      m.content.toLowerCase().includes('all contact information has been collected') &&
+      !messages.some(next => 
+        next.timestamp > m.timestamp && 
+        next.role === 'assistant' && 
+        (next.content.toLowerCase().includes('provide') || next.content.toLowerCase().includes('could you'))
+      )
+    );
+    
+    return requiredContactsCollected && aiConfirmedCompletion;
+  }, [currentStage, messages, extractedResponses]);
+  
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
     
@@ -346,9 +404,21 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       "now i have all the information needed"
     ];
     
-    const isComplete = completionPhrases.some(phrase => 
+    const phraseMatches = completionPhrases.some(phrase => 
       aiResponse.toLowerCase().includes(phrase.toLowerCase())
-    ) || messages.length >= 15;
+    );
+    
+    let isComplete = false;
+    
+    if (currentStage === 'contacts') {
+      const hasFollowUpQuestion = aiResponse.toLowerCase().includes('could you') || 
+                                  aiResponse.toLowerCase().includes('please provide') ||
+                                  aiResponse.toLowerCase().includes('can you give me');
+      
+      isComplete = phraseMatches && !hasFollowUpQuestion && checkContactsComplete();
+    } else {
+      isComplete = phraseMatches || messages.length >= 15;
+    }
     
     if (isComplete) {
       setTimeout(() => {
@@ -395,6 +465,15 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   };
   
   const handleStageTransition = () => {
+    if (currentStage === 'contacts' && !checkContactsComplete()) {
+      toast({
+        title: "Contact Information Incomplete",
+        description: "Please provide all required contact information before continuing.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const nextStage = getNextStage(currentStage);
     
     setCurrentStage(nextStage);
@@ -934,6 +1013,7 @@ Witnesses: [Witness 1], [Witness 2]`;
                 <Button
                   onClick={handleStageTransition}
                   className="w-full"
+                  disabled={currentStage === 'contacts' && !checkContactsComplete()}
                 >
                   <ArrowRight className="mr-2 h-4 w-4" />
                   Continue to {getNextStage(currentStage) === 'contacts' ? 'Contact Collection' : 
