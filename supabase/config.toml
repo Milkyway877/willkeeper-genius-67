@@ -36,6 +36,3 @@ verify_jwt = false
 
 [functions.send-verification]
 verify_jwt = false
-
-[functions.two-factor-auth]
-verify_jwt = false

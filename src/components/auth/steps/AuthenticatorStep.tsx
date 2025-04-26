@@ -47,11 +47,9 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
 
   const generateNewSecretIfNeeded = async () => {
     try {
-      setIsLoading(true);
       const { secret, qrCodeUrl } = await generateTOTPSecret();
       if (secret && qrCodeUrl) {
-        console.log("Generated new TOTP secret:", secret);
-        console.log("Generated QR code URL:", qrCodeUrl);
+        console.log("Generated new TOTP secret and QR code");
         setLocalKey(secret);
         setLocalQrCode(qrCodeUrl);
       } else {
@@ -59,8 +57,6 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       }
     } catch (error) {
       console.error("Error generating TOTP secret:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -96,7 +92,15 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       console.log("Verifying OTP:", cleanCode);
       console.log("Using authenticator key:", cleanKey);
       
-      // Use the edge function to verify the code
+      const isValid = validateTOTP(cleanCode, cleanKey);
+      console.log("OTP validation result:", isValid);
+      
+      if (!isValid) {
+        setVerificationError("Invalid verification code. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
@@ -105,26 +109,41 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
       
       console.log("Setting up 2FA for user:", user.id);
       
-      // Call the edge function via the setup2FA method
-      const { data, error } = await supabase.functions.invoke('two-factor-auth', {
-        body: {
-          action: 'setup',
-          userId: user.id,
-          code: cleanCode,
-          secret: cleanKey
-        }
-      });
+      const encryptionKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
       
-      if (error) {
-        console.error("Error calling two-factor-auth function:", error);
-        setVerificationError(error.message || "Failed to set up authenticator. Please try again.");
-        return;
+      const { data: existingRecord, error: checkError } = await supabase
+        .from('user_security')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      let dbOperation;
+      if (existingRecord) {
+        dbOperation = supabase
+          .from('user_security')
+          .update({
+            google_auth_enabled: enableTwoFactor,
+            google_auth_secret: cleanKey
+          })
+          .eq('user_id', user.id);
+      } else {
+        dbOperation = supabase
+          .from('user_security')
+          .insert({
+            user_id: user.id,
+            google_auth_enabled: enableTwoFactor,
+            google_auth_secret: cleanKey,
+            encryption_key: encryptionKey
+          });
       }
       
-      if (data && !data.success) {
-        setVerificationError(data.error || "Failed to set up authenticator. Please try again.");
-        setIsLoading(false);
-        return;
+      const { error: insertError } = await dbOperation;
+        
+      if (insertError) {
+        console.error("Error updating security record:", insertError);
+        throw new Error("Failed to update security settings. Database error.");
       }
       
       toast({
@@ -178,16 +197,10 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
                   2. Scan this QR code with your authenticator app:
                 </p>
                 <div className="flex justify-center bg-white p-2 border border-slate-200 rounded-md">
-                  {localQrCode ? (
-                    <QRCode 
-                      value={localQrCode} 
-                      size={200}
-                    />
-                  ) : (
-                    <div className="h-[200px] w-[200px] flex items-center justify-center bg-gray-100">
-                      <span className="text-gray-500">Loading QR code...</span>
-                    </div>
-                  )}
+                  <QRCode 
+                    value={localQrCode} 
+                    size={200}
+                  />
                 </div>
               </div>
               
@@ -197,14 +210,13 @@ export function AuthenticatorStep({ authenticatorKey, qrCodeUrl, onNext }: Authe
                 </p>
                 <div className="relative">
                   <div className="p-2 bg-slate-50 border border-slate-200 rounded-md font-mono text-center break-all select-all text-sm">
-                    {localKey || "Loading key..."}
+                    {localKey}
                   </div>
                   <button
                     type="button"
                     className="absolute top-2 right-2 p-1 bg-slate-100 rounded hover:bg-slate-200"
                     onClick={copyToClipboard}
                     aria-label="Copy to clipboard"
-                    disabled={!localKey}
                   >
                     <Copy size={14} className={copied ? "text-green-500" : ""} />
                   </button>
