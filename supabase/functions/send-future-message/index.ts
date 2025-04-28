@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
 import { Resend } from 'https://esm.sh/resend@1.0.0';
@@ -204,7 +203,7 @@ async function processMessage(message: any) {
     }
     
     // Create a notification for the sender
-    await supabase
+    const { error: notificationError } = await supabase
       .from('notifications')
       .insert({
         user_id: message.user_id,
@@ -212,6 +211,10 @@ async function processMessage(message: any) {
         description: `Your message "${message.title}" has been delivered to ${message.recipient_name}.`,
         type: 'message_delivered',
       });
+      
+    if (notificationError) {
+      console.warn('Failed to create notification:', notificationError);
+    }
       
     return {
       success: true,
@@ -222,18 +225,22 @@ async function processMessage(message: any) {
     console.error(`Error delivering message ${message.id}:`, error);
     
     // Update status to indicate failure
-    await supabase
-      .from('future_messages')
-      .update({ 
-        status: 'failed',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', message.id);
+    try {
+      await supabase
+        .from('future_messages')
+        .update({ 
+          status: 'failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', message.id);
+    } catch (updateError) {
+      console.error('Error updating message status after failure:', updateError);
+    }
       
     return {
       success: false,
       messageId: message.id,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 }
@@ -245,7 +252,29 @@ serve(async (req) => {
   }
 
   try {
-    const { messageId } = await req.json() as MessagePayload;
+    console.log('Received message sending request');
+    
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error('Error parsing request body:', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+    
+    const { messageId } = body as MessagePayload;
+    
+    if (!messageId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing messageId parameter' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    console.log(`Processing message ID: ${messageId}`);
 
     // Get the message to be delivered
     const { data: message, error } = await supabase
@@ -255,11 +284,17 @@ serve(async (req) => {
       .single();
 
     if (error || !message) {
-      throw new Error(`Message not found: ${error?.message || 'Unknown error'}`);
+      console.error('Message not found:', error);
+      return new Response(
+        JSON.stringify({ error: error?.message || 'Message not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
     }
 
     // Process the message for delivery
     const result = await processMessage(message);
+    
+    console.log('Message processing result:', result);
     
     return new Response(
       JSON.stringify(result),
@@ -268,7 +303,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in send-future-message function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders }

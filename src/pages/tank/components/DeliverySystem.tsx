@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,7 +68,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
       console.error('Error checking scheduled messages:', error);
       setResult({
         success: false,
-        message: `Error: ${error.message || 'Unknown error occurred'}`
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
       });
       
       toast({
@@ -115,7 +114,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
       console.error('Error sending message:', error);
       setResult({
         success: false,
-        message: `Error: ${error.message || 'Unknown error occurred'}`
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
       });
       
       toast({

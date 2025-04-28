@@ -114,7 +114,10 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     // First update the status to processing
     const { error: updateError } = await supabase
       .from('future_messages')
-      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .update({ 
+        status: 'processing', 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', id);
       
     if (updateError) {
@@ -133,7 +136,10 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       // Reset status if delivery failed
       await supabase
         .from('future_messages')
-        .update({ status: 'scheduled', updated_at: new Date().toISOString() })
+        .update({ 
+          status: 'scheduled', 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', id);
         
       return false;
