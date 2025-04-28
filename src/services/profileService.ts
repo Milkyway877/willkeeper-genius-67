@@ -13,6 +13,7 @@ export interface UserProfile {
   activation_date: string | null;
   email: string | null;
   email_verified: boolean | null;
+  gender?: 'male' | 'female' | null; // Optional gender field
 }
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
@@ -42,10 +43,11 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       created_at: data.created_at,
       updated_at: data.updated_at,
       is_activated: data.activation_complete, // Map from activation_complete to is_activated
-      subscription_plan: null, // Default to null since this column doesn't exist yet
-      activation_date: null, // Set a default value as it doesn't exist in the database
+      subscription_plan: data.subscription_plan || 'Free Plan', // Default to 'Free Plan'
+      activation_date: data.activation_date,
       email: session.user.email, // Add email from the session
       email_verified: session.user.email_confirmed_at !== null, // Add email verification status
+      gender: data.gender || null, // Add gender if available
     };
     
     return profile;
@@ -77,8 +79,8 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       delete dbUpdates.activation_date;
     }
     
-    // Remove subscription_plan field as it doesn't exist in the database
-    if (dbUpdates.subscription_plan !== undefined) {
+    // Remove subscription_plan field if it doesn't exist in the database
+    if (dbUpdates.subscription_plan !== undefined && !dbTableHasColumn('user_profiles', 'subscription_plan')) {
       delete dbUpdates.subscription_plan;
     }
     
@@ -111,10 +113,11 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       created_at: data.created_at,
       updated_at: data.updated_at,
       is_activated: data.activation_complete, // Map from activation_complete to is_activated
-      subscription_plan: null, // Default to null since this column doesn't exist yet
-      activation_date: null, // Set a default value as it doesn't exist in the database
+      subscription_plan: data.subscription_plan || 'Free Plan', // Default to 'Free Plan'
+      activation_date: data.activation_date || null, // Set a default value as it might not exist in the database
       email: session.user.email, // Add email from the session
       email_verified: session.user.email_confirmed_at !== null, // Add email verification status
+      gender: data.gender || null, // Add gender if available
     };
     
     return profile;
@@ -122,6 +125,17 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     console.error('Error in updateUserProfile:', error);
     return null;
   }
+};
+
+// Helper function to determine if a column exists in a table
+// This is just a placeholder - the actual implementation would depend on having proper schema metadata
+const dbTableHasColumn = (table: string, column: string): boolean => {
+  // In a real implementation, this would query the database schema
+  // For now, just handle subscription_plan specifically
+  if (table === 'user_profiles' && column === 'subscription_plan') {
+    return false; // Assume subscription_plan doesn't exist in the database
+  }
+  return true; // Otherwise, assume columns do exist
 };
 
 export const getInitials = (name: string | null | undefined): string => {

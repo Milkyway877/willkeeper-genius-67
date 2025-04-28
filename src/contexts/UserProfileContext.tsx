@@ -2,7 +2,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getUserProfile, getInitials, UserProfile } from "@/services/profileService";
+import { getUserProfile, getInitials, type UserProfile } from "@/services/profileService";
 import { logUserActivity } from "@/services/activityService";
 
 interface UserProfileContextType {
