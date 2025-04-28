@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -29,7 +28,6 @@ import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import AuthCallback from './pages/auth/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/settings/Settings';
-import Profile from './pages/settings/Profile';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
 import Corporate from './pages/Corporate';
@@ -84,7 +82,6 @@ export default function App() {
         {/* Dashboard routes */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="/settings/profile" element={<Profile />} />
         <Route path="/activity" element={<Activity />} />
 
         {/* Routes for sidebar links */}

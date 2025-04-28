@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -35,21 +34,19 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
     
-    const profile: UserProfile = {
+    return {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.activation_complete, // Map from activation_complete to is_activated
-      subscription_plan: data.subscription_plan || 'Free Plan', // Default to 'Free Plan'
+      is_activated: data.activation_complete,
+      subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date,
-      email: session.user.email, // Add email from the session
-      email_verified: session.user.email_confirmed_at !== null, // Add email verification status
-      gender: data.gender || null, // Add gender if available
+      email: session.user.email,
+      email_verified: session.user.email_confirmed_at !== null,
+      gender: data.gender || null,
     };
-    
-    return profile;
   } catch (error) {
     console.error('Error in getUserProfile:', error);
     return null;
@@ -89,24 +86,22 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw error;
     }
     
-    const profile: UserProfile = {
+    return {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.activation_complete, // Map from activation_complete to is_activated
-      subscription_plan: data.subscription_plan || 'Free Plan', // Default to 'Free Plan'
-      activation_date: data.activation_date || null, // Set a default value as it might not exist in the database
-      email: session.user.email, // Add email from the session
-      email_verified: session.user.email_confirmed_at !== null, // Add email verification status
-      gender: data.gender || null, // Add gender if available
+      is_activated: data.activation_complete,
+      subscription_plan: data.subscription_plan || 'Free Plan',
+      activation_date: data.activation_date || null,
+      email: session.user.email,
+      email_verified: session.user.email_confirmed_at !== null,
+      gender: data.gender || null,
     };
-    
-    return profile;
   } catch (error) {
     console.error('Error in updateUserProfile:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -115,6 +110,17 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       throw new Error('No user logged in');
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      throw new Error('File size must be less than 2MB');
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('File type must be JPEG, PNG or GIF');
     }
 
     const fileExt = file.name.split('.').pop();
@@ -144,7 +150,7 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
     return publicUrl;
   } catch (error) {
     console.error('Error in uploadProfileImage:', error);
-    return null;
+    throw error;
   }
 };
 
