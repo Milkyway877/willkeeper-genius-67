@@ -54,18 +54,16 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Email address is required");
       }
       
-      // Check if the email is valid
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(newEmail)) {
         throw new Error("Please enter a valid email address");
       }
       
-      // If the new email is the same as the current one, no need to update
       if (user.email === newEmail) {
         return { success: true, error: "This is already your current email address" };
       }
       
-      const { data, error } = await supabase.auth.updateUser({ email: newEmail });
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
       
       if (error) {
         console.error("Error updating email:", error);
@@ -73,12 +71,15 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       
       // Log the activity
-      logUserActivity('email_update', { 
+      await logUserActivity('email_update', { 
         previous_email: user?.email,
         new_email: newEmail
       });
       
-      return { success: true };
+      return { 
+        success: true,
+        error: "A confirmation email has been sent to your new address. Please check your inbox to complete the update."
+      };
     } catch (error: any) {
       console.error("Error updating email:", error);
       return { 

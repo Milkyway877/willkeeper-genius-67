@@ -32,7 +32,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   };
   
   const handleImageError = () => {
-    console.log("Avatar image failed to load");
+    console.error("Avatar image failed to load:", displayProfile?.avatar_url);
     setImageError(true);
   };
   

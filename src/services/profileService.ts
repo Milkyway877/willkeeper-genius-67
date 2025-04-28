@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -35,7 +34,6 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
     
-    // Ensure the return data matches the UserProfile interface
     const profile: UserProfile = {
       id: data.id,
       full_name: data.full_name,
@@ -68,26 +66,21 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     
     console.log("Updating profile with:", updates); // Debug log
     
-    // Convert from UserProfile fields to database fields
     const dbUpdates: any = {...updates};
     
-    // Map is_activated to activation_complete if it exists in the updates
     if (updates.is_activated !== undefined) {
       dbUpdates.activation_complete = updates.is_activated;
       delete dbUpdates.is_activated;
     }
     
-    // Remove fields that don't exist in the database
     if (dbUpdates.activation_date !== undefined) {
       delete dbUpdates.activation_date;
     }
     
-    // Remove subscription_plan field if it doesn't exist in the database
     if (dbUpdates.subscription_plan !== undefined && !dbTableHasColumn('user_profiles', 'subscription_plan')) {
       delete dbUpdates.subscription_plan;
     }
     
-    // Remove email and email_verified fields as they don't exist in the database
     if (dbUpdates.email !== undefined) {
       delete dbUpdates.email;
     }
@@ -110,7 +103,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     
     console.log("Profile updated successfully:", data); // Debug log
     
-    // Ensure the return data matches the UserProfile interface
     const profile: UserProfile = {
       id: data.id,
       full_name: data.full_name,
@@ -139,7 +131,6 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       throw new Error('No user logged in');
     }
 
-    // First, check if the avatars bucket exists
     const { data: buckets } = await supabase
       .storage
       .listBuckets();
@@ -147,51 +138,47 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
     const avatarsBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
     
     if (!avatarsBucketExists) {
-      // If avatars bucket doesn't exist, we should inform the user
       console.error('Avatars storage bucket does not exist');
       throw new Error('Avatar storage not configured');
     }
 
-    // Generate a unique filename
     const fileExt = file.name.split('.').pop();
-    const fileName = `${session.user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const fileName = `${session.user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-    console.log("Uploading avatar with path:", filePath); // Debug log
+    console.log("Uploading avatar with path:", fileName);
 
-    // Upload the file to Supabase storage
-    const { error: uploadError, data: uploadData } = await supabase.storage
+    const { error: uploadError, data } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file, {
+      .upload(fileName, file, {
         cacheControl: '3600',
         upsert: true
       });
 
     if (uploadError) {
-      console.error('Error uploading file:', uploadError);
+      console.error('Error uploading avatar:', uploadError);
       throw uploadError;
     }
 
-    // Get the public URL for the uploaded image
-    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-    
-    console.log("Avatar uploaded successfully, URL:", data.publicUrl); // Debug log
-    return data.publicUrl;
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    await updateUserProfile({
+      avatar_url: publicUrl
+    });
+
+    return publicUrl;
   } catch (error) {
-    console.error('Error uploading avatar:', error);
+    console.error('Error in uploadProfileImage:', error);
     return null;
   }
 };
 
-// Helper function to determine if a column exists in a table
-// This is just a placeholder - the actual implementation would depend on having proper schema metadata
 const dbTableHasColumn = (table: string, column: string): boolean => {
-  // In a real implementation, this would query the database schema
-  // For now, just handle subscription_plan specifically
   if (table === 'user_profiles' && column === 'subscription_plan') {
-    return false; // Assume subscription_plan doesn't exist in the database
+    return false;
   }
-  return true; // Otherwise, assume columns do exist
+  return true;
 };
 
 export const getInitials = (name: string | null | undefined): string => {
