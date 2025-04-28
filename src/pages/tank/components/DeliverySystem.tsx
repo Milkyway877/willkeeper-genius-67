@@ -12,31 +12,31 @@ interface DeliveryTestProps {
   messageId?: string;
 }
 
-interface TestResults {
-  database: { success: boolean; message: string };
-  email: { success: boolean; message: string };
-  cleanup: { success: boolean; message: string };
+interface TestResult {
+  success: boolean;
+  message: string;
+  details?: {
+    processed?: number;
+    successful?: number;
+    failed?: number;
+  };
 }
 
-interface TestResponse {
+interface TestSystemResult {
   success: boolean;
-  results: TestResults;
+  results: {
+    database: { success: boolean; message: string };
+    email: { success: boolean; message: string };
+    cleanup: { success: boolean; message: string };
+  };
   timestamp: string;
 }
 
 export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<{
-    success: boolean;
-    message: string;
-    details?: {
-      processed?: number;
-      successful?: number;
-      failed?: number;
-    };
-  } | null>(null);
+  const [result, setResult] = useState<TestResult | null>(null);
   const [isTestingDelivery, setIsTestingDelivery] = useState(false);
-  const [testResults, setTestResults] = useState<TestResults | null>(null);
+  const [testResults, setTestResults] = useState<TestSystemResult['results'] | null>(null);
   const { toast } = useToast();
 
   const handleCheckScheduled = async () => {
@@ -95,6 +95,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
     setResult(null);
     
     try {
+      console.log(`Attempting to send message with ID: ${id}`);
       const success = await sendFutureMessage(id);
       
       if (success) {
@@ -132,9 +133,11 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
     setTestResults(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke<TestResponse>('test-message-delivery');
+      const { data, error } = await supabase.functions.invoke<TestSystemResult>('test-message-delivery');
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
       
       if (data && data.results) {
         setTestResults(data.results);
@@ -145,7 +148,11 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
             description: 'All systems are functioning correctly.',
           });
         } else {
-          throw new Error('Test completed with errors');
+          toast({
+            title: 'Test Completed with Issues',
+            description: 'Some parts of the delivery system are not working correctly.',
+            variant: 'destructive',
+          });
         }
       } else {
         throw new Error('Invalid response format from test function');

@@ -196,7 +196,8 @@ async function processMessage(message: any) {
         status: 'delivered',
         updated_at: new Date().toISOString()
       })
-      .eq('id', message.id);
+      .eq('id', message.id)
+      .eq('status', 'processing'); // Only update if status is still processing
       
     if (updateError) {
       throw new Error(`Failed to update message status: ${updateError.message}`);
@@ -230,9 +231,10 @@ async function processMessage(message: any) {
         .from('future_messages')
         .update({ 
           status: 'failed',
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString() 
         })
-        .eq('id', message.id);
+        .eq('id', message.id)
+        .eq('status', 'processing'); // Only update if status is still processing
     } catch (updateError) {
       console.error('Error updating message status after failure:', updateError);
     }
@@ -288,6 +290,18 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: error?.message || 'Message not found' }),
         { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Check if the message is in the correct state for processing
+    if (message.status !== 'processing') {
+      console.warn(`Message ${messageId} is in ${message.status} state, not processing`);
+      return new Response(
+        JSON.stringify({ 
+          error: `Message is in ${message.status} state, not processing`,
+          status: message.status
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 

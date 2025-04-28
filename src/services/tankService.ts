@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -15,7 +14,7 @@ export interface FutureMessage {
   preview: string | null;
   content: string | null;
   message_url: string | null;
-  status: string;
+  status: 'draft' | 'scheduled' | 'processing' | 'delivered' | 'failed'; // Explicitly define allowed status values
   delivery_type: string | null;
   delivery_date: string;
   delivery_event: string | null;
@@ -111,7 +110,28 @@ export const deleteFutureMessage = async (id: string): Promise<boolean> => {
 
 export const sendFutureMessage = async (id: string): Promise<boolean> => {
   try {
-    // First update the status to processing
+    console.log('Starting message delivery for:', id);
+    
+    // First check if the message exists and get its current status
+    const { data: message, error: fetchError } = await supabase
+      .from('future_messages')
+      .select('status')
+      .eq('id', id)
+      .single();
+      
+    if (fetchError) {
+      console.error('Error fetching message before sending:', fetchError);
+      return false;
+    }
+    
+    if (!message) {
+      console.error('Message not found:', id);
+      return false;
+    }
+    
+    console.log('Current message status:', message.status);
+    
+    // Update the status to processing
     const { error: updateError } = await supabase
       .from('future_messages')
       .update({ 
@@ -124,6 +144,8 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       console.error('Error updating message status:', updateError);
       return false;
     }
+    
+    console.log('Status updated to processing, calling edge function');
     
     // Call the edge function to send the message
     const { data, error } = await supabase.functions.invoke('send-future-message', {
@@ -156,6 +178,20 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error in sendFutureMessage:', error);
+    
+    // Reset status if there was an exception
+    try {
+      await supabase
+        .from('future_messages')
+        .update({ 
+          status: 'scheduled', 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', id);
+    } catch (resetError) {
+      console.error('Failed to reset message status:', resetError);
+    }
+    
     return false;
   }
 };
