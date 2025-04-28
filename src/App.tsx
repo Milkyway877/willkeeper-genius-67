@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { Toaster } from '@/components/ui/toaster';
@@ -51,67 +50,61 @@ import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
 
-const queryClient = new QueryClient();
-
 export default function App() {
   return (
     <BrowserRouter>
-      <NotificationsProvider>
-        <QueryClientProvider client={queryClient}>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:id" element={<BlogArticle />} />
-            <Route path="/help" element={<Help />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/security" element={<Security />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/business" element={<Business />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/cookies" element={<Cookies />} />
-            
-            {/* Auth routes - using our secure components */}
-            <Route path="/auth/signin" element={<SecureSignIn />} />
-            <Route path="/auth/signup" element={<SecureSignUp />} />
-            <Route path="/auth/verification" element={<EmailVerification />} />
-            <Route path="/auth/forgot-password" element={<SecureRecover />} />
-            <Route path="/auth/reset-password" element={<AuthResetPassword />} />
-            <Route path="/auth/activate" element={<AccountActivation />} />
-            <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            
-            {/* Dashboard routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/profile" element={<Profile />} />
-            <Route path="/activity" element={<Activity />} />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:id" element={<BlogArticle />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/business" element={<Business />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/cookies" element={<Cookies />} />
+        
+        {/* Auth routes - using our secure components */}
+        <Route path="/auth/signin" element={<SecureSignIn />} />
+        <Route path="/auth/signup" element={<SecureSignUp />} />
+        <Route path="/auth/verification" element={<EmailVerification />} />
+        <Route path="/auth/forgot-password" element={<SecureRecover />} />
+        <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+        <Route path="/auth/activate" element={<AccountActivation />} />
+        <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        
+        {/* Dashboard routes */}
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/profile" element={<Profile />} />
+        <Route path="/activity" element={<Activity />} />
 
-            {/* Routes for sidebar links */}
-            <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
-            <Route path="/billing" element={<Billing />} />
-            <Route path="/pages/billing/Billing" element={<Billing />} />
+        {/* Routes for sidebar links */}
+        <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />
+        <Route path="/billing" element={<Billing />} />
+        <Route path="/pages/billing/Billing" element={<Billing />} />
 
-            {/* Corporate routes */}
-            <Route path="/corporate" element={<Corporate />} />
-            
-            <Route path="/tank" element={<Tank />} />
-            <Route path="/tank/create" element={<TankCreation />} />
-            <Route path="/tank/message/:id" element={<TankMessageDetail />} />
-            <Route path="/tank/edit/:id" element={<TankCreation />} />
+        {/* Corporate routes */}
+        <Route path="/corporate" element={<Corporate />} />
+        
+        <Route path="/tank" element={<Tank />} />
+        <Route path="/tank/create" element={<TankCreation />} />
+        <Route path="/tank/message/:id" element={<TankMessageDetail />} />
+        <Route path="/tank/edit/:id" element={<TankCreation />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster />
-          <FloatingAssistant />
-          <ReactQueryDevtools initialIsOpen={false} />
-        </QueryClientProvider>
-      </NotificationsProvider>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster />
+      <FloatingAssistant />
+      <ReactQueryDevtools initialIsOpen={false} />
     </BrowserRouter>
   );
 }
