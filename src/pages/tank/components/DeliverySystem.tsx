@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -266,7 +265,10 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
                 <li>The recipient email address is valid ({message.recipient_email})</li>
                 <li>The message isn't being filtered as spam</li>
               </ul>
-              <p className="mt-2"><strong>Common error:</strong> "Not authorized to send emails from willtank.com" - This means your domain hasn't been verified in Resend.</p>
+              <p className="mt-2">
+                <strong>Common error:</strong> "Not authorized to send emails from willtank.com" - 
+                This means your domain hasn't been verified in Resend.
+              </p>
             </AlertDescription>
           </Alert>
           

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
 import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from '../_shared/email-helper.ts';
@@ -74,7 +73,7 @@ serve(async (req) => {
         const emailContent = buildDefaultEmailLayout(`
           <div style="padding: 20px;">
             <h1>Test Email</h1>
-            <p>This is a test email from The Tank.</p>
+            <p>This is a test email from WillTank.</p>
             <p>If you're seeing this, the delivery system is working correctly.</p>
             <p>Test ID: ${messageId}</p>
             <p>Test time: ${new Date().toISOString()}</p>
@@ -83,9 +82,9 @@ serve(async (req) => {
         
         console.log("Sending test email to test@willtank.com");
         const emailResponse = await resend.emails.send({
-          from: 'The Tank <support@willtank.com>',  // Updated domain
-          to: ['test@willtank.com'],  // Updated domain
-          subject: 'The Tank - Email Delivery Test',
+          from: 'WillTank <support@willtank.com>',
+          to: ['test@willtank.com'],
+          subject: 'WillTank - Email Delivery Test',
           html: emailContent,
         });
         

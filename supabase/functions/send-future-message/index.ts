@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
 import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from '../_shared/email-helper.ts';
@@ -147,17 +146,16 @@ serve(async (req) => {
     try {
       const resend = getResendClient();
       
-      // Log the email parameters for debugging
       console.log('Email parameters:', {
-        from: 'The Tank <support@willtank.com>',
+        from: 'WillTank <support@willtank.com>',
         to: message.recipient_email,
-        subject: message.title || 'A message from The Tank'
+        subject: message.title || 'A message from WillTank'
       });
       
       emailResponse = await resend.emails.send({
-        from: 'The Tank <support@willtank.com>', // Updated to use verified domain
+        from: 'WillTank <support@willtank.com>',
         to: [message.recipient_email],
-        subject: message.title || 'A message from The Tank',
+        subject: message.title || 'A message from WillTank',
         html: fullEmailContent,
       });
 

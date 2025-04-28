@@ -19,7 +19,7 @@ export const buildDefaultEmailLayout = (content: string): string => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>The Tank</title>
+      <title>WillTank</title>
       <style>
         body {
           font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -65,7 +65,7 @@ export const buildDefaultEmailLayout = (content: string): string => {
           ${content}
         </div>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} The Tank, a secure digital time capsule service.</p>
+          <p>© ${new Date().getFullYear()} WillTank, a secure digital time capsule service.</p>
           <p>If you did not expect this email, please contact support@willtank.com</p>
         </div>
       </div>
