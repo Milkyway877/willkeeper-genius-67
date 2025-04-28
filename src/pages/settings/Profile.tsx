@@ -101,8 +101,20 @@ export default function Profile() {
       return;
     }
 
+    // Check if email is valid
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
     if (newEmail === email) {
       setShowEmailDialog(false);
+      toast({
+        title: "No Changes",
+        description: "The new email address is the same as your current one.",
+        variant: "default"
+      });
       return;
     }
 
@@ -120,12 +132,19 @@ export default function Profile() {
           description: "A confirmation link has been sent to your new email. Please check your inbox to complete the update.",
           variant: "default"
         });
+      } else if (result.error === "This is already your current email address") {
+        setShowEmailDialog(false);
+        toast({
+          title: "No Changes",
+          description: result.error,
+          variant: "default"
+        });
       } else {
         setEmailError(result.error || "Failed to update email");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating email:", error);
-      setEmailError("There was an error updating your email. Please try again.");
+      setEmailError(error.message || "There was an error updating your email. Please try again.");
     } finally {
       setIsEmailSaving(false);
     }
@@ -134,7 +153,7 @@ export default function Profile() {
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = event.target.files?.[0];
-      if (!file || !profile) return;
+      if (!file || !user) return;
 
       if (file.size > 2 * 1024 * 1024) {
         toast({
@@ -157,7 +176,7 @@ export default function Profile() {
 
       setIsUploading(true);
       
-      // Upload using our new utility function
+      // Upload using our utility function
       const publicUrl = await uploadProfileImage(file);
       
       if (!publicUrl) {
@@ -254,7 +273,7 @@ export default function Profile() {
                   {profile?.full_name || user?.email?.split('@')[0] || 'User'}
                 </h3>
                 <p className="text-gray-600">
-                  {email || user?.email || 'No email available'}
+                  {user?.email || profile?.email || 'No email available'}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2 justify-center md:justify-start">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-willtank-100 text-willtank-800">
@@ -318,7 +337,7 @@ export default function Profile() {
                 <div className="flex gap-4 mt-1.5">
                   <Input 
                     id="email"
-                    value={email || (user?.email || '')}
+                    value={user?.email || ''}
                     disabled={true}
                     className="max-w-md"
                   />
@@ -331,7 +350,7 @@ export default function Profile() {
                   </Button>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  {profile?.email_verified 
+                  {user?.email_confirmed_at 
                     ? "Email verified" 
                     : "Email not verified. Please check your inbox for verification instructions."}
                 </p>
@@ -369,6 +388,7 @@ export default function Profile() {
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 className="col-span-3"
+                placeholder="Enter your new email address"
               />
             </div>
           </div>

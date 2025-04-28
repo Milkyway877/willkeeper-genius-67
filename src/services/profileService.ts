@@ -139,19 +139,36 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       throw new Error('No user logged in');
     }
 
+    // First, check if the avatars bucket exists
+    const { data: buckets } = await supabase
+      .storage
+      .listBuckets();
+    
+    const avatarsBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
+    
+    if (!avatarsBucketExists) {
+      // If avatars bucket doesn't exist, we should inform the user
+      console.error('Avatars storage bucket does not exist');
+      throw new Error('Avatar storage not configured');
+    }
+
     // Generate a unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${session.user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+    const filePath = `${fileName}`;
 
     console.log("Uploading avatar with path:", filePath); // Debug log
 
     // Upload the file to Supabase storage
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError, data: uploadData } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
 
     if (uploadError) {
+      console.error('Error uploading file:', uploadError);
       throw uploadError;
     }
 

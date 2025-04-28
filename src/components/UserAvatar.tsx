@@ -41,7 +41,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       {displayProfile?.avatar_url && !imageError ? (
         <AvatarImage 
           src={displayProfile.avatar_url} 
-          alt={displayProfile.full_name || "User avatar"} 
+          alt={displayProfile.full_name || "User avatar"}
           onError={handleImageError}
         />
       ) : null}
