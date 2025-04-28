@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   File, 
   FileUp, 
@@ -61,13 +62,15 @@ interface TankDocumentCreatorProps {
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
   onCategoryChange: (category: MessageCategory) => void;
+  onDocumentUrlChange?: (url: string | null) => void;
 }
 
 export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({ 
   onContentChange, 
   onTitleChange,
   onRecipientChange,
-  onCategoryChange
+  onCategoryChange,
+  onDocumentUrlChange
 }) => {
   const { toast } = useToast();
   const { generateWithAI, isGenerating } = useMessageAI();
@@ -83,7 +86,6 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   const [isEncrypting, setIsEncrypting] = useState<boolean>(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('standard');
   
-  // Default category setting
   useEffect(() => {
     onCategoryChange('story');
   }, [onCategoryChange]);
@@ -149,31 +151,79 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
   
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadDocumentToSupabase = async (fileBlob: Blob, fileName: string) => {
+    try {
+      const filePath = `${Date.now()}_${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('future-documents')
+        .upload(filePath, fileBlob, {
+          cacheControl: '3600',
+          upsert: true
+        });
+        
+      if (uploadError) {
+        console.error('Error uploading document:', uploadError);
+        toast({
+          title: "Upload Failed",
+          description: "Could not upload document. Please try again.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      const { data } = supabase.storage
+        .from('future-documents')
+        .getPublicUrl(filePath);
+        
+      console.log("Document uploaded, path:", filePath);
+      
+      if (onDocumentUrlChange) {
+        onDocumentUrlChange(filePath);
+      }
+      
+      return filePath;
+    } catch (error) {
+      console.error('Error in document upload process:', error);
+      toast({
+        title: "Upload Error",
+        description: "An unexpected error occurred during upload.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList) return;
     
     setIsUploading(true);
     setUploadProgress(0);
     
-    // Simulate progress
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           
-          setTimeout(() => {
+          setTimeout(async () => {
             const newFiles: FileItem[] = [];
             
             for (let i = 0; i < fileList.length; i++) {
               const file = fileList[i];
-              newFiles.push({
-                id: Date.now().toString() + i,
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                lastModified: file.lastModified
-              });
+              const fileId = Date.now().toString() + i;
+              
+              const filePath = await uploadDocumentToSupabase(file, file.name);
+              
+              if (filePath) {
+                newFiles.push({
+                  id: fileId,
+                  name: file.name,
+                  size: file.size,
+                  type: file.type,
+                  lastModified: file.lastModified
+                });
+              }
             }
             
             setFiles(prev => [...prev, ...newFiles]);
@@ -181,10 +231,9 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
             
             toast({
               title: "Files Uploaded",
-              description: `${fileList.length} file(s) have been uploaded successfully.`
+              description: `${newFiles.length} file(s) have been successfully uploaded.`
             });
             
-            // After upload, simulate encryption
             simulateEncryption();
           }, 500);
           

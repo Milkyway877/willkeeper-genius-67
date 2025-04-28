@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   FileAudio,
   Mic, 
@@ -37,13 +38,15 @@ interface TankAudioCreatorProps {
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
   onCategoryChange: (category: MessageCategory) => void;
+  onAudioUrlChange?: (url: string | null) => void;
 }
 
 export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({ 
   onContentChange, 
   onTitleChange,
   onRecipientChange,
-  onCategoryChange
+  onCategoryChange,
+  onAudioUrlChange
 }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState<string>('');
@@ -56,6 +59,7 @@ export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [backgroundLevel, setBackgroundLevel] = useState<number>(30);
   const [selectedBackground, setSelectedBackground] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   
   useEffect(() => {
     onCategoryChange('story');
@@ -248,6 +252,80 @@ export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({
     });
   };
 
+  const uploadAudioToSupabase = async () => {
+    if (!audioBlob) {
+      toast({
+        title: "No Audio Found",
+        description: "Please record or upload audio first.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      const fileExt = 'webm';
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('future-audio')
+        .upload(filePath, audioBlob, {
+          cacheControl: '3600',
+          upsert: true
+        });
+        
+      if (uploadError) {
+        console.error('Error uploading audio:', uploadError);
+        toast({
+          title: "Upload Failed",
+          description: "Could not upload audio. Please try again.",
+          variant: "destructive"
+        });
+        setIsUploading(false);
+        return null;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('future-audio')
+        .getPublicUrl(filePath);
+        
+      console.log("Audio uploaded, URL:", filePath);
+      
+      toast({
+        title: "Audio Uploaded",
+        description: "Your audio has been successfully saved."
+      });
+      
+      if (onAudioUrlChange) {
+        onAudioUrlChange(filePath);
+      }
+      
+      return filePath;
+    } catch (error) {
+      console.error('Error in upload process:', error);
+      toast({
+        title: "Upload Error",
+        description: "An unexpected error occurred during upload.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleUseRecording = async () => {
+    const filePath = await uploadAudioToSupabase();
+    if (filePath) {
+      toast({
+        title: "Audio Ready",
+        description: "Your audio is ready to be delivered."
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -360,9 +438,21 @@ export const TankAudioCreator: React.FC<TankAudioCreatorProps> = ({
                       Record Again
                     </Button>
                     
-                    <Button>
-                      <Save className="mr-2 h-4 w-4" />
-                      Use Recording
+                    <Button 
+                      onClick={handleUseRecording}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Use Recording
+                        </>
+                      )}
                     </Button>
                   </>
                 ) : (

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -97,6 +96,7 @@ export default function TankCreation() {
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
                  onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
+                 onAudioUrlChange={setMessageUrl}
                />;
       case 'document':
         return <TankDocumentCreator 
@@ -104,6 +104,7 @@ export default function TankCreation() {
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
                  onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
+                 onDocumentUrlChange={setMessageUrl}
                />;
       default:
         return <div>Please select a message type</div>;

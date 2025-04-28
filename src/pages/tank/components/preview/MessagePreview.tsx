@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { MessageType } from '../../types';
@@ -22,36 +23,39 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
   content,
   messageUrl
 }) => {
-  const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState<boolean>(messageType === 'video' && !!messageUrl);
+  const [mediaUrl, setMediaUrl] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState<boolean>((messageType === 'video' || messageType === 'audio' || messageType === 'document') && !!messageUrl);
 
   React.useEffect(() => {
-    const fetchVideoUrl = async () => {
-      if (messageType === 'video' && messageUrl) {
+    const fetchMediaUrl = async () => {
+      if ((messageType === 'video' || messageType === 'audio' || messageType === 'document') && messageUrl) {
         try {
           setLoading(true);
-          console.log("Fetching video URL for:", messageUrl);
+          console.log(`Fetching ${messageType} URL for:`, messageUrl);
           
-          // Use the existing future-videos bucket directly without trying to create it
+          // Get from the appropriate bucket based on message type
+          const bucketId = messageType === 'video' ? 'future-videos' : 
+                          messageType === 'audio' ? 'future-audio' : 'future-documents';
+          
           const { data } = supabase.storage
-            .from('future-videos')
+            .from(bucketId)
             .getPublicUrl(messageUrl);
           
           if (data?.publicUrl) {
-            console.log("Video public URL:", data.publicUrl);
-            setVideoUrl(data.publicUrl);
+            console.log(`${messageType.charAt(0).toUpperCase() + messageType.slice(1)} public URL:`, data.publicUrl);
+            setMediaUrl(data.publicUrl);
           } else {
             console.error("Failed to get public URL");
           }
         } catch (error) {
-          console.error('Error getting video URL:', error);
+          console.error(`Error getting ${messageType} URL:`, error);
         } finally {
           setLoading(false);
         }
       }
     };
 
-    fetchVideoUrl();
+    fetchMediaUrl();
   }, [messageType, messageUrl]);
 
   const renderContent = () => {
@@ -66,10 +70,10 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
           );
         }
         
-        return videoUrl ? (
+        return mediaUrl ? (
           <div className="aspect-video rounded-lg overflow-hidden bg-black">
             <video 
-              src={videoUrl} 
+              src={mediaUrl} 
               controls 
               className="w-full h-full"
               controlsList="nodownload"
@@ -84,10 +88,19 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
         );
       
       case 'audio':
-        return messageUrl ? (
+        if (loading) {
+          return (
+            <div className="flex flex-col items-center justify-center p-8 text-gray-500">
+              <Loader2 className="h-12 w-12 animate-spin mb-4 text-willtank-600" />
+              <p>Loading audio...</p>
+            </div>
+          );
+        }
+        
+        return mediaUrl ? (
           <div className="bg-gray-50 p-4 rounded-lg">
             <audio 
-              src={messageUrl} 
+              src={mediaUrl} 
               controls 
               className="w-full" 
               controlsList="nodownload"
@@ -100,7 +113,30 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
         );
       
       case 'document':
-        return (
+        if (loading) {
+          return (
+            <div className="flex flex-col items-center justify-center p-8 text-gray-500">
+              <Loader2 className="h-12 w-12 animate-spin mb-4 text-willtank-600" />
+              <p>Loading document...</p>
+            </div>
+          );
+        }
+        
+        return mediaUrl ? (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex flex-col items-center">
+              <File className="h-16 w-16 text-willtank-600 mb-2" />
+              <a 
+                href={mediaUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                View Document
+              </a>
+            </div>
+          </div>
+        ) : (
           <div className="prose max-w-none">
             <div className="bg-gray-50 p-6 rounded-lg">
               <pre className="whitespace-pre-wrap font-serif">{content}</pre>
