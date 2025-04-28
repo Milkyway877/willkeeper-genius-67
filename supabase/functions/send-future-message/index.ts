@@ -130,7 +130,7 @@ serve(async (req) => {
           This message was delivered by The Tank, a digital time capsule service.
         </p>
         <p style="color: #666; font-size: 12px;">
-          If you have any questions, please contact support@willtank.ai
+          If you have any questions, please contact support@willtank.com
         </p>
       </div>
     `;
@@ -149,13 +149,13 @@ serve(async (req) => {
       
       // Log the email parameters for debugging
       console.log('Email parameters:', {
-        from: 'The Tank <tank@willtank.ai>',
+        from: 'The Tank <support@willtank.com>',
         to: message.recipient_email,
         subject: message.title || 'A message from The Tank'
       });
       
       emailResponse = await resend.emails.send({
-        from: 'The Tank <tank@willtank.ai>', // Make sure this domain is verified in Resend
+        from: 'The Tank <support@willtank.com>', // Updated to use verified domain
         to: [message.recipient_email],
         subject: message.title || 'A message from The Tank',
         html: fullEmailContent,

@@ -266,7 +266,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
                 <li>The recipient email address is valid ({message.recipient_email})</li>
                 <li>The message isn't being filtered as spam</li>
               </ul>
-              <p className="mt-2"><strong>Common error:</strong> "Not authorized to send emails from willtank.ai" - This means your domain hasn't been verified in Resend.</p>
+              <p className="mt-2"><strong>Common error:</strong> "Not authorized to send emails from willtank.com" - This means your domain hasn't been verified in Resend.</p>
             </AlertDescription>
           </Alert>
           
@@ -322,7 +322,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
                 <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
                   <strong>Authorization Error (403)</strong>: You need to verify your domain in Resend before you can send emails from it. 
                   <p className="text-xs mt-1">
-                    Make sure you've added the domain "willtank.ai" to Resend and completed the DNS verification process.
+                    Make sure you've added the domain "willtank.com" to Resend and completed the DNS verification process.
                   </p>
                   <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="block mt-1 text-blue-600 hover:underline">
                     Go to Resend Domain Verification →

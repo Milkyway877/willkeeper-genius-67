@@ -66,7 +66,7 @@ export const buildDefaultEmailLayout = (content: string): string => {
         </div>
         <div class="footer">
           <p>© ${new Date().getFullYear()} The Tank, a secure digital time capsule service.</p>
-          <p>If you did not expect this email, please contact support@willtank.ai</p>
+          <p>If you did not expect this email, please contact support@willtank.com</p>
         </div>
       </div>
     </body>

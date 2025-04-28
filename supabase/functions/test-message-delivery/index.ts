@@ -38,7 +38,7 @@ serve(async (req) => {
         .insert({
           title: '[TEST] Message Delivery Test',
           recipient_name: 'Test User',
-          recipient_email: 'test@willtank.ai',
+          recipient_email: 'test@willtank.com',  // Updated domain
           message_type: 'letter',
           content: 'This is a test message to verify the delivery system.',
           status: 'scheduled',
@@ -81,10 +81,10 @@ serve(async (req) => {
           </div>
         `);
         
-        console.log("Sending test email to test@willtank.ai");
+        console.log("Sending test email to test@willtank.com");
         const emailResponse = await resend.emails.send({
-          from: 'The Tank <tank@willtank.ai>',
-          to: ['test@willtank.ai'],
+          from: 'The Tank <support@willtank.com>',  // Updated domain
+          to: ['test@willtank.com'],  // Updated domain
           subject: 'The Tank - Email Delivery Test',
           html: emailContent,
         });

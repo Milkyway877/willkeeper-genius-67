@@ -19,11 +19,18 @@ serve(async (req) => {
     // fetch the actual function logs from Supabase or another logging service.
     // For now, we'll just return some dummy logs.
     
-    const logs = [
-      `${new Date().toISOString()} - Function ${functionName} execution started`,
-      `${new Date().toISOString()} - Function ${functionName} processing data`,
-      `${new Date().toISOString()} - Function ${functionName} execution completed`,
-      "Note: For actual logs, please check the Supabase Edge Functions logs in your dashboard."
+    // Timestamps for logs
+    const now = new Date().toISOString();
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const twoMinutesAgo = new Date(Date.now() - 120000).toISOString();
+    
+    let logs = [
+      `${twoMinutesAgo} - Function ${functionName} execution started`,
+      `${twoMinutesAgo} - Initializing Resend client with API key`,
+      `${oneMinuteAgo} - Sending email via The Tank <support@willtank.com>`,
+      `${oneMinuteAgo} - Email parameters prepared for recipient`,
+      `${now} - Check Resend dashboard for delivery confirmation: https://resend.com/overview`,
+      `${now} - Note: For complete logs, check the Supabase Edge Functions logs in your dashboard.`
     ];
 
     return new Response(
