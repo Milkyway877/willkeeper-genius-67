@@ -4,30 +4,10 @@ import { SignInForm } from '@/components/auth/SignInForm';
 import HoneypotField from '@/components/auth/HoneypotField';
 import NoPasteWarning from '@/components/auth/NoPasteWarning';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { toast } from '@/hooks/use-toast';
 import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SecureSignIn = () => {
-  // This function is now simplified to just check the honeypot and show a warning
-  // It no longer interferes with the form submission
-  const checkHoneypot = () => {
-    const honeypotInput = document.querySelector('input[name="user_email_confirmation"]') as HTMLInputElement | null;
-    
-    if (honeypotInput && honeypotInput.value) {
-      // This is likely a bot - silently fail but appear to succeed
-      toast({
-        title: "Sign in successful",
-        description: "Redirecting you to your dashboard...",
-        variant: "default",
-      });
-      
-      // Actually do nothing
-      return false;
-    }
-    
-    return true;
-  };
-
   return (
     <AuthLayout 
       title="Sign in to WillTank" 
@@ -37,11 +17,20 @@ const SecureSignIn = () => {
       <div className="relative">
         <HoneypotField name="user_email_confirmation" />
         
-        <div className="mb-6">
-          <NoPasteWarning />
-        </div>
-        
-        <SignInForm />
+        <Card className="border-none shadow-none">
+          <CardHeader className="space-y-1 p-0">
+            <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+            <CardDescription>
+              Enter your credentials to access your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 pt-4">
+            <div className="mb-6">
+              <NoPasteWarning />
+            </div>
+            <SignInForm />
+          </CardContent>
+        </Card>
       </div>
     </AuthLayout>
   );

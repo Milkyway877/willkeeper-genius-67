@@ -4,30 +4,10 @@ import { SignUpForm } from '@/components/auth/SignUpForm';
 import HoneypotField from '@/components/auth/HoneypotField';
 import NoPasteWarning from '@/components/auth/NoPasteWarning';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { toast } from '@/hooks/use-toast';
 import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 const SecureSignUp = () => {
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    
-    // Check honeypot field
-    const formData = new FormData(event.currentTarget);
-    const honeypotValue = formData.get('user_email_confirmation');
-    
-    if (honeypotValue) {
-      // This is likely a bot - silently fail but appear to succeed
-      toast({
-        title: "Account created successfully",
-        description: "Please check your email to verify your account.",
-        variant: "default",
-      });
-      
-      // Actually do nothing
-      return;
-    }
-  };
-
   return (
     <AuthLayout 
       title="Create your WillTank account" 
@@ -37,14 +17,20 @@ const SecureSignUp = () => {
       <div className="relative">
         <HoneypotField name="user_email_confirmation" />
         
-        <div className="space-y-6">
-          {/* Warning message at top of form */}
-          <div className="mb-6">
-            <NoPasteWarning />
-          </div>
-          
-          <SignUpForm />
-        </div>
+        <Card className="border-none shadow-none">
+          <CardHeader className="space-y-1 p-0">
+            <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+            <CardDescription>
+              Enter your details to create your secure account
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 pt-4">
+            <div className="mb-6">
+              <NoPasteWarning />
+            </div>
+            <SignUpForm />
+          </CardContent>
+        </Card>
       </div>
     </AuthLayout>
   );

@@ -17,7 +17,7 @@ export function AuthLayout({ children, rightPanel, title, subtitle }: AuthLayout
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-background">
       {/* Left panel with form */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <header className="p-6 md:p-8">
+        <header className="p-6 md:p-8 border-b">
           <Link to="/" className="inline-block">
             <Logo color="black" className="h-10 w-auto" />
           </Link>
@@ -36,7 +36,7 @@ export function AuthLayout({ children, rightPanel, title, subtitle }: AuthLayout
           </PageTransition>
         </main>
         
-        <footer className="p-6 text-center text-sm text-muted-foreground">
+        <footer className="p-6 text-center text-sm text-muted-foreground border-t">
           &copy; {new Date().getFullYear()} WillTank. All rights reserved.
         </footer>
       </div>
