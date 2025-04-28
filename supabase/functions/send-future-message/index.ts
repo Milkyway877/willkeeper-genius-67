@@ -58,12 +58,19 @@ serve(async (req) => {
 
     console.log('Preparing to send email to:', message.recipient_email);
 
-    // Construct email content
+    // Verify Resend API key is set
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendApiKey) {
+      console.error('RESEND_API_KEY not set in environment variables');
+      throw new Error('Email service configuration error: API key not set');
+    }
+
+    // Construct email content with better formatting
     let emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1>${message.title || 'A message from The Tank'}</h1>
-        <p>Dear ${message.recipient_name},</p>
-        <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
+        <h1 style="color: #4F46E5;">${message.title || 'A message from The Tank'}</h1>
+        <p style="font-size: 16px;">Dear ${message.recipient_name},</p>
+        <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; font-size: 16px; line-height: 1.6;">
           ${message.content || message.preview || 'No content available'}
         </div>
     `;
@@ -81,6 +88,15 @@ serve(async (req) => {
           
           console.log('Video public URL:', publicUrl.publicUrl);
           attachmentUrl = publicUrl.publicUrl;
+        } else if (message.message_type === 'audio') {
+          // For audio attachments
+          const { data: publicUrl } = await supabase
+            .storage
+            .from('future-videos')
+            .getPublicUrl(message.message_url);
+          
+          console.log('Audio public URL:', publicUrl.publicUrl);
+          attachmentUrl = publicUrl.publicUrl;
         } else {
           // For other attachments
           const { data: publicUrl } = await supabase
@@ -94,10 +110,11 @@ serve(async (req) => {
         if (attachmentUrl) {
           emailContent += `
             <div style="margin: 20px 0;">
+              <p style="margin-bottom: 10px;">Click the button below to access your ${message.message_type} message:</p>
               <a href="${attachmentUrl}" 
                 style="background-color: #4F46E5; color: white; padding: 10px 20px; 
-                        text-decoration: none; border-radius: 5px; display: inline-block;">
-                View Attachment
+                        text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                View ${message.message_type.charAt(0).toUpperCase() + message.message_type.slice(1)}
               </a>
             </div>
           `;
@@ -107,10 +124,13 @@ serve(async (req) => {
       }
     }
     
-    // Add footer
+    // Add footer with more context
     emailContent += `
-        <p style="color: #666; font-size: 12px; margin-top: 30px;">
+        <p style="color: #666; font-size: 14px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
           This message was delivered by The Tank, a digital time capsule service.
+        </p>
+        <p style="color: #666; font-size: 12px;">
+          If you have any questions, please contact support@willtank.ai
         </p>
       </div>
     `;
@@ -118,27 +138,37 @@ serve(async (req) => {
     // Wrap email in default layout
     const fullEmailContent = buildDefaultEmailLayout(emailContent);
 
-    // Send email using Resend
+    // Send email using Resend with detailed error handling
     console.log('Sending email via Resend...');
     let emailSent = false;
     let emailError = null;
+    let emailResponse = null;
     
     try {
       const resend = getResendClient();
-      const emailResponse = await resend.emails.send({
+      
+      // Log the email parameters for debugging
+      console.log('Email parameters:', {
+        from: 'The Tank <tank@willtank.ai>',
+        to: message.recipient_email,
+        subject: message.title || 'A message from The Tank'
+      });
+      
+      emailResponse = await resend.emails.send({
         from: 'The Tank <tank@willtank.ai>', // Make sure this domain is verified in Resend
         to: [message.recipient_email],
         subject: message.title || 'A message from The Tank',
         html: fullEmailContent,
       });
 
-      console.log('Email sending response:', JSON.stringify(emailResponse));
+      console.log('Email sending raw response:', JSON.stringify(emailResponse));
       
       if (emailResponse && !emailResponse.error) {
         emailSent = true;
+        console.log('Email successfully sent with ID:', emailResponse.id);
       } else {
         emailError = emailResponse.error || 'Unknown error sending email';
-        console.error('Email sending failed:', emailError);
+        console.error('Email sending failed with error:', emailError);
       }
     } catch (sendError) {
       emailError = sendError.message || 'Exception sending email';
@@ -189,6 +219,7 @@ serve(async (req) => {
         status: finalStatus,
         emailSent,
         recipientEmail: message.recipient_email,
+        emailResponse,
         error: emailError
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }

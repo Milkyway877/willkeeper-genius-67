@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -6,7 +7,7 @@ import {
   sendFutureMessage,
   FutureMessage
 } from "@/services/tankService";
-import { CheckCheck, AlertTriangle, Send, Clock, Info } from "lucide-react";
+import { CheckCheck, AlertTriangle, Send, Clock, Info, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DeliverySystemProps {
@@ -20,6 +21,8 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
   const [testResult, setTestResult] = useState<any>(null);
   const [testing, setTesting] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [emailDetails, setEmailDetails] = useState<any>(null);
 
   useEffect(() => {
     if (message?.message_type === 'video' && message?.message_url) {
@@ -41,35 +44,62 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
       
       fetchVideoUrl();
     }
+    
+    if (message?.message_type === 'audio' && message?.message_url) {
+      console.log('Fetching audio URL for:', message.message_url);
+      
+      const fetchAudioUrl = async () => {
+        try {
+          const { data } = await supabase
+            .storage
+            .from('future-videos')
+            .getPublicUrl(message.message_url);
+          
+          console.log('Audio public URL:', data.publicUrl);
+          setVideoUrl(data.publicUrl);
+        } catch (error) {
+          console.error('Error fetching audio URL:', error);
+        }
+      };
+      
+      fetchAudioUrl();
+    }
   }, [message]);
 
   const handleSendMessage = async () => {
     if (!message) return;
     
     setSending(true);
+    setDeliveryError(null);
+    setEmailDetails(null);
     
     try {
       console.log('Attempting to send message with ID:', message.id);
-      const success = await sendFutureMessage(message.id);
+      const result = await sendFutureMessage(message.id);
       
-      if (success) {
+      if (result.success) {
         toast({
           title: "Message Processing",
           description: `Your message is being processed and will be delivered to ${message.recipient_email}`,
         });
         
+        setEmailDetails(result.emailResponse);
+        
         if (onDeliveryComplete) {
           onDeliveryComplete();
         }
       } else {
+        setDeliveryError(result.error || "Unknown delivery error");
         toast({
           title: "Delivery Failed",
-          description: "There was an error sending your message. Please try again.",
+          description: result.error || "There was an error sending your message. Please try again.",
           variant: "destructive"
         });
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unexpected error";
       console.error('Error in handleSendMessage:', error);
+      setDeliveryError(errorMessage);
       toast({
         title: "Error",
         description: "An unexpected error occurred while sending your message.",
@@ -82,6 +112,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
 
   const testDeliverySystem = async () => {
     setTesting(true);
+    setDeliveryError(null);
     
     try {
       console.log('Starting delivery system test');
@@ -89,6 +120,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
       
       if (error) {
         console.error('Error testing delivery system:', error);
+        setDeliveryError(error.message || "Test failed");
         throw error;
       }
       
@@ -138,6 +170,11 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             <AlertTitle className="text-red-800">Delivery Failed</AlertTitle>
             <AlertDescription className="text-red-700">
               The message could not be delivered. Please try sending it again.
+              {deliveryError && (
+                <div className="mt-2 text-xs border-l-2 border-red-300 pl-2">
+                  Error: {deliveryError}
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         );
@@ -182,6 +219,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
               <ul className="list-disc ml-5 mt-2 space-y-1">
                 <li>Check your spam/junk folder</li>
                 <li>Verify the email address is correct ({message.recipient_email})</li>
+                <li>Make sure your domain is verified in Resend (for sender email)</li>
                 <li>Contact support if the issue persists</li>
               </ul>
             </AlertDescription>
@@ -216,6 +254,15 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             </div>
           )}
           
+          {emailDetails && (
+            <div className="mt-4 p-4 bg-gray-50 border rounded-md">
+              <h3 className="text-sm font-medium mb-2">Email Delivery Details:</h3>
+              <pre className="text-xs overflow-x-auto">
+                {JSON.stringify(emailDetails, null, 2)}
+              </pre>
+            </div>
+          )}
+          
           {message.message_type === 'video' && videoUrl && (
             <div className="mt-6">
               <h3 className="text-sm font-medium mb-2">Video Preview:</h3>
@@ -229,6 +276,31 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
               </div>
             </div>
           )}
+          
+          {message.message_type === 'audio' && videoUrl && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium mb-2">Audio Preview:</h3>
+              <div className="border rounded-md overflow-hidden p-4">
+                <audio 
+                  src={videoUrl} 
+                  controls
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="text-center mt-4">
+            <a 
+              href="https://resend.com/domains" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              Verify your domain in Resend
+            </a>
+          </div>
         </>
       )}
     </div>

@@ -108,7 +108,11 @@ export const deleteFutureMessage = async (id: string): Promise<boolean> => {
   }
 };
 
-export const sendFutureMessage = async (id: string): Promise<boolean> => {
+export const sendFutureMessage = async (id: string): Promise<{
+  success: boolean;
+  error?: string;
+  emailResponse?: any;
+}> => {
   try {
     console.log('Attempting to send message with ID:', id);
     
@@ -121,12 +125,12 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       
     if (fetchError) {
       console.error('Error fetching message before sending:', fetchError);
-      return false;
+      return { success: false, error: 'Message not found' };
     }
     
     if (!message) {
       console.error('Message not found:', id);
-      return false;
+      return { success: false, error: 'Message not found' };
     }
     
     console.log('Current message status:', message.status);
@@ -154,7 +158,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       
     if (updateError) {
       console.error('Error updating message status:', updateError);
-      return false;
+      return { success: false, error: 'Failed to update message status' };
     }
     
     console.log('Status updated to processing, calling edge function');
@@ -182,7 +186,10 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
         variant: "destructive"
       });
         
-      return false;
+      return { 
+        success: false,
+        error: error.message || 'Error calling delivery function' 
+      };
     }
     
     console.log('Message delivery response:', data);
@@ -195,7 +202,10 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
         variant: "default"
       });
       
-      return true;
+      return { 
+        success: true,
+        emailResponse: data.emailResponse 
+      };
     } else {
       console.error('Message delivery failed:', data?.error || 'Unknown error');
       
@@ -205,7 +215,11 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
         variant: "destructive"
       });
       
-      return false;
+      return { 
+        success: false,
+        error: data?.error || 'Unknown error',
+        emailResponse: data?.emailResponse 
+      };
     }
   } catch (error) {
     console.error('Error in sendFutureMessage:', error);
@@ -230,7 +244,10 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       variant: "destructive"
     });
     
-    return false;
+    return { 
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 };
 

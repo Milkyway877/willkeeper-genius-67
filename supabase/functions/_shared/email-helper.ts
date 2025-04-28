@@ -8,6 +8,7 @@ export const getResendClient = () => {
     throw new Error('RESEND_API_KEY is not set');
   }
   
+  console.log('Initializing Resend client with API key');
   return new Resend(resendApiKey);
 };
 
@@ -65,6 +66,7 @@ export const buildDefaultEmailLayout = (content: string): string => {
         </div>
         <div class="footer">
           <p>© ${new Date().getFullYear()} The Tank, a secure digital time capsule service.</p>
+          <p>If you did not expect this email, please contact support@willtank.ai</p>
         </div>
       </div>
     </body>
