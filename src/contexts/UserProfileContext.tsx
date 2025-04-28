@@ -1,9 +1,16 @@
-
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserProfile, getInitials, UserProfile } from "@/services/profileService";
 import { logUserActivity } from "@/services/activityService";
+
+interface UserProfile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  gender?: 'male' | 'female';
+}
 
 interface UserProfileContextType {
   user: User | null;
@@ -43,12 +50,10 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
-    // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth state changed:", event);
         
-        // Log user sign in
         if (event === 'SIGNED_IN' && session?.user) {
           logUserActivity('login', { 
             email: session.user.email,
@@ -56,7 +61,6 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
           });
         }
         
-        // Log user sign out
         if (event === 'SIGNED_OUT' && prevAuthState) {
           logUserActivity('logout', { 
             email: prevAuthState.email 
@@ -67,7 +71,6 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Load profile after auth state changes
           refreshProfile();
         } else {
           setProfile(null);
@@ -76,7 +79,6 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     );
     
-    // Then check for existing session
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
