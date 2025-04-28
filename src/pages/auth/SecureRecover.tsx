@@ -5,7 +5,8 @@ import HoneypotField from '@/components/auth/HoneypotField';
 import NoPasteWarning from '@/components/auth/NoPasteWarning';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
 
 const SecureRecover = () => {
   return (
@@ -29,6 +30,13 @@ const SecureRecover = () => {
               <NoPasteWarning />
             </div>
             <RecoverForm />
+            
+            <p className="text-center text-sm text-muted-foreground mt-6 font-medium">
+              Remembered your password?{" "}
+              <Link to="/auth/signin" className="font-bold text-willtank-600 hover:text-willtank-700">
+                Sign in
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>
