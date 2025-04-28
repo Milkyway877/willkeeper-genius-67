@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,7 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isEncrypting, setIsEncrypting] = useState<boolean>(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('standard');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     onCategoryChange('story');
@@ -194,9 +196,15 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
     }
   };
 
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
-    if (!fileList) return;
+    if (!fileList || fileList.length === 0) return;
     
     setIsUploading(true);
     setUploadProgress(0);
@@ -339,18 +347,19 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
                   <p className="text-sm text-gray-500">{uploadProgress}% complete</p>
                 </div>
               ) : files.length === 0 ? (
-                <label className="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center block cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center block cursor-pointer hover:bg-gray-50 transition-colors">
                   <FileUp className="h-8 w-8 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600 mb-2">Drag and drop documents here or click to browse</p>
                   <p className="text-sm text-gray-500 mb-4">Support for PDF, Word, Excel, JPG, PNG files</p>
-                  <Button variant="outline">Browse Files</Button>
+                  <Button variant="outline" onClick={handleBrowseClick}>Browse Files</Button>
                   <input 
                     type="file" 
                     className="hidden" 
+                    ref={fileInputRef}
                     multiple 
                     onChange={handleFileUpload}
                   />
-                </label>
+                </div>
               ) : (
                 <div className="space-y-4">
                   <div className="space-y-3">
@@ -391,18 +400,17 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
                   </div>
                   
                   <div>
-                    <Button asChild variant="outline" className="w-full">
-                      <label className="cursor-pointer">
-                        <FileUp className="mr-2 h-4 w-4" />
-                        Add More Files
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          multiple 
-                          onChange={handleFileUpload}
-                        />
-                      </label>
+                    <Button variant="outline" onClick={handleBrowseClick} className="w-full">
+                      <FileUp className="mr-2 h-4 w-4" />
+                      Add More Files
                     </Button>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      ref={fileInputRef}
+                      multiple 
+                      onChange={handleFileUpload}
+                    />
                   </div>
                 </div>
               )}
