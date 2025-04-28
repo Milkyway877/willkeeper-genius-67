@@ -178,11 +178,7 @@ export default function TankMessageDetail() {
           </Card>
           
           <div className="space-y-6">
-            <DeliverySystem message={message} onDeliveryComplete={() => {
-              if (id) {
-                fetchMessage();
-              }
-            }} />
+            <DeliverySystem message={message} onDeliveryComplete={fetchMessage} />
             
             <Card>
               <CardContent className="pt-6">

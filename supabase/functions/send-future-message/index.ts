@@ -1,14 +1,12 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
-import { Resend } from 'https://esm.sh/resend@1.1.0';
+import { getResendClient, buildDefaultEmailLayout } from '../_shared/email-helper.ts';
 
-const resendApiKey = Deno.env.get('RESEND_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const resend = new Resend(resendApiKey);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,37 +69,42 @@ serve(async (req) => {
     `;
 
     // Add attachment link if available
+    let attachmentUrl = null;
     if (message.message_url) {
-      let attachmentUrl = '';
-      
-      if (message.message_type === 'video') {
-        // Generate full URL for video files
-        const { data: publicUrl } = await supabase
-          .storage
-          .from('future-videos')
-          .getPublicUrl(message.message_url);
+      try {
+        if (message.message_type === 'video') {
+          // Generate full URL for video files
+          const { data: publicUrl } = await supabase
+            .storage
+            .from('future-videos')
+            .getPublicUrl(message.message_url);
+          
+          console.log('Video public URL:', publicUrl.publicUrl);
+          attachmentUrl = publicUrl.publicUrl;
+        } else {
+          // For other attachments
+          const { data: publicUrl } = await supabase
+            .storage
+            .from('future-attachments')
+            .getPublicUrl(message.message_url);
+          
+          attachmentUrl = publicUrl.publicUrl;
+        }
         
-        console.log('Video public URL:', publicUrl.publicUrl);
-        attachmentUrl = publicUrl.publicUrl;
-      } else {
-        // For other attachments
-        const { data: publicUrl } = await supabase
-          .storage
-          .from('future-attachments')
-          .getPublicUrl(message.message_url);
-        
-        attachmentUrl = publicUrl.publicUrl;
+        if (attachmentUrl) {
+          emailContent += `
+            <div style="margin: 20px 0;">
+              <a href="${attachmentUrl}" 
+                style="background-color: #4F46E5; color: white; padding: 10px 20px; 
+                        text-decoration: none; border-radius: 5px; display: inline-block;">
+                View Attachment
+              </a>
+            </div>
+          `;
+        }
+      } catch (attachmentError) {
+        console.error('Error generating attachment URL:', attachmentError);
       }
-      
-      emailContent += `
-        <div style="margin: 20px 0;">
-          <a href="${attachmentUrl}" 
-             style="background-color: #4F46E5; color: white; padding: 10px 20px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            View Attachment
-          </a>
-        </div>
-      `;
     }
     
     // Add footer
@@ -112,22 +115,38 @@ serve(async (req) => {
       </div>
     `;
 
+    // Wrap email in default layout
+    const fullEmailContent = buildDefaultEmailLayout(emailContent);
+
     // Send email using Resend
     console.log('Sending email via Resend...');
-    const emailResponse = await resend.emails.send({
-      from: 'TheTank <messages@willtank.ai>',
-      to: [message.recipient_email],
-      subject: message.title || 'A message from The Tank',
-      html: emailContent,
-    });
+    let emailSent = false;
+    let emailError = null;
+    
+    try {
+      const resend = getResendClient();
+      const emailResponse = await resend.emails.send({
+        from: 'The Tank <tank@willtank.ai>', // Make sure this domain is verified in Resend
+        to: [message.recipient_email],
+        subject: message.title || 'A message from The Tank',
+        html: fullEmailContent,
+      });
 
-    console.log('Email sending response:', JSON.stringify(emailResponse));
-
-    if (!emailResponse) {
-      throw new Error('Failed to send email');
+      console.log('Email sending response:', JSON.stringify(emailResponse));
+      
+      if (emailResponse && !emailResponse.error) {
+        emailSent = true;
+      } else {
+        emailError = emailResponse.error || 'Unknown error sending email';
+        console.error('Email sending failed:', emailError);
+      }
+    } catch (sendError) {
+      emailError = sendError.message || 'Exception sending email';
+      console.error('Exception sending email:', sendError);
     }
 
-    // Log email notification
+    // Log email notification in database regardless of email success
+    // This is for tracking purposes
     const { data: notificationData, error: notificationError } = await supabase
       .from('email_notifications')
       .insert({
@@ -136,7 +155,8 @@ serve(async (req) => {
         recipient_email: message.recipient_email,
         subject: message.title,
         content: message.content || message.preview,
-        status: 'sent'
+        status: emailSent ? 'sent' : 'failed',
+        error: emailError
       });
       
     if (notificationError) {
@@ -146,32 +166,30 @@ serve(async (req) => {
       console.log('Email notification logged successfully');
     }
 
-    // Update message status to delivered
-    const { error: deliveredError } = await supabase
+    // Update message status based on email success/failure
+    const finalStatus = emailSent ? 'delivered' : 'failed';
+    const { error: statusUpdateError } = await supabase
       .from('future_messages')
       .update({ 
-        status: 'delivered',
+        status: finalStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', messageId);
 
-    if (deliveredError) {
-      console.error('Error marking as delivered:', deliveredError);
-      throw new Error('Failed to update delivery status');
+    if (statusUpdateError) {
+      console.error('Error updating final status:', statusUpdateError);
+    } else {
+      console.log(`Message marked as ${finalStatus}`);
     }
-
-    console.log('Message marked as delivered');
-
-    // Note: Not attempting to create notification in notifications table due to RLS issues
-    // This will be handled by the frontend instead
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
+        success: emailSent, 
         messageId, 
-        status: 'delivered',
-        emailSent: true,
-        recipientEmail: message.recipient_email
+        status: finalStatus,
+        emailSent,
+        recipientEmail: message.recipient_email,
+        error: emailError
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );

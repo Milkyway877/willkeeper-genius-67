@@ -7,7 +7,7 @@ import {
   sendFutureMessage,
   FutureMessage
 } from "@/services/tankService";
-import { CheckCheck, AlertTriangle, Send, Clock } from "lucide-react";
+import { CheckCheck, AlertTriangle, Send, Clock, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DeliverySystemProps {
@@ -56,8 +56,8 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
       
       if (success) {
         toast({
-          title: "Message Delivered",
-          description: `Your message has been successfully sent to ${message.recipient_email}`,
+          title: "Message Processing",
+          description: `Your message is being processed and will be delivered to ${message.recipient_email}`,
         });
         
         if (onDeliveryComplete) {
@@ -127,6 +127,9 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             <AlertTitle className="text-green-800">Message Delivered</AlertTitle>
             <AlertDescription className="text-green-700">
               This message has been successfully delivered to {message.recipient_email}.
+              <div className="mt-2 text-xs border-l-2 border-green-300 pl-2 italic">
+                Note: Check your spam folder if you don't see the email in your inbox.
+              </div>
             </AlertDescription>
           </Alert>
         );
@@ -173,7 +176,20 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
         <>
           {getStatusDisplay()}
           
-          {message.status !== 'delivered' && (
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800">Email Delivery Information</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              If marked as "delivered" but no email is received, please:
+              <ul className="list-disc ml-5 mt-2 space-y-1">
+                <li>Check your spam/junk folder</li>
+                <li>Verify the email address is correct ({message.recipient_email})</li>
+                <li>Contact support if the issue persists</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+          
+          {(message.status !== 'delivered' || message.status === 'failed') && (
             <div className="flex flex-col sm:flex-row gap-4 justify-end">
               <Button
                 variant="outline"

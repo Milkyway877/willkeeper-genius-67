@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -189,22 +188,12 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     console.log('Message delivery response:', data);
     
     if (data && data.success) {
-      // Create notification directly in frontend to avoid RLS issues
+      // Show success toast
       toast({
         title: "Message Delivered",
         description: `Your message has been successfully delivered to ${data.recipientEmail || 'the recipient'}.`,
         variant: "default"
       });
-      
-      // Try to create system notification but don't fail if it doesn't work
-      try {
-        await createSystemNotification('success' as EventType, {
-          title: 'Message Delivered',
-          description: `Your future message has been successfully delivered.`
-        });
-      } catch (notifError) {
-        console.warn('Unable to create system notification, but message was sent:', notifError);
-      }
       
       return true;
     } else {
@@ -259,7 +248,7 @@ export const markMessageAsDelivered = async (id: string): Promise<boolean> => {
     
     await createSystemNotification('message_delivered' as EventType, {
       title: 'Message Delivered',
-      description: `Your message has been successfully delivered.`
+      description: `Your future message has been successfully delivered.`
     });
     
     return true;
