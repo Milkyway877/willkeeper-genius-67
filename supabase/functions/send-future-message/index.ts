@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
 import { Resend } from 'https://esm.sh/resend@1.0.0';
@@ -175,7 +176,13 @@ async function processMessage(message: any) {
     const emailHtml = getEmailTemplate(message);
     const emailSubject = `${message.title} - A Message from The Tank`;
     
+    if (!resendApiKey) {
+      console.error("Missing RESEND_API_KEY environment variable");
+      throw new Error("Email service configuration error");
+    }
+    
     // Send the email using Resend
+    console.log("About to send email with Resend");
     const { data, error } = await resend.emails.send({
       from: 'The Tank <messages@willtank.ai>',
       to: [message.recipient_email],
@@ -184,6 +191,7 @@ async function processMessage(message: any) {
     });
     
     if (error) {
+      console.error("Resend API error:", error);
       throw new Error(`Email delivery failed: ${error.message}`);
     }
     
@@ -200,6 +208,7 @@ async function processMessage(message: any) {
       .eq('status', 'processing'); // Only update if status is still processing
       
     if (updateError) {
+      console.error("Database update error:", updateError);
       throw new Error(`Failed to update message status: ${updateError.message}`);
     }
     

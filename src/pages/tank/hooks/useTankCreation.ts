@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
@@ -124,7 +123,7 @@ export const useTankCreation = () => {
         preview: messageContent,
         content: messageContent,
         message_url: messageUrl || null,
-        status: 'scheduled',
+        status: 'scheduled', // Explicitly use a valid literal value
         delivery_type: deliveryType,
         delivery_date: deliveryDate.toISOString(),
         delivery_event: null,

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -131,11 +132,11 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     
     console.log('Current message status:', message.status);
     
-    // Update the status to processing
+    // Update the status to processing - fix the constraint error by using valid status value
     const { error: updateError } = await supabase
       .from('future_messages')
       .update({ 
-        status: 'processing', 
+        status: 'processing' as const, 
         updated_at: new Date().toISOString() 
       })
       .eq('id', id);
@@ -159,7 +160,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       await supabase
         .from('future_messages')
         .update({ 
-          status: 'scheduled', 
+          status: 'scheduled' as const, 
           updated_at: new Date().toISOString() 
         })
         .eq('id', id);
@@ -184,7 +185,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       await supabase
         .from('future_messages')
         .update({ 
-          status: 'scheduled', 
+          status: 'scheduled' as const, 
           updated_at: new Date().toISOString() 
         })
         .eq('id', id);
@@ -200,7 +201,7 @@ export const markMessageAsDelivered = async (id: string): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('future_messages')
-      .update({ status: 'delivered', updated_at: new Date().toISOString() })
+      .update({ status: 'delivered' as const, updated_at: new Date().toISOString() })
       .eq('id', id);
       
     if (error) {
