@@ -1,9 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
 import { EventType } from "@/services/notificationService";
-import { useToast } from "@/hooks/use-toast";
 
 export interface FutureMessage {
   id: string;
@@ -15,7 +13,7 @@ export interface FutureMessage {
   preview: string | null;
   content: string | null;
   message_url: string | null;
-  status: 'draft' | 'scheduled' | 'processing' | 'delivered' | 'failed'; // Explicitly define allowed status values
+  status: 'draft' | 'scheduled' | 'processing' | 'delivered' | 'failed';
   delivery_type: string | null;
   delivery_date: string;
   delivery_event: string | null;

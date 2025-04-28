@@ -134,13 +134,18 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
     setTestResults(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke<TestSystemResult>('test-message-delivery');
+      console.log('Starting delivery system test');
+      const response = await supabase.functions.invoke('test-message-delivery');
       
-      if (error) {
-        throw error;
+      if (response.error) {
+        console.error('Test function error:', response.error);
+        throw new Error(`Error from test function: ${response.error.message || 'Unknown error'}`);
       }
       
+      const data: TestSystemResult = response.data;
+      
       if (data && data.results) {
+        console.log('Test results:', data);
         setTestResults(data.results);
         
         if (data.success) {
@@ -162,7 +167,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
       console.error('Error testing delivery system:', error);
       toast({
         title: 'Test Failed',
-        description: 'Could not complete delivery system test.',
+        description: `Could not complete delivery system test: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
