@@ -1,7 +1,8 @@
+
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getUserProfile, getInitials, UserProfile } from "@/services/profileService";
+import { getUserProfile, getInitials } from "@/services/profileService";
 import { logUserActivity } from "@/services/activityService";
 
 interface UserProfile {
@@ -10,6 +11,11 @@ interface UserProfile {
   avatar_url: string | null;
   email: string | null;
   gender?: 'male' | 'female';
+  is_activated: boolean | null;
+  email_verified: boolean | null;
+  subscription_plan: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface UserProfileContextType {
