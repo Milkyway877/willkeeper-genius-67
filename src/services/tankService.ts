@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -91,6 +92,18 @@ export const updateFutureMessage = async (id: string, updates: Partial<FutureMes
 
 export const deleteFutureMessage = async (messageId: string): Promise<boolean> => {
   try {
+    // First delete any related email notifications
+    const { error: notificationsError } = await supabase
+      .from('email_notifications')
+      .delete()
+      .eq('message_id', messageId);
+      
+    if (notificationsError) {
+      console.error('Error deleting related email notifications:', notificationsError);
+      // Continue with message deletion even if notification deletion failed
+    }
+    
+    // Now delete the message itself
     const { error } = await supabase
       .from('future_messages')
       .delete()
