@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -10,7 +9,7 @@ import { FileText, Video, Mic, File, Calendar, Mail, ArrowLeft } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 import { getFutureMessages, FutureMessage } from '@/services/tankService';
 import { MessagePreview } from './components/preview/MessagePreview';
-import { DeliverySystem } from './components/DeliverySystem';
+import DeliverySystem from './components/DeliverySystem';
 
 export default function TankMessageDetail() {
   const { id } = useParams<{ id: string }>();
@@ -178,7 +177,11 @@ export default function TankMessageDetail() {
           </Card>
           
           <div className="space-y-6">
-            <DeliverySystem messageId={message.id} />
+            <DeliverySystem message={message} onDeliveryComplete={() => {
+              if (id) {
+                fetchMessage();
+              }
+            }} />
             
             <Card>
               <CardContent className="pt-6">
