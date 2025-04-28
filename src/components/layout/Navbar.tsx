@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -117,8 +118,8 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="flex flex-col">
-                      <span className="font-semibold">{profile?.full_name || 'User'}</span>
-                      <span className="text-xs text-gray-500 truncate">{profile?.email}</span>
+                      <span className="font-semibold">{profile?.full_name || 'Guest User'}</span>
+                      <span className="text-xs text-gray-500 truncate">{profile?.email || 'No email'}</span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
