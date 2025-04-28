@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -239,30 +238,9 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
       
-      // Check if bucket exists, create if not
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const futureBucket = buckets?.find(bucket => bucket.name === 'future-videos');
-      
-      if (!futureBucket) {
-        console.log('Creating future-videos bucket');
-        const { error: bucketError } = await supabase.storage.createBucket('future-videos', {
-          public: true
-        });
-        
-        if (bucketError) {
-          console.error('Error creating bucket:', bucketError);
-          toast({
-            title: "Storage Error",
-            description: "Could not create storage bucket for videos.",
-            variant: "destructive"
-          });
-          setIsUploading(false);
-          return null;
-        }
-      }
-      
-      // Upload the file
-      const { error: uploadError } = await supabase.storage
+      // Upload the file directly to the bucket we created via SQL
+      // No need to check or create the bucket as it's now guaranteed to exist
+      const { error: uploadError, data } = await supabase.storage
         .from('future-videos')
         .upload(filePath, videoBlob, {
           cacheControl: '3600',
@@ -281,11 +259,11 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       }
       
       // Get and set the public URL
-      const { data } = supabase.storage
+      const { data: urlData } = supabase.storage
         .from('future-videos')
         .getPublicUrl(filePath);
         
-      const publicUrl = data?.publicUrl;
+      const publicUrl = urlData?.publicUrl;
       console.log("Video uploaded, URL:", filePath);
       
       toast({

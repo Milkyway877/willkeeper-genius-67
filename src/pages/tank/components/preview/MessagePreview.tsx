@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { MessageType } from '../../types';
@@ -33,17 +32,7 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
           setLoading(true);
           console.log("Fetching video URL for:", messageUrl);
           
-          // Create bucket if it doesn't exist
-          const { data: buckets } = await supabase.storage.listBuckets();
-          const futureBucket = buckets?.find(bucket => bucket.name === 'future-videos');
-          
-          if (!futureBucket) {
-            console.log('Creating future-videos bucket');
-            await supabase.storage.createBucket('future-videos', {
-              public: true
-            });
-          }
-          
+          // Use the existing future-videos bucket directly without trying to create it
           const { data } = supabase.storage
             .from('future-videos')
             .getPublicUrl(messageUrl);
