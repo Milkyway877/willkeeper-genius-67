@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -48,7 +49,6 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       gender: data.gender || null, // Add gender if available
     };
     
-    console.log("Fetched profile:", profile); // Debug log
     return profile;
   } catch (error) {
     console.error('Error in getUserProfile:', error);
@@ -64,8 +64,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw new Error('No user logged in');
     }
     
-    console.log("Updating profile with:", updates); // Debug log
-    
     const dbUpdates: any = {...updates};
     
     if (updates.is_activated !== undefined) {
@@ -73,21 +71,11 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       delete dbUpdates.is_activated;
     }
     
-    if (dbUpdates.activation_date !== undefined) {
-      delete dbUpdates.activation_date;
-    }
-    
-    if (dbUpdates.subscription_plan !== undefined && !dbTableHasColumn('user_profiles', 'subscription_plan')) {
-      delete dbUpdates.subscription_plan;
-    }
-    
-    if (dbUpdates.email !== undefined) {
-      delete dbUpdates.email;
-    }
-    
-    if (dbUpdates.email_verified !== undefined) {
-      delete dbUpdates.email_verified;
-    }
+    // These fields should not be sent to the database
+    delete dbUpdates.activation_date;
+    delete dbUpdates.subscription_plan;
+    delete dbUpdates.email;
+    delete dbUpdates.email_verified;
     
     const { data, error } = await supabase
       .from('user_profiles')
@@ -100,8 +88,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       console.error('Error updating user profile:', error);
       throw error;
     }
-    
-    console.log("Profile updated successfully:", data); // Debug log
     
     const profile: UserProfile = {
       id: data.id,
@@ -131,22 +117,9 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       throw new Error('No user logged in');
     }
 
-    const { data: buckets } = await supabase
-      .storage
-      .listBuckets();
-    
-    const avatarsBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
-    
-    if (!avatarsBucketExists) {
-      console.error('Avatars storage bucket does not exist');
-      throw new Error('Avatar storage not configured');
-    }
-
     const fileExt = file.name.split('.').pop();
     const fileName = `${session.user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
-
-    console.log("Uploading avatar with path:", fileName);
-
+    
     const { error: uploadError, data } = await supabase.storage
       .from('avatars')
       .upload(fileName, file, {
@@ -163,6 +136,7 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       .from('avatars')
       .getPublicUrl(fileName);
 
+    // Update the user profile with the new avatar URL
     await updateUserProfile({
       avatar_url: publicUrl
     });
@@ -172,13 +146,6 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
     console.error('Error in uploadProfileImage:', error);
     return null;
   }
-};
-
-const dbTableHasColumn = (table: string, column: string): boolean => {
-  if (table === 'user_profiles' && column === 'subscription_plan') {
-    return false;
-  }
-  return true;
 };
 
 export const getInitials = (name: string | null | undefined): string => {
