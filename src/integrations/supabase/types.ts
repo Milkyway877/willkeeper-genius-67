@@ -60,6 +60,50 @@ export type Database = {
         }
         Relationships: []
       }
+      email_notifications: {
+        Row: {
+          content: string
+          error: string | null
+          id: string
+          message_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          error?: string | null
+          id?: string
+          message_id?: string | null
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          error?: string | null
+          id?: string
+          message_id?: string | null
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_notifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "future_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_verification_codes: {
         Row: {
           code: string
@@ -141,7 +185,7 @@ export type Database = {
           preview: string | null
           recipient_email: string | null
           recipient_name: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["future_message_status"] | null
           title: string | null
           updated_at: string | null
           user_id: string | null
@@ -160,7 +204,7 @@ export type Database = {
           preview?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["future_message_status"] | null
           title?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -179,7 +223,7 @@ export type Database = {
           preview?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["future_message_status"] | null
           title?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -792,10 +836,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_enum_values: {
+        Args: { table_name: string; column_name: string }
+        Returns: string[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      future_message_status:
+        | "draft"
+        | "scheduled"
+        | "processing"
+        | "delivered"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -910,6 +962,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      future_message_status: [
+        "draft",
+        "scheduled",
+        "processing",
+        "delivered",
+        "failed",
+      ],
+    },
   },
 } as const
