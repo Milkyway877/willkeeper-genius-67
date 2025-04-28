@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
 import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from '../_shared/email-helper.ts';
@@ -25,9 +26,10 @@ serve(async (req) => {
       throw new Error('Message ID is required');
     }
 
+    // First get the message without trying to join with user_profiles
     const { data: message, error: fetchError } = await supabase
       .from('future_messages')
-      .select('*, user_profiles(full_name)')
+      .select('*')
       .eq('id', messageId)
       .single();
 
@@ -36,9 +38,22 @@ serve(async (req) => {
       throw new Error('Message not found');
     }
 
-    const senderName = message.user_profiles?.full_name || 'Someone special';
+    // Now fetch the sender's name in a separate query if needed
+    let senderName = 'Someone special';
+    if (message.user_id) {
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('id', message.user_id)
+        .single();
+      
+      if (userProfile && userProfile.full_name) {
+        senderName = userProfile.full_name;
+      }
+    }
 
     console.log('Message details:', JSON.stringify(message, null, 2));
+    console.log('Sender name:', senderName);
 
     const { error: updateError } = await supabase
       .from('future_messages')
