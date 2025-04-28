@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,18 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { Loader2, Check, Edit, Mail, AlertCircle } from 'lucide-react';
+import { updateUserProfile, uploadProfileImage } from '@/services/profileService';
+import { Loader2, Check, Upload, Edit, Mail, AlertCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserAvatar } from '@/components/UserAvatar';
-import { useProfileUpdates } from '@/hooks/use-profile-updates';
+import { supabase } from '@/integrations/supabase/client';
 
 export function AccountSettings() {
   const { toast } = useToast();
-  const { profile, updateEmail } = useUserProfile();
-  const { updateProfile, uploadAvatar, isUploading, isSaving } = useProfileUpdates();
+  const { profile, refreshProfile, updateEmail } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -59,28 +62,68 @@ export function AccountSettings() {
   };
 
   const handleSave = async () => {
-    const success = await updateProfile({
-      full_name: formData.fullName
-    });
-    
-    if (success) {
-      setIsEditing(false);
+    try {
+      setIsSaving(true);
+      
+      const updatedProfile = await updateUserProfile({
+        full_name: formData.fullName
+      });
+      
+      if (updatedProfile) {
+        await refreshProfile();
+        
+        toast({
+          title: "Profile Updated",
+          description: "Your account information has been saved.",
+          variant: "default",
+        });
+        
+        setIsEditing(false);
+      }
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "There was a problem updating your profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
 
-    await uploadAvatar(file);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      setIsUploading(true);
+      await uploadProfileImage(file);
+      await refreshProfile();
+      
+      toast({
+        title: "Avatar Updated",
+        description: "Your profile picture has been successfully updated.",
+        variant: "default"
+      });
+    } catch (error: any) {
+      console.error("Error uploading avatar:", error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "There was an error uploading your avatar. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   const handleEmailUpdate = async () => {
     try {
+      setIsSaving(true);
       setEmailError('');
       
       if (!newEmail) {
@@ -88,6 +131,7 @@ export function AccountSettings() {
         return;
       }
 
+      // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(newEmail)) {
         setEmailError('Please enter a valid email address');
@@ -109,6 +153,8 @@ export function AccountSettings() {
     } catch (error: any) {
       console.error("Error updating email:", error);
       setEmailError(error.message || "Failed to update email");
+    } finally {
+      setIsSaving(false);
     }
   };
 

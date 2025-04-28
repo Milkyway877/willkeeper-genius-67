@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +70,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         throw error;
       }
       
+      // Log the activity
       await logUserActivity('email_update', { 
         previous_email: user?.email,
         new_email: newEmail
@@ -88,44 +90,50 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
+    // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log("Auth state changed:", event);
         
+        // Log user sign in
         if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user);
-          await refreshProfile();
-          await logUserActivity('login', { 
+          logUserActivity('login', { 
             email: session.user.email,
-            method: 'password'
+            method: 'password' // or other auth method
           });
-        } else if (event === 'SIGNED_OUT') {
-          if (prevAuthState) {
-            await logUserActivity('logout', { 
-              email: prevAuthState.email 
-            });
-          }
-          setUser(null);
-          setProfile(null);
-          setInitials("U");
-        } else if (event === 'USER_UPDATED') {
-          await refreshProfile();
+        }
+        
+        // Log user sign out
+        if (event === 'SIGNED_OUT' && prevAuthState) {
+          logUserActivity('logout', { 
+            email: prevAuthState.email 
+          });
         }
         
         setPrevAuthState(user);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Load profile after auth state changes
+          refreshProfile();
+        } else {
+          setProfile(null);
+          setInitials("U");
+        }
       }
     );
     
+    // Then check for existing session
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
+        setUser(session?.user ?? null);
+        setPrevAuthState(session?.user ?? null);
+        
         if (session?.user) {
-          setUser(session.user);
           await refreshProfile();
         }
-        
-        setPrevAuthState(session?.user ?? null);
       } catch (error) {
         console.error("Error checking user session:", error);
       } finally {
