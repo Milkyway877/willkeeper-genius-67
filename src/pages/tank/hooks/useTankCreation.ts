@@ -74,7 +74,8 @@ export const useTankCreation = () => {
         return;
       }
       
-      if (deliveryType === 'email' && !recipientEmail.trim()) {
+      // Fixed: Changed 'email' to use the proper DeliveryTrigger values
+      if (deliveryType === 'date' && !recipientEmail.trim()) {
         toast({
           title: 'Missing Email',
           description: 'Please enter the recipient email address.'
@@ -126,7 +127,7 @@ export const useTankCreation = () => {
         status: 'scheduled',
         delivery_type: deliveryType,
         delivery_date: deliveryDate.toISOString(),
-        delivery_event: null, // Adding the missing property
+        delivery_event: null,
         category: messageCategory,
         user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
       };
