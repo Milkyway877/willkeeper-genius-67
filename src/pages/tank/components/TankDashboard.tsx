@@ -1,7 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { 
   Card, 
   CardContent, 
@@ -20,8 +30,8 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Video, Mic, File, Eye, Plus } from 'lucide-react';
-import { getFutureMessages, checkScheduledMessages } from '@/services/tankService';
+import { FileText, Video, Mic, File, Eye, Plus, Trash2 } from 'lucide-react';
+import { getFutureMessages, deleteFutureMessage, checkScheduledMessages } from '@/services/tankService';
 import { MessagePreview } from './preview/MessagePreview';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,7 +59,6 @@ export const TankDashboard: React.FC = () => {
     fetchMessages();
   }, []);
   
-  // Check for scheduled messages that need delivery on component mount
   useEffect(() => {
     const checkForScheduledMessages = async () => {
       try {
@@ -60,7 +69,6 @@ export const TankDashboard: React.FC = () => {
             description: `Checked ${result.processed} messages: ${result.successful} delivered, ${result.failed} failed.`,
           });
           
-          // Refresh messages if any were processed
           fetchMessages();
         }
       } catch (error) {
@@ -108,6 +116,32 @@ export const TankDashboard: React.FC = () => {
     console.log('Previewing message:', message);
     setPreviewMessage(message);
     setPreviewOpen(true);
+  };
+  
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const success = await deleteFutureMessage(messageId);
+      if (success) {
+        toast({
+          title: "Message Deleted",
+          description: "The message has been successfully deleted.",
+        });
+        fetchMessages();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the message. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting the message.",
+        variant: "destructive",
+      });
+    }
   };
   
   const getMessageIcon = (type: string) => {
@@ -215,6 +249,34 @@ export const TankDashboard: React.FC = () => {
                             >
                               Details
                             </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Message</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this message? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>

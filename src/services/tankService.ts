@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -90,15 +89,15 @@ export const updateFutureMessage = async (id: string, updates: Partial<FutureMes
   }
 };
 
-export const deleteFutureMessage = async (id: string): Promise<boolean> => {
+export const deleteFutureMessage = async (messageId: string): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('future_messages')
       .delete()
-      .eq('id', id);
+      .eq('id', messageId);
       
     if (error) {
-      console.error('Error deleting future message:', error);
+      console.error('Error deleting message:', error);
       return false;
     }
     

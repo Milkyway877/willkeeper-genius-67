@@ -1,16 +1,26 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Video, Mic, File, Calendar, Mail, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { getFutureMessages, FutureMessage } from '@/services/tankService';
+import { FileText, Video, Mic, File, Calendar, Mail, ArrowLeft, Trash2 } from 'lucide-react';
+import { getFutureMessages, deleteFutureMessage, FutureMessage } from '@/services/tankService';
 import { MessagePreview } from './components/preview/MessagePreview';
 import DeliverySystem from './components/DeliverySystem';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function TankMessageDetail() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +28,7 @@ export default function TankMessageDetail() {
   const [message, setMessage] = useState<FutureMessage | null>(null);
   const [loading, setLoading] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const { toast } = useToast();
 
   const fetchMessage = async () => {
     try {
@@ -44,6 +55,34 @@ export default function TankMessageDetail() {
 
   const handleBack = () => {
     navigate('/tank');
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    
+    try {
+      const success = await deleteFutureMessage(id);
+      if (success) {
+        toast({
+          title: "Message Deleted",
+          description: "The message has been successfully deleted.",
+        });
+        navigate('/tank'); // Return to the messages list
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the message. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while deleting the message.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePreview = () => {
@@ -103,10 +142,37 @@ export default function TankMessageDetail() {
     <Layout>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <Button onClick={handleBack} variant="outline" className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Tank
-          </Button>
+          <div className="flex justify-between items-center mb-4">
+            <Button onClick={handleBack} variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Tank
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Message
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Message</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this message? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-red-500 hover:bg-red-600"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
           
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
             <div className="flex items-center gap-2 mb-2 md:mb-0">
