@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { MessageCategory } from '../../types';
+import { useMessageEnhancer } from '../../hooks/useMessageEnhancer';
 
 interface TankVideoCreatorProps {
   onContentChange: (content: string) => void;
@@ -42,6 +44,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   onVideoUrlChange
 }) => {
   const { toast } = useToast();
+  const { enhanceVideo, isEnhancing } = useMessageEnhancer();
   const [title, setTitle] = useState<string>('');
   const [recipient, setRecipient] = useState<string>('');
   const [isRecording, setIsRecording] = useState(false);
@@ -57,6 +60,8 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const [selectedMusic, setSelectedMusic] = useState<string | null>(null);
   const [filters, setFilters] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isApplyingEnhancements, setIsApplyingEnhancements] = useState(false);
+  const [enhancedVideoBlob, setEnhancedVideoBlob] = useState<Blob | null>(null);
   
   useEffect(() => {
     onCategoryChange('story');
@@ -67,6 +72,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     onTitleChange(title);
@@ -209,6 +215,9 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const resetRecording = () => {
     setVideoBlob(null);
     setVideoPreviewUrl(null);
+    setEnhancedVideoBlob(null);
+    setSelectedMusic(null);
+    setFilters([]);
     
     if (videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -221,7 +230,10 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   };
 
   const uploadVideoToSupabase = async () => {
-    if (!videoBlob) {
+    // Use the enhanced video if available, otherwise use the original
+    const blobToUpload = enhancedVideoBlob || videoBlob;
+    
+    if (!blobToUpload) {
       toast({
         title: "No Video Found",
         description: "Please record or upload a video first.",
@@ -242,7 +254,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       // No need to check or create the bucket as it's now guaranteed to exist
       const { error: uploadError, data } = await supabase.storage
         .from('future-videos')
-        .upload(filePath, videoBlob, {
+        .upload(filePath, blobToUpload, {
           cacheControl: '3600',
           upsert: true
         });
@@ -319,30 +331,84 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   };
   
   const handleMusicSelect = (music: string) => {
-    setSelectedMusic(music);
-    toast({
-      title: "Music Selected",
-      description: `"${music}" background music has been applied.`
-    });
+    if (selectedMusic === music) {
+      setSelectedMusic(null);
+      toast({
+        title: "Music Removed",
+        description: `Background music has been removed.`
+      });
+    } else {
+      setSelectedMusic(music);
+      toast({
+        title: "Music Selected",
+        description: `"${music}" background music has been applied.`
+      });
+    }
   };
   
   const toggleFilter = (filter: string) => {
     if (filters.includes(filter)) {
       setFilters(filters.filter(f => f !== filter));
+      toast({
+        title: "Filter Removed",
+        description: `"${filter}" filter has been removed.`
+      });
     } else {
       setFilters([...filters, filter]);
+      toast({
+        title: "Filter Applied",
+        description: `"${filter}" filter has been applied.`
+      });
     }
-    
-    toast({
-      title: filters.includes(filter) ? "Filter Removed" : "Filter Applied",
-      description: `"${filter}" filter has been ${filters.includes(filter) ? 'removed' : 'applied'}.`
-    });
   };
   
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Function to apply selected enhancements to video
+  const applyEnhancements = async () => {
+    if (!videoBlob) {
+      toast({
+        title: "No Video Found",
+        description: "Please record or upload a video first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsApplyingEnhancements(true);
+    
+    try {
+      const enhancedBlob = await enhanceVideo(videoBlob, {
+        music: selectedMusic || undefined,
+        musicVolume: musicVolume,
+        filters: filters.length > 0 ? filters : undefined,
+        useAI: true
+      });
+      
+      if (enhancedBlob) {
+        const enhancedURL = URL.createObjectURL(enhancedBlob);
+        setEnhancedVideoBlob(enhancedBlob);
+        setVideoPreviewUrl(enhancedURL);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+          videoRef.current.src = enhancedURL;
+        }
+      }
+    } catch (error) {
+      console.error('Error applying enhancements:', error);
+      toast({
+        title: "Enhancement Failed",
+        description: "Could not apply enhancements to your video. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsApplyingEnhancements(false);
+    }
   };
 
   // Use this video handler
@@ -353,6 +419,13 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         title: "Video Ready",
         description: "Your video is ready to be delivered."
       });
+    }
+  };
+  
+  // Browse files handler
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -628,9 +701,23 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                     </div>
                   </div>
                   
-                  <Button className="mt-3 w-full" size="sm">
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Apply AI Enhancements
+                  <Button 
+                    className="mt-3 w-full" 
+                    size="sm"
+                    onClick={applyEnhancements}
+                    disabled={!videoBlob || isApplyingEnhancements || isEnhancing}
+                  >
+                    {isApplyingEnhancements || isEnhancing ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Applying...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Apply AI Enhancements
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
@@ -647,15 +734,14 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                 <Input
                   type="file"
                   id="videoUpload"
+                  ref={fileInputRef}
                   className="hidden"
                   accept="video/*"
                   onChange={handleFileUpload}
                 />
-                <Button asChild>
-                  <label htmlFor="videoUpload">
-                    <FileUp className="mr-2 h-4 w-4" />
-                    Browse Video Files
-                  </label>
+                <Button onClick={handleBrowseClick}>
+                  <FileUp className="mr-2 h-4 w-4" />
+                  Browse Video Files
                 </Button>
               </div>
               
@@ -677,6 +763,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       onClick={() => {
                         setVideoPreviewUrl(null);
                         setVideoBlob(null);
+                        setEnhancedVideoBlob(null);
                       }}
                     >
                       <X className="mr-2 h-4 w-4" />
