@@ -1,7 +1,9 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
 import { EventType } from "@/services/notificationService";
+import { useToast } from "@/hooks/use-toast";
 
 export interface FutureMessage {
   id: string;
@@ -107,6 +109,51 @@ export const deleteFutureMessage = async (id: string): Promise<boolean> => {
   }
 };
 
+export const sendFutureMessage = async (id: string): Promise<boolean> => {
+  try {
+    // First update the status to processing
+    const { error: updateError } = await supabase
+      .from('future_messages')
+      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .eq('id', id);
+      
+    if (updateError) {
+      console.error('Error updating message status:', updateError);
+      return false;
+    }
+    
+    // Call the edge function to send the message
+    const { data, error } = await supabase.functions.invoke('send-future-message', {
+      body: { messageId: id }
+    });
+    
+    if (error) {
+      console.error('Error sending future message:', error);
+      
+      // Reset status if delivery failed
+      await supabase
+        .from('future_messages')
+        .update({ status: 'scheduled', updated_at: new Date().toISOString() })
+        .eq('id', id);
+        
+      return false;
+    }
+    
+    console.log('Message delivery response:', data);
+    
+    // Create notification about successful delivery
+    await createSystemNotification('message_delivered' as EventType, {
+      title: 'Message Delivered',
+      description: `Your future message has been successfully delivered.`
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error in sendFutureMessage:', error);
+    return false;
+  }
+};
+
 export const markMessageAsDelivered = async (id: string): Promise<boolean> => {
   try {
     const { error } = await supabase
@@ -128,5 +175,25 @@ export const markMessageAsDelivered = async (id: string): Promise<boolean> => {
   } catch (error) {
     console.error('Error in markMessageAsDelivered:', error);
     return false;
+  }
+};
+
+export const checkScheduledMessages = async (): Promise<{
+  processed: number;
+  successful: number;
+  failed: number;
+} | null> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('check-scheduled-messages');
+    
+    if (error) {
+      console.error('Error checking scheduled messages:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in checkScheduledMessages:', error);
+    return null;
   }
 };

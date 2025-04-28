@@ -63,7 +63,7 @@ export const useMessageEnhancer = () => {
     }
   };
   
-  // New function for enhancing videos
+  // Enhanced function for enhancing videos
   const enhanceVideo = async (videoBlob: Blob, enhancements: {
     music?: string;
     musicVolume?: number;
@@ -105,11 +105,50 @@ export const useMessageEnhancer = () => {
       return null;
     }
   };
+  
+  // New function for enhancing documents
+  const enhanceDocument = async (documentBlob: Blob, enhancements: {
+    addWatermark?: boolean;
+    convertToPDF?: boolean;
+    optimize?: boolean;
+  }) => {
+    setIsEnhancing(true);
+    
+    try {
+      toast({
+        title: "Enhancing Document",
+        description: "Applying selected enhancements to your document...",
+      });
+      
+      // In a production environment, we would send the document to a backend service
+      // For now, we'll simulate the process with a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setIsEnhancing(false);
+      
+      toast({
+        title: "Document Enhanced",
+        description: "Your document has been successfully enhanced.",
+      });
+      
+      return documentBlob;
+    } catch (error) {
+      console.error('Error enhancing document:', error);
+      toast({
+        title: "Enhancement Failed",
+        description: "Could not enhance your document. Please try again.",
+        variant: "destructive",
+      });
+      setIsEnhancing(false);
+      return null;
+    }
+  };
 
   return {
     enhanceContent,
     suggestImprovements,
-    enhanceVideo, // Add new function to the return object
+    enhanceVideo,
+    enhanceDocument,
     isEnhancing,
   };
 };
