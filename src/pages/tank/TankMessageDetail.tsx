@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -18,24 +19,24 @@ export default function TankMessageDetail() {
   const [loading, setLoading] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchMessage = async () => {
-      try {
-        setLoading(true);
-        const messages = await getFutureMessages();
-        const foundMessage = messages.find(msg => msg.id === id);
-        
-        if (foundMessage) {
-          console.log('Found message:', foundMessage);
-          setMessage(foundMessage);
-        }
-      } catch (error) {
-        console.error('Error fetching message:', error);
-      } finally {
-        setLoading(false);
+  const fetchMessage = async () => {
+    try {
+      setLoading(true);
+      const messages = await getFutureMessages();
+      const foundMessage = messages.find(msg => msg.id === id);
+      
+      if (foundMessage) {
+        console.log('Found message:', foundMessage);
+        setMessage(foundMessage);
       }
-    };
-    
+    } catch (error) {
+      console.error('Error fetching message:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (id) {
       fetchMessage();
     }
