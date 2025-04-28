@@ -24,6 +24,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { CurrentUserAvatar } from '@/components/CurrentUserAvatar';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -112,7 +113,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <UserAvatar />
+                      <CurrentUserAvatar />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
