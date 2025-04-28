@@ -30,7 +30,10 @@ site_url = "http://localhost:3000"
 verify_jwt = true
 
 [functions.send-future-message]
-verify_jwt = true
+verify_jwt = false
 
 [functions.check-scheduled-messages]
+verify_jwt = false
+
+[functions.test-message-delivery]
 verify_jwt = false

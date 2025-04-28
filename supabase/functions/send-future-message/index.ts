@@ -1,19 +1,19 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
-import { Resend } from 'https://esm.sh/resend@1.0.0';
+import { Resend } from 'https://esm.sh/resend@1.1.0'; // Update to newer Resend version
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const resendApiKey = Deno.env.get('RESEND_API_KEY') ?? '';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const resend = new Resend(resendApiKey);
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Import shared CORS headers
+import { corsHeaders } from '../_shared/cors.ts';
+
+// Initialize Resend with proper version compatibility
+const resend = new Resend(resendApiKey);
 
 interface MessagePayload {
   messageId: string;
@@ -257,9 +257,14 @@ async function processMessage(message: any) {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Always handle CORS preflight requests first
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Max-Age': '86400', // 24 hours caching of preflight request
+      }
+    });
   }
 
   try {

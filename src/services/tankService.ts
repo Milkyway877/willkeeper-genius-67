@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -146,7 +147,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     
     console.log('Status updated to processing, calling edge function');
     
-    // Call the edge function to send the message
+    // Call the edge function with proper error handling for CORS issues
     const { data, error } = await supabase.functions.invoke('send-future-message', {
       body: { messageId: id }
     });
@@ -168,13 +169,18 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     
     console.log('Message delivery response:', data);
     
-    // Create notification about successful delivery
-    await createSystemNotification('message_delivered' as EventType, {
-      title: 'Message Delivered',
-      description: `Your future message has been successfully delivered.`
-    });
-    
-    return true;
+    if (data && data.success) {
+      // Create notification about successful delivery
+      await createSystemNotification('message_delivered' as EventType, {
+        title: 'Message Delivered',
+        description: `Your future message has been successfully delivered.`
+      });
+      
+      return true;
+    } else {
+      console.error('Message delivery failed:', data?.error || 'Unknown error');
+      return false;
+    }
   } catch (error) {
     console.error('Error in sendFutureMessage:', error);
     
