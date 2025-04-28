@@ -9,24 +9,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UserAvatar } from '@/components/UserAvatar';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { updateUserProfile } from '@/services/profileService';
-import { Check, Loader2, User, Upload, Image, Edit } from 'lucide-react';
+import { updateUserProfile, uploadProfileImage } from '@/services/profileService';
+import { Check, Loader2, User, Upload, Image, Edit, Mail, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function Profile() {
   const { toast } = useToast();
-  const { profile, refreshProfile } = useUserProfile();
+  const { profile, refreshProfile, user, updateEmail } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEmailSaving, setIsEmailSaving] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     if (profile?.full_name) {
       setFullName(profile.full_name);
     }
-  }, [profile]);
+    if (profile?.email) {
+      setEmail(profile.email);
+      setNewEmail(profile.email);
+    } else if (user?.email) {
+      setEmail(user.email);
+      setNewEmail(user.email);
+    }
+  }, [profile, user]);
   
   const handleEdit = () => {
     setIsEditing(true);
@@ -38,6 +53,13 @@ export default function Profile() {
       setFullName(profile.full_name);
     }
     setIsEditing(false);
+  };
+
+  const handleCancelEmail = () => {
+    // Reset to original values
+    setNewEmail(email);
+    setShowEmailDialog(false);
+    setEmailError('');
   };
   
   const handleSave = async () => {
@@ -73,6 +95,42 @@ export default function Profile() {
     }
   };
 
+  const handleSaveEmail = async () => {
+    if (!newEmail) {
+      setEmailError('Email is required');
+      return;
+    }
+
+    if (newEmail === email) {
+      setShowEmailDialog(false);
+      return;
+    }
+
+    try {
+      setIsEmailSaving(true);
+      setEmailError('');
+      
+      const result = await updateEmail(newEmail);
+      
+      if (result.success) {
+        setShowEmailDialog(false);
+        
+        toast({
+          title: "Email Update Initiated",
+          description: "A confirmation link has been sent to your new email. Please check your inbox to complete the update.",
+          variant: "default"
+        });
+      } else {
+        setEmailError(result.error || "Failed to update email");
+      }
+    } catch (error) {
+      console.error("Error updating email:", error);
+      setEmailError("There was an error updating your email. Please try again.");
+    } finally {
+      setIsEmailSaving(false);
+    }
+  };
+
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = event.target.files?.[0];
@@ -99,26 +157,16 @@ export default function Profile() {
 
       setIsUploading(true);
       
-      // Generate a unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${profile.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      // Upload the file to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
+      // Upload using our new utility function
+      const publicUrl = await uploadProfileImage(file);
+      
+      if (!publicUrl) {
+        throw new Error("Failed to upload image");
       }
-
-      // Get the public URL for the uploaded image
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       
       // Update the user profile with the new avatar URL
       const updatedProfile = await updateUserProfile({
-        avatar_url: data.publicUrl
+        avatar_url: publicUrl
       });
       
       if (updatedProfile) {
@@ -169,7 +217,7 @@ export default function Profile() {
             <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
               <div className="relative group">
                 <div className="relative rounded-full overflow-hidden border-4 border-willtank-100 shadow-md h-32 w-32">
-                  <UserAvatar size="lg" className="h-full w-full" />
+                  <UserAvatar size="lg" className="h-full w-full" loading={isUploading} />
                   
                   <div 
                     className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -203,10 +251,10 @@ export default function Profile() {
 
               <div className="text-center md:text-left">
                 <h3 className="font-semibold text-xl">
-                  {profile?.full_name || 'User'}
+                  {profile?.full_name || user?.email?.split('@')[0] || 'User'}
                 </h3>
                 <p className="text-gray-600">
-                  {profile?.email || 'Loading email...'}
+                  {email || user?.email || 'No email available'}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2 justify-center md:justify-start">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-willtank-100 text-willtank-800">
@@ -267,22 +315,88 @@ export default function Profile() {
 
               <div>
                 <Label htmlFor="email" className="text-base font-medium">Email Address</Label>
-                <div className="mt-1.5">
+                <div className="flex gap-4 mt-1.5">
                   <Input 
                     id="email"
-                    value={profile?.email || 'Loading...'}
+                    value={email || (user?.email || '')}
                     disabled={true}
                     className="max-w-md"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
-                    To change your email address, please contact support.
-                  </p>
+                  <Button 
+                    onClick={() => setShowEmailDialog(true)} 
+                    className="bg-willtank-600 hover:bg-willtank-700"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Change Email
+                  </Button>
                 </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  {profile?.email_verified 
+                    ? "Email verified" 
+                    : "Email not verified. Please check your inbox for verification instructions."}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Email Address</DialogTitle>
+            <DialogDescription>
+              Enter your new email address below. A verification link will be sent to the new email to complete the update.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {emailError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{emailError}</AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newEmail" className="text-right">
+                New Email
+              </Label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleCancelEmail}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveEmail} 
+              disabled={isEmailSaving}
+              className="bg-willtank-600 hover:bg-willtank-700"
+            >
+              {isEmailSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Update Email
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

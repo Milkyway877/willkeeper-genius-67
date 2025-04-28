@@ -2,7 +2,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getUserProfile, getInitials, type UserProfile } from "@/services/profileService";
+import { getUserProfile, getInitials, type UserProfile, updateUserProfile } from "@/services/profileService";
 import { logUserActivity } from "@/services/activityService";
 
 interface UserProfileContextType {
@@ -11,6 +11,7 @@ interface UserProfileContextType {
   loading: boolean;
   initials: string;
   refreshProfile: () => Promise<void>;
+  updateEmail: (newEmail: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const UserProfileContext = createContext<UserProfileContextType>({
@@ -18,7 +19,8 @@ const UserProfileContext = createContext<UserProfileContextType>({
   profile: null,
   loading: true,
   initials: "U",
-  refreshProfile: async () => {}
+  refreshProfile: async () => {},
+  updateEmail: async () => ({ success: false })
 });
 
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
@@ -39,6 +41,30 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error("Error refreshing profile:", error);
+    }
+  };
+
+  const updateEmail = async (newEmail: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.updateUser({ email: newEmail });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Log the activity
+      logUserActivity('email_update', { 
+        previous_email: user?.email,
+        new_email: newEmail
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating email:", error);
+      return { 
+        success: false, 
+        error: error.message || "Failed to update email" 
+      };
     }
   };
 
@@ -116,7 +142,8 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
     profile,
     loading,
     initials,
-    refreshProfile
+    refreshProfile,
+    updateEmail
   };
 
   return (

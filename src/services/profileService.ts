@@ -50,6 +50,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       gender: data.gender || null, // Add gender if available
     };
     
+    console.log("Fetched profile:", profile); // Debug log
     return profile;
   } catch (error) {
     console.error('Error in getUserProfile:', error);
@@ -64,6 +65,8 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     if (!session?.user) {
       throw new Error('No user logged in');
     }
+    
+    console.log("Updating profile with:", updates); // Debug log
     
     // Convert from UserProfile fields to database fields
     const dbUpdates: any = {...updates};
@@ -105,6 +108,8 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw error;
     }
     
+    console.log("Profile updated successfully:", data); // Debug log
+    
     // Ensure the return data matches the UserProfile interface
     const profile: UserProfile = {
       id: data.id,
@@ -123,6 +128,40 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     return profile;
   } catch (error) {
     console.error('Error in updateUserProfile:', error);
+    return null;
+  }
+};
+
+export const uploadProfileImage = async (file: File): Promise<string | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      throw new Error('No user logged in');
+    }
+
+    // Generate a unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${session.user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    console.log("Uploading avatar with path:", filePath); // Debug log
+
+    // Upload the file to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    // Get the public URL for the uploaded image
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    
+    console.log("Avatar uploaded successfully, URL:", data.publicUrl); // Debug log
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
     return null;
   }
 };
