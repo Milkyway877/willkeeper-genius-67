@@ -12,10 +12,11 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserAvatar } from '@/components/UserAvatar';
+import { supabase } from '@/integrations/supabase/client';
 
 export function AccountSettings() {
   const { toast } = useToast();
-  const { profile, refreshProfile } = useUserProfile();
+  const { profile, refreshProfile, updateEmail } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -137,17 +138,17 @@ export function AccountSettings() {
         return;
       }
 
-      const { data: { user } } = await supabase.auth.updateUser({
-        email: newEmail
-      });
-
-      if (user) {
+      const { success, error } = await updateEmail(newEmail);
+      
+      if (success) {
         setShowEmailDialog(false);
         toast({
           title: "Email Update Initiated",
-          description: "A confirmation link has been sent to your new email address. Please check your inbox to complete the update.",
+          description: error || "A confirmation link has been sent to your new email address. Please check your inbox to complete the update.",
           variant: "default"
         });
+      } else {
+        setEmailError(error || "Failed to update email");
       }
     } catch (error: any) {
       console.error("Error updating email:", error);
