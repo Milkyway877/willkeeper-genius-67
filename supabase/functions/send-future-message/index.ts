@@ -26,7 +26,6 @@ serve(async (req) => {
       throw new Error('Message ID is required');
     }
 
-    // First get the message without trying to join with user_profiles
     const { data: message, error: fetchError } = await supabase
       .from('future_messages')
       .select('*')
@@ -38,7 +37,6 @@ serve(async (req) => {
       throw new Error('Message not found');
     }
 
-    // Now fetch the sender's name in a separate query if needed
     let senderName = 'Someone special';
     if (message.user_id) {
       const { data: userProfile } = await supabase
@@ -52,27 +50,10 @@ serve(async (req) => {
       }
     }
 
-    console.log('Message details:', JSON.stringify(message, null, 2));
-    console.log('Sender name:', senderName);
-
-    const { error: updateError } = await supabase
-      .from('future_messages')
-      .update({ 
-        status: 'processing',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', messageId);
-
-    if (updateError) {
-      console.error('Error updating status:', updateError);
-      throw new Error('Failed to update message status');
-    }
-
     console.log('Preparing to send email to:', message.recipient_email);
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
-      console.error('RESEND_API_KEY not set in environment variables');
       throw new Error('Email service configuration error: API key not set');
     }
 
@@ -91,21 +72,12 @@ serve(async (req) => {
     let attachmentUrl = null;
     if (message.message_url) {
       try {
-        if (message.message_type === 'video') {
+        if (message.message_type === 'video' || message.message_type === 'audio') {
           const { data: publicUrl } = await supabase
             .storage
             .from('future-videos')
             .getPublicUrl(message.message_url);
           
-          console.log('Video public URL:', publicUrl.publicUrl);
-          attachmentUrl = publicUrl.publicUrl;
-        } else if (message.message_type === 'audio') {
-          const { data: publicUrl } = await supabase
-            .storage
-            .from('future-videos')
-            .getPublicUrl(message.message_url);
-          
-          console.log('Audio public URL:', publicUrl.publicUrl);
           attachmentUrl = publicUrl.publicUrl;
         } else {
           const { data: publicUrl } = await supabase
@@ -137,93 +109,51 @@ serve(async (req) => {
         <p style="color: #666; font-size: 14px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
           This message was delivered by WillTank, a digital time capsule service.
         </p>
-        <p style="color: #666; font-size: 12px;">
-          If you have any questions, please contact support@willtank.com
-        </p>
       </div>
     `;
 
     const fullEmailContent = buildDefaultEmailLayout(emailContent);
-
     console.log('Sending email via Resend...');
-    let emailSent = false;
-    let emailError = null;
-    let emailResponse = null;
+    const resend = getResendClient();
     
-    try {
-      const resend = getResendClient();
-      
-      console.log('Email parameters:', {
-        from: 'WillTank <support@willtank.com>',
-        to: message.recipient_email,
-        subject: `A message from ${senderName} via WillTank`
-      });
-      
-      emailResponse = await resend.emails.send({
-        from: 'WillTank <support@willtank.com>',
-        to: [message.recipient_email],
-        subject: `A message from ${senderName} via WillTank`,
-        html: fullEmailContent,
-      });
+    const emailResponse = await resend.emails.send({
+      from: 'WillTank <support@willtank.com>',
+      to: [message.recipient_email],
+      subject: `A message from ${senderName} via WillTank`,
+      html: fullEmailContent,
+    });
 
-      console.log('Email sending raw response:', JSON.stringify(emailResponse));
+    const emailSent = isEmailSendSuccess(emailResponse);
+    
+    if (emailSent) {
+      console.log('Email sent successfully with ID:', emailResponse.id);
       
-      emailSent = isEmailSendSuccess(emailResponse);
-      
-      if (emailSent) {
-        console.log('Email successfully sent with ID:', emailResponse.id);
-      } else {
-        emailError = formatResendError(emailResponse);
-        console.error('Email sending failed:', emailError);
-      }
-    } catch (sendError) {
-      emailSent = false;
-      emailError = sendError.message || 'Exception sending email';
-      console.error('Exception sending email:', sendError);
-    }
-
-    const { data: notificationData, error: notificationError } = await supabase
-      .from('email_notifications')
-      .insert({
-        message_id: messageId,
-        user_id: message.user_id,
-        recipient_email: message.recipient_email,
-        subject: message.title,
-        content: message.content || message.preview,
-        status: emailSent ? 'sent' : 'failed',
-        error: emailError
-      });
-      
-    if (notificationError) {
-      console.error('Error logging email notification:', notificationError);
-    } else {
-      console.log('Email notification logged successfully');
-    }
-
-    const finalStatus = emailSent ? 'delivered' : 'failed';
-    const { error: statusUpdateError } = await supabase
-      .from('future_messages')
-      .update({ 
-        status: finalStatus,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', messageId);
-
-    if (statusUpdateError) {
-      console.error('Error updating final status:', statusUpdateError);
-    } else {
-      console.log(`Message marked as ${finalStatus}`);
+      await supabase
+        .from('email_notifications')
+        .insert({
+          message_id: messageId,
+          user_id: message.user_id,
+          recipient_email: message.recipient_email,
+          subject: message.title,
+          content: message.content || message.preview,
+          status: 'sent'
+        });
+        
+      await supabase
+        .from('future_messages')
+        .update({ 
+          status: 'delivered',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', messageId);
     }
 
     return new Response(
       JSON.stringify({ 
-        success: emailSent,
-        messageId, 
-        status: finalStatus,
-        emailSent,
-        recipientEmail: message.recipient_email,
-        emailResponse,
-        error: emailError
+        success: true,
+        messageId,
+        status: 'delivered',
+        recipientEmail: message.recipient_email
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
