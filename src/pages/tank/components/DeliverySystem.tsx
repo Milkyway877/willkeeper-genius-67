@@ -1,16 +1,18 @@
-
 import { useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCheck, Clock } from "lucide-react";
 import { FutureMessage } from "@/services/tankService";
 import { supabase } from "@/integrations/supabase/client";
+import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 interface DeliverySystemProps {
   message?: FutureMessage;
   onDeliveryComplete?: () => void;
 }
 
-const DeliverySystem = ({ message }: DeliverySystemProps) => {
+const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) => {
+  const { notifySuccess } = useNotificationManager();
+  
   useEffect(() => {
     if (message?.message_type === 'video' && message?.message_url) {
       const fetchVideoUrl = async () => {
@@ -28,7 +30,16 @@ const DeliverySystem = ({ message }: DeliverySystemProps) => {
       
       fetchVideoUrl();
     }
-  }, [message]);
+    
+    if (message && message.status === 'delivered' && onDeliveryComplete) {
+      notifySuccess(
+        "Message Delivered", 
+        `Your message to ${message.recipient_name} has been successfully delivered.`,
+        "high"
+      );
+      onDeliveryComplete();
+    }
+  }, [message, onDeliveryComplete, notifySuccess]);
 
   const getStatusDisplay = () => {
     if (!message) return null;

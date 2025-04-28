@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ import { FileText, Video, Mic, File, Eye, Plus, Trash2 } from 'lucide-react';
 import { getFutureMessages, deleteFutureMessage, checkScheduledMessages } from '@/services/tankService';
 import { MessagePreview } from './preview/MessagePreview';
 import { useToast } from '@/hooks/use-toast';
+import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 interface Message {
   id: string;
@@ -54,6 +56,7 @@ export const TankDashboard: React.FC = () => {
   const [previewMessage, setPreviewMessage] = useState<Message | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const { toast } = useToast();
+  const { notifyInfo, notifySuccess, notifyWarning } = useNotificationManager();
   
   useEffect(() => {
     fetchMessages();
@@ -69,6 +72,14 @@ export const TankDashboard: React.FC = () => {
             description: `Checked ${result.processed} messages: ${result.successful} delivered, ${result.failed} failed.`,
           });
           
+          if (result.successful > 0) {
+            notifySuccess(
+              "Messages Delivered", 
+              `${result.successful} messages have been successfully delivered.`,
+              "high"
+            );
+          }
+          
           fetchMessages();
         }
       } catch (error) {
@@ -77,7 +88,7 @@ export const TankDashboard: React.FC = () => {
     };
     
     checkForScheduledMessages();
-  }, [toast]);
+  }, [toast, notifySuccess]);
   
   const fetchMessages = async () => {
     try {
@@ -126,6 +137,14 @@ export const TankDashboard: React.FC = () => {
           title: "Message Deleted",
           description: "The message has been successfully deleted.",
         });
+        
+        // Add notification for message deletion
+        notifyInfo(
+          "Message Deleted", 
+          "Your future message has been successfully deleted.",
+          "medium"
+        );
+        
         fetchMessages();
       } else {
         toast({
@@ -133,6 +152,12 @@ export const TankDashboard: React.FC = () => {
           description: "Failed to delete the message. Please try again.",
           variant: "destructive",
         });
+        
+        notifyWarning(
+          "Delete Operation Failed", 
+          "There was an issue deleting your message. Please try again.",
+          "medium"
+        );
       }
     } catch (error) {
       console.error('Error deleting message:', error);

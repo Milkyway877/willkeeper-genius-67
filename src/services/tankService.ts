@@ -62,6 +62,13 @@ export const createFutureMessage = async (
     }
     
     console.log('Created message response:', data);
+    
+    // Create notification for message creation
+    await createSystemNotification('success', {
+      title: 'Message Created',
+      description: `Your future message "${data.title || 'Untitled'}" has been created successfully.`
+    });
+    
     return data;
   } catch (error) {
     console.error('Error in createFutureMessage:', error);
@@ -82,6 +89,12 @@ export const updateFutureMessage = async (id: string, updates: Partial<FutureMes
       console.error('Error updating future message:', error);
       return null;
     }
+    
+    // Create notification for message update
+    await createSystemNotification('info', {
+      title: 'Message Updated',
+      description: `Your future message "${data.title || 'Untitled'}" has been updated successfully.`
+    });
     
     return data;
   } catch (error) {
@@ -113,6 +126,12 @@ export const deleteFutureMessage = async (messageId: string): Promise<boolean> =
       console.error('Error deleting message:', error);
       return false;
     }
+    
+    // Create notification for message deletion
+    await createSystemNotification('info', {
+      title: 'Message Deleted',
+      description: 'Your future message has been deleted successfully.'
+    });
     
     return true;
   } catch (error) {

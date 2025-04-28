@@ -6,13 +6,18 @@ import { TankDashboard } from './components/TankDashboard';
 import { TankAnalytics } from './components/TankAnalytics';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { Toaster } from 'sonner';
 
 export default function Tank() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { fetchNotifications } = useNotifications();
   
   useEffect(() => {
     document.title = 'The Tank - Your Time Capsule';
-  }, []);
+    // Fetch notifications when component mounts
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   return (
     <Layout>
@@ -52,6 +57,8 @@ export default function Tank() {
           </AnimatePresence>
         </Tabs>
       </div>
+      {/* Add Toaster for better notification visibility */}
+      <Toaster position="bottom-right" richColors closeButton />
     </Layout>
   );
 }
