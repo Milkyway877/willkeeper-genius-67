@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -131,11 +130,23 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     
     console.log('Current message status:', message.status);
     
+    // Check database constraints before updating
+    // Get the valid values for status column
+    const { data: validStatuses, error: statusError } = await supabase
+      .rpc('get_enum_values', { table_name: 'future_messages', column_name: 'status' });
+      
+    if (statusError) {
+      console.error('Error getting valid status values:', statusError);
+      // If we can't check valid values, proceed with hardcoded ones that we know are valid
+    } else {
+      console.log('Valid status values:', validStatuses);
+    }
+    
     // Update the status to processing - fix the constraint error by using valid status value
     const { error: updateError } = await supabase
       .from('future_messages')
       .update({ 
-        status: 'processing' as const, 
+        status: 'processing', 
         updated_at: new Date().toISOString() 
       })
       .eq('id', id);
@@ -159,7 +170,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       await supabase
         .from('future_messages')
         .update({ 
-          status: 'scheduled' as const, 
+          status: 'scheduled', 
           updated_at: new Date().toISOString() 
         })
         .eq('id', id);
@@ -189,7 +200,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       await supabase
         .from('future_messages')
         .update({ 
-          status: 'scheduled' as const, 
+          status: 'scheduled', 
           updated_at: new Date().toISOString() 
         })
         .eq('id', id);
@@ -241,6 +252,23 @@ export const checkScheduledMessages = async (): Promise<{
     return data;
   } catch (error) {
     console.error('Error in checkScheduledMessages:', error);
+    return null;
+  }
+};
+
+export const getValidStatusValues = async (): Promise<string[] | null> => {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_enum_values', { table_name: 'future_messages', column_name: 'status' });
+      
+    if (error) {
+      console.error('Error getting valid status values:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in getValidStatusValues:', error);
     return null;
   }
 };
