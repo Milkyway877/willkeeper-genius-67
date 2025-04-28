@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ export default function TankCreation() {
     deliveryDate,
     isGenerating,
     progress,
+    messageUrl,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -65,6 +67,7 @@ export default function TankCreation() {
     setMessageTitle,
     setMessageCategory,
     setDeliveryDate,
+    setMessageUrl,
     handleNext,
     handlePrev,
     handleCancel,
@@ -86,6 +89,7 @@ export default function TankCreation() {
                  onTitleChange={setMessageTitle}
                  onRecipientChange={setRecipientName}
                  onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
+                 onVideoUrlChange={setMessageUrl}
                />;
       case 'audio':
         return <TankAudioCreator 

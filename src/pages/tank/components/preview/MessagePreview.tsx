@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { MessageType } from '../../types';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Video, Mic, File } from 'lucide-react';
+import { FileText, Video, Mic, File, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface MessagePreviewProps {
@@ -24,12 +24,26 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
   messageUrl
 }) => {
   const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState<boolean>(messageType === 'video' && !!messageUrl);
 
   React.useEffect(() => {
     const fetchVideoUrl = async () => {
       if (messageType === 'video' && messageUrl) {
         try {
+          setLoading(true);
           console.log("Fetching video URL for:", messageUrl);
+          
+          // Create bucket if it doesn't exist
+          const { data: buckets } = await supabase.storage.listBuckets();
+          const futureBucket = buckets?.find(bucket => bucket.name === 'future-videos');
+          
+          if (!futureBucket) {
+            console.log('Creating future-videos bucket');
+            await supabase.storage.createBucket('future-videos', {
+              public: true
+            });
+          }
+          
           const { data } = supabase.storage
             .from('future-videos')
             .getPublicUrl(messageUrl);
@@ -42,6 +56,8 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
           }
         } catch (error) {
           console.error('Error getting video URL:', error);
+        } finally {
+          setLoading(false);
         }
       }
     };
@@ -52,6 +68,15 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
   const renderContent = () => {
     switch (messageType) {
       case 'video':
+        if (loading) {
+          return (
+            <div className="flex flex-col items-center justify-center p-8 text-gray-500">
+              <Loader2 className="h-12 w-12 animate-spin mb-4 text-willtank-600" />
+              <p>Loading video...</p>
+            </div>
+          );
+        }
+        
         return videoUrl ? (
           <div className="aspect-video rounded-lg overflow-hidden bg-black">
             <video 
@@ -65,7 +90,7 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
           </div>
         ) : (
           <div className="text-center p-4 text-gray-500">
-            {messageUrl ? "Loading video..." : "Video not available"}
+            {messageUrl ? "Video could not be loaded. Please try again later." : "Video not available"}
           </div>
         );
       
@@ -125,6 +150,9 @@ export const MessagePreview: React.FC<MessagePreviewProps> = ({
               {messageType}
             </Badge>
           </div>
+          <DialogDescription>
+            Preview of the message that will be delivered
+          </DialogDescription>
         </DialogHeader>
         <div className="mt-4">
           {renderContent()}

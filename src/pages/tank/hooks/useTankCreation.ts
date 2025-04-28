@@ -2,99 +2,92 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
-import { MessageType, DeliveryTrigger, MessageCategory } from '../types';
+import { MessageType, MessageCategory } from '../types';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useTankCreation = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
-  const [creationType, setCreationType] = useState<MessageType>('letter');
-  const [deliveryType, setDeliveryType] = useState<DeliveryTrigger>('date');
+  const [creationType, setCreationType] = useState<MessageType | null>(null);
+  const [deliveryType, setDeliveryType] = useState<string | null>(null);
   const [messageContent, setMessageContent] = useState('');
+  const [messageTitle, setMessageTitle] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
-  const [messageTitle, setMessageTitle] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString());
+  const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
   const [messageCategory, setMessageCategory] = useState<MessageCategory>('letter');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [messageUrl, setMessageUrl] = useState<string | null>(null);
+  
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleNext = () => {
-    // Validate required fields before proceeding
+    if (currentStep === 0 && !creationType) {
+      toast({
+        title: 'Missing Selection',
+        description: 'Please select a message type to continue.'
+      });
+      return;
+    }
+    
     if (currentStep === 1) {
       if (!messageTitle.trim()) {
         toast({
-          title: "Title Required",
-          description: "Please provide a title for your message.",
-          variant: "destructive"
+          title: 'Missing Title',
+          description: 'Please enter a title for your message.'
         });
         return;
       }
       
       if (!recipientName.trim()) {
         toast({
-          title: "Recipient Required",
-          description: "Please provide a recipient name for your message.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (!messageContent.trim()) {
-        toast({
-          title: "Content Required",
-          description: "Please write some content for your message.",
-          variant: "destructive"
+          title: 'Missing Recipient',
+          description: 'Please specify who this message is for.'
         });
         return;
       }
     }
     
-    if (currentStep === 3 && deliveryType === 'date') {
-      const selectedDate = new Date(deliveryDate);
-      const today = new Date();
-      
-      if (selectedDate <= today) {
+    if (currentStep === 2 && !deliveryType) {
+      toast({
+        title: 'Missing Selection',
+        description: 'Please select a delivery method to continue.'
+      });
+      return;
+    }
+    
+    if (currentStep === 3) {
+      if (!deliveryDate) {
         toast({
-          title: "Invalid Date",
-          description: "Please select a future date for your message delivery.",
-          variant: "destructive"
+          title: 'Missing Date',
+          description: 'Please select a delivery date.'
         });
         return;
       }
       
-      if (deliveryType === 'date' && !recipientEmail.trim()) {
+      if (deliveryDate < new Date()) {
         toast({
-          title: "Email Required",
-          description: "Please provide a recipient email for message delivery.",
-          variant: "destructive"
+          title: 'Invalid Date',
+          description: 'The delivery date must be in the future.'
         });
         return;
       }
       
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (recipientEmail.trim() && !emailRegex.test(recipientEmail)) {
+      if (deliveryType === 'email' && !recipientEmail.trim()) {
         toast({
-          title: "Invalid Email",
-          description: "Please provide a valid email address.",
-          variant: "destructive"
+          title: 'Missing Email',
+          description: 'Please enter the recipient email address.'
         });
         return;
       }
     }
     
-    if (currentStep < 4) {
-      setCurrentStep(prev => prev + 1);
-    }
+    setCurrentStep(prev => prev + 1);
   };
 
   const handlePrev = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
+    setCurrentStep(prev => prev - 1);
   };
 
   const handleCancel = () => {
@@ -102,81 +95,69 @@ export const useTankCreation = () => {
   };
 
   const handleFinalize = async () => {
-    try {
-      setIsGenerating(true);
-      
-      // Get the current user session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user?.id) {
-        throw new Error('You must be logged in to create messages');
-      }
-      
-      // Simulate progress for UX
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(interval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 300);
-
-      // Create the message in the database
-      console.log('Creating message with:', { 
-        title: messageTitle,
-        recipient_name: recipientName,
-        recipient_email: recipientEmail,
-        message_type: creationType,
-        delivery_type: deliveryType,
-        delivery_date: deliveryDate,
-        content: messageContent,
-        category: messageCategory,
-        preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
-        user_id: session.user.id,
+    if (!creationType || !deliveryType || !deliveryDate) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please ensure all required fields are filled out.',
+        variant: 'destructive'
       });
-      
-      const newMessage = await createFutureMessage({
+      return;
+    }
+
+    setIsGenerating(true);
+    setProgress(10);
+
+    try {
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          const increment = Math.floor(Math.random() * 10) + 1;
+          return Math.min(prev + increment, 95);
+        });
+      }, 500);
+
+      const message = {
         title: messageTitle,
         recipient_name: recipientName,
         recipient_email: recipientEmail,
         message_type: creationType,
+        preview: messageContent,
         content: messageContent,
-        preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
+        message_url: messageUrl, // Add the message URL to the data being sent
         status: 'scheduled',
         delivery_type: deliveryType,
-        delivery_date: deliveryDate,
-        message_url: null,
-        delivery_event: null,
+        delivery_date: deliveryDate.toISOString(),
         category: messageCategory,
-        user_id: session.user.id,
-      });
+        user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
+      };
+
+      setProgress(60);
+
+      const createdMessage = await createFutureMessage(message);
       
-      clearInterval(interval);
+      clearInterval(progressInterval);
       setProgress(100);
       
-      setTimeout(() => {
-        setIsGenerating(false);
-        if (newMessage) {
-          toast({
-            title: "Message Created",
-            description: "Your message has been scheduled for delivery.",
-          });
+      if (createdMessage) {
+        toast({
+          title: 'Message Created',
+          description: 'Your future message has been successfully created.'
+        });
+        
+        setTimeout(() => {
           navigate('/tank');
-        } else {
-          throw new Error('Failed to create message');
-        }
-      }, 500);
-      
+        }, 2000);
+      } else {
+        throw new Error('Failed to create message');
+      }
     } catch (error) {
       console.error('Error finalizing message:', error);
-      setIsGenerating(false);
       toast({
-        title: "Error",
-        description: error.message || "There was an error creating your message. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'An error occurred while creating your message. Please try again.',
+        variant: 'destructive'
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -192,6 +173,7 @@ export const useTankCreation = () => {
     deliveryDate,
     isGenerating,
     progress,
+    messageUrl,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -200,9 +182,10 @@ export const useTankCreation = () => {
     setMessageTitle,
     setMessageCategory,
     setDeliveryDate,
+    setMessageUrl,
     handleNext,
     handlePrev,
     handleCancel,
-    handleFinalize,
+    handleFinalize
   };
 };

@@ -1,8 +1,10 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Video, 
   FileUp, 
@@ -30,13 +32,15 @@ interface TankVideoCreatorProps {
   onTitleChange: (title: string) => void;
   onRecipientChange: (recipient: string) => void;
   onCategoryChange: (category: MessageCategory) => void;
+  onVideoUrlChange?: (url: string | null) => void;
 }
 
 export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({ 
   onContentChange, 
   onTitleChange,
   onRecipientChange,
-  onCategoryChange
+  onCategoryChange,
+  onVideoUrlChange
 }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState<string>('');
@@ -53,6 +57,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const [musicVolume, setMusicVolume] = useState(50);
   const [selectedMusic, setSelectedMusic] = useState<string | null>(null);
   const [filters, setFilters] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   useEffect(() => {
     onCategoryChange('story');
@@ -215,8 +220,98 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       description: "You can now record a new video."
     });
   };
+
+  const uploadVideoToSupabase = async () => {
+    if (!videoBlob) {
+      toast({
+        title: "No Video Found",
+        description: "Please record or upload a video first.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      // Create a unique filename
+      const fileExt = 'webm';
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+      
+      // Check if bucket exists, create if not
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const futureBucket = buckets?.find(bucket => bucket.name === 'future-videos');
+      
+      if (!futureBucket) {
+        console.log('Creating future-videos bucket');
+        const { error: bucketError } = await supabase.storage.createBucket('future-videos', {
+          public: true
+        });
+        
+        if (bucketError) {
+          console.error('Error creating bucket:', bucketError);
+          toast({
+            title: "Storage Error",
+            description: "Could not create storage bucket for videos.",
+            variant: "destructive"
+          });
+          setIsUploading(false);
+          return null;
+        }
+      }
+      
+      // Upload the file
+      const { error: uploadError } = await supabase.storage
+        .from('future-videos')
+        .upload(filePath, videoBlob, {
+          cacheControl: '3600',
+          upsert: true
+        });
+        
+      if (uploadError) {
+        console.error('Error uploading video:', uploadError);
+        toast({
+          title: "Upload Failed",
+          description: "Could not upload video. Please try again.",
+          variant: "destructive"
+        });
+        setIsUploading(false);
+        return null;
+      }
+      
+      // Get and set the public URL
+      const { data } = supabase.storage
+        .from('future-videos')
+        .getPublicUrl(filePath);
+        
+      const publicUrl = data?.publicUrl;
+      console.log("Video uploaded, URL:", filePath);
+      
+      toast({
+        title: "Video Uploaded",
+        description: "Your video has been successfully saved."
+      });
+      
+      if (onVideoUrlChange) {
+        onVideoUrlChange(filePath);
+      }
+      
+      return filePath;
+    } catch (error) {
+      console.error('Error in upload process:', error);
+      toast({
+        title: "Upload Error",
+        description: "An unexpected error occurred during upload.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
   
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
@@ -270,6 +365,17 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Use this video handler
+  const handleUseVideo = async () => {
+    const filePath = await uploadVideoToSupabase();
+    if (filePath) {
+      toast({
+        title: "Video Ready",
+        description: "Your video is ready to be delivered."
+      });
+    }
   };
 
   return (
@@ -376,9 +482,21 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                         Record Again
                       </Button>
                       
-                      <Button>
-                        <Check className="mr-2 h-4 w-4" />
-                        Use This Video
+                      <Button 
+                        onClick={handleUseVideo}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="mr-2 h-4 w-4" />
+                            Use This Video
+                          </>
+                        )}
                       </Button>
                     </>
                   ) : (
@@ -587,9 +705,21 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       Remove Video
                     </Button>
                     
-                    <Button>
-                      <Check className="mr-2 h-4 w-4" />
-                      Use This Video
+                    <Button
+                      onClick={handleUseVideo}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Use This Video
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
