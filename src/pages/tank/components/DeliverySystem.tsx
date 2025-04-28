@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -23,7 +22,6 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    // If there's a video message URL, get the public URL
     if (message?.message_type === 'video' && message?.message_url) {
       console.log('Fetching video URL for:', message.message_url);
       
@@ -189,7 +187,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             </AlertDescription>
           </Alert>
           
-          {(message.status !== 'delivered' || message.status === 'failed') && (
+          {message.status !== 'delivered' && (
             <div className="flex flex-col sm:flex-row gap-4 justify-end">
               <Button
                 variant="outline"
@@ -218,7 +216,6 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             </div>
           )}
           
-          {/* Preview section for video messages */}
           {message.message_type === 'video' && videoUrl && (
             <div className="mt-6">
               <h3 className="text-sm font-medium mb-2">Video Preview:</h3>
