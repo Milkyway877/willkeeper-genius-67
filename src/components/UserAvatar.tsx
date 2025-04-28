@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { UserProfile } from '@/services/profileService';
@@ -21,6 +21,16 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const { profile, initials } = useUserProfile();
   const displayProfile = user || profile;
   const [imageError, setImageError] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (displayProfile?.avatar_url) {
+      setImageError(false);
+      setAvatarUrl(displayProfile.avatar_url + `?t=${Date.now()}`); // Add cache-busting parameter
+    } else {
+      setAvatarUrl(null);
+    }
+  }, [displayProfile]);
   
   const getSizeClass = () => {
     switch (size) {
@@ -32,16 +42,17 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   };
   
   const handleImageError = () => {
+    console.error("Avatar image failed to load");
     setImageError(true);
   };
   
   return (
     <Avatar className={`${getSizeClass()} ${className} ring-2 ring-offset-2 ring-offset-white ring-willtank-100`}>
-      {displayProfile?.avatar_url && !imageError ? (
+      {avatarUrl && !imageError ? (
         <AvatarImage 
-          src={displayProfile.avatar_url} 
-          alt={displayProfile.full_name || "User avatar"}
-          onError={handleImageError}
+          src={avatarUrl}
+          alt={displayProfile?.full_name || "User avatar"} 
+          onError={handleImageError} 
         />
       ) : null}
       <AvatarFallback className="bg-gradient-to-r from-willtank-100 to-willtank-200 text-willtank-700 font-semibold">
