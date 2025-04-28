@@ -13,7 +13,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -26,10 +25,9 @@ serve(async (req) => {
       throw new Error('Message ID is required');
     }
 
-    // Fetch message details
     const { data: message, error: fetchError } = await supabase
       .from('future_messages')
-      .select('*')
+      .select('*, user_profiles(full_name)')
       .eq('id', messageId)
       .single();
 
@@ -38,10 +36,10 @@ serve(async (req) => {
       throw new Error('Message not found');
     }
 
-    // Log message for debugging
+    const senderName = message.user_profiles?.full_name || 'Someone special';
+
     console.log('Message details:', JSON.stringify(message, null, 2));
 
-    // Update status to processing
     const { error: updateError } = await supabase
       .from('future_messages')
       .update({ 
@@ -57,29 +55,28 @@ serve(async (req) => {
 
     console.log('Preparing to send email to:', message.recipient_email);
 
-    // Verify Resend API key is set
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
       console.error('RESEND_API_KEY not set in environment variables');
       throw new Error('Email service configuration error: API key not set');
     }
 
-    // Construct email content with better formatting
     let emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #4F46E5;">${message.title || 'A message from The Tank'}</h1>
+        <h1 style="color: #4F46E5;">${message.title || 'A special message for you'}</h1>
         <p style="font-size: 16px;">Dear ${message.recipient_name},</p>
+        <p style="font-size: 16px; color: #4B5563; margin-bottom: 20px;">
+          This message was left for you by ${senderName}.
+        </p>
         <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px; font-size: 16px; line-height: 1.6;">
           ${message.content || message.preview || 'No content available'}
         </div>
     `;
 
-    // Add attachment link if available
     let attachmentUrl = null;
     if (message.message_url) {
       try {
         if (message.message_type === 'video') {
-          // Generate full URL for video files
           const { data: publicUrl } = await supabase
             .storage
             .from('future-videos')
@@ -88,7 +85,6 @@ serve(async (req) => {
           console.log('Video public URL:', publicUrl.publicUrl);
           attachmentUrl = publicUrl.publicUrl;
         } else if (message.message_type === 'audio') {
-          // For audio attachments
           const { data: publicUrl } = await supabase
             .storage
             .from('future-videos')
@@ -97,7 +93,6 @@ serve(async (req) => {
           console.log('Audio public URL:', publicUrl.publicUrl);
           attachmentUrl = publicUrl.publicUrl;
         } else {
-          // For other attachments
           const { data: publicUrl } = await supabase
             .storage
             .from('future-attachments')
@@ -123,10 +118,9 @@ serve(async (req) => {
       }
     }
     
-    // Add footer with more context
     emailContent += `
         <p style="color: #666; font-size: 14px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-          This message was delivered by The Tank, a digital time capsule service.
+          This message was delivered by WillTank, a digital time capsule service.
         </p>
         <p style="color: #666; font-size: 12px;">
           If you have any questions, please contact support@willtank.com
@@ -134,10 +128,8 @@ serve(async (req) => {
       </div>
     `;
 
-    // Wrap email in default layout
     const fullEmailContent = buildDefaultEmailLayout(emailContent);
 
-    // Send email using Resend with detailed error handling
     console.log('Sending email via Resend...');
     let emailSent = false;
     let emailError = null;
@@ -149,19 +141,18 @@ serve(async (req) => {
       console.log('Email parameters:', {
         from: 'WillTank <support@willtank.com>',
         to: message.recipient_email,
-        subject: message.title || 'A message from WillTank'
+        subject: `A message from ${senderName} via WillTank`
       });
       
       emailResponse = await resend.emails.send({
         from: 'WillTank <support@willtank.com>',
         to: [message.recipient_email],
-        subject: message.title || 'A message from WillTank',
+        subject: `A message from ${senderName} via WillTank`,
         html: fullEmailContent,
       });
 
       console.log('Email sending raw response:', JSON.stringify(emailResponse));
       
-      // Properly check if email was actually sent successfully
       emailSent = isEmailSendSuccess(emailResponse);
       
       if (emailSent) {
@@ -176,8 +167,6 @@ serve(async (req) => {
       console.error('Exception sending email:', sendError);
     }
 
-    // Log email notification in database regardless of email success
-    // This is for tracking purposes
     const { data: notificationData, error: notificationError } = await supabase
       .from('email_notifications')
       .insert({
@@ -192,12 +181,10 @@ serve(async (req) => {
       
     if (notificationError) {
       console.error('Error logging email notification:', notificationError);
-      // Continue execution even if notification logging fails
     } else {
       console.log('Email notification logged successfully');
     }
 
-    // Update message status based on email success/failure
     const finalStatus = emailSent ? 'delivered' : 'failed';
     const { error: statusUpdateError } = await supabase
       .from('future_messages')
@@ -215,7 +202,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        success: emailSent, // Only report success if email was actually sent
+        success: emailSent,
         messageId, 
         status: finalStatus,
         emailSent,

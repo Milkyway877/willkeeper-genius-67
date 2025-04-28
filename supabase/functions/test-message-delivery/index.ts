@@ -37,7 +37,7 @@ serve(async (req) => {
         .insert({
           title: '[TEST] Message Delivery Test',
           recipient_name: 'Test User',
-          recipient_email: 'test@willtank.com',  // Updated domain
+          recipient_email: 'test@willtank.com',
           message_type: 'letter',
           content: 'This is a test message to verify the delivery system.',
           status: 'scheduled',
@@ -60,7 +60,7 @@ serve(async (req) => {
       };
       console.log("Database test passed");
       
-      // Step 2: Test email delivery by actually sending a test email
+      // Step 2: Test email delivery
       try {
         console.log("Testing email delivery");
         if (!resendApiKey) {
@@ -69,11 +69,10 @@ serve(async (req) => {
         
         const resend = getResendClient();
         
-        // Actually send a test email to verify the delivery system
         const emailContent = buildDefaultEmailLayout(`
           <div style="padding: 20px;">
             <h1>Test Email</h1>
-            <p>This is a test email from WillTank.</p>
+            <p>This is a test message from WillTank's Test System.</p>
             <p>If you're seeing this, the delivery system is working correctly.</p>
             <p>Test ID: ${messageId}</p>
             <p>Test time: ${new Date().toISOString()}</p>
@@ -84,10 +83,10 @@ serve(async (req) => {
         const emailResponse = await resend.emails.send({
           from: 'WillTank <support@willtank.com>',
           to: ['test@willtank.com'],
-          subject: 'WillTank - Email Delivery Test',
+          subject: 'WillTank - Test Message from System',
           html: emailContent,
         });
-        
+
         console.log("Email test response:", JSON.stringify(emailResponse, null, 2));
         
         const emailSuccess = isEmailSendSuccess(emailResponse);
