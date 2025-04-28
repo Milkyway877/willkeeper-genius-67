@@ -73,3 +73,18 @@ export const buildDefaultEmailLayout = (content: string): string => {
     </html>
   `;
 };
+
+// New helper for checking email sending success
+export const isEmailSendSuccess = (response: any): boolean => {
+  // Check if response exists and doesn't have an error property
+  if (!response) return false;
+  
+  // Check for error property which indicates failure in Resend API
+  if (response.error) return false;
+  
+  // Check for status code that indicates error
+  if (response.statusCode && response.statusCode >= 400) return false;
+  
+  // For successful responses, Resend typically returns an ID
+  return !!response.id;
+};

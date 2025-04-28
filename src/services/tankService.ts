@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -194,11 +195,12 @@ export const sendFutureMessage = async (id: string): Promise<{
     
     console.log('Message delivery response:', data);
     
-    if (data && data.success) {
+    // FIXED: Properly check if the email was actually sent
+    if (data && data.success === true) {
       // Show success toast
       toast({
         title: "Message Delivered",
-        description: `Your message has been successfully delivered to ${data.recipientEmail || 'the recipient'}.`,
+        description: `Your message has been processed for delivery to ${data.recipientEmail || 'the recipient'}.`,
         variant: "default"
       });
       

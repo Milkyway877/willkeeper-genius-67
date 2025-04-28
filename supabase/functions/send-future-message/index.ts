@@ -163,14 +163,18 @@ serve(async (req) => {
 
       console.log('Email sending raw response:', JSON.stringify(emailResponse));
       
+      // FIXED: Check for error properly - Resend API returns an error property
       if (emailResponse && !emailResponse.error) {
         emailSent = true;
         console.log('Email successfully sent with ID:', emailResponse.id);
       } else {
-        emailError = emailResponse.error || 'Unknown error sending email';
+        // If there's an error property in the response, consider it failed
+        emailSent = false;
+        emailError = emailResponse.error || emailResponse.message || 'Unknown error sending email';
         console.error('Email sending failed with error:', emailError);
       }
     } catch (sendError) {
+      emailSent = false;
       emailError = sendError.message || 'Exception sending email';
       console.error('Exception sending email:', sendError);
     }
@@ -214,7 +218,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        success: emailSent, 
+        success: emailSent, // FIXED: Only report success if email was actually sent
         messageId, 
         status: finalStatus,
         emailSent,

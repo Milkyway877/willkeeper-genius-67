@@ -77,13 +77,14 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
       console.log('Attempting to send message with ID:', message.id);
       const result = await sendFutureMessage(message.id);
       
+      // Store the response details regardless of success/failure
+      setEmailDetails(result.emailResponse);
+      
       if (result.success) {
         toast({
-          title: "Message Processing",
-          description: `Your message is being processed and will be delivered to ${message.recipient_email}`,
+          title: "Message Sent",
+          description: `Your message has been sent to ${message.recipient_email}`,
         });
-        
-        setEmailDetails(result.emailResponse);
         
         if (onDeliveryComplete) {
           onDeliveryComplete();
@@ -95,6 +96,10 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
           description: result.error || "There was an error sending your message. Please try again.",
           variant: "destructive"
         });
+        
+        if (onDeliveryComplete) {
+          onDeliveryComplete();
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unexpected error";
@@ -154,12 +159,17 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
         return (
           <Alert className="bg-green-50 border-green-200">
             <CheckCheck className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800">Message Delivered</AlertTitle>
+            <AlertTitle className="text-green-800">Message Marked as Delivered</AlertTitle>
             <AlertDescription className="text-green-700">
-              This message has been successfully delivered to {message.recipient_email}.
+              This message has been successfully processed for delivery to {message.recipient_email}.
               <div className="mt-2 text-xs border-l-2 border-green-300 pl-2 italic">
-                Note: Check your spam folder if you don't see the email in your inbox.
+                Note: If you don't see the email in your inbox, check your spam folder or verify your domain in Resend.
               </div>
+              {emailDetails && (
+                <div className="mt-2 text-xs border-l-2 border-green-300 pl-2">
+                  Email service response available in details section below.
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         );
@@ -173,6 +183,11 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
               {deliveryError && (
                 <div className="mt-2 text-xs border-l-2 border-red-300 pl-2">
                   Error: {deliveryError}
+                </div>
+              )}
+              {emailDetails && emailDetails.statusCode && (
+                <div className="mt-2 text-xs border-l-2 border-red-300 pl-2">
+                  Status code: {emailDetails.statusCode} ({emailDetails.message})
                 </div>
               )}
             </AlertDescription>
@@ -215,13 +230,13 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             <Info className="h-4 w-4 text-blue-600" />
             <AlertTitle className="text-blue-800">Email Delivery Information</AlertTitle>
             <AlertDescription className="text-blue-700">
-              If marked as "delivered" but no email is received, please:
+              <p>For successful email delivery, please ensure:</p>
               <ul className="list-disc ml-5 mt-2 space-y-1">
-                <li>Check your spam/junk folder</li>
-                <li>Verify the email address is correct ({message.recipient_email})</li>
-                <li>Make sure your domain is verified in Resend (for sender email)</li>
-                <li>Contact support if the issue persists</li>
+                <li>Your domain is verified in Resend (<strong>required</strong> for sender emails)</li>
+                <li>The recipient email address is valid ({message.recipient_email})</li>
+                <li>The message isn't being filtered as spam</li>
               </ul>
+              <p className="mt-2"><strong>Common error:</strong> Not authorized to send emails from willtank.ai - This means your domain hasn't been verified in Resend.</p>
             </AlertDescription>
           </Alert>
           
@@ -260,6 +275,14 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
               <pre className="text-xs overflow-x-auto">
                 {JSON.stringify(emailDetails, null, 2)}
               </pre>
+              {emailDetails.statusCode === 403 && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
+                  <strong>Authorization Error (403)</strong>: You need to verify your domain in Resend before you can send emails from it. 
+                  <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="block mt-1 text-blue-600 hover:underline">
+                    Go to Resend Domain Verification →
+                  </a>
+                </div>
+              )}
             </div>
           )}
           
