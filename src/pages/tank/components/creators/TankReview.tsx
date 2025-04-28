@@ -79,7 +79,7 @@ export const TankReview: React.FC<TankReviewProps> = ({
                 <span className="text-gray-600">Method:</span>
                 <span className="font-medium">{formatDeliveryType(deliveryType)}</span>
               </div>
-              {deliveryType === 'date' && (
+              {deliveryType === 'date' && deliveryDate && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Scheduled For:</span>
                   <span className="font-medium">{new Date(deliveryDate).toLocaleDateString()}</span>

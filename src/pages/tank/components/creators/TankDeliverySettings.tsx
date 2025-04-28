@@ -13,9 +13,9 @@ import { cn } from '@/lib/utils';
 
 interface TankDeliverySettingsProps {
   deliveryType: DeliveryTrigger;
-  deliveryDate?: string;
+  deliveryDate?: Date | null;
   recipientEmail?: string;
-  onDateChange: (date: string) => void;
+  onDateChange: (date: Date) => void;
   onEmailChange?: (email: string) => void;
 }
 
@@ -26,11 +26,11 @@ export const TankDeliverySettings: React.FC<TankDeliverySettingsProps> = ({
   onDateChange,
   onEmailChange
 }) => {
-  const date = deliveryDate ? new Date(deliveryDate) : new Date();
+  const date = deliveryDate || new Date();
   
   const handleDateSelect = (newDate: Date | undefined) => {
     if (newDate) {
-      onDateChange(newDate.toISOString());
+      onDateChange(newDate);
     }
   };
   

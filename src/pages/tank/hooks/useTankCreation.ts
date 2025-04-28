@@ -2,13 +2,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
-import { MessageType, MessageCategory } from '../types';
+import { MessageType, MessageCategory, DeliveryTrigger } from '../types';
 import { useToast } from '@/hooks/use-toast';
 
 export const useTankCreation = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [creationType, setCreationType] = useState<MessageType | null>(null);
-  const [deliveryType, setDeliveryType] = useState<string | null>(null);
+  const [deliveryType, setDeliveryType] = useState<DeliveryTrigger | null>(null);
   const [messageContent, setMessageContent] = useState('');
   const [messageTitle, setMessageTitle] = useState('');
   const [recipientName, setRecipientName] = useState('');
@@ -122,10 +122,11 @@ export const useTankCreation = () => {
         message_type: creationType,
         preview: messageContent,
         content: messageContent,
-        message_url: messageUrl, // Add the message URL to the data being sent
+        message_url: messageUrl || null,
         status: 'scheduled',
         delivery_type: deliveryType,
         delivery_date: deliveryDate.toISOString(),
+        delivery_event: null, // Adding the missing property
         category: messageCategory,
         user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
       };

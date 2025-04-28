@@ -15,7 +15,7 @@ import { TankAudioCreator } from './components/creators/TankAudioCreator';
 import { TankDocumentCreator } from './components/creators/TankDocumentCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
-import { MessageCategory } from './types';
+import { MessageCategory, DeliveryTrigger } from './types';
 
 const steps = [
   {
@@ -120,20 +120,20 @@ export default function TankCreation() {
         return <DeliveryMethodSelector onSelect={setDeliveryType} />;
       case 3:
         return <TankDeliverySettings 
-                 deliveryType={deliveryType}
+                 deliveryType={deliveryType as DeliveryTrigger} 
                  deliveryDate={deliveryDate}
                  recipientEmail={recipientEmail}
-                 onDateChange={setDeliveryDate}
+                 onDateChange={(date: Date) => setDeliveryDate(date)}
                  onEmailChange={setRecipientEmail}
                />;
       case 4:
         return <TankReview 
-                 messageType={creationType} 
+                 messageType={creationType!} 
                  title={messageTitle}
                  recipient={recipientName}
                  recipientEmail={recipientEmail}
-                 deliveryType={deliveryType}
-                 deliveryDate={deliveryDate}
+                 deliveryType={deliveryType as DeliveryTrigger}
+                 deliveryDate={deliveryDate ? deliveryDate.toISOString() : ''}
                  onFinalize={handleFinalize}
                  isGenerating={isGenerating}
                  progress={progress}
