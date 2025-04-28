@@ -1,298 +1,225 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, XCircle, Send } from 'lucide-react';
-import { checkScheduledMessages, sendFutureMessage } from '@/services/tankService';
-import { useToast } from '@/hooks/use-toast';
-import { AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  sendFutureMessage,
+  FutureMessage
+} from "@/services/tankService";
+import { CheckCheck, AlertTriangle, Send, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-interface DeliveryTestProps {
-  messageId?: string;
+interface DeliverySystemProps {
+  message?: FutureMessage;
+  onDeliveryComplete?: () => void;
 }
 
-interface TestResult {
-  success: boolean;
-  message: string;
-  details?: {
-    processed?: number;
-    successful?: number;
-    failed?: number;
-  };
-}
-
-interface TestSystemResult {
-  success: boolean;
-  results: {
-    database: { success: boolean; message: string };
-    email: { success: boolean; message: string };
-    cleanup: { success: boolean; message: string };
-  };
-  timestamp: string;
-}
-
-export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<TestResult | null>(null);
-  const [isTestingDelivery, setIsTestingDelivery] = useState(false);
-  const [testResults, setTestResults] = useState<TestSystemResult['results'] | null>(null);
+const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) => {
   const { toast } = useToast();
+  const [sending, setSending] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
-  const handleCheckScheduled = async () => {
-    setIsProcessing(true);
-    setResult(null);
+  useEffect(() => {
+    // If there's a video message URL, get the public URL
+    if (message?.message_type === 'video' && message?.message_url) {
+      console.log('Fetching video URL for:', message.message_url);
+      
+      const fetchVideoUrl = async () => {
+        try {
+          const { data } = await supabase
+            .storage
+            .from('future-videos')
+            .getPublicUrl(message.message_url);
+          
+          console.log('Video public URL:', data.publicUrl);
+          setVideoUrl(data.publicUrl);
+        } catch (error) {
+          console.error('Error fetching video URL:', error);
+        }
+      };
+      
+      fetchVideoUrl();
+    }
+  }, [message]);
+
+  const handleSendMessage = async () => {
+    if (!message) return;
+    
+    setSending(true);
     
     try {
-      const data = await checkScheduledMessages();
-      
-      if (data) {
-        setResult({
-          success: true,
-          message: 'Scheduled messages checked successfully',
-          details: {
-            processed: data.processed,
-            successful: data.successful,
-            failed: data.failed,
-          }
-        });
-        
-        toast({
-          title: 'Delivery Check Complete',
-          description: `Processed ${data.processed} messages: ${data.successful} delivered, ${data.failed} failed.`,
-        });
-      } else {
-        throw new Error('Failed to check scheduled messages');
-      }
-    } catch (error) {
-      console.error('Error checking scheduled messages:', error);
-      setResult({
-        success: false,
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
-      });
-      
-      toast({
-        title: 'Delivery Check Failed',
-        description: 'Could not check for scheduled messages.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  const handleSendMessage = async (id: string) => {
-    if (!id) {
-      toast({
-        title: 'No Message Selected',
-        description: 'Please select a message to send.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    setResult(null);
-    
-    try {
-      console.log(`Attempting to send message with ID: ${id}`);
-      const success = await sendFutureMessage(id);
+      console.log('Attempting to send message with ID:', message.id);
+      const success = await sendFutureMessage(message.id);
       
       if (success) {
-        setResult({
-          success: true,
-          message: `Message ${id} sent successfully`
+        toast({
+          title: "Message Delivered",
+          description: `Your message has been successfully sent to ${message.recipient_email}`,
         });
         
-        toast({
-          title: 'Message Sent',
-          description: 'Your message has been delivered successfully.',
-        });
+        if (onDeliveryComplete) {
+          onDeliveryComplete();
+        }
       } else {
-        throw new Error('Failed to send message');
+        toast({
+          title: "Delivery Failed",
+          description: "There was an error sending your message. Please try again.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      setResult({
-        success: false,
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
-      });
-      
+      console.error('Error in handleSendMessage:', error);
       toast({
-        title: 'Delivery Failed',
-        description: 'Could not deliver your message. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "An unexpected error occurred while sending your message.",
+        variant: "destructive"
       });
     } finally {
-      setIsProcessing(false);
+      setSending(false);
     }
   };
 
-  const handleTestDelivery = async () => {
-    setIsTestingDelivery(true);
-    setTestResults(null);
+  const testDeliverySystem = async () => {
+    setTesting(true);
     
     try {
       console.log('Starting delivery system test');
-      const response = await supabase.functions.invoke('test-message-delivery');
+      const { data, error } = await supabase.functions.invoke('test-message-delivery');
       
-      if (response.error) {
-        console.error('Test function error:', response.error);
-        throw new Error(`Error from test function: ${response.error.message || 'Unknown error'}`);
+      if (error) {
+        console.error('Error testing delivery system:', error);
+        throw error;
       }
       
-      const data: TestSystemResult = response.data;
+      console.log('Test results:', data);
+      setTestResult(data);
       
-      if (data && data.results) {
-        console.log('Test results:', data);
-        setTestResults(data.results);
-        
-        if (data.success) {
-          toast({
-            title: 'Delivery System Test Complete',
-            description: 'All systems are functioning correctly.',
-          });
-        } else {
-          toast({
-            title: 'Test Completed with Issues',
-            description: 'Some parts of the delivery system are not working correctly.',
-            variant: 'destructive',
-          });
-        }
-      } else {
-        throw new Error('Invalid response format from test function');
-      }
-    } catch (error) {
-      console.error('Error testing delivery system:', error);
       toast({
-        title: 'Test Failed',
-        description: `Could not complete delivery system test: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: 'destructive',
+        title: data.success ? "Test Successful" : "Test Failed",
+        description: data.success 
+          ? "The delivery system is working properly."
+          : "There was an issue with the delivery system. Please check the logs.",
+        variant: data.success ? "default" : "destructive"
+      });
+    } catch (error) {
+      console.error('Error in testDeliverySystem:', error);
+      toast({
+        title: "Test Failed",
+        description: "An unexpected error occurred while testing the delivery system.",
+        variant: "destructive"
       });
     } finally {
-      setIsTestingDelivery(false);
+      setTesting(false);
+    }
+  };
+
+  const getStatusDisplay = () => {
+    if (!message) return null;
+    
+    switch (message.status) {
+      case 'delivered':
+        return (
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCheck className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-800">Message Delivered</AlertTitle>
+            <AlertDescription className="text-green-700">
+              This message has been successfully delivered to {message.recipient_email}.
+            </AlertDescription>
+          </Alert>
+        );
+      case 'failed':
+        return (
+          <Alert className="bg-red-50 border-red-200">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertTitle className="text-red-800">Delivery Failed</AlertTitle>
+            <AlertDescription className="text-red-700">
+              The message could not be delivered. Please try sending it again.
+            </AlertDescription>
+          </Alert>
+        );
+      case 'scheduled':
+        return (
+          <Alert className="bg-blue-50 border-blue-200">
+            <Clock className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800">Message Scheduled</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              This message is scheduled for delivery on{' '}
+              {new Date(message.delivery_date).toLocaleString()}.
+              {' '}You can send it now by clicking the button below.
+            </AlertDescription>
+          </Alert>
+        );
+      case 'processing':
+        return (
+          <Alert className="bg-amber-50 border-amber-200">
+            <Clock className="h-4 w-4 text-amber-600 animate-spin" />
+            <AlertTitle className="text-amber-800">Processing</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              This message is currently being processed for delivery.
+            </AlertDescription>
+          </Alert>
+        );
+      default:
+        return null;
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">Message Delivery System</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-col gap-4 md:flex-row md:gap-2">
-          <Button
-            variant="outline"
-            onClick={handleCheckScheduled}
-            disabled={isProcessing || isTestingDelivery}
-            className="flex-1"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Checking...
-              </>
-            ) : (
-              'Check Scheduled Messages'
-            )}
-          </Button>
+    <div className="space-y-6">
+      {message && (
+        <>
+          {getStatusDisplay()}
           
-          {messageId && (
-            <Button
-              variant="default"
-              className="flex-1"
-              onClick={() => handleSendMessage(messageId)}
-              disabled={isProcessing || isTestingDelivery}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Send This Message Now
-                </>
-              )}
-            </Button>
+          {message.status !== 'delivered' && (
+            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+              <Button
+                variant="outline"
+                onClick={testDeliverySystem}
+                disabled={testing}
+              >
+                {testing ? "Testing..." : "Test Delivery System"}
+              </Button>
+              
+              <Button
+                onClick={handleSendMessage}
+                disabled={sending || message.status === 'processing'}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {sending ? "Sending..." : "Send Now"}
+              </Button>
+            </div>
           )}
           
-          <Button
-            variant="secondary"
-            onClick={handleTestDelivery}
-            disabled={isProcessing || isTestingDelivery}
-            className="flex-1"
-          >
-            {isTestingDelivery ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Testing...
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Test Delivery System
-              </>
-            )}
-          </Button>
-        </div>
-
-        {testResults && (
-          <Alert variant={
-            Object.values(testResults).every(r => r.success) 
-              ? "default" 
-              : "destructive"
-          }>
-            <AlertTitle>
-              {Object.values(testResults).every(r => r.success) 
-                ? 'All Systems Operational' 
-                : 'Test Detected Issues'}
-            </AlertTitle>
-            <AlertDescription>
-              <div className="mt-2 space-y-2">
-                {Object.entries(testResults).map(([system, result]) => (
-                  <div key={system} className="flex items-start gap-2">
-                    {result.success ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500 mt-1" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500 mt-1" />
-                    )}
-                    <div>
-                      <span className="font-medium capitalize">{system}: </span>
-                      {result.message}
-                    </div>
-                  </div>
-                ))}
+          {testResult && (
+            <div className="mt-4 p-4 bg-gray-50 border rounded-md">
+              <h3 className="text-sm font-medium mb-2">Test Results:</h3>
+              <pre className="text-xs overflow-x-auto">
+                {JSON.stringify(testResult, null, 2)}
+              </pre>
+            </div>
+          )}
+          
+          {/* Preview section for video messages */}
+          {message.message_type === 'video' && videoUrl && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium mb-2">Video Preview:</h3>
+              <div className="aspect-video border rounded-md overflow-hidden">
+                <video 
+                  src={videoUrl} 
+                  controls
+                  className="w-full h-full"
+                  poster="/placeholder.svg"
+                />
               </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {result && (
-          <Alert variant={result.success ? "default" : "destructive"}>
-            {result.success ? (
-              <CheckCircle2 className="h-4 w-4" />
-            ) : (
-              <XCircle className="h-4 w-4" />
-            )}
-            <AlertTitle>
-              {result.success ? 'Success' : 'Error'}
-            </AlertTitle>
-            <AlertDescription>
-              {result.message}
-              {result.details && (
-                <div className="mt-2 text-sm">
-                  <p>Processed: {result.details.processed}</p>
-                  <p>Successful: {result.details.successful}</p>
-                  <p>Failed: {result.details.failed}</p>
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 };
+
+export default DeliverySystem;

@@ -41,6 +41,9 @@ serve(async (req) => {
       throw new Error('Message not found');
     }
 
+    // Log message for debugging
+    console.log('Message details:', JSON.stringify(message, null, 2));
+
     // Update status to processing
     const { error: updateError } = await supabase
       .from('future_messages')
@@ -55,40 +58,77 @@ serve(async (req) => {
       throw new Error('Failed to update message status');
     }
 
+    console.log('Preparing to send email to:', message.recipient_email);
+
+    // Construct email content
+    let emailContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1>${message.title || 'A message from The Tank'}</h1>
+        <p>Dear ${message.recipient_name},</p>
+        <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
+          ${message.content || message.preview || 'No content available'}
+        </div>
+    `;
+
+    // Add attachment link if available
+    if (message.message_url) {
+      let attachmentUrl = '';
+      
+      if (message.message_type === 'video') {
+        // Generate full URL for video files
+        const { data: publicUrl } = await supabase
+          .storage
+          .from('future-videos')
+          .getPublicUrl(message.message_url);
+        
+        console.log('Video public URL:', publicUrl.publicUrl);
+        attachmentUrl = publicUrl.publicUrl;
+      } else {
+        // For other attachments
+        const { data: publicUrl } = await supabase
+          .storage
+          .from('future-attachments')
+          .getPublicUrl(message.message_url);
+        
+        attachmentUrl = publicUrl.publicUrl;
+      }
+      
+      emailContent += `
+        <div style="margin: 20px 0;">
+          <a href="${attachmentUrl}" 
+             style="background-color: #4F46E5; color: white; padding: 10px 20px; 
+                    text-decoration: none; border-radius: 5px; display: inline-block;">
+            View Attachment
+          </a>
+        </div>
+      `;
+    }
+    
+    // Add footer
+    emailContent += `
+        <p style="color: #666; font-size: 12px; margin-top: 30px;">
+          This message was delivered by The Tank, a digital time capsule service.
+        </p>
+      </div>
+    `;
+
     // Send email using Resend
+    console.log('Sending email via Resend...');
     const emailResponse = await resend.emails.send({
       from: 'TheTank <messages@willtank.ai>',
       to: [message.recipient_email],
       subject: message.title || 'A message from The Tank',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1>${message.title || 'A message from The Tank'}</h1>
-          <p>Dear ${message.recipient_name},</p>
-          <div style="margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 5px;">
-            ${message.content || message.preview || 'No content available'}
-          </div>
-          ${message.message_url ? `
-            <div style="margin: 20px 0;">
-              <a href="${message.message_url}" 
-                 style="background-color: #4F46E5; color: white; padding: 10px 20px; 
-                        text-decoration: none; border-radius: 5px;">
-                View Attachment
-              </a>
-            </div>
-          ` : ''}
-          <p style="color: #666; font-size: 12px; margin-top: 30px;">
-            This message was delivered by The Tank, a digital time capsule service.
-          </p>
-        </div>
-      `,
+      html: emailContent,
     });
+
+    console.log('Email sending response:', JSON.stringify(emailResponse));
 
     if (!emailResponse) {
       throw new Error('Failed to send email');
     }
 
     // Log email notification
-    await supabase
+    const { data: notificationData, error: notificationError } = await supabase
       .from('email_notifications')
       .insert({
         message_id: messageId,
@@ -98,6 +138,13 @@ serve(async (req) => {
         content: message.content || message.preview,
         status: 'sent'
       });
+      
+    if (notificationError) {
+      console.error('Error logging email notification:', notificationError);
+      // Continue execution even if notification logging fails
+    } else {
+      console.log('Email notification logged successfully');
+    }
 
     // Update message status to delivered
     const { error: deliveredError } = await supabase
@@ -113,18 +160,19 @@ serve(async (req) => {
       throw new Error('Failed to update delivery status');
     }
 
-    // Create success notification for the sender
-    await supabase
-      .from('notifications')
-      .insert({
-        user_id: message.user_id,
-        title: 'Message Delivered',
-        description: `Your message "${message.title}" has been delivered to ${message.recipient_name}.`,
-        type: 'message_delivered'
-      });
+    console.log('Message marked as delivered');
+
+    // Note: Not attempting to create notification in notifications table due to RLS issues
+    // This will be handled by the frontend instead
 
     return new Response(
-      JSON.stringify({ success: true, messageId, status: 'delivered' }),
+      JSON.stringify({ 
+        success: true, 
+        messageId, 
+        status: 'delivered',
+        emailSent: true,
+        recipientEmail: message.recipient_email
+      }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
 

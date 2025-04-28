@@ -1,7 +1,9 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
 import { EventType } from "@/services/notificationService";
+import { toast } from "@/hooks/use-toast";
 
 export interface FutureMessage {
   id: string;
@@ -109,7 +111,7 @@ export const deleteFutureMessage = async (id: string): Promise<boolean> => {
 
 export const sendFutureMessage = async (id: string): Promise<boolean> => {
   try {
-    console.log('Starting message delivery for:', id);
+    console.log('Attempting to send message with ID:', id);
     
     // First check if the message exists and get its current status
     const { data: message, error: fetchError } = await supabase
@@ -142,7 +144,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
       console.log('Valid status values:', validStatuses);
     }
     
-    // Update the status to processing - fix the constraint error by using valid status value
+    // Update the status to processing
     const { error: updateError } = await supabase
       .from('future_messages')
       .update({ 
@@ -158,7 +160,7 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     
     console.log('Status updated to processing, calling edge function');
     
-    // Call the edge function with proper error handling for CORS issues
+    // Call the edge function with proper error handling
     const { data, error } = await supabase.functions.invoke('send-future-message', {
       body: { messageId: id }
     });
@@ -175,21 +177,45 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
         })
         .eq('id', id);
         
+      toast({
+        title: "Message Delivery Failed", 
+        description: "There was an error sending your message. Please try again.",
+        variant: "destructive"
+      });
+        
       return false;
     }
     
     console.log('Message delivery response:', data);
     
     if (data && data.success) {
-      // Create notification about successful delivery
-      await createSystemNotification('message_delivered' as EventType, {
-        title: 'Message Delivered',
-        description: `Your future message has been successfully delivered.`
+      // Create notification directly in frontend to avoid RLS issues
+      toast({
+        title: "Message Delivered",
+        description: `Your message has been successfully delivered to ${data.recipientEmail || 'the recipient'}.`,
+        variant: "default"
       });
+      
+      // Try to create system notification but don't fail if it doesn't work
+      try {
+        await createSystemNotification('success' as EventType, {
+          title: 'Message Delivered',
+          description: `Your future message has been successfully delivered.`
+        });
+      } catch (notifError) {
+        console.warn('Unable to create system notification, but message was sent:', notifError);
+      }
       
       return true;
     } else {
       console.error('Message delivery failed:', data?.error || 'Unknown error');
+      
+      toast({
+        title: "Delivery Failed",
+        description: data?.error || "Your message could not be delivered. Please try again later.",
+        variant: "destructive"
+      });
+      
       return false;
     }
   } catch (error) {
@@ -207,6 +233,13 @@ export const sendFutureMessage = async (id: string): Promise<boolean> => {
     } catch (resetError) {
       console.error('Failed to reset message status:', resetError);
     }
+    
+    // Show error toast
+    toast({
+      title: "Error",
+      description: "An unexpected error occurred while sending your message.",
+      variant: "destructive"
+    });
     
     return false;
   }
