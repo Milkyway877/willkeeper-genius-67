@@ -5,6 +5,7 @@ import { TimerReset } from 'lucide-react';
 import { TankDashboard } from './components/TankDashboard';
 import { TankAnalytics } from './components/TankAnalytics';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function Tank() {
   const [activeTab, setActiveTab] = useState('dashboard');
