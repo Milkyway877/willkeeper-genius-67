@@ -4,25 +4,26 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import React from 'react';
+import * as THREE from 'three';
 
 function Head() {
   return (
     <mesh>
       <sphereGeometry args={[1, 32, 32]} />
-      <meshStandardMaterial color="#ffb6c1" />
+      <meshStandardMaterial color={new THREE.Color("#ffb6c1")} />
       {/* Eyes */}
       <mesh position={[-0.3, 0.2, 0.8]}>
         <sphereGeometry args={[0.15, 32, 32]} />
-        <meshStandardMaterial color="black" />
+        <meshStandardMaterial color={new THREE.Color("black")} />
       </mesh>
       <mesh position={[0.3, 0.2, 0.8]}>
         <sphereGeometry args={[0.15, 32, 32]} />
-        <meshStandardMaterial color="black" />
+        <meshStandardMaterial color={new THREE.Color("black")} />
       </mesh>
       {/* Smile */}
       <mesh position={[0, -0.1, 0.8]}>
         <torusGeometry args={[0.3, 0.05, 16, 32, Math.PI]} />
-        <meshStandardMaterial color="black" />
+        <meshStandardMaterial color={new THREE.Color("black")} />
       </mesh>
     </mesh>
   );
