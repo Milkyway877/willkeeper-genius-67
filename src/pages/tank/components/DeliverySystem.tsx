@@ -23,6 +23,8 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [emailDetails, setEmailDetails] = useState<any>(null);
+  const [functionLogs, setFunctionLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
     if (message?.message_type === 'video' && message?.message_url) {
@@ -72,6 +74,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
     setSending(true);
     setDeliveryError(null);
     setEmailDetails(null);
+    setFunctionLogs([]);
     
     try {
       console.log('Attempting to send message with ID:', message.id);
@@ -86,6 +89,19 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
           description: `Your message has been sent to ${message.recipient_email}`,
         });
         
+        // Fetch function logs to help diagnose issues
+        try {
+          const { data: logs, error: logsError } = await supabase.functions.invoke('get-function-logs', {
+            body: { functionName: 'send-future-message' }
+          });
+          
+          if (logs && !logsError) {
+            setFunctionLogs(logs);
+          }
+        } catch (logsError) {
+          console.error('Error fetching function logs:', logsError);
+        }
+        
         if (onDeliveryComplete) {
           onDeliveryComplete();
         }
@@ -96,6 +112,19 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
           description: result.error || "There was an error sending your message. Please try again.",
           variant: "destructive"
         });
+        
+        // Try to fetch function logs to help diagnose issues
+        try {
+          const { data: logs, error: logsError } = await supabase.functions.invoke('get-function-logs', {
+            body: { functionName: 'send-future-message' }
+          });
+          
+          if (logs && !logsError) {
+            setFunctionLogs(logs);
+          }
+        } catch (logsError) {
+          console.error('Error fetching function logs:', logsError);
+        }
         
         if (onDeliveryComplete) {
           onDeliveryComplete();
@@ -118,6 +147,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
   const testDeliverySystem = async () => {
     setTesting(true);
     setDeliveryError(null);
+    setEmailDetails(null);
     
     try {
       console.log('Starting delivery system test');
@@ -236,7 +266,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
                 <li>The recipient email address is valid ({message.recipient_email})</li>
                 <li>The message isn't being filtered as spam</li>
               </ul>
-              <p className="mt-2"><strong>Common error:</strong> Not authorized to send emails from willtank.ai - This means your domain hasn't been verified in Resend.</p>
+              <p className="mt-2"><strong>Common error:</strong> "Not authorized to send emails from willtank.ai" - This means your domain hasn't been verified in Resend.</p>
             </AlertDescription>
           </Alert>
           
@@ -266,6 +296,19 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
               <pre className="text-xs overflow-x-auto">
                 {JSON.stringify(testResult, null, 2)}
               </pre>
+              {testResult.results?.email?.success === false && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
+                  <strong>Email Test Failed:</strong> {testResult.results.email.message}
+                  {testResult.results.email.details?.statusCode === 403 && (
+                    <div className="mt-1">
+                      <strong>Authorization Error (403)</strong>: You need to verify your domain in Resend before you can send emails from it.
+                      <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="block mt-1 text-blue-600 hover:underline">
+                        Go to Resend Domain Verification →
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           
@@ -278,9 +321,37 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
               {emailDetails.statusCode === 403 && (
                 <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
                   <strong>Authorization Error (403)</strong>: You need to verify your domain in Resend before you can send emails from it. 
+                  <p className="text-xs mt-1">
+                    Make sure you've added the domain "willtank.ai" to Resend and completed the DNS verification process.
+                  </p>
                   <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="block mt-1 text-blue-600 hover:underline">
                     Go to Resend Domain Verification →
                   </a>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {functionLogs.length > 0 && (
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowLogs(!showLogs)}
+              >
+                {showLogs ? "Hide Function Logs" : "Show Function Logs"}
+              </Button>
+              
+              {showLogs && (
+                <div className="mt-2 p-4 bg-gray-900 text-gray-100 border rounded-md">
+                  <h3 className="text-sm font-medium mb-2">Function Logs:</h3>
+                  <div className="text-xs overflow-x-auto h-40 overflow-y-auto">
+                    {functionLogs.map((log, i) => (
+                      <div key={i} className="font-mono">
+                        {log}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -313,7 +384,7 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             </div>
           )}
           
-          <div className="text-center mt-4">
+          <div className="text-center mt-4 space-y-2">
             <a 
               href="https://resend.com/domains" 
               target="_blank" 
@@ -322,6 +393,16 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             >
               <ExternalLink className="h-3 w-3 mr-1" />
               Verify your domain in Resend
+            </a>
+            <br />
+            <a 
+              href="https://resend.com/overview" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              Check email delivery logs in Resend Dashboard
             </a>
           </div>
         </>

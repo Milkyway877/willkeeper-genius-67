@@ -183,7 +183,7 @@ export const sendFutureMessage = async (id: string): Promise<{
         
       toast({
         title: "Message Delivery Failed", 
-        description: "There was an error sending your message. Please try again.",
+        description: "There was an error calling the delivery function.",
         variant: "destructive"
       });
         
@@ -195,12 +195,12 @@ export const sendFutureMessage = async (id: string): Promise<{
     
     console.log('Message delivery response:', data);
     
-    // FIXED: Properly check if the email was actually sent
-    if (data && data.success === true) {
+    // Properly check if the email was actually sent
+    if (data && data.success === true && data.emailSent === true) {
       // Show success toast
       toast({
         title: "Message Delivered",
-        description: `Your message has been processed for delivery to ${data.recipientEmail || 'the recipient'}.`,
+        description: `Your message has been successfully delivered to ${data.recipientEmail || 'the recipient'}.`,
         variant: "default"
       });
       
@@ -209,17 +209,22 @@ export const sendFutureMessage = async (id: string): Promise<{
         emailResponse: data.emailResponse 
       };
     } else {
-      console.error('Message delivery failed:', data?.error || 'Unknown error');
+      // Extract the error from the response
+      const errorMessage = data?.error || 
+                          (data?.emailResponse?.message) || 
+                          'Unknown error';
+                          
+      console.error('Message delivery failed:', errorMessage);
       
       toast({
         title: "Delivery Failed",
-        description: data?.error || "Your message could not be delivered. Please try again later.",
+        description: errorMessage,
         variant: "destructive"
       });
       
       return { 
         success: false,
-        error: data?.error || 'Unknown error',
+        error: errorMessage,
         emailResponse: data?.emailResponse 
       };
     }

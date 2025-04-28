@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0';
-import { getResendClient, buildDefaultEmailLayout } from '../_shared/email-helper.ts';
+import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from '../_shared/email-helper.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -163,15 +163,14 @@ serve(async (req) => {
 
       console.log('Email sending raw response:', JSON.stringify(emailResponse));
       
-      // FIXED: Check for error properly - Resend API returns an error property
-      if (emailResponse && !emailResponse.error) {
-        emailSent = true;
+      // Properly check if email was actually sent successfully
+      emailSent = isEmailSendSuccess(emailResponse);
+      
+      if (emailSent) {
         console.log('Email successfully sent with ID:', emailResponse.id);
       } else {
-        // If there's an error property in the response, consider it failed
-        emailSent = false;
-        emailError = emailResponse.error || emailResponse.message || 'Unknown error sending email';
-        console.error('Email sending failed with error:', emailError);
+        emailError = formatResendError(emailResponse);
+        console.error('Email sending failed:', emailError);
       }
     } catch (sendError) {
       emailSent = false;
@@ -218,7 +217,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
-        success: emailSent, // FIXED: Only report success if email was actually sent
+        success: emailSent, // Only report success if email was actually sent
         messageId, 
         status: finalStatus,
         emailSent,
