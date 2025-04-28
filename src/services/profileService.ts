@@ -6,13 +6,12 @@ export interface UserProfile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  email: string | null;
-  gender?: 'male' | 'female';
   created_at: string;
   updated_at: string;
   is_activated: boolean | null;
   subscription_plan: string | null;
   activation_date: string | null;
+  email: string | null;
   email_verified: boolean | null;
 }
 
@@ -43,11 +42,10 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       created_at: data.created_at,
       updated_at: data.updated_at,
       is_activated: data.activation_complete, // Map from activation_complete to is_activated
-      subscription_plan: data.subscription_plan || null, 
-      activation_date: data.activation_date || null, 
+      subscription_plan: null, // Default to null since this column doesn't exist yet
+      activation_date: null, // Set a default value as it doesn't exist in the database
       email: session.user.email, // Add email from the session
       email_verified: session.user.email_confirmed_at !== null, // Add email verification status
-      gender: data.gender || undefined // Add gender field
     };
     
     return profile;
