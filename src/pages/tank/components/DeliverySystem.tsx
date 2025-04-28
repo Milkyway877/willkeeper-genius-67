@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, XCircle, Send } from 'lucide-react';
 import { checkScheduledMessages, sendFutureMessage } from '@/services/tankService';
 import { useToast } from '@/hooks/use-toast';
+import { AlertTriangle } from 'lucide-react';
 
 interface DeliveryTestProps {
   messageId?: string;
@@ -22,6 +22,8 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
       failed?: number;
     };
   } | null>(null);
+  const [isTestingDelivery, setIsTestingDelivery] = useState(false);
+  const [testResults, setTestResults] = useState<any>(null);
   const { toast } = useToast();
 
   const handleCheckScheduled = async () => {
@@ -112,6 +114,37 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
     }
   };
 
+  const handleTestDelivery = async () => {
+    setIsTestingDelivery(true);
+    setTestResults(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('test-message-delivery');
+      
+      if (error) throw error;
+      
+      setTestResults(data.results);
+      
+      if (data.success) {
+        toast({
+          title: 'Delivery System Test Complete',
+          description: 'All systems are functioning correctly.',
+        });
+      } else {
+        throw new Error('Test completed with errors');
+      }
+    } catch (error) {
+      console.error('Error testing delivery system:', error);
+      toast({
+        title: 'Test Failed',
+        description: 'Could not complete delivery system test.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTestingDelivery(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -122,7 +155,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
           <Button
             variant="outline"
             onClick={handleCheckScheduled}
-            disabled={isProcessing}
+            disabled={isProcessing || isTestingDelivery}
             className="flex-1"
           >
             {isProcessing ? (
@@ -140,7 +173,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
               variant="default"
               className="flex-1"
               onClick={() => handleSendMessage(messageId)}
-              disabled={isProcessing}
+              disabled={isProcessing || isTestingDelivery}
             >
               {isProcessing ? (
                 <>
@@ -155,7 +188,57 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
               )}
             </Button>
           )}
+          
+          <Button
+            variant="secondary"
+            onClick={handleTestDelivery}
+            disabled={isProcessing || isTestingDelivery}
+            className="flex-1"
+          >
+            {isTestingDelivery ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Testing...
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Test Delivery System
+              </>
+            )}
+          </Button>
         </div>
+
+        {testResults && (
+          <Alert variant={
+            Object.values(testResults).every(r => r.success) 
+              ? "default" 
+              : "destructive"
+          }>
+            <AlertTitle>
+              {Object.values(testResults).every(r => r.success) 
+                ? 'All Systems Operational' 
+                : 'Test Detected Issues'}
+            </AlertTitle>
+            <AlertDescription>
+              <div className="mt-2 space-y-2">
+                {Object.entries(testResults).map(([system, result]: [string, any]) => (
+                  <div key={system} className="flex items-start gap-2">
+                    {result.success ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500 mt-1" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500 mt-1" />
+                    )}
+                    <div>
+                      <span className="font-medium capitalize">{system}: </span>
+                      {result.message}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {result && (
           <Alert variant={result.success ? "default" : "destructive"}>
