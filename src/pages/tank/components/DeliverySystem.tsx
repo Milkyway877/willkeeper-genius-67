@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,22 @@ import { Loader2, CheckCircle2, XCircle, Send } from 'lucide-react';
 import { checkScheduledMessages, sendFutureMessage } from '@/services/tankService';
 import { useToast } from '@/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DeliveryTestProps {
   messageId?: string;
+}
+
+interface TestResults {
+  database: { success: boolean; message: string };
+  email: { success: boolean; message: string };
+  cleanup: { success: boolean; message: string };
+}
+
+interface TestResponse {
+  success: boolean;
+  results: TestResults;
+  timestamp: string;
 }
 
 export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
@@ -23,7 +37,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
     };
   } | null>(null);
   const [isTestingDelivery, setIsTestingDelivery] = useState(false);
-  const [testResults, setTestResults] = useState<any>(null);
+  const [testResults, setTestResults] = useState<TestResults | null>(null);
   const { toast } = useToast();
 
   const handleCheckScheduled = async () => {
@@ -119,19 +133,23 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
     setTestResults(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('test-message-delivery');
+      const { data, error } = await supabase.functions.invoke<TestResponse>('test-message-delivery');
       
       if (error) throw error;
       
-      setTestResults(data.results);
-      
-      if (data.success) {
-        toast({
-          title: 'Delivery System Test Complete',
-          description: 'All systems are functioning correctly.',
-        });
+      if (data && data.results) {
+        setTestResults(data.results);
+        
+        if (data.success) {
+          toast({
+            title: 'Delivery System Test Complete',
+            description: 'All systems are functioning correctly.',
+          });
+        } else {
+          throw new Error('Test completed with errors');
+        }
       } else {
-        throw new Error('Test completed with errors');
+        throw new Error('Invalid response format from test function');
       }
     } catch (error) {
       console.error('Error testing delivery system:', error);
@@ -222,7 +240,7 @@ export const DeliverySystem: React.FC<DeliveryTestProps> = ({ messageId }) => {
             </AlertTitle>
             <AlertDescription>
               <div className="mt-2 space-y-2">
-                {Object.entries(testResults).map(([system, result]: [string, any]) => (
+                {Object.entries(testResults).map(([system, result]) => (
                   <div key={system} className="flex items-start gap-2">
                     {result.success ? (
                       <CheckCircle2 className="h-4 w-4 text-green-500 mt-1" />
