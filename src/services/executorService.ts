@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -320,4 +319,3 @@ export const sendVerificationRequest = async (
     return false;
   }
 };
-
