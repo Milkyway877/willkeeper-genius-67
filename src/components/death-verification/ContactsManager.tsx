@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -52,6 +51,7 @@ import {
   getBeneficiaries, 
   getExecutors, 
   updateBeneficiary, 
+  updateExecutor,
   Beneficiary, 
   Executor 
 } from '@/services/executorService';
@@ -128,7 +128,19 @@ export function ContactsManager({
   
   const handleAddTrustedContact = async (data: z.infer<typeof trustedContactSchema>) => {
     try {
-      await createTrustedContact(data);
+      // Ensure all required fields are present
+      if (!data.name || !data.email) {
+        throw new Error("Name and email are required");
+      }
+      
+      const contactData: TrustedContact = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        relationship: data.relationship,
+      };
+      
+      await createTrustedContact(contactData);
       setAddDialogOpen(false);
       trustedContactForm.reset();
       await fetchContacts();
@@ -265,7 +277,7 @@ export function ContactsManager({
                       <TableBody>
                         {beneficiaries.map((beneficiary) => (
                           <TableRow key={beneficiary.id}>
-                            <TableCell className="font-medium">{beneficiary.name}</TableCell>
+                            <TableCell className="font-medium">{beneficiary.beneficiary_name}</TableCell>
                             <TableCell>
                               {editingContact?.id === beneficiary.id ? (
                                 <Input 
@@ -332,7 +344,7 @@ export function ContactsManager({
                                       onClick={() => handleSendInvitation(
                                         beneficiary.id, 
                                         'beneficiary', 
-                                        beneficiary.name, 
+                                        beneficiary.beneficiary_name, 
                                         beneficiary.email || ''
                                       )}
                                     >
