@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -135,23 +134,6 @@ export default function CheckIns() {
                 <li>PIN-protected will access</li>
                 <li>Trusted contact oversight</li>
               </ul>
-
-              {!settings.check_in_enabled && (
-                <Button 
-                  onClick={handleEnableCheckIns} 
-                  disabled={enablingCheckins}
-                  className="w-full mt-4"
-                >
-                  {enablingCheckins ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
-                      Enabling...
-                    </>
-                  ) : (
-                    'Enable Check-ins'
-                  )}
-                </Button>
-              )}
             </div>
           </div>
         </div>

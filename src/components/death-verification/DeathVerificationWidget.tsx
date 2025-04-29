@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -177,24 +176,17 @@ export function DeathVerificationWidget() {
               Check-in system is disabled
             </h3>
             <p className="text-sm text-amber-700">
-              Enable check-ins to ensure your will is only accessible after verified absence confirmation.
+              Enable check-ins using the toggle in settings to ensure your will is only accessible after verified absence confirmation.
             </p>
           </div>
         </CardContent>
         <CardFooter>
           <Button 
-            onClick={handleEnableCheckIns}
-            disabled={enablingCheckins}
-            className="w-full"
+            variant="link" 
+            onClick={navigateToSettings} 
+            className="px-0"
           >
-            {enablingCheckins ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
-                Enabling...
-              </>
-            ) : (
-              'Enable Check-ins'
-            )}
+            Go to Settings
           </Button>
         </CardFooter>
       </Card>
