@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,8 @@ import {
   DeathVerificationSettings, 
   DEFAULT_SETTINGS, 
   getDeathVerificationSettings, 
-  saveDeathVerificationSettings 
+  saveDeathVerificationSettings,
+  createInitialCheckin 
 } from '@/services/deathVerificationService';
 import { ContactsManager } from '@/components/death-verification/ContactsManager';
 
@@ -21,6 +21,7 @@ export default function DeathVerification() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toggleProcessing, setToggleProcessing] = useState(false);
   
   // Death verification settings state
   const [settings, setSettings] = useState<DeathVerificationSettings>(DEFAULT_SETTINGS);
@@ -79,11 +80,50 @@ export default function DeathVerification() {
   };
   
   // Handle toggle for check-in enabled
-  const toggleCheckInEnabled = () => {
-    setSettings(prev => ({
-      ...prev,
-      check_in_enabled: !prev.check_in_enabled
-    }));
+  const toggleCheckInEnabled = async () => {
+    try {
+      setToggleProcessing(true);
+      // Calculate the new toggle state (opposite of current)
+      const newEnabledState = !settings.check_in_enabled;
+      
+      // Create an updated settings object
+      const updatedSettings = {
+        ...settings,
+        check_in_enabled: newEnabledState
+      };
+      
+      // Save the updated settings
+      const savedSettings = await saveDeathVerificationSettings(updatedSettings);
+      
+      if (savedSettings) {
+        // If we're enabling check-ins and there's no initial check-in, create one
+        if (newEnabledState) {
+          await createInitialCheckin();
+        }
+        
+        setSettings(savedSettings);
+        
+        // Show success toast
+        toast({
+          title: newEnabledState ? "Check-ins Enabled" : "Check-ins Disabled",
+          description: newEnabledState 
+            ? "You have successfully enabled the check-in system." 
+            : "You have disabled the check-in system."
+        });
+      } else {
+        throw new Error("Failed to update settings");
+      }
+    } catch (error) {
+      console.error('Error toggling check-in status:', error);
+      // Revert the toggle in the UI since the operation failed
+      toast({
+        title: "Error",
+        description: "Failed to update check-in settings. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setToggleProcessing(false);
+    }
   };
   
   // Handle toggle for failsafe
@@ -136,8 +176,9 @@ export default function DeathVerification() {
             <h3 className="font-medium">Check-in System</h3>
           </div>
           <Switch 
-            checked={settings.check_in_enabled} 
+            checked={settings.check_in_enabled}
             onCheckedChange={toggleCheckInEnabled}
+            disabled={toggleProcessing}
           />
         </div>
         
