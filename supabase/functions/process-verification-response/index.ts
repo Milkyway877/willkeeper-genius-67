@@ -1,6 +1,13 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
+import { Resend } from "npm:resend@2.0.0";
+import { 
+  getResendClient, 
+  buildDefaultEmailLayout, 
+  isEmailSendSuccess, 
+  formatResendError 
+} from "../_shared/email-helper.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,8 +20,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface VerificationResponse {
   token: string;
-  response: 'alive' | 'dead';
-  pinCode: string | null;
+  response: 'accept' | 'decline' | 'alive' | 'deceased';
+  type: 'invitation' | 'status';
+  notes?: string;
 }
 
 serve(async (req) => {
@@ -24,196 +32,270 @@ serve(async (req) => {
   }
 
   try {
-    // Get the verification response data from the request
-    const { token, response, pinCode } = await req.json() as VerificationResponse;
+    const { token, response, type, notes } = await req.json() as VerificationResponse;
     
-    if (!token || !response) {
+    if (!token || !response || !type) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({ error: "Missing required information" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    // First, get the verification access record using the token
-    const { data: accessData, error: accessError } = await supabase
-      .from('public_verification_access')
-      .select('*')
-      .eq('verification_token', token)
-      .single();
-    
-    if (accessError || !accessData) {
-      return new Response(
-        JSON.stringify({ error: "Invalid verification token" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Get the verification request
-    const { data: requestData, error: requestError } = await supabase
-      .from('death_verification_requests')
-      .select('*')
-      .eq('id', accessData.request_id)
-      .single();
-    
-    if (requestError || !requestData) {
-      return new Response(
-        JSON.stringify({ error: "Verification request not found" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // If the response is 'alive', cancel the verification request
-    if (response === 'alive') {
-      // Update the request status to 'canceled'
-      const { error: updateError } = await supabase
-        .from('death_verification_requests')
-        .update({ status: 'canceled' })
-        .eq('id', requestData.id);
-      
-      if (updateError) {
-        console.error("Error updating request status:", updateError);
-        return new Response(
-          JSON.stringify({ error: "Failed to process verification" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      // Create a new check-in for the user
-      const { data: settingsData } = await supabase
-        .from('death_verification_settings')
-        .select('check_in_frequency')
-        .eq('user_id', requestData.user_id)
-        .single();
-      
-      const checkInFrequency = settingsData?.check_in_frequency || 7;
-      
-      const now = new Date();
-      const nextCheckIn = new Date(now);
-      nextCheckIn.setDate(nextCheckIn.getDate() + checkInFrequency);
-      
-      const { error: checkinError } = await supabase
-        .from('death_verification_checkins')
-        .insert({
-          user_id: requestData.user_id,
-          status: 'alive',
-          checked_in_at: now.toISOString(),
-          next_check_in: nextCheckIn.toISOString()
-        });
-      
-      if (checkinError) {
-        console.error("Error creating check-in:", checkinError);
-      }
-      
-      // Log the action
-      await supabase
+    if (type === 'invitation') {
+      // For invitation responses, we need to find which record this belongs to
+      // by looking at the death_verification_logs
+      const { data: logData, error: logError } = await supabase
         .from('death_verification_logs')
-        .insert({
-          user_id: requestData.user_id,
-          action: 'verification_canceled',
-          details: {
-            request_id: requestData.id,
-            verification_token: token,
-            canceled_at: new Date().toISOString(),
-          },
-        });
-      
-      return new Response(
-        JSON.stringify({ success: true, message: "Verification canceled, user confirmed alive" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } else {
-      // If the response is 'dead', we need to validate the PIN code
-      if (!pinCode) {
-        return new Response(
-          JSON.stringify({ error: "PIN code required for death verification" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      // Find PIN code in the database
-      // This is a simplified version - in a real system, you'd check against specific beneficiary/executor
-      const { data: pinData, error: pinError } = await supabase
-        .from('death_verification_pins')
-        .select('*')
-        .eq('pin_code', pinCode)
-        .eq('used', false)
+        .select('details, user_id')
+        .eq('action', 'invitation_sent')
+        .eq('details->verification_token', token)
         .single();
       
-      if (pinError || !pinData) {
+      if (logError || !logData) {
+        console.error('Error finding invitation:', logError || 'No invitation found');
         return new Response(
-          JSON.stringify({ error: "Invalid PIN code" }),
+          JSON.stringify({ error: "Invalid or expired invitation token" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const contactDetails = logData.details as any;
+      const userId = logData.user_id;
+      
+      // Update the appropriate table based on contact type
+      if (contactDetails.contact_type === 'beneficiary') {
+        await supabase
+          .from('will_beneficiaries')
+          .update({ 
+            invitation_status: response === 'accept' ? 'accepted' : 'declined',
+            invitation_responded_at: new Date().toISOString()
+          })
+          .eq('id', contactDetails.contact_id);
+      } else if (contactDetails.contact_type === 'executor') {
+        await supabase
+          .from('will_executors')
+          .update({ 
+            invitation_status: response === 'accept' ? 'accepted' : 'declined',
+            invitation_responded_at: new Date().toISOString()
+          })
+          .eq('id', contactDetails.contact_id);
+      } else if (contactDetails.contact_type === 'trusted') {
+        await supabase
+          .from('trusted_contacts')
+          .update({ 
+            invitation_status: response === 'accept' ? 'accepted' : 'declined',
+            invitation_responded_at: new Date().toISOString()
+          })
+          .eq('id', contactDetails.contact_id);
+      }
+      
+      // Log the response
+      await supabase.from('death_verification_logs').insert({
+        user_id: userId,
+        action: `invitation_${response}ed`,
+        details: {
+          ...contactDetails,
+          response_notes: notes,
+          responded_at: new Date().toISOString()
+        }
+      });
+      
+      // Notify the user about the response
+      const { data: userData, error: userError } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('id', userId)
+        .single();
+      
+      if (!userError && userData) {
+        const resend = getResendClient();
+        
+        const content = `
+          <h1>${contactDetails.contact_name} has ${response}ed their role</h1>
+          <p>Hello,</p>
+          <p>${contactDetails.contact_name} (${contactDetails.contact_email}) has ${response}ed their role as a ${contactDetails.contact_type} in your WillTank account.</p>
+          ${notes ? `<p>They provided the following notes: "${notes}"</p>` : ''}
+          <p>You can manage your contacts in the Check-ins section of your WillTank account.</p>
+        `;
+        
+        await resend.emails.send({
+          from: "WillTank <notifications@willtank.com>",
+          to: [userData.email],
+          subject: `${contactDetails.contact_name} has ${response}ed their role as ${contactDetails.contact_type}`,
+          html: buildDefaultEmailLayout(content),
+        });
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Invitation ${response}ed successfully` 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else if (type === 'status') {
+      // For status checks, we need to update the contact_verifications table
+      const { data: verification, error: verificationError } = await supabase
+        .from('contact_verifications')
+        .select('*')
+        .eq('verification_token', token)
+        .single();
+      
+      if (verificationError || !verification) {
+        console.error('Error finding verification:', verificationError || 'No verification found');
+        return new Response(
+          JSON.stringify({ error: "Invalid or expired verification token" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Check if verification is expired
+      if (new Date(verification.expires_at) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: "This verification link has expired" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
-      // Mark the PIN as used
-      const { error: pinUpdateError } = await supabase
-        .from('death_verification_pins')
-        .update({ used: true, used_at: new Date().toISOString() })
-        .eq('id', pinData.id);
+      // Update the verification status
+      await supabase
+        .from('contact_verifications')
+        .update({ 
+          status: response === 'alive' ? 'confirmed_alive' : 'reported_deceased',
+          responded_at: new Date().toISOString(),
+          response: notes || null
+        })
+        .eq('id', verification.id);
       
-      if (pinUpdateError) {
-        console.error("Error updating PIN status:", pinUpdateError);
-      }
+      // Log the response
+      await supabase.from('death_verification_logs').insert({
+        user_id: verification.user_id,
+        action: response === 'alive' ? 'status_confirmed_alive' : 'status_reported_deceased',
+        details: {
+          verification_id: verification.id,
+          contact_id: verification.contact_id,
+          contact_type: verification.contact_type,
+          response_notes: notes,
+          responded_at: new Date().toISOString()
+        }
+      });
       
-      // Record the verification response
-      const { error: responseError } = await supabase
-        .from('death_verification_responses')
-        .insert({
-          request_id: requestData.id,
-          responder_id: pinData.person_id,
-          response: 'dead'
-        });
-      
-      if (responseError) {
-        console.error("Error recording response:", responseError);
-        return new Response(
-          JSON.stringify({ error: "Failed to record verification response" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      // Check if enough verifications have been received
-      const { data: responsesData } = await supabase
-        .from('death_verification_responses')
-        .select('id')
-        .eq('request_id', requestData.id)
-        .eq('response', 'dead');
-      
-      const responseCount = responsesData?.length || 0;
-      
-      // For this example, let's say we need at least 2 verifications
-      // In a real system, this would be configurable
-      if (responseCount >= 2) {
-        // Update the request status to 'verified'
-        await supabase
-          .from('death_verification_requests')
-          .update({ status: 'verified' })
-          .eq('id', requestData.id);
+      // If reported deceased, we may need to start the death verification process
+      if (response === 'deceased') {
+        // Check current death verification settings
+        const { data: settings } = await supabase
+          .from('death_verification_settings')
+          .select('*')
+          .eq('user_id', verification.user_id)
+          .single();
         
-        // Log the verification
-        await supabase
-          .from('death_verification_logs')
-          .insert({
-            user_id: requestData.user_id,
-            action: 'death_verified',
-            details: {
-              request_id: requestData.id,
-              verification_count: responseCount,
-              verified_at: new Date().toISOString(),
-            },
+        if (settings && settings.check_in_enabled) {
+          // Get all existing verifications for this user to see if multiple people reported deceased
+          const { data: verifications } = await supabase
+            .from('contact_verifications')
+            .select('*')
+            .eq('user_id', verification.user_id)
+            .eq('status', 'reported_deceased');
+          
+          // If this is the first report or if we have multiple reports, trigger the death verification process
+          if (verifications && verifications.length >= 1) {
+            // Update the latest check-in to verification_triggered
+            await supabase
+              .from('death_verification_checkins')
+              .update({ status: 'verification_triggered' })
+              .eq('user_id', verification.user_id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            
+            // Create a death verification request
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + (settings.beneficiary_verification_interval || 48));
+            
+            await supabase
+              .from('death_verification_requests')
+              .insert({
+                user_id: verification.user_id,
+                status: 'pending',
+                expires_at: expiresAt.toISOString(),
+                verification_token: crypto.randomUUID(),
+                verification_link: `https://willtank.com/verify/death/${crypto.randomUUID()}`
+              });
+            
+            // Send notifications to all contacts
+            // This would be implemented in a separate function for sending death verification emails
+          }
+        }
+      }
+      
+      // Notify the user about the status check response
+      if (response === 'alive') {
+        const { data: userData, error: userError } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .eq('id', verification.user_id)
+          .single();
+        
+        if (!userError && userData) {
+          const resend = getResendClient();
+          
+          // Get contact name
+          let contactName = "Your contact";
+          if (verification.contact_type === 'beneficiary') {
+            const { data: beneficiary } = await supabase
+              .from('will_beneficiaries')
+              .select('beneficiary_name')
+              .eq('id', verification.contact_id)
+              .single();
+            if (beneficiary) contactName = beneficiary.beneficiary_name;
+          } else if (verification.contact_type === 'executor') {
+            const { data: executor } = await supabase
+              .from('will_executors')
+              .select('name')
+              .eq('id', verification.contact_id)
+              .single();
+            if (executor) contactName = executor.name;
+          } else if (verification.contact_type === 'trusted') {
+            const { data: trusted } = await supabase
+              .from('trusted_contacts')
+              .select('name')
+              .eq('id', verification.contact_id)
+              .single();
+            if (trusted) contactName = trusted.name;
+          }
+          
+          const content = `
+            <h1>Status Check Response</h1>
+            <p>Hello,</p>
+            <p>${contactName} has confirmed that you are still alive as part of your regular status check.</p>
+            <p>No action is required on your part.</p>
+          `;
+          
+          await resend.emails.send({
+            from: "WillTank <notifications@willtank.com>",
+            to: [userData.email],
+            subject: `Status Check Response: ${contactName} confirmed you're alive`,
+            html: buildDefaultEmailLayout(content),
           });
+        }
       }
       
       return new Response(
-        JSON.stringify({ success: true, message: "Verification response recorded" }),
+        JSON.stringify({ 
+          success: true, 
+          message: `Status check response recorded successfully` 
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-  } catch (error) {
-    console.error("Error processing verification:", error);
+    
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Invalid verification type" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error processing verification response:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

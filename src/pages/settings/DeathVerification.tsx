@@ -13,6 +13,7 @@ import {
   getDeathVerificationSettings, 
   saveDeathVerificationSettings 
 } from '@/services/deathVerificationService';
+import { ContactsManager } from '@/components/death-verification/ContactsManager';
 
 // Component is still named DeathVerification for compatibility,
 // but UI text is updated to use "Check-ins" terminology
@@ -363,6 +364,16 @@ export default function DeathVerification() {
             )}
           </div>
         </motion.div>
+      )}
+      
+      {/* Contact Management Section */}
+      {settings.check_in_enabled && (
+        <ContactsManager
+          deathVerificationEnabled={settings.check_in_enabled}
+          pinSystemEnabled={settings.pin_system_enabled}
+          executorOverrideEnabled={settings.executor_override_enabled}
+          trustedContactEnabled={settings.trusted_contact_enabled}
+        />
       )}
       
       <div className="flex justify-end">

@@ -36,6 +36,45 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_verifications: {
+        Row: {
+          contact_id: string
+          contact_type: string
+          created_at: string
+          expires_at: string
+          id: string
+          responded_at: string | null
+          response: string | null
+          status: string
+          user_id: string
+          verification_token: string
+        }
+        Insert: {
+          contact_id: string
+          contact_type: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          responded_at?: string | null
+          response?: string | null
+          status?: string
+          user_id: string
+          verification_token: string
+        }
+        Update: {
+          contact_id?: string
+          contact_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          responded_at?: string | null
+          response?: string | null
+          status?: string
+          user_id?: string
+          verification_token?: string
+        }
+        Relationships: []
+      }
       death_verification_checkins: {
         Row: {
           checked_in_at: string
@@ -585,6 +624,48 @@ export type Database = {
         }
         Relationships: []
       }
+      trusted_contacts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          invitation_responded_at: string | null
+          invitation_sent_at: string | null
+          invitation_status: string | null
+          name: string
+          phone: string | null
+          relationship: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
+          name: string
+          phone?: string | null
+          relationship?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
+          name?: string
+          phone?: string | null
+          relationship?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_activity: {
         Row: {
           activity_type: string
@@ -789,24 +870,39 @@ export type Database = {
         Row: {
           beneficiary_name: string
           created_at: string | null
+          email: string | null
           id: string
+          invitation_responded_at: string | null
+          invitation_sent_at: string | null
+          invitation_status: string | null
           percentage: number | null
+          phone: string | null
           relationship: string
           will_id: string | null
         }
         Insert: {
           beneficiary_name: string
           created_at?: string | null
+          email?: string | null
           id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
           percentage?: number | null
+          phone?: string | null
           relationship: string
           will_id?: string | null
         }
         Update: {
           beneficiary_name?: string
           created_at?: string | null
+          email?: string | null
           id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
           percentage?: number | null
+          phone?: string | null
           relationship?: string
           will_id?: string | null
         }
@@ -926,6 +1022,9 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          invitation_responded_at: string | null
+          invitation_sent_at: string | null
+          invitation_status: string | null
           name: string
           status: string | null
           will_id: string | null
@@ -934,6 +1033,9 @@ export type Database = {
           created_at?: string | null
           email: string
           id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
           name: string
           status?: string | null
           will_id?: string | null
@@ -942,6 +1044,9 @@ export type Database = {
           created_at?: string | null
           email?: string
           id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
           name?: string
           status?: string | null
           will_id?: string | null

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -44,6 +43,7 @@ import Activity from './pages/activity/Activity';
 
 // Import verification portal
 import VerificationPortal from './pages/verify/VerificationPortal';
+import VerificationResponse from './pages/verify/VerificationResponse';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
@@ -105,6 +105,10 @@ export default function App() {
         <Route path="/tank/create" element={<TankCreation />} />
         <Route path="/tank/message/:id" element={<TankMessageDetail />} />
         <Route path="/tank/edit/:id" element={<TankCreation />} />
+
+        {/* Verification routes */}
+        <Route path="/verify/invitation/:token" element={<VerificationResponse type="invitation" />} />
+        <Route path="/verify/status/:token" element={<VerificationResponse type="status" />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
