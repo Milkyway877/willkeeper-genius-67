@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -18,7 +18,9 @@ import {
   Key, 
   Loader2, 
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  Users,
+  Mail
 } from 'lucide-react';
 
 export default function TestDeathVerificationFlow() {
@@ -28,6 +30,7 @@ export default function TestDeathVerificationFlow() {
   const [verificationLoading, setVerificationLoading] = useState(false);
   const [pinLoading, setPinLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [simulateLoading, setSimulateLoading] = useState(false);
   
   const [status, setStatus] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState('');
@@ -36,6 +39,169 @@ export default function TestDeathVerificationFlow() {
   const [verificationToken, setVerificationToken] = useState('');
   const [pins, setPins] = useState<any[]>([]);
   
+  // New states for simulating contacts
+  const [testContacts, setTestContacts] = useState<{id: string, name: string, email: string, type: string}[]>([]);
+  const [newContactEmail, setNewContactEmail] = useState('');
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactType, setNewContactType] = useState<'executor'|'beneficiary'>('beneficiary');
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  
+  // Load existing contacts
+  useEffect(() => {
+    loadTestContacts();
+  }, []);
+  
+  const loadTestContacts = async () => {
+    setLoadingContacts(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      // Load executors
+      const { data: executors } = await supabase
+        .from('will_executors')
+        .select('id, name, email')
+        .eq('user_id', user.id);
+      
+      // Load beneficiaries
+      const { data: beneficiaries } = await supabase
+        .from('will_beneficiaries')
+        .select('id, beneficiary_name, email')
+        .eq('user_id', user.id);
+      
+      const contacts = [
+        ...(executors?.map(e => ({ id: e.id, name: e.name, email: e.email, type: 'executor' as const })) || []),
+        ...(beneficiaries?.map(b => ({ id: b.id, name: b.beneficiary_name, email: b.email || '', type: 'beneficiary' as const })) || []),
+      ];
+      
+      setTestContacts(contacts);
+    } catch (error) {
+      console.error('Error loading test contacts:', error);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+  
+  const addTestContact = async () => {
+    if (!newContactEmail || !newContactName) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both name and email for the test contact",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSimulateLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to add test contacts",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (newContactType === 'executor') {
+        const { data, error } = await supabase
+          .from('will_executors')
+          .insert({
+            name: newContactName,
+            email: newContactEmail,
+            user_id: user.id,
+            status: 'pending'
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        setTestContacts(prev => [...prev, {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          type: 'executor'
+        }]);
+      } else {
+        const { data, error } = await supabase
+          .from('will_beneficiaries')
+          .insert({
+            beneficiary_name: newContactName,
+            email: newContactEmail,
+            user_id: user.id,
+            relationship: 'Test Contact',
+            status: 'pending'
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        
+        setTestContacts(prev => [...prev, {
+          id: data.id,
+          name: data.beneficiary_name,
+          email: data.email || '',
+          type: 'beneficiary'
+        }]);
+      }
+      
+      setNewContactName('');
+      setNewContactEmail('');
+      
+      toast({
+        title: "Contact Added",
+        description: `Test ${newContactType} has been added successfully`,
+      });
+      
+    } catch (error: any) {
+      console.error('Error adding test contact:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add test contact",
+        variant: "destructive"
+      });
+    } finally {
+      setSimulateLoading(false);
+    }
+  };
+  
+  const removeTestContact = async (id: string, type: string) => {
+    try {
+      if (type === 'executor') {
+        const { error } = await supabase
+          .from('will_executors')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('will_beneficiaries')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+      }
+      
+      setTestContacts(prev => prev.filter(contact => contact.id !== id));
+      
+      toast({
+        title: "Contact Removed",
+        description: "Test contact has been removed successfully",
+      });
+      
+    } catch (error: any) {
+      console.error('Error removing test contact:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove test contact",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Trigger status check emails to contacts
   const triggerStatusCheck = async () => {
     try {
@@ -440,13 +606,132 @@ export default function TestDeathVerificationFlow() {
             </Alert>
           )}
           
-          <Tabs defaultValue="step1" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="step1">Step 1: Status Check</TabsTrigger>
-              <TabsTrigger value="step2">Step 2: Report Status</TabsTrigger>
-              <TabsTrigger value="step3">Step 3: PIN Access</TabsTrigger>
+          <Tabs defaultValue="setup" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="setup">Setup Contacts</TabsTrigger>
+              <TabsTrigger value="step1">Send Status Check</TabsTrigger>
+              <TabsTrigger value="step2">Report Status</TabsTrigger>
+              <TabsTrigger value="step3">PIN Access</TabsTrigger>
               <TabsTrigger value="step4">Reset Test</TabsTrigger>
             </TabsList>
+            
+            {/* New Tab: Setup Contacts */}
+            <TabsContent value="setup" className="p-4 border rounded-md mt-4">
+              <h3 className="text-lg font-medium mb-2 flex items-center">
+                <Users className="mr-2 h-5 w-5" />
+                Setup Test Contacts
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Add test executors and beneficiaries to simulate the death verification flow. 
+                These contacts will receive the status check emails and PIN codes.
+              </p>
+              
+              <div className="space-y-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="contact-name">Name</Label>
+                    <Input 
+                      id="contact-name" 
+                      placeholder="Contact Name" 
+                      value={newContactName}
+                      onChange={(e) => setNewContactName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="contact-email">Email</Label>
+                    <Input 
+                      id="contact-email" 
+                      placeholder="contact@example.com" 
+                      type="email"
+                      value={newContactEmail}
+                      onChange={(e) => setNewContactEmail(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="contact-type">Type</Label>
+                    <select 
+                      id="contact-type"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={newContactType}
+                      onChange={(e) => setNewContactType(e.target.value as 'executor' | 'beneficiary')}
+                    >
+                      <option value="beneficiary">Beneficiary</option>
+                      <option value="executor">Executor</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={addTestContact}
+                  disabled={simulateLoading || !newContactName || !newContactEmail}
+                  className="w-full"
+                >
+                  {simulateLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Adding Contact...
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-4 w-4 mr-2" />
+                      Add Test Contact
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div>
+                <h4 className="text-md font-medium mb-2">Current Test Contacts</h4>
+                {loadingContacts ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                  </div>
+                ) : testContacts.length > 0 ? (
+                  <div className="rounded-md border">
+                    <div className="bg-gray-50 p-2 grid grid-cols-12 text-sm font-medium">
+                      <div className="col-span-4">Name</div>
+                      <div className="col-span-5">Email</div>
+                      <div className="col-span-2">Type</div>
+                      <div className="col-span-1"></div>
+                    </div>
+                    <div className="divide-y">
+                      {testContacts.map((contact) => (
+                        <div key={contact.id} className="p-3 grid grid-cols-12 items-center">
+                          <div className="col-span-4 font-medium">{contact.name}</div>
+                          <div className="col-span-5 text-gray-600">{contact.email}</div>
+                          <div className="col-span-2 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              contact.type === 'executor' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {contact.type}
+                            </span>
+                          </div>
+                          <div className="col-span-1 text-right">
+                            <button 
+                              onClick={() => removeTestContact(contact.id, contact.type)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                              title="Remove contact"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-8 border rounded-md bg-gray-50">
+                    <Mail className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <h4 className="text-lg font-medium mb-1">No Test Contacts</h4>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Add test contacts to simulate the death verification flow
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
             
             <TabsContent value="step1" className="p-4 border rounded-md mt-4">
               <h3 className="text-lg font-medium mb-2">Step 1: Send Status Check Emails</h3>
