@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -7,7 +8,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import CheckIns from './pages/CheckIns.tsx';
-import Settings from './pages/Settings.tsx';
+import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
 import VerificationResponse from './pages/verify/VerificationResponse.tsx';
 import VerificationPortal from './pages/verify/VerificationPortal.tsx';

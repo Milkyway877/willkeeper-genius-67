@@ -140,13 +140,13 @@ export default function TestDeathVerificationFlow() {
       }
       
       // Create a death verification request
-      const { data: settings } = await supabase
+      const { data: settingsData } = await supabase
         .from('death_verification_settings')
-        .select('beneficiary_verification_interval')
+        .select('beneficiary_verification_interval, trusted_contact_email')
         .eq('user_id', user.id)
         .single();
       
-      const interval = settings?.beneficiary_verification_interval || 48;
+      const interval = settingsData?.beneficiary_verification_interval || 48;
       
       // Create expiration date
       const expiresAt = new Date();
@@ -258,7 +258,7 @@ export default function TestDeathVerificationFlow() {
       }
       
       // Generate trusted contact PIN if configured
-      if (settings?.trusted_contact_email) {
+      if (settingsData?.trusted_contact_email) {
         const pinCode = generatePINCode();
         
         const { error: pinError } = await supabase
@@ -275,7 +275,7 @@ export default function TestDeathVerificationFlow() {
         } else {
           pinResults.push({
             name: 'Trusted Contact',
-            email: settings.trusted_contact_email,
+            email: settingsData.trusted_contact_email,
             type: 'trusted',
             pin: pinCode
           });
@@ -422,7 +422,7 @@ export default function TestDeathVerificationFlow() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert variant="warning">
+          <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Testing Mode</AlertTitle>
             <AlertDescription>
