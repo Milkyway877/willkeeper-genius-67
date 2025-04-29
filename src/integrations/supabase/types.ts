@@ -36,6 +36,33 @@ export type Database = {
         }
         Relationships: []
       }
+      death_verification_checkins: {
+        Row: {
+          checked_in_at: string
+          created_at: string
+          id: string
+          next_check_in: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          checked_in_at?: string
+          created_at?: string
+          id?: string
+          next_check_in: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          checked_in_at?: string
+          created_at?: string
+          id?: string
+          next_check_in?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       death_verification_logs: {
         Row: {
           action: string
@@ -57,6 +84,146 @@ export type Database = {
           id?: string
           timestamp?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      death_verification_pins: {
+        Row: {
+          created_at: string
+          id: string
+          person_id: string
+          person_type: string
+          pin_code: string
+          used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          person_id: string
+          person_type: string
+          pin_code: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          person_id?: string
+          person_type?: string
+          pin_code?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      death_verification_requests: {
+        Row: {
+          expires_at: string
+          id: string
+          initiated_at: string
+          status: string
+          user_id: string
+          verification_link: string
+          verification_token: string
+        }
+        Insert: {
+          expires_at: string
+          id?: string
+          initiated_at?: string
+          status: string
+          user_id: string
+          verification_link: string
+          verification_token: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          initiated_at?: string
+          status?: string
+          user_id?: string
+          verification_link?: string
+          verification_token?: string
+        }
+        Relationships: []
+      }
+      death_verification_responses: {
+        Row: {
+          id: string
+          request_id: string
+          responded_at: string
+          responder_id: string
+          response: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          responded_at?: string
+          responder_id: string
+          response: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          responded_at?: string
+          responder_id?: string
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "death_verification_responses_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "death_verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      death_verification_settings: {
+        Row: {
+          beneficiary_verification_interval: number
+          check_in_enabled: boolean
+          check_in_frequency: number
+          created_at: string
+          executor_override_enabled: boolean
+          failsafe_enabled: boolean
+          id: string
+          notification_preferences: Json
+          pin_system_enabled: boolean
+          trusted_contact_email: string | null
+          trusted_contact_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          beneficiary_verification_interval?: number
+          check_in_enabled?: boolean
+          check_in_frequency?: number
+          created_at?: string
+          executor_override_enabled?: boolean
+          failsafe_enabled?: boolean
+          id?: string
+          notification_preferences?: Json
+          pin_system_enabled?: boolean
+          trusted_contact_email?: string | null
+          trusted_contact_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          beneficiary_verification_interval?: number
+          check_in_enabled?: boolean
+          check_in_frequency?: number
+          created_at?: string
+          executor_override_enabled?: boolean
+          failsafe_enabled?: boolean
+          id?: string
+          notification_preferences?: Json
+          pin_system_enabled?: boolean
+          trusted_contact_email?: string | null
+          trusted_contact_enabled?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -331,6 +498,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      public_verification_access: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          request_id: string
+          used: boolean
+          used_at: string | null
+          verification_token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          request_id: string
+          used?: boolean
+          used_at?: string | null
+          verification_token: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          request_id?: string
+          used?: boolean
+          used_at?: string | null
+          verification_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_verification_access_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "death_verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -836,6 +1041,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_missed_checkins: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_enum_values: {
         Args: { table_name: string; column_name: string }
         Returns: string[]

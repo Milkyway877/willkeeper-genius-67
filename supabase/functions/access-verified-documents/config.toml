@@ -1,0 +1,3 @@
+
+[functions.access-verified-documents]
+verify_jwt = false

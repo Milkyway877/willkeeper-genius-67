@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   DeathVerificationSettings, 
   DEFAULT_SETTINGS, 
-  UnlockMode,
   getDeathVerificationSettings, 
   saveDeathVerificationSettings 
 } from '@/services/deathVerificationService';
@@ -102,6 +101,14 @@ export default function DeathVerification() {
         ...prev.notification_preferences,
         [type]: !prev.notification_preferences[type]
       }
+    }));
+  };
+  
+  // Handle toggle for unlock mechanisms
+  const toggleUnlockMechanism = (type: 'pin_system_enabled' | 'executor_override_enabled' | 'trusted_contact_enabled') => {
+    setSettings(prev => ({
+      ...prev,
+      [type]: !prev[type]
     }));
   };
   
@@ -245,71 +252,59 @@ export default function DeathVerification() {
         >
           <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center">
             <Key className="text-willtank-700 mr-2" size={18} />
-            <h3 className="font-medium">Will Unlock Mechanism</h3>
+            <h3 className="font-medium">Will Unlock Mechanisms</h3>
           </div>
           
           <div className="p-6">
             <p className="text-gray-700 mb-4">
-              Choose how your will can be unlocked after verified death. This determines the security level and access method.
+              Configure how your will can be unlocked after verified death. Multiple mechanisms can be enabled for added security and flexibility.
             </p>
             
             <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <input 
-                  type="radio" 
-                  id="pin-unlock" 
-                  name="unlock-mode" 
-                  value="pin"
-                  checked={settings.unlock_mode === 'pin'}
-                  onChange={() => setSettings(prev => ({ ...prev, unlock_mode: 'pin' as UnlockMode }))}
-                  className="h-4 w-4 text-willtank-600 focus:ring-willtank-500"
-                />
-                <div>
-                  <label htmlFor="pin-unlock" className="text-sm font-medium">10-Way PIN System</label>
+              <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                <div className="flex-1">
+                  <label htmlFor="pin-toggle" className="text-sm font-medium">10-Way PIN System</label>
                   <p className="text-xs text-gray-500">
                     Every beneficiary and executor receives a unique PIN code. All PINs must be entered to unlock your will.
                   </p>
                 </div>
+                <Switch 
+                  id="pin-toggle"
+                  checked={settings.pin_system_enabled} 
+                  onCheckedChange={() => toggleUnlockMechanism('pin_system_enabled')}
+                />
               </div>
               
-              <div className="flex items-center space-x-3">
-                <input 
-                  type="radio" 
-                  id="executor-unlock" 
-                  name="unlock-mode" 
-                  value="executor"
-                  checked={settings.unlock_mode === 'executor'}
-                  onChange={() => setSettings(prev => ({ ...prev, unlock_mode: 'executor' as UnlockMode }))}
-                  className="h-4 w-4 text-willtank-600 focus:ring-willtank-500"
-                />
-                <div>
-                  <label htmlFor="executor-unlock" className="text-sm font-medium">Executor Override</label>
+              <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                <div className="flex-1">
+                  <label htmlFor="executor-toggle" className="text-sm font-medium">Executor Override</label>
                   <p className="text-xs text-gray-500">
                     Your executor can override the PIN system if necessary (e.g., if beneficiaries lose their PINs).
                   </p>
                 </div>
+                <Switch 
+                  id="executor-toggle"
+                  checked={settings.executor_override_enabled} 
+                  onCheckedChange={() => toggleUnlockMechanism('executor_override_enabled')}
+                />
               </div>
               
-              <div className="flex items-center space-x-3">
-                <input 
-                  type="radio" 
-                  id="trusted-unlock" 
-                  name="unlock-mode" 
-                  value="trusted"
-                  checked={settings.unlock_mode === 'trusted'}
-                  onChange={() => setSettings(prev => ({ ...prev, unlock_mode: 'trusted' as UnlockMode }))}
-                  className="h-4 w-4 text-willtank-600 focus:ring-willtank-500"
-                />
-                <div>
-                  <label htmlFor="trusted-unlock" className="text-sm font-medium">Trusted Contact Override</label>
+              <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                <div className="flex-1">
+                  <label htmlFor="trusted-toggle" className="text-sm font-medium">Trusted Contact Override</label>
                   <p className="text-xs text-gray-500">
                     A trusted third party (e.g., lawyer) can override the PIN system in case of emergencies.
                   </p>
                 </div>
+                <Switch 
+                  id="trusted-toggle"
+                  checked={settings.trusted_contact_enabled} 
+                  onCheckedChange={() => toggleUnlockMechanism('trusted_contact_enabled')}
+                />
               </div>
             </div>
             
-            {settings.unlock_mode === 'trusted' && (
+            {settings.trusted_contact_enabled && (
               <div className="mt-4">
                 <label htmlFor="trusted-email" className="block text-sm font-medium text-gray-700 mb-1">
                   Trusted Contact Email

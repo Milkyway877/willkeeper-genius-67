@@ -42,6 +42,9 @@ import IDSecurity from './pages/security/IDSecurity';
 import Billing from './pages/billing/Billing';
 import Activity from './pages/activity/Activity';
 
+// Import verification portal
+import VerificationPortal from './pages/verify/VerificationPortal';
+
 // Add global mobile responsive styles
 import './MobileStyles.css';
 
@@ -70,6 +73,9 @@ export default function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/cookies" element={<Cookies />} />
+        
+        {/* Public verification portal - accessible without authentication */}
+        <Route path="/verify/:token" element={<VerificationPortal />} />
         
         {/* Auth routes - using our secure components */}
         <Route path="/auth/signin" element={<SecureSignIn />} />

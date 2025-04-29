@@ -6,7 +6,6 @@ import { Database } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
 
 // Types
-export type UnlockMode = 'pin' | 'executor' | 'trusted';
 export type CheckinStatus = 'alive' | 'pending' | 'verification_triggered';
 export type VerificationRequestStatus = 'pending' | 'verified' | 'canceled';
 export type VerificationResponse = 'alive' | 'dead';
@@ -19,12 +18,13 @@ export interface DeathVerificationSettings {
   beneficiary_verification_interval: number; // in hours (48, 72)
   notification_preferences: {
     email: boolean;
-    sms: boolean;
     push: boolean;
   };
   failsafe_enabled: boolean;
   trusted_contact_email?: string;
-  unlock_mode: UnlockMode;
+  pin_system_enabled: boolean;
+  executor_override_enabled: boolean;
+  trusted_contact_enabled: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -72,11 +72,12 @@ export const DEFAULT_SETTINGS: DeathVerificationSettings = {
   beneficiary_verification_interval: 48, // 48 hours
   notification_preferences: {
     email: true,
-    sms: false,
     push: false
   },
   failsafe_enabled: true,
-  unlock_mode: 'pin'
+  pin_system_enabled: true,
+  executor_override_enabled: false,
+  trusted_contact_enabled: false
 };
 
 // Get death verification settings for current user
@@ -103,7 +104,13 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
       return null;
     }
     
-    return data as DeathVerificationSettings;
+    // Make sure notification_preferences has the correct structure
+    const settings = {
+      ...data,
+      notification_preferences: data.notification_preferences || { email: true, push: false }
+    };
+    
+    return settings as DeathVerificationSettings;
   } catch (error) {
     console.error('Error in getDeathVerificationSettings:', error);
     return null;
@@ -163,6 +170,11 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
       
       // Create initial check-in record
       await createInitialCheckin();
+      
+      // Generate PIN codes for beneficiaries and executors if PIN system is enabled
+      if (settings.pin_system_enabled) {
+        await generateAndStorePINCodes();
+      }
     }
     
     await createSystemNotification('security_key_generated', {
@@ -480,11 +492,17 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
     const expiresAt = new Date(now);
     expiresAt.setHours(expiresAt.getHours() + interval);
     
+    // Generate verification token for public access
+    const verificationToken = generateVerificationToken();
+    const verificationLink = `${window.location.origin}/verify/${verificationToken}`;
+    
     const requestData = {
       user_id: userId,
       initiated_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
-      status: 'pending' as VerificationRequestStatus
+      status: 'pending' as VerificationRequestStatus,
+      verification_token: verificationToken,
+      verification_link: verificationLink
     };
     
     const { data, error } = await supabase
@@ -495,6 +513,20 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
     
     if (error) {
       throw error;
+    }
+    
+    // Create public verification access
+    const { error: accessError } = await supabase
+      .from('public_verification_access')
+      .insert({
+        verification_token: verificationToken,
+        request_id: data.id,
+        expires_at: expiresAt.toISOString(),
+        used: false
+      });
+      
+    if (accessError) {
+      throw accessError;
     }
     
     // Update check-in status
@@ -511,7 +543,8 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
     
     await logVerificationEvent('verification_triggered', {
       request_id: data.id,
-      expires_at: data.expires_at
+      expires_at: data.expires_at,
+      verification_link: verificationLink
     });
     
     // Generate PIN codes for beneficiaries and executors
@@ -525,6 +558,16 @@ export const triggerDeathVerification = async (userId: string): Promise<boolean>
     console.error('Error in triggerDeathVerification:', error);
     return false;
   }
+};
+
+// Generate a verification token
+export const generateVerificationToken = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
 };
 
 // Process a verification response
