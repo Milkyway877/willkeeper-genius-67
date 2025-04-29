@@ -50,7 +50,7 @@ export function Sidebar() {
   return (
     <aside className={`
       ${isCollapsed ? 'w-20' : 'w-60'}
-      flex flex-col h-screen bg-gray-50 border-r border-gray-200 transition-all duration-200 fixed left-0 z-40`}>
+      flex flex-col h-screen bg-gray-50 border-r border-gray-200 transition-all duration-200`}>
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center">
@@ -65,11 +65,11 @@ export function Sidebar() {
         <nav className="space-y-1.5 mt-6">
           <SidebarLink to="/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} label="Dashboard" />
           
-          {/* Wills link with prominent styling */}
+          {/* Give the Wills link special styling to indicate its importance */}
           <Link
             to="/wills"
             className={`
-              flex items-center px-4 py-3 rounded-md group
+              flex items-center px-4 py-3 rounded-md
               bg-purple-50 text-purple-800 border-l-4 border-purple-600
               hover:bg-purple-100
               ${location.pathname === '/wills' ? 'bg-purple-100 font-medium' : ''}
