@@ -60,16 +60,24 @@ export default function TestDeathVerificationFlow() {
       }
       
       // Load executors
-      const { data: executors } = await supabase
+      const { data: executors, error: executorsError } = await supabase
         .from('will_executors')
         .select('id, name, email')
         .eq('user_id', session.user.id);
+        
+      if (executorsError) {
+        console.error('Error loading executors:', executorsError);
+      }
       
       // Load beneficiaries
-      const { data: beneficiaries } = await supabase
+      const { data: beneficiaries, error: beneficiariesError } = await supabase
         .from('will_beneficiaries')
         .select('id, beneficiary_name, email')
         .eq('user_id', session.user.id);
+        
+      if (beneficiariesError) {
+        console.error('Error loading beneficiaries:', beneficiariesError);
+      }
       
       const contacts = [
         ...(executors?.map(e => ({ id: e.id, name: e.name, email: e.email, type: 'executor' as const })) || []),
@@ -107,6 +115,7 @@ export default function TestDeathVerificationFlow() {
       }
       
       if (newContactType === 'executor') {
+        // Insert executor with user_id included
         const { data, error } = await supabase
           .from('will_executors')
           .insert({
@@ -115,18 +124,21 @@ export default function TestDeathVerificationFlow() {
             user_id: session.user.id,
             status: 'pending'
           })
-          .select()
-          .single();
+          .select();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error adding executor:', error);
+          throw error;
+        }
         
         setTestContacts(prev => [...prev, {
-          id: data.id,
-          name: data.name,
-          email: data.email,
+          id: data[0].id,
+          name: data[0].name,
+          email: data[0].email,
           type: 'executor'
         }]);
       } else {
+        // Insert beneficiary with user_id included
         const { data, error } = await supabase
           .from('will_beneficiaries')
           .insert({
@@ -136,15 +148,17 @@ export default function TestDeathVerificationFlow() {
             relationship: 'Test Contact',
             status: 'pending'
           })
-          .select()
-          .single();
+          .select();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error adding beneficiary:', error);
+          throw error;
+        }
         
         setTestContacts(prev => [...prev, {
-          id: data.id,
-          name: data.beneficiary_name,
-          email: data.email || '',
+          id: data[0].id,
+          name: data[0].beneficiary_name,
+          email: data[0].email || '',
           type: 'beneficiary'
         }]);
       }
