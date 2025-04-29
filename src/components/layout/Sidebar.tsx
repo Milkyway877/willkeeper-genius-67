@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   X,
+  FileText,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -63,6 +64,22 @@ export function Sidebar() {
         
         <nav className="space-y-1.5 mt-6">
           <SidebarLink to="/dashboard" icon={<LayoutDashboard className="h-5 w-5" />} label="Dashboard" />
+          
+          {/* Give the Wills link special styling to indicate its importance */}
+          <Link
+            to="/wills"
+            className={`
+              flex items-center px-4 py-3 rounded-md
+              bg-purple-50 text-purple-800 border-l-4 border-purple-600
+              hover:bg-purple-100
+              ${location.pathname === '/wills' ? 'bg-purple-100 font-medium' : ''}
+            `}
+          >
+            <FileText className="h-5 w-5 text-purple-700" />
+            <span className="ml-3 font-semibold">Wills</span>
+            {!isCollapsed && <span className="ml-auto px-2 py-0.5 text-xs rounded-full bg-purple-200 text-purple-800">Core</span>}
+          </Link>
+          
           <SidebarLink to="/tank" icon={<Vault className="h-5 w-5" />} label="Will Tank" />
           <SidebarLink to="/activity" icon={<Activity className="h-5 w-5" />} label="Activity" />
         </nav>
