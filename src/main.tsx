@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -222,10 +221,6 @@ const router = createBrowserRouter([
       {
         path: "/will/create",
         element: <WillCreatePage />,
-      },
-      {
-        path: "/will/editor",
-        element: <WillCreation />,
       },
       {
         path: "*",

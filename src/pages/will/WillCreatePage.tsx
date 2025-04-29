@@ -4,10 +4,10 @@ import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
 import { Check, FileText, Book, Scale, Users, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 // Template data structure
 interface WillTemplate {
@@ -193,12 +193,18 @@ const willTemplates: WillTemplate[] = [
 
 export default function WillCreatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const navigate = useNavigate();
   
   const handleUseTemplate = (templateId: string) => {
-    // Save selected template and proceed to the next step
+    // Save selected template without navigating
     localStorage.setItem('selectedWillTemplate', templateId);
-    navigate('/will/editor', { state: { templateId } });
+    setSelectedTemplate(templateId);
+    
+    // Show success notification
+    toast({
+      title: "Template Selected",
+      description: `Your template has been saved. You'll be able to continue creating your will soon.`,
+      variant: "default",
+    });
   };
   
   return (
