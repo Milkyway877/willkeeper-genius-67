@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useUserProfile } from '@/contexts/UserProfileContext';
@@ -16,6 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
 
 // Validation schema
 const profileFormSchema = z.object({
@@ -40,7 +41,7 @@ export function ProfileForm() {
   });
   
   // Update form when profile changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile) {
       form.reset({
         fullName: profile.full_name || '',
@@ -58,16 +59,23 @@ export function ProfileForm() {
     onSave: async (data) => {
       // Only save if full name has changed and is valid
       if (data.fullName !== profile?.full_name && data.fullName.length >= 2) {
-        await updateProfile({
-          full_name: data.fullName,
-        });
-        
-        // Show toast for auto-save
-        toast({
-          title: 'Changes Saved',
-          description: 'Your profile has been updated automatically.',
-        });
+        try {
+          await updateProfile({
+            full_name: data.fullName,
+          });
+          
+          // Show toast for auto-save
+          toast({
+            title: 'Changes Saved',
+            description: 'Your profile has been updated automatically.',
+          });
+          return true;
+        } catch (error) {
+          console.error('Error in auto-save:', error);
+          throw error;
+        }
       }
+      return true;
     },
     debounceMs: 2000, // Wait 2 seconds after typing stops
     enabled: !!profile && form.formState.isDirty && form.formState.isValid,
@@ -168,28 +176,23 @@ export function ProfileForm() {
         />
 
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
-            className={`
-              inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium
-              transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-              focus-visible:ring-offset-2 disabled:opacity-50 bg-black text-white hover:bg-gray-800
-              h-10 px-4 py-2
-            `}
             disabled={manualSaving || !form.formState.isDirty || saving}
+            className="bg-black text-white hover:bg-gray-800"
           >
             {manualSaving ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Saving...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4" />
+                <Save className="h-4 w-4 mr-2" />
                 Save Changes
               </>
             )}
-          </button>
+          </Button>
         </div>
       </form>
     </Form>

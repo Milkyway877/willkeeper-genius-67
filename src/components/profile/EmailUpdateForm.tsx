@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Mail, Loader2, Check } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.object({
   email: z
@@ -52,7 +53,7 @@ export function EmailUpdateForm() {
   });
   
   // Reset the form when dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       form.reset({
         email: profile?.email || '',
@@ -72,26 +73,30 @@ export function EmailUpdateForm() {
     setError(null);
     
     try {
-      const { success, error } = await updateEmail(values.email);
+      // Directly use Supabase to update email for more reliable error handling
+      const { error: updateError } = await supabase.auth.updateUser({ 
+        email: values.email 
+      });
       
-      if (success) {
-        setShowSuccess(true);
-        form.reset();
-        
-        toast({
-          title: 'Verification Email Sent',
-          description: 'A confirmation link has been sent to your new email address. Please check your inbox to complete the update.',
-        });
-        
-        // Close dialog after showing success for 3 seconds
-        setTimeout(() => {
-          setOpen(false);
-        }, 3000);
-      } else {
-        setError(error || 'Failed to update email. Please try again.');
+      if (updateError) {
+        throw updateError;
       }
+      
+      setShowSuccess(true);
+      form.reset();
+      
+      toast({
+        title: 'Verification Email Sent',
+        description: 'A confirmation link has been sent to your new email address. Please check your inbox to complete the update.',
+      });
+      
+      // Close dialog after showing success for 3 seconds
+      setTimeout(() => {
+        setOpen(false);
+      }, 3000);
     } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred. Please try again.');
+      console.error('Email update error:', err);
+      setError(err.message || 'Failed to update email. Please try again.');
     } finally {
       setSubmitting(false);
     }

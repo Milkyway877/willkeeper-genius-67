@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { debounce } from 'lodash';
 
 export interface AutoSaveOptions<T> {
@@ -18,9 +18,10 @@ export function useFormAutoSave<T extends Record<string, any>>({
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const debouncedSaveRef = useRef<any>(null);
 
   // Create debounced save function
-  const debouncedSave = debounce(async (dataToSave: T) => {
+  const saveData = useCallback(async (dataToSave: T) => {
     if (!enabled) return;
     
     setSaving(true);
@@ -35,24 +36,38 @@ export function useFormAutoSave<T extends Record<string, any>>({
     } finally {
       setSaving(false);
     }
-  }, debounceMs);
+  }, [enabled, onSave]);
+
+  // Create and store the debounced function
+  useEffect(() => {
+    debouncedSaveRef.current = debounce(saveData, debounceMs);
+    
+    // Clean up on unmount
+    return () => {
+      if (debouncedSaveRef.current?.cancel) {
+        debouncedSaveRef.current.cancel();
+      }
+    };
+  }, [saveData, debounceMs]);
 
   // Trigger save when data changes
   useEffect(() => {
-    if (enabled && Object.keys(data).length > 0) {
-      debouncedSave(data);
+    if (enabled && Object.keys(data).length > 0 && debouncedSaveRef.current) {
+      debouncedSaveRef.current(data);
     }
-    
-    // Cancel debounced call on cleanup
-    return () => {
-      debouncedSave.cancel();
-    };
   }, [data, enabled]);
+
+  // Cancel function that correctly accesses the latest debounced function
+  const cancelSave = useCallback(() => {
+    if (debouncedSaveRef.current?.cancel) {
+      debouncedSaveRef.current.cancel();
+    }
+  }, []);
 
   return {
     saving,
     lastSaved,
     saveError,
-    cancelSave: debouncedSave.cancel
+    cancelSave
   };
 }

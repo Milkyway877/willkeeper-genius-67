@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogTitle, DialogHeader } from '@/components/ui/dialog';
 import { Upload, X, Camera, Image as ImageIcon, Check, Edit, Loader2 } from 'lucide-react';
 import { uploadProfileImage } from '@/services/profileService';
-import { useImageCropper } from '@/hooks/use-image-cropper';
 import { AvatarLibrary } from '@/components/ui/avatar-library';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
@@ -26,22 +25,18 @@ export function AvatarUploader() {
   const webcamRef = useRef<HTMLVideoElement>(null);
   const [isCapturingFromWebcam, setIsCapturingFromWebcam] = useState(false);
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
-  
-  const {
-    previewUrl,
-    isLoading: isCropLoading,
-    error: cropError,
-    loadImage,
-    cropImage,
-    reset: resetCropper
-  } = useImageCropper();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
     const file = e.target.files[0];
-    loadImage(file);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setSelectedFile(file);
     
     // Reset input value so the same file can be selected again
     if (fileInputRef.current) {
@@ -52,6 +47,7 @@ export function AvatarUploader() {
   // Start webcam capture
   const startWebcam = async () => {
     try {
+      setCameraError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'user' } 
       });
@@ -61,9 +57,13 @@ export function AvatarUploader() {
       
       if (webcamRef.current) {
         webcamRef.current.srcObject = stream;
+        webcamRef.current.onloadedmetadata = () => {
+          webcamRef.current?.play();
+        };
       }
     } catch (err) {
       console.error('Error accessing webcam:', err);
+      setCameraError("Could not access your camera. Please check permissions.");
       toast({
         title: "Camera Error",
         description: "Could not access your camera. Please check permissions.",
@@ -101,7 +101,8 @@ export function AvatarUploader() {
     canvas.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], "webcam-capture.jpg", { type: "image/jpeg" });
-        loadImage(file);
+        setPreviewUrl(URL.createObjectURL(blob));
+        setSelectedFile(file);
         stopWebcam();
       }
     }, 'image/jpeg', 0.9);
@@ -118,7 +119,10 @@ export function AvatarUploader() {
     e.stopPropagation();
     
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      loadImage(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+      setSelectedFile(file);
     }
   };
 
@@ -131,6 +135,10 @@ export function AvatarUploader() {
       // Fetch the image from the URL
       const response = await fetch(url);
       setUploadProgress(40);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch image from library');
+      }
       
       const blob = await response.blob();
       setUploadProgress(60);
@@ -168,22 +176,22 @@ export function AvatarUploader() {
     }
   };
 
-  // Handle avatar upload after cropping
+  // Handle avatar upload after selecting
   const handleUpload = async () => {
+    if (!selectedFile) {
+      toast({
+        title: "No Image Selected",
+        description: "Please select an image first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
-      // Get the cropped image as a blob
-      const croppedBlob = await cropImage();
-      if (!croppedBlob) {
-        throw new Error('Failed to crop image');
-      }
-      
-      // Create a File object from the blob
-      const file = new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" });
-      
       setIsUploading(true);
       setUploadProgress(20);
       
-      const uploadedUrl = await uploadProfileImage(file);
+      const uploadedUrl = await uploadProfileImage(selectedFile);
       setUploadProgress(80);
       
       await refreshProfile();
@@ -198,7 +206,7 @@ export function AvatarUploader() {
       setUploadProgress(100);
       setTimeout(() => {
         setDialogOpen(false);
-        resetCropper();
+        resetImage();
       }, 1000);
     } catch (error) {
       console.error("Error uploading avatar:", error);
@@ -215,19 +223,38 @@ export function AvatarUploader() {
     }
   };
 
+  // Reset selected image
+  const resetImage = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setSelectedFile(null);
+  };
+
   // Handle dialog close
   const handleCloseDialog = () => {
     stopWebcam();
-    resetCropper();
+    resetImage();
     setDialogOpen(false);
   };
 
   // Clean up on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       stopWebcam();
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
     };
   }, []);
+
+  // Reset preview when tab changes
+  useEffect(() => {
+    resetImage();
+    stopWebcam();
+    setCameraError(null);
+  }, [activeTab]);
 
   return (
     <>
@@ -249,7 +276,10 @@ export function AvatarUploader() {
         </Button>
       </div>
       
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        if (!open) handleCloseDialog();
+        setDialogOpen(open);
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-center">Update Profile Picture</DialogTitle>
@@ -307,7 +337,7 @@ export function AvatarUploader() {
                       <button
                         type="button"
                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                        onClick={resetCropper}
+                        onClick={resetImage}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -319,7 +349,7 @@ export function AvatarUploader() {
                         Choose Different Image
                       </Button>
                       
-                      <Button onClick={handleUpload} disabled={isUploading || isCropLoading}>
+                      <Button onClick={handleUpload} disabled={isUploading || !selectedFile}>
                         {isUploading ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -340,7 +370,14 @@ export function AvatarUploader() {
             
             <TabsContent value="camera" className="mt-4">
               <div className="flex flex-col items-center space-y-4">
-                {!isCapturingFromWebcam ? (
+                {cameraError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-600 mb-4">
+                    <p className="text-sm">{cameraError}</p>
+                    <p className="text-xs mt-1">Please ensure your browser has permission to use your camera.</p>
+                  </div>
+                )}
+                
+                {!isCapturingFromWebcam && !previewUrl ? (
                   <div className="text-center py-8">
                     <div className="h-16 w-16 mx-auto mb-4 bg-willtank-100 rounded-full flex items-center justify-center">
                       <Camera className="h-8 w-8 text-willtank-600" />
@@ -355,7 +392,7 @@ export function AvatarUploader() {
                     </Button>
                   </div>
                 ) : previewUrl ? (
-                  <div className="py-4">
+                  <div className="py-4 w-full">
                     <div className="relative mx-auto w-64 h-64 mb-4 rounded-full overflow-hidden border-4 border-willtank-100">
                       <img 
                         src={previewUrl} 
@@ -367,7 +404,7 @@ export function AvatarUploader() {
                         type="button"
                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                         onClick={() => {
-                          resetCropper();
+                          resetImage();
                           startWebcam();
                         }}
                       >
@@ -377,14 +414,14 @@ export function AvatarUploader() {
                     
                     <div className="flex justify-center gap-2">
                       <Button variant="outline" onClick={() => {
-                        resetCropper();
+                        resetImage();
                         startWebcam();
                       }}>
                         <Camera className="h-4 w-4 mr-2" />
                         Take Another Photo
                       </Button>
                       
-                      <Button onClick={handleUpload} disabled={isUploading || isCropLoading}>
+                      <Button onClick={handleUpload} disabled={isUploading || !selectedFile}>
                         {isUploading ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -405,7 +442,8 @@ export function AvatarUploader() {
                       <video 
                         ref={webcamRef} 
                         autoPlay 
-                        playsInline 
+                        playsInline
+                        muted
                         className="w-full h-64 object-cover"
                       />
                     </div>
@@ -441,10 +479,6 @@ export function AvatarUploader() {
                 {uploadProgress === 100 ? 'Completed!' : `Uploading... ${uploadProgress}%`}
               </p>
             </div>
-          )}
-          
-          {cropError && (
-            <p className="mt-2 text-sm text-red-500">{cropError}</p>
           )}
         </DialogContent>
       </Dialog>

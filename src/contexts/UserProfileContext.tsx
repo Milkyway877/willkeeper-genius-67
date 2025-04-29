@@ -60,7 +60,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       return updatedProfile;
     } catch (error) {
       console.error("Error updating profile:", error);
-      return null;
+      throw error;
     }
   };
 
@@ -80,9 +80,10 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       
       if (user.email === newEmail) {
-        return { success: true, error: "This is already your current email address" };
+        return { success: false, error: "This is already your current email address" };
       }
       
+      // Direct Supabase auth call with better error handling
       const { error } = await supabase.auth.updateUser({ email: newEmail });
       
       if (error) {
@@ -96,10 +97,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         new_email: newEmail
       });
       
-      return { 
-        success: true,
-        error: "A confirmation email has been sent to your new address. Please check your inbox to complete the update."
-      };
+      return { success: true };
     } catch (error: any) {
       console.error("Error updating email:", error);
       return { 

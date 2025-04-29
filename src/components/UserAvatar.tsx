@@ -36,13 +36,15 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     
     // Update avatar URL with cache busting
     if (displayProfile?.avatar_url) {
-      const url = new URL(displayProfile.avatar_url);
-      if (cacheBuster) {
-        url.searchParams.set('t', cacheBuster.toString());
-      } else {
-        url.searchParams.set('t', Date.now().toString());
+      try {
+        const url = new URL(displayProfile.avatar_url);
+        const currentTimestamp = cacheBuster || Date.now();
+        url.searchParams.set('t', currentTimestamp.toString());
+        setAvatarUrl(url.toString());
+      } catch (e) {
+        // If the URL is invalid, just use the original avatar_url
+        setAvatarUrl(`${displayProfile.avatar_url}?t=${cacheBuster || Date.now()}`);
       }
-      setAvatarUrl(url.toString());
     } else {
       setAvatarUrl('');
       setImageLoading(false);
@@ -65,6 +67,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   };
 
   const handleImageLoad = () => {
+    console.log("Avatar image loaded successfully");
     setImageLoading(false);
   };
   
