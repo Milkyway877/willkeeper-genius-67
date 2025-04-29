@@ -20,13 +20,18 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "react": path.resolve("node_modules/react"),
-      "react-dom": path.resolve("node_modules/react-dom"),
+      // Use exact paths to prevent duplicate React instances
+      "react": path.resolve(__dirname, "node_modules/react"),
+      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
   },
   // Add SPA-friendly build options
   build: {
     // Generate SPA fallback index.html for all routes
     outDir: 'dist',
+  },
+  // Ensure proper optimization to avoid duplicate React instances
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
   },
 }));
