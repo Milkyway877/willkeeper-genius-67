@@ -128,10 +128,10 @@ export function AccountSettings() {
       }
 
       setIsUploading(true);
-      await uploadProfileImage(file);
+      const uploadedUrl = await uploadProfileImage(file);
       await refreshProfile();
       
-      // Update cache buster to force avatar refresh
+      // Force avatar refresh by updating cache buster
       setAvatarCacheBuster(Date.now());
       
       toast({
@@ -139,6 +139,8 @@ export function AccountSettings() {
         description: "Your profile picture has been successfully updated.",
         variant: "default"
       });
+      
+      console.log("Avatar updated with URL:", uploadedUrl);
     } catch (error: any) {
       console.error("Error uploading avatar:", error);
       toast({
@@ -161,6 +163,7 @@ export function AccountSettings() {
       
       if (!newEmail) {
         setEmailError('Email is required');
+        setIsSaving(false);
         return;
       }
 
@@ -168,6 +171,7 @@ export function AccountSettings() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(newEmail)) {
         setEmailError('Please enter a valid email address');
+        setIsSaving(false);
         return;
       }
 
@@ -194,6 +198,12 @@ export function AccountSettings() {
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
+
+  // For debugging
+  useEffect(() => {
+    console.log("Current profile:", profile);
+    console.log("Avatar cache buster:", avatarCacheBuster);
+  }, [profile, avatarCacheBuster]);
 
   return (
     <div className="space-y-6">

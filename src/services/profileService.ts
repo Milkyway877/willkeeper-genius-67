@@ -113,21 +113,13 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       throw new Error('No user logged in');
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error('File size must be less than 2MB');
-    }
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('File type must be JPEG, PNG or GIF');
-    }
-
     // Generate a unique filename with timestamp to prevent caching issues
     const timestamp = new Date().getTime();
     const fileExt = file.name.split('.').pop();
     const fileName = `${session.user.id}/${timestamp}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    
+    // Log for debugging
+    console.log('Uploading file:', fileName);
     
     const { error: uploadError } = await supabase.storage
       .from('avatars')
@@ -147,6 +139,8 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
 
     // Add cache busting parameter
     const cacheBustedUrl = `${publicUrl}?t=${timestamp}`;
+    
+    console.log('Avatar uploaded successfully:', publicUrl);
 
     // Update the user profile with the new avatar URL
     await updateUserProfile({

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { UserProfile } from '@/services/profileService';
@@ -23,6 +23,25 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const { profile, initials } = useUserProfile();
   const displayProfile = user || profile;
   const [imageError, setImageError] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  
+  useEffect(() => {
+    // Reset image error state when profile/cacheBuster changes
+    setImageError(false);
+    
+    // Update avatar URL with cache busting
+    if (displayProfile?.avatar_url) {
+      const url = new URL(displayProfile.avatar_url);
+      if (cacheBuster) {
+        url.searchParams.set('t', cacheBuster.toString());
+      } else {
+        url.searchParams.set('t', Date.now().toString());
+      }
+      setAvatarUrl(url.toString());
+    } else {
+      setAvatarUrl('');
+    }
+  }, [displayProfile, cacheBuster]);
   
   const getSizeClass = () => {
     switch (size) {
@@ -38,26 +57,19 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     setImageError(true);
   };
 
-  // Add cache busting parameter to avatar URL if provided
-  const getAvatarUrl = () => {
-    if (!displayProfile?.avatar_url || imageError) return '';
-    
-    const url = new URL(displayProfile.avatar_url);
-    
-    // Add cache busting parameter if provided
-    if (cacheBuster) {
-      url.searchParams.set('t', cacheBuster.toString());
+  // Log for debugging purposes
+  useEffect(() => {
+    if (displayProfile?.avatar_url) {
+      console.log('Avatar URL:', avatarUrl);
     }
-    
-    return url.toString();
-  };
+  }, [avatarUrl, displayProfile]);
   
   return (
     <Avatar className={`${getSizeClass()} ${className} ring-2 ring-offset-2 ring-offset-white ring-willtank-100`}>
-      {displayProfile?.avatar_url && !imageError ? (
+      {avatarUrl && !imageError ? (
         <AvatarImage 
-          src={getAvatarUrl()}
-          alt={displayProfile.full_name || "User avatar"}
+          src={avatarUrl}
+          alt={displayProfile?.full_name || "User avatar"}
           onError={handleImageError}
         />
       ) : null}
