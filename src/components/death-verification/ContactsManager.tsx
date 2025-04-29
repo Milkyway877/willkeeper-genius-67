@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -166,9 +165,9 @@ export function ContactsManager({
   const handleUpdateContact = async (id: string, type: 'beneficiary' | 'executor', email: string, phone?: string) => {
     try {
       if (type === 'beneficiary') {
-        await updateBeneficiary(id, email, phone);
+        await updateBeneficiary(id, { email, phone });
       } else if (type === 'executor') {
-        await updateExecutor(id, email);
+        await updateExecutor(id, { email });
       }
       
       setEditingContact(null);
