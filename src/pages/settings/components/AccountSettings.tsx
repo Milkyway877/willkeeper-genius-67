@@ -12,15 +12,18 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserAvatar } from '@/components/UserAvatar';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 
-// Custom hook for handling profile updates
-const useProfileUpdates = () => {
+export function AccountSettings() {
   const { toast } = useToast();
-  const { profile, refreshProfile } = useUserProfile();
+  const { profile, refreshProfile, updateEmail } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     fullName: '',
     email: ''
@@ -32,6 +35,7 @@ const useProfileUpdates = () => {
         fullName: profile.full_name || '',
         email: profile.email || ''
       });
+      setNewEmail(profile.email || '');
     }
   }, [profile]);
 
@@ -88,8 +92,11 @@ const useProfileUpdates = () => {
     }
   };
 
-  const handleAvatarUpload = async (file: File) => {
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
       setIsUploading(true);
       await uploadProfileImage(file);
       await refreshProfile();
@@ -108,53 +115,11 @@ const useProfileUpdates = () => {
       });
     } finally {
       setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
-
-  return {
-    formData,
-    isEditing,
-    isSaving,
-    isUploading,
-    handleInputChange,
-    handleEdit,
-    handleCancel,
-    handleSave,
-    handleAvatarUpload
-  };
-};
-
-export function AccountSettings() {
-  const { toast } = useToast();
-  const { profile, refreshProfile, updateEmail } = useUserProfile();
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const {
-    formData,
-    isEditing,
-    isUploading,
-    handleInputChange,
-    handleEdit,
-    handleCancel,
-    handleSave,
-    handleAvatarUpload
-  } = useProfileUpdates();
-
-  useEffect(() => {
-    // Ensure profile is loaded when component mounts
-    refreshProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (profile?.email) {
-      setNewEmail(profile.email);
-    }
-  }, [profile]);
 
   const handleEmailUpdate = async () => {
     try {
@@ -197,17 +162,6 @@ export function AccountSettings() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      await handleAvatarUpload(file);
-      // Clear the input value so the same file can be selected again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
   return (
     <div className="space-y-6">
       <Card>
@@ -246,7 +200,7 @@ export function AccountSettings() {
               <input
                 type="file"
                 ref={fileInputRef}
-                onChange={handleFileChange}
+                onChange={handleAvatarUpload}
                 accept="image/png, image/jpeg, image/gif"
                 className="hidden"
               />

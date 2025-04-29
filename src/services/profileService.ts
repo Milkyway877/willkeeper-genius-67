@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -21,7 +20,6 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      console.log("No session found in getUserProfile");
       return null;
     }
     
@@ -63,8 +61,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw new Error('No user logged in');
     }
     
-    console.log("Updating profile with:", updates);
-    
     const dbUpdates: any = {...updates};
     
     if (updates.is_activated !== undefined) {
@@ -89,8 +85,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       console.error('Error updating user profile:', error);
       throw error;
     }
-    
-    console.log("Profile updated successfully:", data);
     
     return {
       id: data.id,
@@ -132,8 +126,6 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
     const fileExt = file.name.split('.').pop();
     const fileName = `${session.user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
     
-    console.log("Uploading avatar to storage:", fileName);
-    
     const { error: uploadError, data } = await supabase.storage
       .from('avatars')
       .upload(fileName, file, {
@@ -149,17 +141,11 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
       .getPublicUrl(fileName);
-      
-    console.log("Avatar uploaded successfully, URL:", publicUrl);  
 
     // Update the user profile with the new avatar URL
-    const updatedProfile = await updateUserProfile({
+    await updateUserProfile({
       avatar_url: publicUrl
     });
-
-    if (!updatedProfile) {
-      throw new Error('Failed to update profile with new avatar URL');
-    }
 
     return publicUrl;
   } catch (error) {
