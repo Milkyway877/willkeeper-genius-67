@@ -12,7 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserAvatar } from '@/components/UserAvatar';
-import { supabase } from '@/integrations/supabase/client';
 
 export function AccountSettings() {
   const { toast } = useToast();
@@ -66,6 +65,16 @@ export function AccountSettings() {
     try {
       setIsSaving(true);
       
+      if (!formData.fullName.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Full name cannot be empty.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+      
       const updatedProfile = await updateProfile({
         full_name: formData.fullName
       });
@@ -73,7 +82,7 @@ export function AccountSettings() {
       if (updatedProfile) {
         toast({
           title: "Profile Updated",
-          description: "Your account information has been saved.",
+          description: "Your account information has been saved successfully.",
           variant: "default",
         });
         
@@ -95,6 +104,28 @@ export function AccountSettings() {
     try {
       const file = event.target.files?.[0];
       if (!file) return;
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a JPEG, PNG, or GIF image file.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate file size (max 2MB)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 2MB.",
+          variant: "destructive"
+        });
+        return;
+      }
 
       setIsUploading(true);
       await uploadProfileImage(file);
