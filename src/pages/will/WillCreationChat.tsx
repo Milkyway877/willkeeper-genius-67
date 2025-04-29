@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -32,6 +31,8 @@ export default function WillCreationChat() {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [lastSaveTimestamp, setLastSaveTimestamp] = useState<number | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize the will template info
   useEffect(() => {
@@ -95,32 +96,56 @@ export default function WillCreationChat() {
   
   // Update progress based on content
   useEffect(() => {
-    const minLength = 200; // Minimum content length for a complete will
-    const maxLength = 3000; // Target content length for a fully complete will
-    
     if (willDraft.content) {
-      const contentLength = willDraft.content.length;
-      const calculatedProgress = Math.min(Math.max(Math.floor((contentLength - minLength) * 100 / (maxLength - minLength)), 0), 100);
+      // Check how many placeholders are filled
+      const placeholderRegex = /\[(.*?)\]/g;
+      const placeholders = willDraft.content.match(placeholderRegex) || [];
+      const totalFields = 10; // Approximate total fields in a will
+      const filledFields = totalFields - placeholders.length;
+      
+      // Calculate progress as a percentage of filled fields
+      const calculatedProgress = Math.min(Math.max(Math.floor((filledFields / totalFields) * 100), 0), 100);
       setProgress(calculatedProgress);
     }
   }, [willDraft.content]);
   
-  // Function to update will content from chat
+  // Function to update will content from chat with debouncing
   const updateWillContent = async (newContent: string) => {
     setWillDraft(prev => ({ ...prev, content: newContent }));
     
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Only save if we have an ID and enough time has passed since last save
     if (willDraft.id) {
-      // Don't save too frequently - simple debounce
-      if (isSaving) return;
+      const now = Date.now();
+      const timeSinceLastSave = lastSaveTimestamp ? now - lastSaveTimestamp : Infinity;
       
-      setIsSaving(true);
-      try {
-        await updateWill(willDraft.id, { content: newContent });
-      } catch (error) {
-        console.error('Error updating will content:', error);
-      } finally {
-        setTimeout(() => setIsSaving(false), 3000); // Wait before allowing another save
+      // If we saved less than 3 seconds ago, debounce
+      if (timeSinceLastSave < 3000) {
+        saveTimeoutRef.current = setTimeout(() => {
+          saveWillDraft(newContent);
+        }, 3000);
+      } else {
+        // Otherwise save immediately
+        saveWillDraft(newContent);
       }
+    }
+  };
+  
+  const saveWillDraft = async (content: string) => {
+    if (!willDraft.id || isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      await updateWill(willDraft.id, { content });
+      setLastSaveTimestamp(Date.now());
+    } catch (error) {
+      console.error('Error updating will content:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -141,15 +166,15 @@ export default function WillCreationChat() {
   // Generate an initial placeholder content for the will template
   const getInitialContent = (templateId: string): string => {
     const placeholders: Record<string, string> = {
-      'basic': 'LAST WILL AND TESTAMENT\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament.',
-      'family': 'FAMILY PROTECTION WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, with special provisions for the care and protection of my family.',
-      'business': 'BUSINESS OWNER WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my business assets and succession planning.',
-      'complex': 'COMPLEX ESTATE WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, addressing my extensive holdings and complex distribution wishes.',
-      'living': 'LIVING WILL AND HEALTHCARE DIRECTIVES\n\nI, [Your Name], being of sound mind, declare these to be my Healthcare Directives and wishes regarding medical treatment.',
-      'digital-assets': 'DIGITAL ASSETS WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my digital assets, accounts and properties.'
+      'basic': 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.',
+      'family': 'FAMILY PROTECTION WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for the care and protection of my family.',
+      'business': 'BUSINESS OWNER WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my business assets and succession planning.',
+      'complex': 'COMPLEX ESTATE WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, addressing my extensive holdings and complex distribution wishes.',
+      'living': 'LIVING WILL AND HEALTHCARE DIRECTIVES\n\nI, [YOUR NAME], being of sound mind, declare these to be my Healthcare Directives and wishes regarding medical treatment.',
+      'digital-assets': 'DIGITAL ASSETS WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my digital assets, accounts and properties.'
     };
     
-    return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament.';
+    return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.';
   };
   
   const handleSaveAndExit = async () => {
