@@ -15,6 +15,8 @@ import {
   saveDeathVerificationSettings 
 } from '@/services/deathVerificationService';
 
+// Component is still named DeathVerification for compatibility,
+// but UI text is updated to use "Check-ins" terminology
 export default function DeathVerification() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -123,7 +125,7 @@ export default function DeathVerification() {
         <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
           <div className="flex items-center">
             <Shield className="text-willtank-700 mr-2" size={18} />
-            <h3 className="font-medium">Death Verification System</h3>
+            <h3 className="font-medium">Check-in System</h3>
           </div>
           <Switch 
             checked={settings.check_in_enabled} 
@@ -134,18 +136,18 @@ export default function DeathVerification() {
         <div className="p-6">
           <div className="mb-6">
             <p className="text-gray-700 mb-4">
-              The Death Verification System ensures your will is securely protected and only accessible upon verified death. 
+              The Check-in System ensures your will is securely protected and only accessible upon verified absence. 
               When enabled, you will receive regular check-ins, and if you don't respond, a verification process will be triggered 
               among your beneficiaries and executors.
             </p>
             
             {settings.check_in_enabled ? (
               <div className="bg-green-50 text-green-800 rounded-md p-3 text-sm">
-                Death Verification is <strong>enabled</strong>. Your will is protected by our multi-layer verification system.
+                Check-in System is <strong>enabled</strong>. Your will is protected by our multi-layer verification system.
               </div>
             ) : (
               <div className="bg-amber-50 text-amber-800 rounded-md p-3 text-sm">
-                Death Verification is <strong>disabled</strong>. Your will may be accessible without strict verification.
+                Check-in System is <strong>disabled</strong>. Your will may be accessible without strict verification.
               </div>
             )}
           </div>

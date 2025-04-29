@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -8,7 +9,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, ShieldCheck, 
   CreditCard, Settings, HelpCircle, ChevronRight, 
-  Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle
+  Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle,
+  Clock
 } from 'lucide-react';
 
 interface WillTankSidebarProps {
@@ -48,6 +50,11 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       title: 'ID Security',
       icon: ShieldCheck,
       href: '/pages/security/IDSecurity',
+    },
+    {
+      title: 'Check-ins',
+      icon: Clock,
+      href: '/check-ins',
     },
     {
       title: 'Billing',

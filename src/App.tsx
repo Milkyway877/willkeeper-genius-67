@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -47,6 +48,7 @@ import './MobileStyles.css';
 import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
+import CheckIns from './pages/CheckIns';
 
 export default function App() {
   return (
@@ -83,6 +85,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/activity" element={<Activity />} />
+        <Route path="/check-ins" element={<CheckIns />} />
 
         {/* Routes for sidebar links */}
         <Route path="/pages/security/IDSecurity" element={<IDSecurity />} />

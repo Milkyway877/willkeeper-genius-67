@@ -11,7 +11,6 @@ import { AccountSettings } from './components/AccountSettings';
 import { SecuritySettings } from './components/SecuritySettings';
 import { NotificationSettings } from './components/NotificationSettings';
 import { PrivacySettings } from './components/PrivacySettings';
-import DeathVerification from './DeathVerification';
 
 export default function Settings() {
   const { toast } = useToast();
@@ -40,11 +39,6 @@ export default function Settings() {
     }
   };
   
-  // Navigate to death verification settings
-  const navigateToDeathVerification = () => {
-    navigate('/settings/death-verification');
-  };
-  
   // Render the correct content based on active tab
   const renderContent = () => {
     switch (activeTab) {
@@ -56,8 +50,6 @@ export default function Settings() {
         return <NotificationSettings />;
       case 'privacy':
         return <PrivacySettings />;
-      case 'death-verification':
-        return <DeathVerification />;
       default:
         return <AccountSettings />;
     }
@@ -106,33 +98,26 @@ export default function Settings() {
                     onClick={() => setActiveTab('privacy')} 
                     className={`flex items-center justify-start mb-1 rounded-lg px-3 py-2 text-sm ${activeTab === 'privacy' ? 'bg-willtank-50 text-willtank-700' : 'hover:bg-gray-100'}`}
                   >
-                    <div className="h-4 w-4 mr-2">🔐</div>
+                    <div className="h-4 w-4 mr-2">🔏</div>
                     Privacy
                   </button>
-                  <button 
-                    onClick={() => setActiveTab('death-verification')} 
-                    className={`flex items-center justify-start mb-1 rounded-lg px-3 py-2 text-sm ${activeTab === 'death-verification' ? 'bg-willtank-50 text-willtank-700' : 'hover:bg-gray-100'}`}
-                  >
-                    <div className="h-4 w-4 mr-2">⚰️</div>
-                    Death Verification
-                  </button>
-                  
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
-                    </Button>
-                  </div>
                 </div>
+              </div>
+              
+              <div className="p-4 border-t border-gray-100">
+                <Button 
+                  variant="destructive" 
+                  onClick={handleLogout} 
+                  className="w-full"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
               </div>
             </div>
           </div>
           
-          {/* Settings content */}
+          {/* Content area */}
           <div className="lg:col-span-3">
             {renderContent()}
           </div>

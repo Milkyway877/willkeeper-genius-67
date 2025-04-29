@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,7 +41,6 @@ export function DeathVerificationWidget() {
           if (latestCheckin) {
             setCheckin(latestCheckin);
             
-            // Calculate days remaining until next check-in
             const nextCheckInDate = parseISO(latestCheckin.next_check_in);
             const today = new Date();
             const days = differenceInDays(nextCheckInDate, today);
@@ -66,7 +64,6 @@ export function DeathVerificationWidget() {
       if (updatedCheckin) {
         setCheckin(updatedCheckin);
         
-        // Calculate days remaining until next check-in
         const nextCheckInDate = parseISO(updatedCheckin.next_check_in);
         const today = new Date();
         const days = differenceInDays(nextCheckInDate, today);
@@ -92,7 +89,7 @@ export function DeathVerificationWidget() {
   };
   
   const navigateToSettings = () => {
-    navigate('/settings/death-verification');
+    navigate('/check-ins');
   };
   
   if (loading) {
@@ -100,10 +97,10 @@ export function DeathVerificationWidget() {
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Shield className="mr-2 h-5 w-5 text-willtank-600" />
-            Death Verification
+            <Clock className="mr-2 h-5 w-5 text-willtank-600" />
+            Check-ins
           </CardTitle>
-          <CardDescription>Loading verification status...</CardDescription>
+          <CardDescription>Loading check-in status...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-20 flex items-center justify-center">
@@ -119,24 +116,24 @@ export function DeathVerificationWidget() {
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Shield className="mr-2 h-5 w-5 text-willtank-600" />
-            Death Verification
+            <Clock className="mr-2 h-5 w-5 text-willtank-600" />
+            Check-ins
           </CardTitle>
-          <CardDescription>Protect your will with our automated verification system</CardDescription>
+          <CardDescription>Protect your will with our automated check-in system</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="p-4 bg-amber-50 rounded-md">
             <h3 className="font-medium text-amber-800 flex items-center mb-2">
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Death Verification is disabled
+              Check-in system is disabled
             </h3>
             <p className="text-sm text-amber-700">
-              Enable death verification to ensure your will is only accessible after verified death confirmation.
+              Enable check-ins to ensure your will is only accessible after verified absence confirmation.
             </p>
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={navigateToSettings} className="w-full">Enable Death Verification</Button>
+          <Button onClick={navigateToSettings} className="w-full">Enable Check-ins</Button>
         </CardFooter>
       </Card>
     );
@@ -146,8 +143,8 @@ export function DeathVerificationWidget() {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center">
-          <Shield className="mr-2 h-5 w-5 text-willtank-600" />
-          Death Verification
+          <Clock className="mr-2 h-5 w-5 text-willtank-600" />
+          Check-ins
         </CardTitle>
         <CardDescription>
           {checkin && daysRemaining !== null 
@@ -219,7 +216,7 @@ export function DeathVerificationWidget() {
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button variant="link" onClick={navigateToSettings} className="px-0">
-          Verification Settings
+          Check-in Settings
         </Button>
       </CardFooter>
     </Card>
