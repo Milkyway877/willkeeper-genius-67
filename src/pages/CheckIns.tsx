@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,7 +26,6 @@ export default function CheckIns() {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
-  const [enablingCheckins, setEnablingCheckins] = useState(false);
   const [checkins, setCheckins] = useState<DeathVerificationCheckin[]>([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [executors, setExecutors] = useState<Executor[]>([]);
@@ -64,46 +64,6 @@ export default function CheckIns() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleEnableCheckIns = async () => {
-    try {
-      setEnablingCheckins(true);
-      
-      // Create an updated settings object with check_in_enabled set to true
-      const updatedSettings = { ...settings, check_in_enabled: true };
-      const result = await saveDeathVerificationSettings(updatedSettings);
-      
-      if (result) {
-        // Update the local state with the new settings
-        setSettings(result);
-        
-        // Create initial check-in if it doesn't exist
-        const latestCheckin = await getLatestCheckin();
-        if (!latestCheckin) {
-          await createInitialCheckin();
-        }
-        
-        toast({
-          title: "Success",
-          description: "Check-ins have been enabled successfully"
-        });
-        
-        // Refresh data to get the latest status
-        await fetchData();
-      } else {
-        throw new Error("Failed to enable check-ins");
-      }
-    } catch (error) {
-      console.error('Error enabling check-ins:', error);
-      toast({
-        title: "Error",
-        description: "Failed to enable check-ins",
-        variant: "destructive"
-      });
-    } finally {
-      setEnablingCheckins(false);
     }
   };
 

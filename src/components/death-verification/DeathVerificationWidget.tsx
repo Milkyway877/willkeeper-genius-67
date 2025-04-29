@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +24,6 @@ export function DeathVerificationWidget() {
   const [checkinEnabled, setCheckinEnabled] = useState(false);
   const [checkin, setCheckin] = useState<DeathVerificationCheckin | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
-  const [enablingCheckins, setEnablingCheckins] = useState(false);
   
   useEffect(() => {
     fetchVerificationStatus();
@@ -88,51 +88,6 @@ export function DeathVerificationWidget() {
       });
     } finally {
       setCheckinLoading(false);
-    }
-  };
-
-  const handleEnableCheckIns = async () => {
-    try {
-      setEnablingCheckins(true);
-      
-      const settings = await getDeathVerificationSettings();
-      
-      if (settings) {
-        // Create a new settings object with check_in_enabled set to true
-        const updatedSettings = await saveDeathVerificationSettings({
-          ...settings,
-          check_in_enabled: true
-        });
-        
-        if (updatedSettings) {
-          // If the initial checkin doesn't exist yet, create one
-          if (!checkin) {
-            await createInitialCheckin();
-          }
-          
-          // Update local state to reflect the change
-          setCheckinEnabled(true);
-          
-          toast({
-            title: "Check-ins Enabled",
-            description: "You have successfully enabled the check-in system.",
-          });
-          
-          // Refresh data to get the latest status including the new checkin
-          await fetchVerificationStatus();
-        } else {
-          throw new Error("Failed to enable check-ins");
-        }
-      }
-    } catch (error) {
-      console.error('Error enabling check-ins:', error);
-      toast({
-        title: "Error",
-        description: "There was an error enabling check-ins. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setEnablingCheckins(false);
     }
   };
   

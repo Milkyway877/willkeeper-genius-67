@@ -11,7 +11,8 @@ import {
   DeathVerificationSettings, 
   DEFAULT_SETTINGS, 
   getDeathVerificationSettings, 
-  saveDeathVerificationSettings 
+  saveDeathVerificationSettings,
+  createInitialCheckin
 } from '@/services/deathVerificationService';
 import { ContactsManager } from '@/components/death-verification/ContactsManager';
 
@@ -21,6 +22,7 @@ export default function DeathVerification() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toggleProcessing, setToggleProcessing] = useState(false);
   
   // Death verification settings state
   const [settings, setSettings] = useState<DeathVerificationSettings>(DEFAULT_SETTINGS);
@@ -79,11 +81,54 @@ export default function DeathVerification() {
   };
   
   // Handle toggle for check-in enabled
-  const toggleCheckInEnabled = () => {
-    setSettings(prev => ({
-      ...prev,
-      check_in_enabled: !prev.check_in_enabled
-    }));
+  const toggleCheckInEnabled = async () => {
+    try {
+      setToggleProcessing(true);
+      
+      // Create a new settings object with the updated value
+      const updatedSettings = { 
+        ...settings, 
+        check_in_enabled: !settings.check_in_enabled 
+      };
+      
+      // Save the updated settings
+      const result = await saveDeathVerificationSettings(updatedSettings);
+      
+      if (result) {
+        // If enabling check-ins and there's no initial check-in yet
+        if (!settings.check_in_enabled) {
+          // Create initial check-in
+          await createInitialCheckin();
+        }
+        
+        // Update local state
+        setSettings(result);
+        
+        toast({
+          title: result.check_in_enabled ? "Check-ins Enabled" : "Check-ins Disabled",
+          description: result.check_in_enabled 
+            ? "You have successfully enabled the check-in system." 
+            : "You have disabled the check-in system."
+        });
+      } else {
+        throw new Error("Failed to update check-in status");
+      }
+    } catch (error) {
+      console.error('Error toggling check-in status:', error);
+      toast({
+        title: "Error",
+        description: "There was an error updating the check-in status. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Revert the local state back to the original value
+      setSettings(prev => ({
+        ...prev,
+        check_in_enabled: !prev.check_in_enabled
+      }));
+    } finally {
+      setToggleProcessing(false);
+    }
   };
   
   // Handle toggle for failsafe
@@ -136,7 +181,8 @@ export default function DeathVerification() {
             <h3 className="font-medium">Check-in System</h3>
           </div>
           <Switch 
-            checked={settings.check_in_enabled} 
+            checked={settings.check_in_enabled}
+            disabled={toggleProcessing} 
             onCheckedChange={toggleCheckInEnabled}
           />
         </div>
