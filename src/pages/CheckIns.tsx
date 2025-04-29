@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,6 +16,7 @@ import {
   saveDeathVerificationSettings, 
   DEFAULT_SETTINGS,
   getLatestCheckin,
+  createInitialCheckin,
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
 import { Executor, Beneficiary, getExecutors, getBeneficiaries } from '@/services/executorService';
@@ -69,17 +71,28 @@ export default function CheckIns() {
   const handleEnableCheckIns = async () => {
     try {
       setEnablingCheckins(true);
+      
+      // Create an updated settings object with check_in_enabled set to true
       const updatedSettings = { ...settings, check_in_enabled: true };
       const result = await saveDeathVerificationSettings(updatedSettings);
       
       if (result) {
+        // Update the local state with the new settings
         setSettings(result);
+        
+        // Create initial check-in if it doesn't exist
+        const latestCheckin = await getLatestCheckin();
+        if (!latestCheckin) {
+          await createInitialCheckin();
+        }
+        
         toast({
           title: "Success",
           description: "Check-ins have been enabled successfully"
         });
-        // Refresh data
-        fetchData();
+        
+        // Refresh data to get the latest status
+        await fetchData();
       } else {
         throw new Error("Failed to enable check-ins");
       }
