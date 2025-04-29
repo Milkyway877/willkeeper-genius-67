@@ -10,7 +10,7 @@ import {
   LayoutDashboard, ShieldCheck, 
   CreditCard, Settings, HelpCircle, ChevronRight, 
   Archive, Briefcase, MenuIcon, XIcon, ArrowLeftCircle, ArrowRightCircle,
-  Clock
+  Clock, FileText
 } from 'lucide-react';
 
 interface WillTankSidebarProps {
@@ -40,6 +40,12 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
       title: 'Dashboard',
       icon: LayoutDashboard,
       href: '/dashboard',
+    },
+    {
+      title: 'Wills',
+      icon: FileText,
+      href: '/wills',
+      isCore: true, // Mark this as a core feature
     },
     {
       title: 'Tank',
@@ -153,15 +159,17 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
                         to={item.href}
                         className={cn(
                           "flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors justify-between",
-                          isActive(item.href) 
+                          item.isCore && "bg-purple-50 text-purple-800 border-l-4 border-purple-600",
+                          isActive(item.href) && !item.isCore
                             ? "bg-black text-white dark:bg-white dark:text-black" 
-                            : "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                            : !item.isCore && "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
                         )}
                         onClick={toggleMobileMenu}
                       >
                         <div className="flex items-center">
-                          <item.icon className="h-5 w-5 mr-3" />
+                          <item.icon className={cn("h-5 w-5 mr-3", item.isCore && "text-purple-700")} />
                           <span>{item.title}</span>
+                          {item.isCore && <span className="ml-2 text-xs px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded-full">Core</span>}
                         </div>
                         {isActive(item.href) && (
                           <ChevronRight className="h-4 w-4" />
@@ -239,18 +247,31 @@ export function WillTankSidebar({ isCollapsed = false, onToggle }: WillTankSideb
               onMouseLeave={() => setHoveredItem(null)}
               className={cn(
                 "flex items-center px-2 py-2 text-sm font-medium rounded-lg transition-colors",
-                isActive(item.href) 
+                item.isCore && "bg-purple-50 text-purple-800 border-l-4 border-purple-600 py-3",
+                isActive(item.href) && !item.isCore
                   ? "bg-black text-white dark:bg-white dark:text-black" 
-                  : "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
+                  : !item.isCore && "text-gray-600 hover:bg-gray-100 hover:text-black dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white",
                 isCollapsed ? "justify-center" : "justify-between"
               )}
             >
               <div className="flex items-center">
-                <item.icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
-                {!isCollapsed && <span>{item.title}</span>}
+                <item.icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3", item.isCore && "text-purple-700")} />
+                {!isCollapsed && (
+                  <>
+                    <span>{item.title}</span>
+                    {item.isCore && <span className="ml-2 text-xs px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded-full">Core</span>}
+                  </>
+                )}
               </div>
-              {!isCollapsed && isActive(item.href) && (
+              {!isCollapsed && isActive(item.href) && !item.isCore && (
                 <ChevronRight className="h-4 w-4" />
+              )}
+              
+              {/* Special tooltip for collapsed core items */}
+              {isCollapsed && item.isCore && hoveredItem === item.href && (
+                <div className="absolute left-16 bg-gray-900 text-white px-2 py-1 rounded ml-2 text-sm whitespace-nowrap z-50">
+                  {item.title} <span className="text-xs px-1 py-0.5 rounded-full bg-purple-500 text-white ml-1">Core</span>
+                </div>
               )}
             </Link>
           ))}
