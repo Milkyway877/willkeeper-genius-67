@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,21 +103,18 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   
   // Extract information from user message
   const extractUserInformation = (message: string) => {
-    // Extract name
     const nameRegex = /(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i;
     const nameMatch = message.match(nameRegex);
     if (nameMatch && nameMatch[1]) {
       setExtractedInfo(prev => ({ ...prev, fullName: nameMatch[1] }));
     }
     
-    // Extract address
     const addressRegex = /(?:my address is|I live at|address is) (.*?)(?:\.|$)/i;
     const addressMatch = message.match(addressRegex);
     if (addressMatch && addressMatch[1]) {
       setExtractedInfo(prev => ({ ...prev, address: addressMatch[1] }));
     }
     
-    // Extract marital status
     if (message.match(/single/i)) {
       setExtractedInfo(prev => ({ ...prev, maritalStatus: "single" }));
     } else if (message.match(/married/i)) {
@@ -129,7 +125,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       setExtractedInfo(prev => ({ ...prev, maritalStatus: "widowed" }));
     }
     
-    // Extract children
     const childrenRegex = /(?:I have |have )(\d+|one|two|three|four|five|six|seven|eight|nine|ten) (?:child|children|kids)/i;
     const childrenMatch = message.match(childrenRegex);
     if (childrenMatch) {
@@ -140,14 +135,12 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       }
     }
     
-    // Extract executor
     const executorRegex = /(?:executor|executrix) (?:is|should be|will be) ([A-Z][a-z]+(?: [A-Z][a-z]+)*)/i;
     const executorMatch = message.match(executorRegex);
     if (executorMatch && executorMatch[1]) {
       setExtractedInfo(prev => ({ ...prev, executor: executorMatch[1] }));
     }
     
-    // Extract assets
     if (message.match(/(?:assets|possessions|property|own)/i)) {
       const assetsInfo = message.replace(/.*(?:assets|possessions|property|own)/i, "");
       const assetsList = assetsInfo.split(/,|and/).map(item => item.trim()).filter(item => item.length > 3);
@@ -156,7 +149,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       }
     }
     
-    // Extract beneficiaries
     if (message.match(/(?:leave|give|bequeath)/i)) {
       const beneficiaryRegex = /(?:leave|give|bequeath) .* to ([A-Z][a-z]+(?: [A-Z][a-z]+)*)/i;
       const beneficiaryMatch = message.match(beneficiaryRegex);
@@ -171,7 +163,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   
   // Real-time document update based on extracted information
   useEffect(() => {
-    // Update document based on extracted info
     updateWillContent();
   }, [extractedInfo]);
   
@@ -189,7 +180,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       timestamp: new Date()
     };
     
-    // Extract information from the user's message
     extractUserInformation(inputValue);
     
     setMessages(prev => [...prev, userMessage]);
@@ -223,10 +213,8 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       
       setMessages(prev => [...prev, aiMessage]);
       
-      // Check for completion phrases to determine if we're done
       checkForCompletion(aiResponse);
       
-      // Update the will content again after getting response
       setTimeout(updateWillContent, 500);
       
     } catch (error) {
@@ -245,7 +233,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   const updateWillContent = () => {
     let newContent = '';
     
-    // Generate will content based on template and extracted information
     if (templateId === 'digital-assets') {
       newContent = generateDigitalAssetsWill();
     } else if (templateId === 'business') {
@@ -254,7 +241,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       newContent = generateBasicWill();
     }
     
-    // Call the parent component's onContentUpdate with the new content
     onContentUpdate(newContent);
   };
   
@@ -341,7 +327,6 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
   };
   
   const checkForCompletion = (aiResponse: string) => {
-    // Check if the AI response contains completion indicators
     const completionPhrases = [
       "we have all the information",
       "we've collected all the necessary information",
@@ -352,13 +337,11 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
       "that covers all the essential information"
     ];
     
-    // Check for completion phrases and message count threshold
     const isComplete = completionPhrases.some(phrase => 
       aiResponse.toLowerCase().includes(phrase.toLowerCase())
     ) || messages.length >= 20;
     
     if (isComplete && !isComplete) {
-      // Show completion message and button
       setTimeout(() => {
         const completionMessage: Message = {
           id: `completion-${Date.now()}`,
@@ -373,7 +356,6 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
     }
   };
   
-  // Voice input functionality
   const initSpeechRecognition = () => {
     if (!recordingSupported) return;
     
@@ -424,20 +406,17 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
   };
   
   const handleProceed = () => {
-    // Save progress and navigate to the next stage
     toast({
       title: "Will Draft Complete",
       description: "Your will draft has been saved. You're ready to move to the next stage.",
       variant: "default",
     });
     
-    // Navigate to wills page
     navigate('/wills');
   };
   
   return (
     <div className="flex flex-col h-full">
-      {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           {messages.map((message) => (
@@ -467,7 +446,6 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
           ))}
           <div ref={messagesEndRef} />
           
-          {/* Show proceed button when complete */}
           {isComplete && (
             <div className="flex justify-center mt-4">
               <Button onClick={handleProceed} className="bg-green-600 hover:bg-green-700">
@@ -478,7 +456,6 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
         </div>
       </div>
       
-      {/* Input area */}
       <div className="border-t p-4 bg-background">
         <div className="flex gap-2">
           <Input
