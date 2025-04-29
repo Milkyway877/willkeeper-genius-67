@@ -316,7 +316,11 @@ export function ContactsManager({
                                   <Button 
                                     size="sm" 
                                     variant="default"
-                                    onClick={() => handleUpdateContact(beneficiary.id, 'beneficiary', editingContact.email, editingContact.phone)}
+                                    onClick={() => handleUpdateContact(
+                                      beneficiary.id, 
+                                      'beneficiary', 
+                                      { email: editingContact.email, phone: editingContact.phone }
+                                    )}
                                   >
                                     <Check className="h-4 w-4" />
                                   </Button>
@@ -442,7 +446,11 @@ export function ContactsManager({
                                     <Button 
                                       size="sm" 
                                       variant="default"
-                                      onClick={() => handleUpdateContact(executor.id, 'executor', editingContact.email)}
+                                      onClick={() => handleUpdateContact(
+                                        executor.id, 
+                                        'executor', 
+                                        { email: editingContact.email }
+                                      )}
                                     >
                                       <Check className="h-4 w-4" />
                                     </Button>
