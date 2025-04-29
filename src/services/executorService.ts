@@ -15,6 +15,9 @@ interface WillExecutorRow {
   will_id?: string | null;
   created_at: string;
   user_id?: string | null;
+  invitation_status?: string | null;
+  invitation_sent_at?: string | null;
+  invitation_responded_at?: string | null;
 }
 
 // Define the type that matches what our Supabase table returns
@@ -31,6 +34,9 @@ interface WillBeneficiaryRow {
   will_id?: string | null;
   created_at: string;
   user_id?: string | null;
+  invitation_status?: string | null;
+  invitation_sent_at?: string | null;
+  invitation_responded_at?: string | null;
 }
 
 // These are our application models
@@ -45,6 +51,7 @@ export interface Executor {
   isVerified: boolean;
   will_id?: string;
   created_at: string;
+  invitation_status?: string;
 }
 
 export interface Beneficiary {
@@ -59,6 +66,7 @@ export interface Beneficiary {
   isVerified: boolean;
   will_id?: string;
   created_at: string;
+  invitation_status?: string;
 }
 
 export const getExecutors = async (): Promise<Executor[]> => {
@@ -83,7 +91,8 @@ export const getExecutors = async (): Promise<Executor[]> => {
       notes: item.notes || '',
       isVerified: item.status === 'verified',
       will_id: item.will_id || undefined,
-      created_at: item.created_at
+      created_at: item.created_at,
+      invitation_status: item.invitation_status || 'not_sent'
     }));
   } catch (error) {
     console.error('Error in getExecutors:', error);
@@ -130,7 +139,8 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
       notes: data.notes || '',
       isVerified: data.status === 'verified',
       will_id: data.will_id || undefined,
-      created_at: data.created_at
+      created_at: data.created_at,
+      invitation_status: data.invitation_status || 'not_sent'
     };
     
     return result;
@@ -140,17 +150,10 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
   }
 };
 
-export const updateExecutor = async (id: string, updates: Partial<Executor>): Promise<Executor | null> => {
+export const updateExecutor = async (id: string, email: string): Promise<Executor | null> => {
   try {
     const dbUpdates = {
-      ...(updates.name && { name: updates.name }),
-      ...(updates.email && { email: updates.email }),
-      ...(updates.phone && { phone: updates.phone }),
-      ...(updates.relationship && { relationship: updates.relationship }),
-      ...(updates.address !== undefined && { address: updates.address }),
-      ...(updates.notes !== undefined && { notes: updates.notes }),
-      ...(updates.isVerified !== undefined && { status: updates.isVerified ? 'verified' : 'pending' }),
-      ...(updates.will_id && { will_id: updates.will_id })
+      email: email
     };
     
     const { data, error } = await supabase
@@ -175,7 +178,8 @@ export const updateExecutor = async (id: string, updates: Partial<Executor>): Pr
       notes: data.notes || '',
       isVerified: data.status === 'verified',
       will_id: data.will_id || undefined,
-      created_at: data.created_at
+      created_at: data.created_at,
+      invitation_status: data.invitation_status || 'not_sent'
     };
     
     return result;
@@ -227,7 +231,8 @@ export const getBeneficiaries = async (): Promise<Beneficiary[]> => {
       percentage: item.percentage,
       isVerified: item.status === 'verified',
       will_id: item.will_id,
-      created_at: item.created_at
+      created_at: item.created_at,
+      invitation_status: item.invitation_status || 'not_sent'
     }));
   } catch (error) {
     console.error('Error in getBeneficiaries:', error);
@@ -276,7 +281,8 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'c
       percentage: data.percentage,
       isVerified: data.status === 'verified',
       will_id: data.will_id,
-      created_at: data.created_at
+      created_at: data.created_at,
+      invitation_status: data.invitation_status || 'not_sent'
     };
   } catch (error) {
     console.error('Error in createBeneficiary:', error);
@@ -284,19 +290,15 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'c
   }
 };
 
-export const updateBeneficiary = async (id: string, updates: Partial<Beneficiary>): Promise<Beneficiary | null> => {
+export const updateBeneficiary = async (id: string, email: string, phone?: string): Promise<Beneficiary | null> => {
   try {
-    const dbUpdates = {
-      ...(updates.name && { beneficiary_name: updates.name }),
-      ...(updates.relationship && { relationship: updates.relationship }),
-      ...(updates.email && { email: updates.email }),
-      ...(updates.phone && { phone: updates.phone }),
-      ...(updates.address !== undefined && { address: updates.address }),
-      ...(updates.notes !== undefined && { notes: updates.notes }),
-      ...(updates.percentage !== undefined && { percentage: updates.percentage }),
-      ...(updates.isVerified !== undefined && { status: updates.isVerified ? 'verified' : 'pending' }),
-      ...(updates.will_id && { will_id: updates.will_id })
+    const dbUpdates: { email: string; phone?: string } = {
+      email: email
     };
+    
+    if (phone !== undefined) {
+      dbUpdates.phone = phone;
+    }
     
     const { data, error } = await supabase
       .from('will_beneficiaries')
@@ -321,7 +323,8 @@ export const updateBeneficiary = async (id: string, updates: Partial<Beneficiary
       percentage: data.percentage,
       isVerified: data.status === 'verified',
       will_id: data.will_id,
-      created_at: data.created_at
+      created_at: data.created_at,
+      invitation_status: data.invitation_status || 'not_sent'
     };
   } catch (error) {
     console.error('Error in updateBeneficiary:', error);

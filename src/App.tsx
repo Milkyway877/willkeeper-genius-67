@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -107,8 +108,8 @@ export default function App() {
         <Route path="/tank/edit/:id" element={<TankCreation />} />
 
         {/* Verification routes */}
-        <Route path="/verify/invitation/:token" element={<VerificationResponse type="invitation" />} />
-        <Route path="/verify/status/:token" element={<VerificationResponse type="status" />} />
+        <Route path="/verify/invitation/:token" element={<VerificationResponse invitationType="invitation" />} />
+        <Route path="/verify/status/:token" element={<VerificationResponse invitationType="status" />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

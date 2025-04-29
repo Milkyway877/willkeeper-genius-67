@@ -45,16 +45,26 @@ import { User, Users, UserPlus, Mail, Phone, Check, X, AlertTriangle, Clock } fr
 import { 
   sendContactInvitation, 
   getTrustedContacts, 
-  createTrustedContact, 
-  TrustedContact 
+  createTrustedContact
 } from '@/services/contactsService';
 import { 
   getBeneficiaries, 
   getExecutors, 
   updateBeneficiary, 
+  updateExecutor,
   Beneficiary, 
   Executor 
 } from '@/services/executorService';
+
+// Define TrustedContact interface to match what createTrustedContact expects
+export interface TrustedContact {
+  id?: string;
+  name: string;
+  email: string;
+  phone?: string;
+  relationship?: string;
+  invitation_status?: string;
+}
 
 const trustedContactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -128,7 +138,14 @@ export function ContactsManager({
   
   const handleAddTrustedContact = async (data: z.infer<typeof trustedContactSchema>) => {
     try {
-      await createTrustedContact(data);
+      const contactData: TrustedContact = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        relationship: data.relationship,
+      };
+      
+      await createTrustedContact(contactData);
       setAddDialogOpen(false);
       trustedContactForm.reset();
       await fetchContacts();
