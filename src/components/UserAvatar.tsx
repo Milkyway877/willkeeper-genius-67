@@ -7,11 +7,13 @@ import { User } from 'lucide-react';
 interface UserAvatarProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  cacheBuster?: number;
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({ 
   className = "", 
   size = "md",
+  cacheBuster,
 }) => {
   const { initials } = useUserProfile();
   
