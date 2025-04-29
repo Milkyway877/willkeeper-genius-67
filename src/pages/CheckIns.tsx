@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsLabel, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DeathVerification from './settings/DeathVerification';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 

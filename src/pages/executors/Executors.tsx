@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -133,7 +134,6 @@ export default function Executors() {
     }
   };
 
-  // Reset form fields
   const resetForm = () => {
     setFormData({
       name: '',
@@ -161,13 +161,13 @@ export default function Executors() {
   };
 
   const handleEdit = (item: Executor | Beneficiary) => {
-    const isExecutor = 'name' in item && !('percentage' in item);
+    const isExecutor = 'relationship' in item && !('percentage' in item);
     
     setFormData({
-      name: 'name' in item ? item.name : item.beneficiary_name || '',
-      email: item.email || '',
-      phone: item.phone || '',
-      relationship: item.relationship || '',
+      name: item.name,
+      email: item.email,
+      phone: item.phone,
+      relationship: item.relationship,
       address: item.address || '',
       notes: item.notes || '',
       percentage: 'percentage' in item ? item.percentage : undefined
@@ -273,12 +273,12 @@ export default function Executors() {
       if (isEditMode && editItemId) {
         // Update existing item
         if (activeTab === "executors") {
-          result = await updateExecutor(editItemId, formData);
+          result = await updateExecutor(editItemId, formData as Partial<Executor>);
           if (result) {
             setExecutors(executors.map(item => item.id === editItemId ? result as Executor : item));
           }
         } else {
-          result = await updateBeneficiary(editItemId, formData);
+          result = await updateBeneficiary(editItemId, formData as Partial<Beneficiary>);
           if (result) {
             setBeneficiaries(beneficiaries.map(item => item.id === editItemId ? result as Beneficiary : item));
           }
@@ -297,12 +297,31 @@ export default function Executors() {
       } else {
         // Create new item
         if (activeTab === "executors") {
-          result = await createExecutor(formData);
+          const newExecutor = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            relationship: formData.relationship,
+            address: formData.address,
+            notes: formData.notes
+          };
+          
+          result = await createExecutor(newExecutor);
           if (result) {
             setExecutors([result, ...executors]);
           }
         } else {
-          result = await createBeneficiary(formData);
+          const newBeneficiary = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            relationship: formData.relationship,
+            address: formData.address,
+            notes: formData.notes,
+            percentage: formData.percentage
+          };
+          
+          result = await createBeneficiary(newBeneficiary);
           if (result) {
             setBeneficiaries([result, ...beneficiaries]);
           }

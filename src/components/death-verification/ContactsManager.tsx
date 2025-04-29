@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -51,7 +52,6 @@ import {
   getBeneficiaries, 
   getExecutors, 
   updateBeneficiary, 
-  updateExecutor,
   Beneficiary, 
   Executor 
 } from '@/services/executorService';
@@ -128,19 +128,7 @@ export function ContactsManager({
   
   const handleAddTrustedContact = async (data: z.infer<typeof trustedContactSchema>) => {
     try {
-      // Ensure all required fields are present
-      if (!data.name || !data.email) {
-        throw new Error("Name and email are required");
-      }
-      
-      const contactData: TrustedContact = {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        relationship: data.relationship,
-      };
-      
-      await createTrustedContact(contactData);
+      await createTrustedContact(data);
       setAddDialogOpen(false);
       trustedContactForm.reset();
       await fetchContacts();
@@ -158,12 +146,12 @@ export function ContactsManager({
     }
   };
   
-  const handleUpdateContact = async (id: string, type: 'beneficiary' | 'executor', contactData: Partial<Beneficiary | Executor>) => {
+  const handleUpdateContact = async (id: string, type: 'beneficiary' | 'executor', email: string, phone?: string) => {
     try {
       if (type === 'beneficiary') {
-        await updateBeneficiary(id, contactData as Partial<Beneficiary>);
+        await updateBeneficiary(id, email, phone);
       } else if (type === 'executor') {
-        await updateExecutor(id, contactData as Partial<Executor>);
+        await updateExecutor(id, email);
       }
       
       setEditingContact(null);
@@ -277,7 +265,7 @@ export function ContactsManager({
                       <TableBody>
                         {beneficiaries.map((beneficiary) => (
                           <TableRow key={beneficiary.id}>
-                            <TableCell className="font-medium">{beneficiary.beneficiary_name}</TableCell>
+                            <TableCell className="font-medium">{beneficiary.name}</TableCell>
                             <TableCell>
                               {editingContact?.id === beneficiary.id ? (
                                 <Input 
@@ -316,11 +304,7 @@ export function ContactsManager({
                                   <Button 
                                     size="sm" 
                                     variant="default"
-                                    onClick={() => handleUpdateContact(
-                                      beneficiary.id, 
-                                      'beneficiary', 
-                                      { email: editingContact.email, phone: editingContact.phone }
-                                    )}
+                                    onClick={() => handleUpdateContact(beneficiary.id, 'beneficiary', editingContact.email, editingContact.phone)}
                                   >
                                     <Check className="h-4 w-4" />
                                   </Button>
@@ -348,7 +332,7 @@ export function ContactsManager({
                                       onClick={() => handleSendInvitation(
                                         beneficiary.id, 
                                         'beneficiary', 
-                                        beneficiary.beneficiary_name, 
+                                        beneficiary.name, 
                                         beneficiary.email || ''
                                       )}
                                     >
@@ -446,11 +430,7 @@ export function ContactsManager({
                                     <Button 
                                       size="sm" 
                                       variant="default"
-                                      onClick={() => handleUpdateContact(
-                                        executor.id, 
-                                        'executor', 
-                                        { email: editingContact.email }
-                                      )}
+                                      onClick={() => handleUpdateContact(executor.id, 'executor', editingContact.email)}
                                     >
                                       <Check className="h-4 w-4" />
                                     </Button>
