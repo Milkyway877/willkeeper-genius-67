@@ -95,7 +95,7 @@ export default function DeathVerification() {
   };
   
   // Handle notification preferences
-  const toggleNotification = (type: 'email' | 'sms' | 'push') => {
+  const toggleNotification = (type: 'email' | 'push') => {
     setSettings(prev => ({
       ...prev,
       notification_preferences: {
@@ -216,17 +216,6 @@ export default function DeathVerification() {
                     <Switch 
                       checked={settings.notification_preferences.email} 
                       onCheckedChange={() => toggleNotification('email')}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">SMS Notifications</p>
-                      <p className="text-xs text-gray-500">Receive check-in requests via SMS</p>
-                    </div>
-                    <Switch 
-                      checked={settings.notification_preferences.sms} 
-                      onCheckedChange={() => toggleNotification('sms')}
                     />
                   </div>
                   
