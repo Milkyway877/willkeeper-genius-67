@@ -1,22 +1,53 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import './index.css'
+import {
+  createBrowserRouter,
+  RouterProvider,
+} from "react-router-dom";
+import CheckIns from './pages/CheckIns.tsx';
+import Settings from './pages/Settings.tsx';
+import TestDeathVerification from './pages/TestDeathVerification.tsx';
+import VerificationResponse from './pages/verify/VerificationResponse.tsx';
+import VerificationPortal from './pages/verify/VerificationPortal.tsx';
 
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import App from './App';
-import './index.css';
-import { NotificationsProvider } from './contexts/NotificationsContext';
-import { Toaster } from 'sonner';
-
-// Create a client for React Query
-const queryClient = new QueryClient();
+// Add the test route to the router
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <App />,
+    children: [
+      {
+        path: "check-ins",
+        element: <CheckIns />,
+      },
+      {
+        path: "settings",
+        element: <Settings />,
+      },
+      {
+        path: "test-death-verification",
+        element: <TestDeathVerification />,
+      },
+    ],
+  },
+  {
+    path: "/verify/:token",
+    element: <VerificationPortal />,
+  },
+  {
+    path: "/verify/invitation/:token",
+    element: <VerificationResponse />,
+  },
+  {
+    path: "/verify/status/:token",
+    element: <VerificationResponse />,
+  },
+]);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <NotificationsProvider>
-        <App />
-        <Toaster position="bottom-right" richColors />
-      </NotificationsProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
-);
+    <RouterProvider router={router} />
+  </React.StrictMode>,
+)
