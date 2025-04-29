@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,20 +53,23 @@ export default function TestDeathVerificationFlow() {
   const loadTestContacts = async () => {
     setLoadingContacts(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoadingContacts(false);
+        return;
+      }
       
       // Load executors
       const { data: executors } = await supabase
         .from('will_executors')
         .select('id, name, email')
-        .eq('user_id', user.id);
+        .eq('user_id', session.user.id);
       
       // Load beneficiaries
       const { data: beneficiaries } = await supabase
         .from('will_beneficiaries')
         .select('id, beneficiary_name, email')
-        .eq('user_id', user.id);
+        .eq('user_id', session.user.id);
       
       const contacts = [
         ...(executors?.map(e => ({ id: e.id, name: e.name, email: e.email, type: 'executor' as const })) || []),
@@ -94,8 +96,8 @@ export default function TestDeathVerificationFlow() {
     
     setSimulateLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
           title: "Error",
           description: "You must be logged in to add test contacts",
@@ -110,7 +112,7 @@ export default function TestDeathVerificationFlow() {
           .insert({
             name: newContactName,
             email: newContactEmail,
-            user_id: user.id,
+            user_id: session.user.id,
             status: 'pending'
           })
           .select()
@@ -130,7 +132,7 @@ export default function TestDeathVerificationFlow() {
           .insert({
             beneficiary_name: newContactName,
             email: newContactEmail,
-            user_id: user.id,
+            user_id: session.user.id,
             relationship: 'Test Contact',
             status: 'pending'
           })
@@ -207,8 +209,8 @@ export default function TestDeathVerificationFlow() {
     try {
       setStatusCheckLoading(true);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
           title: "Error",
           description: "You must be logged in to test this feature",
@@ -219,7 +221,7 @@ export default function TestDeathVerificationFlow() {
       
       // Call the edge function to send status check emails
       const response = await supabase.functions.invoke('send-status-check', {
-        body: { userId: user.id },
+        body: { userId: session.user.id },
       });
       
       if (response.error) {
@@ -300,8 +302,8 @@ export default function TestDeathVerificationFlow() {
     try {
       setPinLoading(true);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         throw new Error('User not authenticated');
       }
       
@@ -309,7 +311,7 @@ export default function TestDeathVerificationFlow() {
       const { data: settingsData } = await supabase
         .from('death_verification_settings')
         .select('beneficiary_verification_interval, trusted_contact_email')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .single();
       
       const interval = settingsData?.beneficiary_verification_interval || 48;
@@ -325,7 +327,7 @@ export default function TestDeathVerificationFlow() {
       const { data: request, error: requestError } = await supabase
         .from('death_verification_requests')
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           status: 'pending',
           verification_token: token,
           verification_link: `https://willtank.com/verify/death/${token}`,
@@ -342,7 +344,7 @@ export default function TestDeathVerificationFlow() {
       await supabase
         .from('death_verification_checkins')
         .update({ status: 'verification_triggered' })
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(1);
       
@@ -350,12 +352,12 @@ export default function TestDeathVerificationFlow() {
       const { data: beneficiaries } = await supabase
         .from('will_beneficiaries')
         .select('id, beneficiary_name, email')
-        .eq('user_id', user.id);
+        .eq('user_id', session.user.id);
       
       const { data: executors } = await supabase
         .from('will_executors')
         .select('id, name, email')
-        .eq('user_id', user.id);
+        .eq('user_id', session.user.id);
       
       const pinResults = [];
       
@@ -430,7 +432,7 @@ export default function TestDeathVerificationFlow() {
         const { error: pinError } = await supabase
           .from('death_verification_pins')
           .insert({
-            person_id: user.id,
+            person_id: session.user.id,
             pin_code: pinCode,
             person_type: 'trusted',
             used: false
@@ -450,7 +452,7 @@ export default function TestDeathVerificationFlow() {
       
       // Log verification event
       await supabase.from('death_verification_logs').insert({
-        user_id: user.id,
+        user_id: session.user.id,
         action: 'verification_triggered',
         details: {
           request_id: request.id,
@@ -486,8 +488,8 @@ export default function TestDeathVerificationFlow() {
     try {
       setResetLoading(true);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         throw new Error('User not authenticated');
       }
       
@@ -511,13 +513,13 @@ export default function TestDeathVerificationFlow() {
       await supabase
         .from('death_verification_requests')
         .delete()
-        .eq('user_id', user.id);
+        .eq('user_id', session.user.id);
       
       // Reset check-in status
       const settings = await supabase
         .from('death_verification_settings')
         .select('check_in_frequency')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .single();
       
       const frequency = settings.data?.check_in_frequency || 7;
@@ -529,7 +531,7 @@ export default function TestDeathVerificationFlow() {
       await supabase
         .from('death_verification_checkins')
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           status: 'alive',
           checked_in_at: now.toISOString(),
           next_check_in: nextCheckIn.toISOString()
@@ -537,7 +539,7 @@ export default function TestDeathVerificationFlow() {
       
       // Log reset event
       await supabase.from('death_verification_logs').insert({
-        user_id: user.id,
+        user_id: session.user.id,
         action: 'test_reset',
         details: {
           reset_time: now.toISOString()
@@ -615,7 +617,7 @@ export default function TestDeathVerificationFlow() {
               <TabsTrigger value="step4">Reset Test</TabsTrigger>
             </TabsList>
             
-            {/* New Tab: Setup Contacts */}
+            {/* Setup Contacts Tab */}
             <TabsContent value="setup" className="p-4 border rounded-md mt-4">
               <h3 className="text-lg font-medium mb-2 flex items-center">
                 <Users className="mr-2 h-5 w-5" />

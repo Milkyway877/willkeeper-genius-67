@@ -878,6 +878,8 @@ export type Database = {
           percentage: number | null
           phone: string | null
           relationship: string
+          status: string | null
+          user_id: string | null
           will_id: string | null
         }
         Insert: {
@@ -891,6 +893,8 @@ export type Database = {
           percentage?: number | null
           phone?: string | null
           relationship: string
+          status?: string | null
+          user_id?: string | null
           will_id?: string | null
         }
         Update: {
@@ -904,6 +908,8 @@ export type Database = {
           percentage?: number | null
           phone?: string | null
           relationship?: string
+          status?: string | null
+          user_id?: string | null
           will_id?: string | null
         }
         Relationships: [
@@ -1027,6 +1033,7 @@ export type Database = {
           invitation_status: string | null
           name: string
           status: string | null
+          user_id: string | null
           will_id: string | null
         }
         Insert: {
@@ -1038,6 +1045,7 @@ export type Database = {
           invitation_status?: string | null
           name: string
           status?: string | null
+          user_id?: string | null
           will_id?: string | null
         }
         Update: {
@@ -1049,6 +1057,7 @@ export type Database = {
           invitation_status?: string | null
           name?: string
           status?: string | null
+          user_id?: string | null
           will_id?: string | null
         }
         Relationships: [
