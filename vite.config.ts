@@ -14,8 +14,11 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      jsxRuntime: 'automatic',
-      jsxImportSource: 'react',
+      // Using proper SWC options for React
+      swcReact: {
+        jsxImportSource: 'react',
+        refresh: true,
+      },
     }),
     mode === 'development' &&
     componentTagger(),
