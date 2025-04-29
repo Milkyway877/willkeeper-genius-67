@@ -31,6 +31,12 @@ export interface WillBeneficiary {
   will_id?: string;
 }
 
+// Track in-progress operations to prevent duplicates
+const inProgressOperations = {
+  creatingDraft: false,
+  lastDraftTime: 0,
+};
+
 export const getWills = async (): Promise<Will[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -94,21 +100,45 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       console.error('User is not authenticated');
       throw new Error('You must be logged in to create a will');
     }
-
-    const { data: existingDrafts } = await supabase
-      .from('wills')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .eq('status', 'draft')
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (will.status === 'draft' && existingDrafts && existingDrafts.length > 0) {
-      const latestDraft = existingDrafts[0];
-      return updateWill(latestDraft.id, {
-        ...will,
-        status: 'draft'
-      });
+    
+    // Check if we're already processing a draft creation request
+    // Include a time-based check to avoid long-term lockouts
+    const now = Date.now();
+    const THROTTLE_TIME = 3000; // 3 seconds
+    
+    if (will.status === 'draft') {
+      if (inProgressOperations.creatingDraft && 
+         (now - inProgressOperations.lastDraftTime < THROTTLE_TIME)) {
+        console.log('Draft creation in progress, skipping duplicate request');
+        return null;
+      }
+      
+      // Set flag to prevent duplicate operations
+      inProgressOperations.creatingDraft = true;
+      inProgressOperations.lastDraftTime = now;
+      
+      // Check if there's an existing draft we can use
+      const { data: existingDrafts } = await supabase
+        .from('wills')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('status', 'draft')
+        .eq('template_type', will.template_type || '')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      // Update existing draft of the same template type if it exists
+      if (existingDrafts && existingDrafts.length > 0) {
+        const latestDraft = existingDrafts[0];
+        const updatedWill = await updateWill(latestDraft.id, {
+          ...will,
+          status: 'draft',
+          updated_at: new Date().toISOString()
+        });
+        
+        inProgressOperations.creatingDraft = false;
+        return updatedWill;
+      }
     }
 
     const willToCreate = {
@@ -128,6 +158,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       
     if (error) {
       console.error('Error creating will:', error);
+      inProgressOperations.creatingDraft = false;
       return null;
     }
     
@@ -142,9 +173,15 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       }
     }
     
+    // Reset the in-progress flag after operation completes
+    if (will.status === 'draft') {
+      inProgressOperations.creatingDraft = false;
+    }
+    
     return data;
   } catch (error) {
     console.error('Error in createWill:', error);
+    inProgressOperations.creatingDraft = false;
     return null;
   }
 };

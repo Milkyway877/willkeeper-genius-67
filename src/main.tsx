@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -44,7 +45,6 @@ import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
 import Wills from './pages/wills/Wills';
-import WillCreation from './pages/will/WillCreation';
 import WillCreatePage from './pages/will/WillCreatePage';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

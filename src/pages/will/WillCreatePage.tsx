@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -8,6 +8,8 @@ import { Check, FileText, Book, Scale, Users, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { createWill } from '@/services/willService';
+import { useNavigate } from 'react-router-dom';
 
 // Template data structure
 interface WillTemplate {
@@ -193,19 +195,64 @@ const willTemplates: WillTemplate[] = [
 
 export default function WillCreatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const navigate = useNavigate();
   
-  const handleUseTemplate = (templateId: string) => {
-    // Save selected template without navigating
-    localStorage.setItem('selectedWillTemplate', templateId);
-    setSelectedTemplate(templateId);
+  // Use useCallback to create a memoized version of handleUseTemplate that won't change on re-renders
+  const handleUseTemplate = useCallback(async (templateId: string) => {
+    // Prevent multiple clicks from creating multiple drafts
+    if (isProcessing) {
+      return;
+    }
     
-    // Show success notification
-    toast({
-      title: "Template Selected",
-      description: `Your template has been saved. You'll be able to continue creating your will soon.`,
-      variant: "default",
-    });
-  };
+    try {
+      setIsProcessing(true);
+      
+      // Save selected template ID
+      localStorage.setItem('selectedWillTemplate', templateId);
+      setSelectedTemplate(templateId);
+      
+      // Find the selected template
+      const template = willTemplates.find(t => t.id === templateId);
+      if (!template) {
+        throw new Error('Template not found');
+      }
+      
+      // Create a draft will with the selected template
+      const willData = {
+        title: `${template.name} Draft`,
+        status: 'draft',
+        template_type: templateId,
+        document_url: '',
+        content: ''
+      };
+      
+      // Create the draft will in the database
+      await createWill(willData);
+      
+      // Show success notification
+      toast({
+        title: "Template Selected",
+        description: `Your "${template.name}" template has been saved as a draft. You can find it in your wills page.`,
+        variant: "default",
+      });
+      
+      // Redirect to wills page after a short delay
+      setTimeout(() => {
+        navigate('/wills');
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error creating draft will:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem saving your template. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [isProcessing, navigate]);
   
   return (
     <Layout>
@@ -224,6 +271,7 @@ export default function WillCreatePage() {
               key={template.id}
               template={template}
               isSelected={selectedTemplate === template.id}
+              isProcessing={isProcessing}
               onSelect={() => setSelectedTemplate(template.id)}
               onUseTemplate={handleUseTemplate}
             />
@@ -237,11 +285,12 @@ export default function WillCreatePage() {
 interface TemplateCardProps {
   template: WillTemplate;
   isSelected: boolean;
+  isProcessing: boolean;
   onSelect: () => void;
   onUseTemplate: (templateId: string) => void;
 }
 
-function TemplateCard({ template, isSelected, onSelect, onUseTemplate }: TemplateCardProps) {
+function TemplateCard({ template, isSelected, isProcessing, onSelect, onUseTemplate }: TemplateCardProps) {
   const Icon = template.icon;
   
   return (
@@ -346,8 +395,9 @@ function TemplateCard({ template, isSelected, onSelect, onUseTemplate }: Templat
                 <Button 
                   onClick={() => onUseTemplate(template.id)}
                   className="bg-purple-600 hover:bg-purple-700"
+                  disabled={isProcessing}
                 >
-                  Use This Template
+                  {isProcessing ? "Processing..." : "Use This Template"}
                 </Button>
               </div>
             </DialogContent>
@@ -362,8 +412,10 @@ function TemplateCard({ template, isSelected, onSelect, onUseTemplate }: Templat
               "w-full",
               isSelected ? "bg-purple-600 hover:bg-purple-700" : ""
             )}
+            disabled={isProcessing}
           >
-            {isSelected && <Check className="mr-2 h-4 w-4" />}
+            {isProcessing && <span className="mr-2">Processing...</span>}
+            {isSelected && !isProcessing && <Check className="mr-2 h-4 w-4" />}
             Use Template
           </Button>
         </div>
