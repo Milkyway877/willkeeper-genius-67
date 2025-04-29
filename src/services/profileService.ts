@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -123,13 +124,15 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       throw new Error('File type must be JPEG, PNG or GIF');
     }
 
+    // Generate a unique filename with timestamp to prevent caching issues
+    const timestamp = new Date().getTime();
     const fileExt = file.name.split('.').pop();
-    const fileName = `${session.user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const fileName = `${session.user.id}/${timestamp}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(fileName, file, {
-        cacheControl: '3600',
+        cacheControl: '0', // No cache
         upsert: true
       });
 
@@ -142,12 +145,15 @@ export const uploadProfileImage = async (file: File): Promise<string | null> => 
       .from('avatars')
       .getPublicUrl(fileName);
 
+    // Add cache busting parameter
+    const cacheBustedUrl = `${publicUrl}?t=${timestamp}`;
+
     // Update the user profile with the new avatar URL
     await updateUserProfile({
-      avatar_url: publicUrl
+      avatar_url: publicUrl // Store the original URL in the database
     });
 
-    return publicUrl;
+    return cacheBustedUrl;
   } catch (error) {
     console.error('Error in uploadProfileImage:', error);
     throw error;

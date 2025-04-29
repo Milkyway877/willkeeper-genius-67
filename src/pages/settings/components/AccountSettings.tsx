@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { updateUserProfile, uploadProfileImage } from '@/services/profileService';
+import { uploadProfileImage } from '@/services/profileService';
 import { Loader2, Check, Upload, Edit, Mail, AlertCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export function AccountSettings() {
   const { toast } = useToast();
-  const { profile, refreshProfile, updateEmail } = useUserProfile();
+  const { profile, refreshProfile, updateEmail, updateProfile } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -28,6 +28,7 @@ export function AccountSettings() {
     fullName: '',
     email: ''
   });
+  const [avatarCacheBuster, setAvatarCacheBuster] = useState<number>(Date.now());
 
   useEffect(() => {
     if (profile) {
@@ -65,13 +66,11 @@ export function AccountSettings() {
     try {
       setIsSaving(true);
       
-      const updatedProfile = await updateUserProfile({
+      const updatedProfile = await updateProfile({
         full_name: formData.fullName
       });
       
       if (updatedProfile) {
-        await refreshProfile();
-        
         toast({
           title: "Profile Updated",
           description: "Your account information has been saved.",
@@ -100,6 +99,9 @@ export function AccountSettings() {
       setIsUploading(true);
       await uploadProfileImage(file);
       await refreshProfile();
+      
+      // Update cache buster to force avatar refresh
+      setAvatarCacheBuster(Date.now());
       
       toast({
         title: "Avatar Updated",
@@ -180,6 +182,7 @@ export function AccountSettings() {
                   size="lg"
                   loading={isUploading}
                   className="h-24 w-24"
+                  cacheBuster={avatarCacheBuster}
                 />
               </div>
               <Button 

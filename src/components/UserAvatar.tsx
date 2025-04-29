@@ -10,13 +10,15 @@ interface UserAvatarProps {
   size?: 'sm' | 'md' | 'lg';
   user?: UserProfile | null;
   loading?: boolean;
+  cacheBuster?: string | number;
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({ 
   className = "", 
   size = "md",
   user,
-  loading = false
+  loading = false,
+  cacheBuster
 }) => {
   const { profile, initials } = useUserProfile();
   const displayProfile = user || profile;
@@ -32,14 +34,29 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   };
   
   const handleImageError = () => {
+    console.log("Avatar image failed to load");
     setImageError(true);
+  };
+
+  // Add cache busting parameter to avatar URL if provided
+  const getAvatarUrl = () => {
+    if (!displayProfile?.avatar_url || imageError) return '';
+    
+    const url = new URL(displayProfile.avatar_url);
+    
+    // Add cache busting parameter if provided
+    if (cacheBuster) {
+      url.searchParams.set('t', cacheBuster.toString());
+    }
+    
+    return url.toString();
   };
   
   return (
     <Avatar className={`${getSizeClass()} ${className} ring-2 ring-offset-2 ring-offset-white ring-willtank-100`}>
       {displayProfile?.avatar_url && !imageError ? (
         <AvatarImage 
-          src={displayProfile.avatar_url} 
+          src={getAvatarUrl()}
           alt={displayProfile.full_name || "User avatar"}
           onError={handleImageError}
         />

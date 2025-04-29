@@ -12,6 +12,7 @@ interface UserProfileContextType {
   initials: string;
   refreshProfile: () => Promise<void>;
   updateEmail: (newEmail: string) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile | null>;
 }
 
 const UserProfileContext = createContext<UserProfileContextType>({
@@ -20,7 +21,8 @@ const UserProfileContext = createContext<UserProfileContextType>({
   loading: true,
   initials: "U",
   refreshProfile: async () => {},
-  updateEmail: async () => ({ success: false })
+  updateEmail: async () => ({ success: false }),
+  updateProfile: async () => null
 });
 
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ 
@@ -34,6 +36,8 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshProfile = async () => {
     try {
+      if (!user) return;
+      
       const userProfile = await getUserProfile();
       if (userProfile) {
         setProfile(userProfile);
@@ -41,6 +45,22 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error("Error refreshing profile:", error);
+    }
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<UserProfile | null> => {
+    try {
+      if (!user) return null;
+      
+      const updatedProfile = await updateUserProfile(updates);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+        setInitials(getInitials(updatedProfile.full_name));
+      }
+      return updatedProfile;
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return null;
     }
   };
 
@@ -164,7 +184,8 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
     loading,
     initials,
     refreshProfile,
-    updateEmail
+    updateEmail,
+    updateProfile
   };
 
   return (
