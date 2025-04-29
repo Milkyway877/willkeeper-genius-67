@@ -16,9 +16,13 @@ import {
 } from '@/services/deathVerificationService';
 import { ContactsManager } from '@/components/death-verification/ContactsManager';
 
+interface DeathVerificationProps {
+  onSettingsChange?: () => void;
+}
+
 // Component is still named DeathVerification for compatibility,
 // but UI text is updated to use "Check-ins" terminology
-export default function DeathVerification() {
+export default function DeathVerification({ onSettingsChange }: DeathVerificationProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,6 +107,11 @@ export default function DeathVerification() {
         
         // Update local state
         setSettings(result);
+        
+        // Notify parent component about the change
+        if (onSettingsChange) {
+          onSettingsChange();
+        }
         
         toast({
           title: result.check_in_enabled ? "Check-ins Enabled" : "Check-ins Disabled",

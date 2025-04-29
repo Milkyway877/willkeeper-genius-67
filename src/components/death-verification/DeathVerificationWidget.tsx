@@ -49,6 +49,10 @@ export function DeathVerificationWidget() {
             const days = differenceInDays(nextCheckInDate, today);
             setDaysRemaining(days);
           }
+        } else {
+          // Reset checkin data when disabled
+          setCheckin(null);
+          setDaysRemaining(null);
         }
       }
     } catch (error) {

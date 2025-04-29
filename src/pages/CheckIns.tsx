@@ -30,10 +30,11 @@ export default function CheckIns() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [refreshKey]);
 
   const fetchData = async () => {
     try {
@@ -48,6 +49,8 @@ export default function CheckIns() {
       const latestCheckin = await getLatestCheckin();
       if (latestCheckin) {
         setCheckins([latestCheckin]);
+      } else {
+        setCheckins([]);
       }
 
       // Fetch contacts
@@ -67,6 +70,11 @@ export default function CheckIns() {
     }
   };
 
+  // Callback function to refresh the data when settings change
+  const handleSettingsChange = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -77,7 +85,7 @@ export default function CheckIns() {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="md:col-span-2">
-            <DeathVerificationWidget />
+            <DeathVerificationWidget key={refreshKey} />
           </div>
           <div className="md:col-span-1">
             <div className="bg-willtank-50 rounded-xl shadow-sm border border-willtank-100 p-4">
@@ -106,7 +114,7 @@ export default function CheckIns() {
           </TabsList>
           
           <TabsContent value="settings">
-            <DeathVerification />
+            <DeathVerification onSettingsChange={handleSettingsChange} />
           </TabsContent>
 
           <TabsContent value="contacts">
