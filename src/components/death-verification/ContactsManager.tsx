@@ -158,12 +158,12 @@ export function ContactsManager({
     }
   };
   
-  const handleUpdateContact = async (id: string, type: 'beneficiary' | 'executor', email: string, phone?: string) => {
+  const handleUpdateContact = async (id: string, type: 'beneficiary' | 'executor', contactData: Partial<Beneficiary | Executor>) => {
     try {
       if (type === 'beneficiary') {
-        await updateBeneficiary(id, email, phone);
+        await updateBeneficiary(id, contactData as Partial<Beneficiary>);
       } else if (type === 'executor') {
-        await updateExecutor(id, email);
+        await updateExecutor(id, contactData as Partial<Executor>);
       }
       
       setEditingContact(null);
