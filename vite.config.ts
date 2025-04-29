@@ -13,7 +13,11 @@ export default defineConfig(({ mode }) => ({
     historyApiFallback: true,
   },
   plugins: [
-    react(),
+    react({
+      // Configure React plugin properly
+      jsxRuntime: 'automatic',
+      fastRefresh: true,
+    }),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
@@ -29,9 +33,20 @@ export default defineConfig(({ mode }) => ({
   build: {
     // Generate SPA fallback index.html for all routes
     outDir: 'dist',
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
   },
   // Ensure proper optimization to avoid duplicate React instances
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+    esbuildOptions: {
+      mainFields: ['module', 'main'],
+    },
+  },
+  // Force single instance of React
+  define: {
+    'process.env': process.env,
+    __REACT_VERSION__: JSON.stringify(require('react').version),
   },
 }));

@@ -5,6 +5,8 @@
     "types": ["react", "react-dom"],
     "jsx": "react-jsx",
     "skipLibCheck": true,
-    "jsxImportSource": "react"
+    "jsxImportSource": "react",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
   }
 }

@@ -50,6 +50,9 @@ import WillCreationChat from './pages/will/WillCreationChat';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// Ensure React is available globally to prevent multiple instances
+window.React = React;
+
 // Create a QueryClient instance
 const queryClient = new QueryClient();
 
@@ -250,5 +253,5 @@ root.render(
         <RouterProvider router={router} />
       </NotificationsProvider>
     </QueryClientProvider>
-  </React.StrictMode>,
-)
+  </React.StrictMode>
+);
