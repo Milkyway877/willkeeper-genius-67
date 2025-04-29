@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -44,6 +43,7 @@ import Activity from './pages/activity/Activity';
 import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
+import Wills from './pages/wills/Wills';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -211,6 +211,10 @@ const router = createBrowserRouter([
       {
         path: "/test-death-verification",
         element: <TestDeathVerification />,
+      },
+      {
+        path: "/wills",
+        element: <Wills />,
       },
       {
         path: "*",

@@ -76,8 +76,17 @@ export function Sidebar() {
             `}
           >
             <FileText className="h-5 w-5 text-purple-700" />
-            <span className="ml-3 font-semibold">Wills</span>
-            {!isCollapsed && <span className="ml-auto px-2 py-0.5 text-xs rounded-full bg-purple-200 text-purple-800">Core</span>}
+            {!isCollapsed && (
+              <>
+                <span className="ml-3 font-semibold">Wills</span>
+                <span className="ml-auto px-2 py-0.5 text-xs rounded-full bg-purple-200 text-purple-800">Core</span>
+              </>
+            )}
+            {isCollapsed && (
+              <div className="absolute left-14 whitespace-nowrap bg-gray-900 text-white px-2 py-1 rounded ml-2 text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+                Wills <span className="text-xs px-1 py-0.5 rounded-full bg-purple-500 text-white ml-1">Core</span>
+              </div>
+            )}
           </Link>
           
           <SidebarLink to="/tank" icon={<Vault className="h-5 w-5" />} label="Will Tank" />
@@ -105,7 +114,7 @@ export function Sidebar() {
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              {!isCollapsed && "Logout"}
             </Button>
           </div>
         </div>
@@ -123,18 +132,24 @@ interface SidebarLinkProps {
 function SidebarLink({ to, icon, label }: SidebarLinkProps) {
   const location = useLocation();
   const isActive = location.pathname === to;
+  const { isCollapsed } = useSidebar();
   
   return (
     <Link
       to={to}
       className={`
-        flex items-center px-4 py-2 rounded-md
+        flex items-center px-4 py-2 rounded-md group
         hover:bg-gray-100
         ${isActive ? 'bg-gray-100 font-medium' : 'text-gray-600'}
       `}
     >
       {icon}
-      <span className="ml-3">{label}</span>
+      {!isCollapsed && <span className="ml-3">{label}</span>}
+      {isCollapsed && (
+        <div className="absolute left-14 whitespace-nowrap bg-gray-900 text-white px-2 py-1 rounded ml-2 text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+          {label}
+        </div>
+      )}
     </Link>
   );
 }
