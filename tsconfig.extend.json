@@ -4,6 +4,7 @@
   "compilerOptions": {
     "types": ["react", "react-dom"],
     "jsx": "react-jsx",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "jsxImportSource": "react"
   }
 }
