@@ -9,6 +9,7 @@ import {
   getDeathVerificationSettings, 
   getLatestCheckin, 
   processCheckin, 
+  saveDeathVerificationSettings,
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
 
@@ -21,6 +22,7 @@ export function DeathVerificationWidget() {
   const [checkinEnabled, setCheckinEnabled] = useState(false);
   const [checkin, setCheckin] = useState<DeathVerificationCheckin | null>(null);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [enablingCheckins, setEnablingCheckins] = useState(false);
   
   useEffect(() => {
     fetchVerificationStatus();
@@ -87,6 +89,43 @@ export function DeathVerificationWidget() {
       setCheckinLoading(false);
     }
   };
+
+  const handleEnableCheckIns = async () => {
+    try {
+      setEnablingCheckins(true);
+      
+      const settings = await getDeathVerificationSettings();
+      
+      if (settings) {
+        const updatedSettings = await saveDeathVerificationSettings({
+          ...settings,
+          check_in_enabled: true
+        });
+        
+        if (updatedSettings) {
+          setCheckinEnabled(true);
+          toast({
+            title: "Check-ins Enabled",
+            description: "You have successfully enabled the check-in system.",
+          });
+          
+          // Refresh data
+          fetchVerificationStatus();
+        } else {
+          throw new Error("Failed to enable check-ins");
+        }
+      }
+    } catch (error) {
+      console.error('Error enabling check-ins:', error);
+      toast({
+        title: "Error",
+        description: "There was an error enabling check-ins. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setEnablingCheckins(false);
+    }
+  };
   
   const navigateToSettings = () => {
     navigate('/check-ins');
@@ -133,7 +172,20 @@ export function DeathVerificationWidget() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={navigateToSettings} className="w-full">Enable Check-ins</Button>
+          <Button 
+            onClick={handleEnableCheckIns}
+            disabled={enablingCheckins}
+            className="w-full"
+          >
+            {enablingCheckins ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
+                Enabling...
+              </>
+            ) : (
+              'Enable Check-ins'
+            )}
+          </Button>
         </CardFooter>
       </Card>
     );

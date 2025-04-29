@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,6 +24,7 @@ export default function CheckIns() {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
+  const [enablingCheckins, setEnablingCheckins] = useState(false);
   const [checkins, setCheckins] = useState<DeathVerificationCheckin[]>([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [executors, setExecutors] = useState<Executor[]>([]);
@@ -68,6 +68,7 @@ export default function CheckIns() {
 
   const handleEnableCheckIns = async () => {
     try {
+      setEnablingCheckins(true);
       const updatedSettings = { ...settings, check_in_enabled: true };
       const result = await saveDeathVerificationSettings(updatedSettings);
       
@@ -77,6 +78,10 @@ export default function CheckIns() {
           title: "Success",
           description: "Check-ins have been enabled successfully"
         });
+        // Refresh data
+        fetchData();
+      } else {
+        throw new Error("Failed to enable check-ins");
       }
     } catch (error) {
       console.error('Error enabling check-ins:', error);
@@ -85,6 +90,8 @@ export default function CheckIns() {
         description: "Failed to enable check-ins",
         variant: "destructive"
       });
+    } finally {
+      setEnablingCheckins(false);
     }
   };
 
@@ -119,9 +126,17 @@ export default function CheckIns() {
               {!settings.check_in_enabled && (
                 <Button 
                   onClick={handleEnableCheckIns} 
+                  disabled={enablingCheckins}
                   className="w-full mt-4"
                 >
-                  Enable Check-ins
+                  {enablingCheckins ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
+                      Enabling...
+                    </>
+                  ) : (
+                    'Enable Check-ins'
+                  )}
                 </Button>
               )}
             </div>
