@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -13,7 +12,6 @@ import {
   Search,
   Bell,
   LogOut,
-  User,
   Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -122,12 +120,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       <span className="text-xs text-gray-500 truncate">{profile?.email || 'No email'}</span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/settings/profile" className="w-full cursor-pointer flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/settings" className="w-full cursor-pointer flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
