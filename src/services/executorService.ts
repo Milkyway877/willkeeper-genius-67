@@ -5,25 +5,34 @@ import { createSystemNotification } from "./notificationService";
 export interface Beneficiary {
   id: string;
   beneficiary_name: string;
+  name?: string; // Added for compatibility with Executors.tsx
   email?: string;
   phone?: string;
   relationship?: string;
+  address?: string; // Added properties used in Executors.tsx
+  notes?: string;
   percentage?: number;
   will_id?: string;
   invitation_status?: string;
   invitation_sent_at?: string;
   invitation_responded_at?: string;
+  isVerified?: boolean; // Added for compatibility with Executors.tsx
 }
 
 export interface Executor {
   id: string;
   name: string;
   email?: string;
+  phone?: string; // Added properties used in Executors.tsx
+  relationship?: string;
+  address?: string;
+  notes?: string;
   will_id?: string;
   status?: string;
   invitation_status?: string;
   invitation_sent_at?: string;
   invitation_responded_at?: string;
+  isVerified?: boolean; // Added for compatibility with Executors.tsx
 }
 
 // Get list of beneficiaries for current user
@@ -46,7 +55,14 @@ export const getBeneficiaries = async (): Promise<Beneficiary[]> => {
       throw error;
     }
     
-    return data || [];
+    // Map the database fields to our interface
+    const beneficiaries = data?.map(b => ({
+      ...b,
+      name: b.beneficiary_name, // Add name property for compatibility
+      isVerified: b.invitation_status === 'accepted'
+    })) || [];
+    
+    return beneficiaries;
   } catch (error) {
     console.error('Error in getBeneficiaries:', error);
     return [];
@@ -73,7 +89,13 @@ export const getExecutors = async (): Promise<Executor[]> => {
       throw error;
     }
     
-    return data || [];
+    // Map and add the isVerified property
+    const executors = data?.map(e => ({
+      ...e,
+      isVerified: e.invitation_status === 'accepted'
+    })) || [];
+    
+    return executors;
   } catch (error) {
     console.error('Error in getExecutors:', error);
     return [];
@@ -81,11 +103,11 @@ export const getExecutors = async (): Promise<Executor[]> => {
 };
 
 // Update beneficiary with email and phone
-export const updateBeneficiary = async (id: string, email: string, phone?: string): Promise<any> => {
+export const updateBeneficiary = async (id: string, beneficiaryData: Partial<Beneficiary>): Promise<any> => {
   try {
     const { data, error } = await supabase
       .from('will_beneficiaries')
-      .update({ email, phone })
+      .update(beneficiaryData)
       .eq('id', id)
       .select('*')
       .single();
@@ -95,7 +117,11 @@ export const updateBeneficiary = async (id: string, email: string, phone?: strin
       throw error;
     }
     
-    return data;
+    return {
+      ...data,
+      name: data.beneficiary_name,
+      isVerified: data.invitation_status === 'accepted'
+    };
   } catch (error) {
     console.error('Error in updateBeneficiary:', error);
     throw error;
@@ -103,11 +129,11 @@ export const updateBeneficiary = async (id: string, email: string, phone?: strin
 };
 
 // Update executor with email
-export const updateExecutor = async (id: string, email: string): Promise<any> => {
+export const updateExecutor = async (id: string, executorData: Partial<Executor>): Promise<any> => {
   try {
     const { data, error } = await supabase
       .from('will_executors')
-      .update({ email })
+      .update(executorData)
       .eq('id', id)
       .select('*')
       .single();
@@ -117,14 +143,55 @@ export const updateExecutor = async (id: string, email: string): Promise<any> =>
       throw error;
     }
     
-    return data;
+    return {
+      ...data,
+      isVerified: data.invitation_status === 'accepted'
+    };
   } catch (error) {
     console.error('Error in updateExecutor:', error);
     throw error;
   }
 };
 
-export const createExecutor = async (name: string, email: string): Promise<Executor> => {
+// Create a new beneficiary
+export const createBeneficiary = async (beneficiaryData: Partial<Beneficiary>): Promise<Beneficiary> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Map the name property to beneficiary_name for database compatibility
+    const dbData = {
+      ...beneficiaryData,
+      beneficiary_name: beneficiaryData.name || beneficiaryData.beneficiary_name,
+      user_id: session.user.id,
+    };
+    
+    const { data, error } = await supabase
+      .from('will_beneficiaries')
+      .insert(dbData)
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Error creating beneficiary:', error);
+      throw error;
+    }
+    
+    return {
+      ...data,
+      name: data.beneficiary_name,
+      isVerified: data.invitation_status === 'accepted'
+    };
+  } catch (error) {
+    console.error('Error in createBeneficiary:', error);
+    throw error as Error;
+  }
+};
+
+export const createExecutor = async (executorData: Partial<Executor>): Promise<Executor> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -135,8 +202,7 @@ export const createExecutor = async (name: string, email: string): Promise<Execu
     const { data, error } = await supabase
       .from('will_executors')
       .insert({
-        name,
-        email,
+        ...executorData,
         user_id: session.user.id,
         status: 'pending'
       })
@@ -148,10 +214,53 @@ export const createExecutor = async (name: string, email: string): Promise<Execu
       throw error;
     }
     
-    return data;
+    return {
+      ...data,
+      isVerified: data.invitation_status === 'accepted'
+    };
   } catch (error) {
     console.error('Error in createExecutor:', error);
     throw error as Error;
+  }
+};
+
+// Delete executor
+export const deleteExecutor = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('will_executors')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error deleting executor:', error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteExecutor:', error);
+    return false;
+  }
+};
+
+// Delete beneficiary
+export const deleteBeneficiary = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('will_beneficiaries')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error deleting beneficiary:', error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteBeneficiary:', error);
+    return false;
   }
 };
 
@@ -169,5 +278,45 @@ export const updateExecutorStatus = async (id: string, status: string): Promise<
   } catch (error) {
     console.error('Error in updateExecutorStatus:', error);
     throw error;
+  }
+};
+
+// Send verification request to contact
+export const sendVerificationRequest = async (
+  email: string, 
+  name: string, 
+  type: 'executor' | 'beneficiary'
+): Promise<boolean> => {
+  try {
+    // Create a system notification for now
+    // In a real implementation, this would send an email
+    createSystemNotification({
+      title: `Verification Request Sent`,
+      message: `A verification request has been sent to ${name} (${email}) as a ${type}.`,
+      type: 'info'
+    });
+    
+    // Update the invitation status in the database
+    const table = type === 'executor' ? 'will_executors' : 'will_beneficiaries';
+    const nameField = type === 'executor' ? 'name' : 'beneficiary_name';
+    
+    const { error } = await supabase
+      .from(table)
+      .update({
+        invitation_status: 'sent',
+        invitation_sent_at: new Date().toISOString()
+      })
+      .eq(nameField, name)
+      .eq('email', email);
+      
+    if (error) {
+      console.error(`Error updating ${type} invitation status:`, error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in sendVerificationRequest:', error);
+    return false;
   }
 };
