@@ -44,173 +44,188 @@ import Activity from './pages/activity/Activity';
 import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
+import { NotificationsProvider } from '@/contexts/NotificationsContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Create a QueryClient instance
+const queryClient = new QueryClient();
 
 // Create a unified router configuration
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Home />,
-  },
-  {
-    path: "/about",
-    element: <About />,
-  },
-  {
-    path: "/contact",
-    element: <Contact />,
-  },
-  {
-    path: "/pricing",
-    element: <Pricing />,
-  },
-  {
-    path: "/blog",
-    element: <Blog />,
-  },
-  {
-    path: "/blog/:id",
-    element: <BlogArticle />,
-  },
-  {
-    path: "/help",
-    element: <Help />,
-  },
-  {
-    path: "/search",
-    element: <Search />,
-  },
-  {
-    path: "/how-it-works",
-    element: <HowItWorks />,
-  },
-  {
-    path: "/security",
-    element: <Security />,
-  },
-  {
-    path: "/services",
-    element: <Services />,
-  },
-  {
-    path: "/business",
-    element: <Business />,
-  },
-  {
-    path: "/privacy",
-    element: <Privacy />,
-  },
-  {
-    path: "/terms",
-    element: <Terms />,
-  },
-  {
-    path: "/cookies",
-    element: <Cookies />,
-  },
-  {
-    path: "/auth/signin",
-    element: <SecureSignIn />,
-  },
-  {
-    path: "/auth/signup",
-    element: <SecureSignUp />,
-  },
-  {
-    path: "/auth/verification",
-    element: <EmailVerification />,
-  },
-  {
-    path: "/auth/forgot-password",
-    element: <SecureRecover />,
-  },
-  {
-    path: "/auth/reset-password",
-    element: <AuthResetPassword />,
-  },
-  {
-    path: "/auth/activate",
-    element: <AccountActivation />,
-  },
-  {
-    path: "/auth/verify-email",
-    element: <VerifyEmailBanner />,
-  },
-  {
-    path: "/auth/callback",
-    element: <AuthCallback />,
-  },
-  {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
-  {
-    path: "/settings",
-    element: <Settings />,
-  },
-  {
-    path: "/activity",
-    element: <Activity />,
-  },
-  {
-    path: "/check-ins",
-    element: <CheckIns />,
-  },
-  {
-    path: "/pages/security/IDSecurity",
-    element: <IDSecurity />,
-  },
-  {
-    path: "/billing",
-    element: <Billing />,
-  },
-  {
-    path: "/pages/billing/Billing",
-    element: <Billing />,
-  },
-  {
-    path: "/corporate",
-    element: <Corporate />,
-  },
-  {
-    path: "/tank",
-    element: <Tank />,
-  },
-  {
-    path: "/tank/create",
-    element: <TankCreation />,
-  },
-  {
-    path: "/tank/message/:id",
-    element: <TankMessageDetail />,
-  },
-  {
-    path: "/tank/edit/:id",
-    element: <TankCreation />,
-  },
-  {
-    path: "/verify/:token",
-    element: <VerificationPortal />,
-  },
-  {
-    path: "/verify/invitation/:token",
-    element: <VerificationResponse />,
-  },
-  {
-    path: "/verify/status/:token",
-    element: <VerificationResponse />,
-  },
-  {
-    path: "/test-death-verification",
-    element: <TestDeathVerification />,
-  },
-  {
-    path: "*",
-    element: <NotFound />,
+    element: <App />,
+    children: [
+      {
+        path: "/",
+        element: <Home />,
+      },
+      {
+        path: "/about",
+        element: <About />,
+      },
+      {
+        path: "/contact",
+        element: <Contact />,
+      },
+      {
+        path: "/pricing",
+        element: <Pricing />,
+      },
+      {
+        path: "/blog",
+        element: <Blog />,
+      },
+      {
+        path: "/blog/:id",
+        element: <BlogArticle />,
+      },
+      {
+        path: "/help",
+        element: <Help />,
+      },
+      {
+        path: "/search",
+        element: <Search />,
+      },
+      {
+        path: "/how-it-works",
+        element: <HowItWorks />,
+      },
+      {
+        path: "/security",
+        element: <Security />,
+      },
+      {
+        path: "/services",
+        element: <Services />,
+      },
+      {
+        path: "/business",
+        element: <Business />,
+      },
+      {
+        path: "/privacy",
+        element: <Privacy />,
+      },
+      {
+        path: "/terms",
+        element: <Terms />,
+      },
+      {
+        path: "/cookies",
+        element: <Cookies />,
+      },
+      {
+        path: "/auth/signin",
+        element: <SecureSignIn />,
+      },
+      {
+        path: "/auth/signup",
+        element: <SecureSignUp />,
+      },
+      {
+        path: "/auth/verification",
+        element: <EmailVerification />,
+      },
+      {
+        path: "/auth/forgot-password",
+        element: <SecureRecover />,
+      },
+      {
+        path: "/auth/reset-password",
+        element: <AuthResetPassword />,
+      },
+      {
+        path: "/auth/activate",
+        element: <AccountActivation />,
+      },
+      {
+        path: "/auth/verify-email",
+        element: <VerifyEmailBanner />,
+      },
+      {
+        path: "/auth/callback",
+        element: <AuthCallback />,
+      },
+      {
+        path: "/dashboard",
+        element: <Dashboard />,
+      },
+      {
+        path: "/settings",
+        element: <Settings />,
+      },
+      {
+        path: "/activity",
+        element: <Activity />,
+      },
+      {
+        path: "/check-ins",
+        element: <CheckIns />,
+      },
+      {
+        path: "/pages/security/IDSecurity",
+        element: <IDSecurity />,
+      },
+      {
+        path: "/billing",
+        element: <Billing />,
+      },
+      {
+        path: "/pages/billing/Billing",
+        element: <Billing />,
+      },
+      {
+        path: "/corporate",
+        element: <Corporate />,
+      },
+      {
+        path: "/tank",
+        element: <Tank />,
+      },
+      {
+        path: "/tank/create",
+        element: <TankCreation />,
+      },
+      {
+        path: "/tank/message/:id",
+        element: <TankMessageDetail />,
+      },
+      {
+        path: "/tank/edit/:id",
+        element: <TankCreation />,
+      },
+      {
+        path: "/verify/:token",
+        element: <VerificationPortal />,
+      },
+      {
+        path: "/verify/invitation/:token",
+        element: <VerificationResponse />,
+      },
+      {
+        path: "/verify/status/:token",
+        element: <VerificationResponse />,
+      },
+      {
+        path: "/test-death-verification",
+        element: <TestDeathVerification />,
+      },
+      {
+        path: "*",
+        element: <NotFound />,
+      },
+    ],
   },
 ]);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <QueryClientProvider client={queryClient}>
+      <NotificationsProvider>
+        <RouterProvider router={router} />
+      </NotificationsProvider>
+    </QueryClientProvider>
   </React.StrictMode>,
 )
