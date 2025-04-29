@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Mail, Loader2, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 const emailSchema = z.object({
   email: z
@@ -73,30 +72,33 @@ export function EmailUpdateForm() {
     setError(null);
     
     try {
-      // Directly use Supabase to update email for more reliable error handling
-      const { error: updateError } = await supabase.auth.updateUser({ 
-        email: values.email 
-      });
+      console.log("Updating email to:", values.email);
+      const result = await updateEmail(values.email);
       
-      if (updateError) {
-        throw updateError;
+      if (result.success) {
+        setShowSuccess(true);
+        form.reset();
+        
+        toast({
+          title: 'Verification Email Sent',
+          description: 'A confirmation link has been sent to your new email address. Please check your inbox to complete the update.',
+        });
+        
+        // Close dialog after showing success for 3 seconds
+        setTimeout(() => {
+          setOpen(false);
+        }, 3000);
+      } else {
+        throw new Error(result.error || 'Failed to update email. Please try again.');
       }
-      
-      setShowSuccess(true);
-      form.reset();
-      
-      toast({
-        title: 'Verification Email Sent',
-        description: 'A confirmation link has been sent to your new email address. Please check your inbox to complete the update.',
-      });
-      
-      // Close dialog after showing success for 3 seconds
-      setTimeout(() => {
-        setOpen(false);
-      }, 3000);
     } catch (err: any) {
       console.error('Email update error:', err);
       setError(err.message || 'Failed to update email. Please try again.');
+      toast({
+        title: 'Email Update Failed',
+        description: err.message || 'There was a problem updating your email address.',
+        variant: 'destructive'
+      });
     } finally {
       setSubmitting(false);
     }
@@ -173,7 +175,7 @@ export function EmailUpdateForm() {
                   Cancel
                 </Button>
                 
-                <Button type="submit" disabled={submitting}>
+                <Button type="submit" disabled={submitting || !form.formState.isValid}>
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />

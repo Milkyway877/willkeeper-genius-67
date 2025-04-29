@@ -20,7 +20,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   size = "md",
   user,
   loading = false,
-  cacheBuster,
+  cacheBuster = Date.now(), // Use current timestamp as default
   showFallbackOnError = true
 }) => {
   const { profile, initials } = useUserProfile();
@@ -37,13 +37,13 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     // Update avatar URL with cache busting
     if (displayProfile?.avatar_url) {
       try {
-        const url = new URL(displayProfile.avatar_url);
-        const currentTimestamp = cacheBuster || Date.now();
-        url.searchParams.set('t', currentTimestamp.toString());
-        setAvatarUrl(url.toString());
+        // Force a new URL to prevent browser caching
+        const timestamp = typeof cacheBuster === 'number' ? cacheBuster : Date.now();
+        setAvatarUrl(`${displayProfile.avatar_url}?t=${timestamp}`);
       } catch (e) {
-        // If the URL is invalid, just use the original avatar_url
-        setAvatarUrl(`${displayProfile.avatar_url}?t=${cacheBuster || Date.now()}`);
+        console.error("Error setting avatar URL:", e);
+        setImageError(true);
+        setImageLoading(false);
       }
     } else {
       setAvatarUrl('');
@@ -61,13 +61,13 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   };
   
   const handleImageError = () => {
-    console.log("Avatar image failed to load");
+    console.error("Avatar image failed to load:", avatarUrl);
     setImageError(true);
     setImageLoading(false);
   };
 
   const handleImageLoad = () => {
-    console.log("Avatar image loaded successfully");
+    console.log("Avatar image loaded successfully:", avatarUrl);
     setImageLoading(false);
   };
   

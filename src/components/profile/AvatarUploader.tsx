@@ -23,11 +23,13 @@ export function AvatarUploader() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const webcamRef = useRef<HTMLVideoElement>(null);
+  const webcamContainerRef = useRef<HTMLDivElement>(null);
   const [isCapturingFromWebcam, setIsCapturingFromWebcam] = useState(false);
   const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,65 +49,144 @@ export function AvatarUploader() {
   // Start webcam capture
   const startWebcam = async () => {
     try {
+      setIsCameraLoading(true);
       setCameraError(null);
+      
+      console.log("Starting webcam...");
+      
+      // Check if webcam is already active
+      if (webcamStream) {
+        stopWebcam();
+      }
+      
+      // Request camera permissions
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' } 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        } 
       });
       
+      console.log("Camera permissions granted, stream obtained");
+      
+      // Store the stream for later cleanup
       setWebcamStream(stream);
       setIsCapturingFromWebcam(true);
       
+      // Connect the stream to the video element
       if (webcamRef.current) {
         webcamRef.current.srcObject = stream;
         webcamRef.current.onloadedmetadata = () => {
-          webcamRef.current?.play();
+          if (webcamRef.current) {
+            console.log("Video metadata loaded, playing video");
+            webcamRef.current.play().catch(err => {
+              console.error("Error playing video:", err);
+              setCameraError("Failed to start video: " + err.message);
+            });
+          }
         };
+      } else {
+        console.error("No video element reference available");
+        setCameraError("Camera initialization failed - no video element");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error accessing webcam:', err);
-      setCameraError("Could not access your camera. Please check permissions.");
+      let errorMessage = "Could not access your camera.";
+      
+      // More detailed error messages for common issues
+      if (err.name === 'NotAllowedError') {
+        errorMessage += " Camera access was denied. Please check your browser permissions.";
+      } else if (err.name === 'NotFoundError') {
+        errorMessage += " No camera device was found on your system.";
+      } else if (err.name === 'NotReadableError') {
+        errorMessage += " Your camera might be in use by another application.";
+      } else {
+        errorMessage += " " + err.message;
+      }
+      
+      setCameraError(errorMessage);
       toast({
         title: "Camera Error",
-        description: "Could not access your camera. Please check permissions.",
+        description: errorMessage,
         variant: "destructive"
       });
+    } finally {
+      setIsCameraLoading(false);
     }
   };
 
   // Stop webcam capture
   const stopWebcam = () => {
+    console.log("Stopping webcam...");
     if (webcamStream) {
-      webcamStream.getTracks().forEach(track => track.stop());
+      webcamStream.getTracks().forEach(track => {
+        console.log("Stopping track:", track.kind);
+        track.stop();
+      });
       setWebcamStream(null);
     }
+    
+    if (webcamRef.current && webcamRef.current.srcObject) {
+      webcamRef.current.srcObject = null;
+    }
+    
     setIsCapturingFromWebcam(false);
   };
 
   // Capture image from webcam
   const captureImage = () => {
-    if (!webcamRef.current) return;
+    if (!webcamRef.current || !webcamStream) {
+      console.error("Cannot capture image: webcam not initialized");
+      setCameraError("Camera not properly initialized. Please try restarting it.");
+      return;
+    }
     
-    const canvas = document.createElement('canvas');
-    const video = webcamRef.current;
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    // Draw current video frame to canvas
-    ctx.drawImage(video, 0, 0);
-    
-    // Create data URL for preview
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], "webcam-capture.jpg", { type: "image/jpeg" });
-        setPreviewUrl(URL.createObjectURL(blob));
-        setSelectedFile(file);
-        stopWebcam();
+    try {
+      console.log("Capturing image from webcam...");
+      const canvas = document.createElement('canvas');
+      const video = webcamRef.current;
+      
+      // Ensure video dimensions are available
+      if (!video.videoWidth || !video.videoHeight) {
+        console.error("Video dimensions not available");
+        setCameraError("Cannot capture image - video stream not ready");
+        return;
       }
-    }, 'image/jpeg', 0.9);
+      
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error("Could not get canvas context");
+        return;
+      }
+      
+      // Draw current video frame to canvas
+      ctx.drawImage(video, 0, 0);
+      console.log(`Canvas image created: ${canvas.width}x${canvas.height}`);
+      
+      // Create data URL for preview
+      canvas.toBlob((blob) => {
+        if (blob) {
+          console.log("Image captured successfully, size:", Math.round(blob.size / 1024), "KB");
+          const file = new File([blob], "webcam-capture.jpg", { type: "image/jpeg" });
+          const objectUrl = URL.createObjectURL(blob);
+          setPreviewUrl(objectUrl);
+          setSelectedFile(file);
+          
+          // Stop the webcam after successful capture
+          stopWebcam();
+        } else {
+          console.error("Failed to create blob from canvas");
+          setCameraError("Failed to process captured image");
+        }
+      }, 'image/jpeg', 0.9);
+    } catch (err) {
+      console.error("Error capturing image:", err);
+      setCameraError("Failed to capture image from camera");
+    }
   };
 
   // Handle drag-and-drop functionality
@@ -133,39 +214,52 @@ export function AvatarUploader() {
       setUploadProgress(10);
       
       // Fetch the image from the URL
+      console.log("Fetching image from library URL:", url);
       const response = await fetch(url);
       setUploadProgress(40);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch image from library');
+        throw new Error(`Failed to fetch image from library: ${response.status} ${response.statusText}`);
       }
       
       const blob = await response.blob();
       setUploadProgress(60);
+      console.log("Image blob created, size:", Math.round(blob.size / 1024), "KB");
       
       // Create a File object from the blob
       const file = new File([blob], "selected-avatar.jpg", { type: blob.type });
       
       // Upload the file
+      console.log("Uploading library avatar to profile...");
       const uploadedUrl = await uploadProfileImage(file);
       setUploadProgress(90);
       
-      await refreshProfile();
-      setAvatarCacheBuster(Date.now());
-      
-      toast({
-        title: "Avatar Updated",
-        description: "Your profile picture has been successfully updated.",
-        variant: "default"
-      });
+      if (uploadedUrl) {
+        console.log("Avatar uploaded successfully:", uploadedUrl);
+        
+        // Refresh the profile to get the updated avatar_url
+        await refreshProfile();
+        
+        // Use timestamp to force avatar refresh
+        const newTimestamp = Date.now();
+        setAvatarCacheBuster(newTimestamp);
+        
+        toast({
+          title: "Avatar Updated",
+          description: "Your profile picture has been successfully updated.",
+          variant: "default"
+        });
+      } else {
+        throw new Error("Upload completed but no URL was returned");
+      }
       
       setUploadProgress(100);
       setTimeout(() => setDialogOpen(false), 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error using avatar from library:", error);
       toast({
         title: "Upload Failed",
-        description: "There was an error updating your avatar. Please try again.",
+        description: error.message || "There was an error updating your avatar. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -191,28 +285,39 @@ export function AvatarUploader() {
       setIsUploading(true);
       setUploadProgress(20);
       
+      console.log("Uploading selected file to profile:", selectedFile.name, Math.round(selectedFile.size / 1024), "KB");
       const uploadedUrl = await uploadProfileImage(selectedFile);
       setUploadProgress(80);
       
-      await refreshProfile();
-      setAvatarCacheBuster(Date.now());
-      
-      toast({
-        title: "Avatar Updated",
-        description: "Your profile picture has been successfully updated.",
-        variant: "default"
-      });
+      if (uploadedUrl) {
+        console.log("Avatar uploaded successfully:", uploadedUrl);
+        
+        // Refresh the profile to get the updated avatar_url
+        await refreshProfile();
+        
+        // Use timestamp to force avatar refresh
+        const newTimestamp = Date.now();
+        setAvatarCacheBuster(newTimestamp);
+        
+        toast({
+          title: "Avatar Updated",
+          description: "Your profile picture has been successfully updated.",
+          variant: "default"
+        });
+      } else {
+        throw new Error("Upload completed but no URL was returned");
+      }
       
       setUploadProgress(100);
       setTimeout(() => {
         setDialogOpen(false);
         resetImage();
       }, 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading avatar:", error);
       toast({
         title: "Upload Failed",
-        description: "There was an error uploading your avatar. Please try again.",
+        description: error.message || "There was an error uploading your avatar. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -386,9 +491,21 @@ export function AvatarUploader() {
                     <p className="text-gray-500 text-sm mb-4">
                       Position yourself in the center and ensure good lighting
                     </p>
-                    <Button onClick={startWebcam}>
-                      <Camera className="h-4 w-4 mr-2" />
-                      Start Camera
+                    <Button 
+                      onClick={startWebcam}
+                      disabled={isCameraLoading}
+                    >
+                      {isCameraLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Starting Camera...
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="h-4 w-4 mr-2" />
+                          Start Camera
+                        </>
+                      )}
                     </Button>
                   </div>
                 ) : previewUrl ? (
@@ -438,7 +555,10 @@ export function AvatarUploader() {
                   </div>
                 ) : (
                   <div className="w-full flex flex-col items-center">
-                    <div className="relative rounded-lg overflow-hidden border-4 border-willtank-100 mb-4">
+                    <div 
+                      ref={webcamContainerRef} 
+                      className="relative rounded-lg overflow-hidden border-4 border-willtank-100 mb-4"
+                    >
                       <video 
                         ref={webcamRef} 
                         autoPlay 

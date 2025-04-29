@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,7 +29,8 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 export function ProfileForm() {
   const { toast } = useToast();
   const { profile, updateProfile } = useUserProfile();
-  const [manualSaving, setManualSaving] = React.useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [autoSaveDisabled, setAutoSaveDisabled] = useState(false);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -54,38 +55,47 @@ export function ProfileForm() {
   const formValues = form.watch();
   
   // Auto-save functionality
-  const { saving, lastSaved, saveError } = useFormAutoSave({
+  const { saving, lastSaved, saveError, cancelSave } = useFormAutoSave({
     data: formValues,
     onSave: async (data) => {
-      // Only save if full name has changed and is valid
-      if (data.fullName !== profile?.full_name && data.fullName.length >= 2) {
-        try {
-          await updateProfile({
-            full_name: data.fullName,
-          });
-          
-          // Show toast for auto-save
-          toast({
-            title: 'Changes Saved',
-            description: 'Your profile has been updated automatically.',
-          });
-          return true;
-        } catch (error) {
-          console.error('Error in auto-save:', error);
-          throw error;
-        }
+      // Only save if auto-save is enabled and full name has changed and is valid
+      if (autoSaveDisabled || data.fullName === profile?.full_name) {
+        return true;
       }
-      return true;
+      
+      if (data.fullName.length < 2) {
+        return true; // Skip save for invalid data
+      }
+      
+      try {
+        console.log("Auto-saving profile with:", { full_name: data.fullName });
+        await updateProfile({
+          full_name: data.fullName,
+        });
+        
+        // Only show toast for successful auto-saves (uncomment if you want toasts)
+        /* toast({
+          title: 'Changes Saved',
+          description: 'Your profile has been updated automatically.',
+        }); */
+        return true;
+      } catch (error) {
+        console.error('Error in auto-save:', error);
+        throw error;
+      }
     },
     debounceMs: 2000, // Wait 2 seconds after typing stops
-    enabled: !!profile && form.formState.isDirty && form.formState.isValid,
+    enabled: !manualSaving && !autoSaveDisabled && !!profile,
   });
   
   // Manual save handler
   const onSubmit = async (data: ProfileFormValues) => {
     try {
       setManualSaving(true);
+      setAutoSaveDisabled(true); // Disable auto-save during manual save
+      cancelSave(); // Cancel any pending auto-saves
       
+      console.log("Manual saving profile with:", { full_name: data.fullName });
       await updateProfile({
         full_name: data.fullName,
       });
@@ -108,8 +118,13 @@ export function ProfileForm() {
       });
     } finally {
       setManualSaving(false);
+      // Re-enable auto-save after manual save completes
+      setTimeout(() => setAutoSaveDisabled(false), 500);
     }
   };
+
+  // Check if form is dirty and valid for submit button
+  const canSubmit = form.formState.isDirty && form.formState.isValid;
 
   return (
     <Form {...form}>
@@ -178,7 +193,7 @@ export function ProfileForm() {
         <div className="flex justify-end">
           <Button
             type="submit"
-            disabled={manualSaving || !form.formState.isDirty || saving}
+            disabled={manualSaving || !canSubmit || saving}
             className="bg-black text-white hover:bg-gray-800"
           >
             {manualSaving ? (
