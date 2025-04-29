@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { UserProfile } from '@/services/profileService';
 import { User, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface UserAvatarProps {
   className?: string;
@@ -11,6 +12,7 @@ interface UserAvatarProps {
   user?: UserProfile | null;
   loading?: boolean;
   cacheBuster?: string | number;
+  showFallbackOnError?: boolean;
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({ 
@@ -18,16 +20,19 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   size = "md",
   user,
   loading = false,
-  cacheBuster
+  cacheBuster,
+  showFallbackOnError = true
 }) => {
   const { profile, initials } = useUserProfile();
   const displayProfile = user || profile;
   const [imageError, setImageError] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [imageLoading, setImageLoading] = useState(true);
   
   useEffect(() => {
-    // Reset image error state when profile/cacheBuster changes
+    // Reset states when profile/cacheBuster changes
     setImageError(false);
+    setImageLoading(true);
     
     // Update avatar URL with cache busting
     if (displayProfile?.avatar_url) {
@@ -40,6 +45,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       setAvatarUrl(url.toString());
     } else {
       setAvatarUrl('');
+      setImageLoading(false);
     }
   }, [displayProfile, cacheBuster]);
   
@@ -55,29 +61,36 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const handleImageError = () => {
     console.log("Avatar image failed to load");
     setImageError(true);
+    setImageLoading(false);
   };
 
-  // Log for debugging purposes
-  useEffect(() => {
-    if (displayProfile?.avatar_url) {
-      console.log('Avatar URL:', avatarUrl);
-    }
-  }, [avatarUrl, displayProfile]);
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
   
   return (
     <Avatar className={`${getSizeClass()} ${className} ring-2 ring-offset-2 ring-offset-white ring-willtank-100`}>
       {avatarUrl && !imageError ? (
-        <AvatarImage 
-          src={avatarUrl}
-          alt={displayProfile?.full_name || "User avatar"}
-          onError={handleImageError}
-        />
+        <>
+          {imageLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 animate-pulse">
+              <Loader2 className="h-1/3 w-1/3 text-gray-400 animate-spin" />
+            </div>
+          )}
+          <AvatarImage 
+            src={avatarUrl}
+            alt={displayProfile?.full_name || "User avatar"}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+            className={imageLoading ? 'opacity-0' : 'opacity-100 transition-opacity duration-200'}
+          />
+        </>
       ) : null}
       <AvatarFallback className="bg-gradient-to-r from-willtank-100 to-willtank-200 text-willtank-700 font-semibold">
         {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-1/3 w-1/3 animate-spin" />
         ) : (
-          initials || <User className="h-4 w-4" />
+          showFallbackOnError ? (initials || <User className="h-1/2 w-1/2" />) : null
         )}
       </AvatarFallback>
     </Avatar>
