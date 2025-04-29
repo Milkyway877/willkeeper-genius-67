@@ -13,11 +13,7 @@ export default defineConfig(({ mode }) => ({
     historyApiFallback: true,
   },
   plugins: [
-    react({
-      // Using proper SWC options for React
-      jsxImportSource: 'react',
-      refresh: true,
-    }),
+    react(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),

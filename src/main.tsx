@@ -46,7 +46,7 @@ import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
 import Wills from './pages/wills/Wills';
 import WillCreatePage from './pages/will/WillCreatePage';
-import WillCreationChat from './pages/will/WillCreationChat'; // New import for Will Creation Chat
+import WillCreationChat from './pages/will/WillCreationChat';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -236,7 +236,12 @@ const router = createBrowserRouter([
 ]);
 
 // Ensure React is properly initialized before rendering
-const root = ReactDOM.createRoot(document.getElementById('root')!);
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Failed to find the root element");
+}
+
+const root = ReactDOM.createRoot(rootElement);
 
 root.render(
   <React.StrictMode>
