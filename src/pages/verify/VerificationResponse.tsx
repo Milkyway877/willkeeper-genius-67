@@ -16,9 +16,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function VerificationResponse() {
   const navigate = useNavigate();
-  const { type, token } = useParams();
+  const { token } = useParams();
   const [searchParams] = useSearchParams();
   const autoResponse = searchParams.get('response');
+  
+  // Extract verification type from URL path
+  const path = window.location.pathname;
+  const type = path.includes('/invitation/') ? 'invitation' : path.includes('/status/') ? 'status' : null;
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -267,7 +271,7 @@ export default function VerificationResponse() {
             <>
               <CardTitle className="text-center">Role Invitation</CardTitle>
               <CardDescription className="text-center">
-                You've been invited to be a {verificationDetails.contact_type} for {verificationDetails.user_name || 'a WillTank user'}
+                You've been invited to be a {verificationDetails?.contact_type} for {verificationDetails?.user_name || 'a WillTank user'}
               </CardDescription>
             </>
           )}

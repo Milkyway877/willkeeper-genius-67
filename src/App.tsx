@@ -108,8 +108,8 @@ export default function App() {
         <Route path="/tank/edit/:id" element={<TankCreation />} />
 
         {/* Verification routes */}
-        <Route path="/verify/invitation/:token" element={<VerificationResponse invitationType="invitation" />} />
-        <Route path="/verify/status/:token" element={<VerificationResponse invitationType="status" />} />
+        <Route path="/verify/invitation/:token" element={<VerificationResponse />} />
+        <Route path="/verify/status/:token" element={<VerificationResponse />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -150,10 +149,14 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'created_at
   }
 };
 
-export const updateExecutor = async (id: string, email: string): Promise<Executor | null> => {
+export const updateExecutor = async (id: string, executorData: Partial<Executor>): Promise<Executor | null> => {
   try {
     const dbUpdates = {
-      email: email
+      email: executorData.email,
+      phone: executorData.phone,
+      relationship: executorData.relationship,
+      address: executorData.address,
+      notes: executorData.notes
     };
     
     const { data, error } = await supabase
@@ -290,14 +293,32 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'c
   }
 };
 
-export const updateBeneficiary = async (id: string, email: string, phone?: string): Promise<Beneficiary | null> => {
+export const updateBeneficiary = async (id: string, beneficiaryData: Partial<Beneficiary>): Promise<Beneficiary | null> => {
   try {
-    const dbUpdates: { email: string; phone?: string } = {
-      email: email
-    };
+    const dbUpdates: any = {};
     
-    if (phone !== undefined) {
-      dbUpdates.phone = phone;
+    if (beneficiaryData.email !== undefined) {
+      dbUpdates.email = beneficiaryData.email;
+    }
+    
+    if (beneficiaryData.phone !== undefined) {
+      dbUpdates.phone = beneficiaryData.phone;
+    }
+    
+    if (beneficiaryData.relationship !== undefined) {
+      dbUpdates.relationship = beneficiaryData.relationship;
+    }
+    
+    if (beneficiaryData.address !== undefined) {
+      dbUpdates.address = beneficiaryData.address;
+    }
+    
+    if (beneficiaryData.notes !== undefined) {
+      dbUpdates.notes = beneficiaryData.notes;
+    }
+    
+    if (beneficiaryData.percentage !== undefined) {
+      dbUpdates.percentage = beneficiaryData.percentage;
     }
     
     const { data, error } = await supabase

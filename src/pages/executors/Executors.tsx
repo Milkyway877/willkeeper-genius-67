@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -273,12 +272,29 @@ export default function Executors() {
       if (isEditMode && editItemId) {
         // Update existing item
         if (activeTab === "executors") {
-          result = await updateExecutor(editItemId, formData as Partial<Executor>);
+          const executorData: Partial<Executor> = {
+            email: formData.email,
+            phone: formData.phone,
+            relationship: formData.relationship,
+            address: formData.address,
+            notes: formData.notes
+          };
+          
+          result = await updateExecutor(editItemId, executorData);
           if (result) {
             setExecutors(executors.map(item => item.id === editItemId ? result as Executor : item));
           }
         } else {
-          result = await updateBeneficiary(editItemId, formData as Partial<Beneficiary>);
+          const beneficiaryData: Partial<Beneficiary> = {
+            email: formData.email,
+            phone: formData.phone,
+            relationship: formData.relationship,
+            address: formData.address,
+            notes: formData.notes,
+            percentage: formData.percentage
+          };
+          
+          result = await updateBeneficiary(editItemId, beneficiaryData);
           if (result) {
             setBeneficiaries(beneficiaries.map(item => item.id === editItemId ? result as Beneficiary : item));
           }
