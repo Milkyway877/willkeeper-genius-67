@@ -1,9 +1,10 @@
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Mic, MicOff, SendIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Mic, MicOff, Send } from "lucide-react";
 
-interface InputAreaProps {
+export interface InputAreaProps {
   inputValue: string;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: () => void;
@@ -13,16 +14,16 @@ interface InputAreaProps {
   isRecording?: boolean;
 }
 
-export const InputArea: React.FC<InputAreaProps> = ({
+export function InputArea({
   inputValue,
   onInputChange,
   onSubmit,
   isSubmitting,
   placeholder,
   onVoiceToggle,
-  isRecording = false,
-}) => {
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  isRecording,
+}: InputAreaProps) {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !isSubmitting) {
       e.preventDefault();
       onSubmit();
@@ -31,41 +32,39 @@ export const InputArea: React.FC<InputAreaProps> = ({
 
   return (
     <div className="flex items-center space-x-2">
-      {onVoiceToggle && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className={isRecording ? "bg-red-100 text-red-600" : ""}
-          onClick={onVoiceToggle}
-        >
-          {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          <span className="sr-only">{isRecording ? 'Stop recording' : 'Start recording'}</span>
-        </Button>
-      )}
-      
-      <div className="relative flex-grow">
-        <input
-          type="text"
+      <div className="relative flex-1">
+        <Input
           value={inputValue}
           onChange={onInputChange}
+          onKeyPress={handleKeyPress}
           placeholder={placeholder}
-          onKeyDown={handleKeyPress}
-          className="rounded-lg border border-gray-300 w-full py-2 px-4 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-willtank-500 focus:border-transparent"
           disabled={isSubmitting}
+          className={`pr-10 ${isRecording ? 'bg-willtank-50' : ''}`}
         />
+        {onVoiceToggle && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 ${
+              isRecording ? 'text-willtank-600' : 'text-gray-400'
+            }`}
+            onClick={onVoiceToggle}
+          >
+            {isRecording ? (
+              <MicOff className="h-4 w-4" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
-      
       <Button 
-        type="button" 
         onClick={onSubmit} 
-        disabled={isSubmitting || !inputValue.trim()}
-        size="icon"
-        className="bg-willtank-600 hover:bg-willtank-700"
+        disabled={inputValue.trim() === '' || isSubmitting}
+        className="shrink-0"
       >
-        <SendIcon className="h-4 w-4" />
-        <span className="sr-only">Send</span>
+        <Send className="h-4 w-4" />
       </Button>
     </div>
   );
-};
+}

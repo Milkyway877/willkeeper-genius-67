@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { SkylerAssistant } from './components/SkylerAssistant';
-import { WillPreview } from './components/WillPreview';
+import { WillReviewStep } from './components/WillReviewStep';
 import { templates } from './config/wizardSteps';
 import { createWill } from '@/services/willService';
 
@@ -149,8 +148,8 @@ export default function WillChatCreation() {
           </h1>
           <p className="text-gray-500">
             {stage === 'chat' 
-              ? 'Chat with Skyler to create your will - answer questions and provide information through the conversation.' 
-              : 'Review and finalize your will document before saving.'}
+              ? 'Chat with Skyler to create your will - answer questions about your personal information, beneficiaries, and specific wishes.' 
+              : 'Review and finalize your will document before saving. You can edit sections and add your signature.'}
           </p>
         </div>
         
@@ -167,131 +166,28 @@ export default function WillChatCreation() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Your Will Document</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopyToClipboard}
-                    >
-                      Copy Text
-                    </Button>
-                  </div>
+                  <CardTitle>Review Your Will</CardTitle>
                 </div>
                 <CardDescription>
-                  Review your will document carefully before finalizing.
+                  Review your will document carefully, make any necessary edits, and add your signature before finalizing.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="border rounded-md p-6 bg-white">
-                  <h3 className="font-medium mb-4">Document Preview</h3>
-                  <WillPreview content={editableContent} />
-                  
-                  <div className="mt-6 border-t pt-6">
-                    <h3 className="font-medium mb-4">Edit Content</h3>
-                    <textarea
-                      value={editableContent}
-                      onChange={(e) => setEditableContent(e.target.value)}
-                      className="w-full min-h-[300px] p-4 border rounded-md text-sm font-mono"
-                    ></textarea>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Personal Information</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <dl className="space-y-2">
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                          <dd>{willData?.responses?.fullName || 'Not specified'}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Marital Status</dt>
-                          <dd>{willData?.responses?.maritalStatus || 'Not specified'}</dd>
-                        </div>
-                        {willData?.responses?.spouseName && (
-                          <div>
-                            <dt className="text-sm font-medium text-gray-500">Spouse</dt>
-                            <dd>{willData?.responses?.spouseName}</dd>
-                          </div>
-                        )}
-                      </dl>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Will Details</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <dl className="space-y-2">
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Template</dt>
-                          <dd>{selectedTemplate.title}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Executor</dt>
-                          <dd>{willData?.responses?.executorName || 'Not specified'}</dd>
-                        </div>
-                        {willData?.responses?.guardianName && (
-                          <div>
-                            <dt className="text-sm font-medium text-gray-500">Guardian</dt>
-                            <dd>{willData?.responses?.guardianName}</dd>
-                          </div>
-                        )}
-                      </dl>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                <div className="flex justify-between mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={() => setStage('chat')}
-                  >
-                    Back to Chat
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSaveWill}
-                    disabled={isSaving}
-                    className="pulse-animation"
-                  >
-                    {isSaving ? (
-                      <>
-                        <span className="animate-spin mr-2">◌</span>
-                        Saving...
-                      </>
-                    ) : (
-                      'Finalize & Save Will'
-                    )}
-                  </Button>
-                </div>
+                <WillReviewStep 
+                  editableContent={editableContent}
+                  splitView={false}
+                  setSplitView={() => {}}
+                  handleContentChange={(e) => setEditableContent(e.target.value)}
+                  handleCopyToClipboard={handleCopyToClipboard}
+                  responses={willData?.responses || {}}
+                  contacts={willData?.contacts || []}
+                  selectedTemplate={selectedTemplate}
+                  isCreatingWill={isSaving}
+                  progress={isSaving ? 50 : 0}
+                  handleFinalizeWill={handleSaveWill}
+                />
               </CardContent>
             </Card>
-            
-            <style>
-              {`
-                .pulse-animation {
-                  animation: pulse 2s infinite;
-                }
-                
-                @keyframes pulse {
-                  0% {
-                    box-shadow: 0 0 0 0 rgba(155, 135, 245, 0.4);
-                  }
-                  70% {
-                    box-shadow: 0 0 0 10px rgba(155, 135, 245, 0);
-                  }
-                  100% {
-                    box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
-                  }
-                }
-              `}
-            </style>
           </div>
         )}
       </div>

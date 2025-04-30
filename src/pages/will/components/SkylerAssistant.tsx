@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Bot } from 'lucide-react';
@@ -54,21 +53,55 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   }, [templateId, templateName]);
   
   const getWelcomeMessage = (templateId: string, templateName: string) => {
-    let welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant. I'll guide you through creating a ${templateName} with a simple conversation. Let's start with the basics: What is your full legal name?`;
+    const baseMessage = `👋 Hello! I'm SKYLER, your AI will assistant. I'll guide you through creating a ${templateName} through a simple conversation. Let's start with the basics:`;
+    
+    const questions = [
+      "• What is your full legal name?",
+      "• What is your marital status (single, married, divorced, widowed)?",
+      "• Do you have any children? If yes, please provide their names and ages.",
+      "• Who would you like to appoint as the executor of your will?",
+      "• Do you have any specific bequests you'd like to include?",
+      "• How would you like your remaining assets to be distributed?"
+    ];
+    
+    let specializedQuestions: string[] = [];
     
     if (templateId === 'digital-assets') {
-      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in digital assets. I'll help you create a will that properly addresses your online accounts, cryptocurrency, and other digital property through a simple conversation. Let's start with the basics: What is your full legal name?`;
+      specializedQuestions = [
+        "• What digital assets do you own (cryptocurrency, online accounts, digital files)?",
+        "• Who should have access to your digital assets?",
+        "• Do you have any specific instructions for your social media accounts?"
+      ];
     } else if (templateId === 'living-trust') {
-      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in living trusts. I'll guide you through creating a trust that can help manage your assets during your lifetime and distribute them after your passing. Let's start with the basics: What is your full legal name?`;
+      specializedQuestions = [
+        "• Who would you like to name as trustee?",
+        "• Who are the beneficiaries of your trust?",
+        "• Under what conditions should assets be distributed?"
+      ];
     } else if (templateId === 'family') {
-      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in family-focused estate planning. I'll help you create a will that ensures your family is provided for according to your wishes. Let's start with the basics: What is your full legal name?`;
+      specializedQuestions = [
+        "• Who are your immediate family members?",
+        "• Do you have any guardianship provisions for minor children?",
+        "• Are there any family heirlooms you want to specifically address?"
+      ];
     } else if (templateId === 'business') {
-      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in business succession planning. I'll help you create a will that addresses your business interests and succession plans. Let's start with the basics: What is your full legal name?`;
+      specializedQuestions = [
+        "• What business interests do you own?",
+        "• Who should take over your business interests?",
+        "• Do you have a business succession plan in place?"
+      ];
     } else if (templateId === 'charity') {
-      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in charitable giving. I'll help you create a will that includes your philanthropic wishes. Let's start with the basics: What is your full legal name?`;
+      specializedQuestions = [
+        "• Which charitable organizations would you like to include in your will?",
+        "• What type of charitable gifts would you like to make?",
+        "• Do you want to establish any charitable trusts?"
+      ];
     }
     
-    return welcomeMessage;
+    const combinedQuestions = [...questions, ...specializedQuestions];
+    const questionsText = combinedQuestions.join("\n");
+    
+    return `${baseMessage}\n\nI'll be asking you about:\n${questionsText}\n\nLet's begin with your full legal name.`;
   };
   
   const initSpeechRecognition = useCallback(() => {
@@ -376,14 +409,14 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   };
 
   const generateWillContent = (templateId: string, data: Record<string, any>) => {
-    // This is a simplified function that would generate will content based on template and user data
+    // This is improved to generate better structured wills based on the template
     const fullName = data.fullName || 'Unknown Name';
     const spouseName = data.spouseName || 'Not Specified';
     const executorName = data.executorName || 'Not Specified';
     const maritalStatus = data.maritalStatus || 'Not Specified';
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     
     let content = `LAST WILL AND TESTAMENT OF ${fullName.toUpperCase()}\n\n`;
-    
     content += `I, ${fullName}, a resident of [Your City], being of sound mind and memory, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.\n\n`;
     
     if (maritalStatus.toLowerCase() === 'married' && spouseName) {
@@ -398,22 +431,31 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     
     // Add more specific content based on the template type
     if (templateId === 'digital-assets') {
-      content += `ARTICLE IV: DIGITAL ASSETS\nI direct that my digital assets, including online accounts, cryptocurrency, and digital files, be distributed as follows: [Details to be specified].\n\n`;
+      content += `ARTICLE IV: DIGITAL ASSETS\nI direct that my digital assets, including online accounts, cryptocurrency, and digital files, be distributed as follows: ${data.digitalAssetsDetails || '[To be specified]'}.\n\n`;
+      content += `ARTICLE V: PASSWORD ACCESS\nI have provided my executor with instructions on how to access my password manager and digital accounts in a separate confidential document.\n\n`;
     } else if (templateId === 'family') {
-      content += `ARTICLE IV: FAMILY PROVISIONS\nI direct that my assets be distributed to my family members as follows: [Details to be specified].\n\n`;
+      if (data.hasChildren) {
+        content += `ARTICLE IV: CHILDREN\nI have the following children: ${data.childrenNames || '[Names to be specified]'}.\n\n`;
+        content += `ARTICLE V: GUARDIANSHIP\nIf needed, I appoint ${data.guardianName || '[Guardian name to be specified]'} as guardian of my minor children.\n\n`;
+      }
+      content += `ARTICLE ${data.hasChildren ? 'VI' : 'IV'}: FAMILY PROVISIONS\nI direct that my assets be distributed to my family members as follows: ${data.familyDistribution || '[To be specified]'}.\n\n`;
     } else if (templateId === 'business') {
-      content += `ARTICLE IV: BUSINESS INTERESTS\nI direct that my business interests be handled as follows: [Details to be specified].\n\n`;
+      content += `ARTICLE IV: BUSINESS INTERESTS\nI direct that my business interests be handled as follows: ${data.businessDetails || '[To be specified]'}.\n\n`;
+      content += `ARTICLE V: SUCCESSION PLAN\nMy business succession plan is as follows: ${data.successorDetails || '[To be specified]'}.\n\n`;
     } else if (templateId === 'charity') {
-      content += `ARTICLE IV: CHARITABLE CONTRIBUTIONS\nI direct that the following charitable contributions be made from my estate: [Details to be specified].\n\n`;
+      content += `ARTICLE IV: CHARITABLE CONTRIBUTIONS\nI direct that the following charitable contributions be made from my estate: ${data.charityDetails || '[To be specified]'}.\n\n`;
+      content += `ARTICLE V: CHARITABLE REMAINDER TRUST\nI establish a charitable remainder trust as follows: ${data.trustDetails || '[To be specified]'}.\n\n`;
     } else if (templateId === 'living-trust') {
-      content += `ARTICLE IV: TRUST PROVISIONS\nThe following assets shall be held in trust under the following conditions: [Trust details to be specified].\n\n`;
+      content += `ARTICLE IV: TRUST PROVISIONS\nThe following assets shall be held in trust under the following conditions: ${data.trustDetails || '[To be specified]'}.\n\n`;
+      content += `ARTICLE V: TRUSTEE POWERS\nThe trustee shall have the following powers: ${data.trusteePowers || '[To be specified]'}.\n\n`;
     } else {
-      content += `ARTICLE IV: ADDITIONAL PROVISIONS\n[Additional provisions to be specified].\n\n`;
+      content += `ARTICLE IV: SPECIFIC BEQUESTS\nI make the following specific bequests: ${data.specificBequests || '[To be specified]'}.\n\n`;
+      content += `ARTICLE V: RESIDUARY ESTATE\nI give, devise, and bequeath my residuary estate as follows: ${data.residuaryDistribution || '[To be specified]'}.\n\n`;
     }
     
-    content += `ARTICLE V: RESIDUARY ESTATE\nI give, devise, and bequeath my residuary estate as follows: [To be specified].\n\n`;
+    content += `ARTICLE ${templateId === 'digital-assets' || templateId === 'family' || templateId === 'business' || templateId === 'charity' || templateId === 'living-trust' ? 'VI' : 'VI'}: RESIDUARY ESTATE\nI give, devise, and bequeath all the rest, residue, and remainder of my estate to: ${data.residuaryBeneficiary || '[To be specified]'}.\n\n`;
     
-    content += `IN WITNESS WHEREOF, I have hereunto set my hand to this, my Last Will and Testament, on this ____ day of ____________, 20__.\n\n`;
+    content += `IN WITNESS WHEREOF, I have hereunto set my hand to this, my Last Will and Testament, on this ${currentDate}.\n\n`;
     
     content += `____________________________\n${fullName}, Testator\n\n`;
     
@@ -510,13 +552,13 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
               className={`px-6 py-3 text-white rounded-full shadow-lg flex items-center justify-center transform transition-transform duration-300 ${
                 isGenerating 
                   ? "bg-gray-400" 
-                  : "bg-gradient-to-r from-willtank-600 to-willtank-700 hover:scale-105"
+                  : "bg-gradient-to-r from-willtank-600 to-willtank-700 hover:scale-105 pulse-animation"
               }`}
             >
               {isGenerating ? (
                 <>
                   <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                  Generating Will...
+                  Generating Your Will...
                 </>
               ) : (
                 <>Generate Your Will</>
@@ -537,6 +579,24 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
           isRecording={isRecording}
         />
       </div>
+      
+      <style jsx>{`
+        .pulse-animation {
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(155, 135, 245, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(155, 135, 245, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
+          }
+        }
+      `}</style>
     </Card>
   );
 }
