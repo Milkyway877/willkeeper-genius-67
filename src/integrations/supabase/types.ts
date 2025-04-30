@@ -1070,6 +1070,65 @@ export type Database = {
           },
         ]
       }
+      will_progress: {
+        Row: {
+          completedsections: string[] | null
+          content: string | null
+          conversation_data: Json | null
+          created_at: string
+          current_step: string
+          id: string
+          isfinalized: boolean | null
+          lasteditedsection: string | null
+          responses: Json
+          template_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          will_id: string | null
+        }
+        Insert: {
+          completedsections?: string[] | null
+          content?: string | null
+          conversation_data?: Json | null
+          created_at?: string
+          current_step: string
+          id?: string
+          isfinalized?: boolean | null
+          lasteditedsection?: string | null
+          responses?: Json
+          template_id: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          will_id?: string | null
+        }
+        Update: {
+          completedsections?: string[] | null
+          content?: string | null
+          conversation_data?: Json | null
+          created_at?: string
+          current_step?: string
+          id?: string
+          isfinalized?: boolean | null
+          lasteditedsection?: string | null
+          responses?: Json
+          template_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          will_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_progress_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       will_videos: {
         Row: {
           created_at: string | null

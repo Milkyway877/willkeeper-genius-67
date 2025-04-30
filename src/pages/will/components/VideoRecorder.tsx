@@ -66,12 +66,11 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         }
         
         // Check if our bucket exists - looking for bucket with ID 'will_videos'
+        // The bucket name might be different from the ID, so we check the ID
         const videoBucket = buckets?.find(b => b.id === 'will_videos');
-        const bucketNames = buckets?.map(b => b.name) || [];
         const bucketIds = buckets?.map(b => b.id) || [];
         
         console.log('Available bucket IDs:', bucketIds.join(', '));
-        console.log('Available bucket names:', bucketNames.join(', '));
         
         if (videoBucket) {
           console.log('Found will_videos bucket:', videoBucket);
@@ -127,12 +126,12 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
 
       // Generate a filename with userId as first path segment
       const userId = session.user.id;
-      const filename = `${userId}/${Date.now()}.webm`;
+      const fileName = `${userId}/${Date.now()}.webm`;
       const bucketId = 'will_videos'; // Use ID, not display name
       
       console.log('Attempting to upload file:', {
         bucket: bucketId,
-        path: filename,
+        path: fileName,
         contentType: 'video/webm',
         userId: userId,
         authStatus: session ? 'authenticated' : 'not authenticated'
@@ -141,7 +140,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       // Upload the file directly to the bucket
       const { data, error } = await supabase.storage
         .from(bucketId)
-        .upload(filename, blobToUpload, {
+        .upload(fileName, blobToUpload, {
           contentType: 'video/webm',
           cacheControl: '3600',
           upsert: false
@@ -152,24 +151,15 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           errorMessage: error.message,
           errorDetails: error,
           bucket: bucketId,
-          path: filename
+          path: fileName
         });
         throw error;
       }
 
       console.log('Upload successful:', data);
       
-      // Get the public URL
-      const { data: urlData } = supabase.storage
-        .from(bucketId)
-        .getPublicUrl(filename);
-        
-      console.log('File URL:', urlData.publicUrl);
-      
-      return {
-        path: filename,
-        url: urlData.publicUrl
-      };
+      // Return the file path
+      return fileName;
     } catch (error: any) {
       console.error('Error uploading video:', error);
       setUploadError(error.message || 'Error uploading video');
@@ -183,14 +173,14 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     if (recordedBlob) {
       try {
         setLoading(true);
-        const result = await uploadToStorage(recordedBlob);
-        if (result) {
-          onRecordingComplete(recordedBlob, result.path);
+        const filePath = await uploadToStorage(recordedBlob);
+        if (filePath) {
+          onRecordingComplete(recordedBlob, filePath);
           toast({
             title: "Video Saved",
             description: "Your video testament has been saved successfully."
           });
-          return result;
+          return filePath;
         } else {
           throw new Error("Failed to upload video");
         }
@@ -374,7 +364,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           </div>
         )}
         
-        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden mb-4 relative">
+        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden relative mb-4">
           {cameraError ? (
             <div className="absolute inset-0 flex items-center justify-center text-white text-center p-4">
               <p>{cameraError}</p>
@@ -431,8 +421,12 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                   Stop Recording
                 </Button>
               ) : (
-                <Button onClick={startRecording} disabled={cameraError !== null || loading}>
-                  <PlayCircle className="h-4 w-4 mr-2" />
+                <Button 
+                  onClick={startRecording}
+                  disabled={!stream || cameraError !== null || loading}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
                   Start Recording
                 </Button>
               )}
