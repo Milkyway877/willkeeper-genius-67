@@ -10,6 +10,7 @@ export function WillPreview({ content }: WillPreviewProps) {
   const contentDivRef = useRef<HTMLDivElement>(null);
   const [lastUpdatedField, setLastUpdatedField] = useState<string | null>(null);
   const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const documentIdRef = useRef<string>(Math.random().toString(36).substring(2, 10).toUpperCase());
   
   // Log when content changes to help with debugging
   useEffect(() => {
@@ -237,7 +238,7 @@ export function WillPreview({ content }: WillPreviewProps) {
         </div>
         <div className="border-2 border-gray-300 rounded-lg p-2 text-center">
           <p className="text-xs text-gray-400">Document ID</p>
-          <p className="text-sm font-mono">{Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
+          <p className="text-sm font-mono">{documentIdRef.current}</p>
         </div>
       </div>
       

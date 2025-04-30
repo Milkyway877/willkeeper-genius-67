@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -140,7 +141,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.';
   };
   
-  // Enhanced extraction function to process all messages
+  // Enhanced extraction function with better regex matching for various types of information
   const extractAndUpdateInfo = () => {
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
@@ -148,7 +149,16 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     
     console.log("[WillChat] Extracting info from all messages");
     
-    // Look through user messages to extract information
+    // We'll analyze the conversation as a whole to capture context
+    let conversationContext = '';
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    
+    // Aggregate user messages to build context
+    userMessages.forEach(msg => {
+      conversationContext += msg.content + ' ';
+    });
+    
+    // Look through individual messages for specific pieces of information
     for (const message of messages) {
       // Skip system messages
       if (message.role === 'system') {
@@ -162,203 +172,245 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         continue;
       }
       
-      // Check for direct name input (just a name with no other context)
-      // Only extract from user messages, not assistant messages
-      if (message.role === 'user' && 
-          content.trim().split(' ').length >= 2 && 
-          /^[A-Za-z][a-z]+ [A-Za-z][a-z]+$/i.test(content.trim()) &&
-          !updatedInfo.fullName) {
-        updatedInfo.fullName = content.trim();
-        updatedInfo.updatedFields.name = true;
-        updatedField = "PERSONAL INFORMATION";
-        contentUpdated = true;
-        console.log("[WillChat] Found direct name input:", updatedInfo.fullName);
-      }
-      
-      // Only extract name from user messages to avoid picking up "Skyler"
+      // 1. Extract full name (improved patterns)
       if (message.role === 'user') {
-        // Extract full name with improved matching
-        const nameMatch = content.match(/(?:my name is|I am|I'm|name|call me) ([A-Za-z\s.'-]+)/i);
-        if (nameMatch && nameMatch[1]) {
-          const possibleName = nameMatch[1].trim();
-          // Avoid extracting "Skyler" as the name (it's the AI assistant)
-          if (!possibleName.toLowerCase().includes("skyler") && 
-              !possibleName.toLowerCase().includes("assistant") &&
-              updatedInfo.fullName !== possibleName) {
-            updatedInfo.fullName = possibleName;
-            updatedInfo.updatedFields.name = true;
-            updatedField = "PERSONAL INFORMATION";
-            contentUpdated = true;
-            console.log("[WillChat] Found name:", updatedInfo.fullName);
+        // Check for direct name input (just a name with no other context)
+        if (content.trim().split(' ').length >= 2 && 
+            /^[A-Za-z][a-z]+ [A-Za-z][a-z]+$/i.test(content.trim()) &&
+            !updatedInfo.fullName) {
+          updatedInfo.fullName = content.trim();
+          updatedInfo.updatedFields.name = true;
+          updatedField = "PERSONAL INFORMATION";
+          contentUpdated = true;
+          console.log("[WillChat] Found direct name input:", updatedInfo.fullName);
+        }
+        
+        // Look for "my name is" patterns
+        const namePatterns = [
+          /(?:my name is|I am|I'm|name|call me) ([A-Za-z\s.'-]+)/i,
+          /(?:I'm|I am) ([A-Za-z\s.'-]+)/i,
+          /(?:I,) ([A-Za-z\s.'-]+)/i
+        ];
+        
+        for (const pattern of namePatterns) {
+          const nameMatch = content.match(pattern);
+          if (nameMatch && nameMatch[1]) {
+            const possibleName = nameMatch[1].trim();
+            // Avoid extracting "Skyler" as the name (it's the AI assistant)
+            if (!possibleName.toLowerCase().includes("skyler") && 
+                !possibleName.toLowerCase().includes("assistant") &&
+                possibleName.split(' ').length >= 2) {
+              updatedInfo.fullName = possibleName;
+              updatedInfo.updatedFields.name = true;
+              updatedField = "PERSONAL INFORMATION";
+              contentUpdated = true;
+              console.log("[WillChat] Found name:", updatedInfo.fullName);
+              break;
+            }
           }
         }
       }
       
-      // Extract marital status with improved matching
-      if (content.match(/single|never married|not married|unmarried/i) && updatedInfo.maritalStatus !== "single") {
-        updatedInfo.maritalStatus = "single";
-        updatedInfo.updatedFields.maritalStatus = true;
-        updatedField = "FAMILY INFORMATION";
-        contentUpdated = true;
-        console.log("[WillChat] Found marital status: single");
-      } else if (content.match(/married|I have a (husband|wife|spouse)|my (husband|wife|spouse)/i) && updatedInfo.maritalStatus !== "married") {
-        updatedInfo.maritalStatus = "married";
-        updatedInfo.updatedFields.maritalStatus = true;
-        updatedField = "FAMILY INFORMATION";
-        contentUpdated = true;
-        console.log("[WillChat] Found marital status: married");
-      } else if (content.match(/divorced|separated/i) && updatedInfo.maritalStatus !== "divorced") {
-        updatedInfo.maritalStatus = "divorced";
-        updatedInfo.updatedFields.maritalStatus = true;
-        updatedField = "FAMILY INFORMATION";
-        contentUpdated = true;
-        console.log("[WillChat] Found marital status: divorced");
-      } else if (content.match(/widowed|widow|widower/i) && updatedInfo.maritalStatus !== "widowed") {
-        updatedInfo.maritalStatus = "widowed";
-        updatedInfo.updatedFields.maritalStatus = true;
-        updatedField = "FAMILY INFORMATION";
-        contentUpdated = true;
-        console.log("[WillChat] Found marital status: widowed");
-      }
+      // 2. Extract marital status with improved patterns
+      const maritalStatusPatterns = [
+        { pattern: /(?:I am|I'm) single|never married|not married|unmarried/i, status: "single" },
+        { pattern: /(?:I am|I'm) married|I have a (husband|wife|spouse)|my (husband|wife|spouse)|(?:I am|I'm) (?:a )?(?:married|husband|wife)/i, status: "married" },
+        { pattern: /(?:I am|I'm) divorced|(?:I am|I'm) separated/i, status: "divorced" },
+        { pattern: /(?:I am|I'm) widowed|(?:I am|I'm) (?:a )?widow(?:er)?/i, status: "widowed" }
+      ];
       
-      // Extract spouse name with improved matching
-      if (updatedInfo.maritalStatus === "married") {
-        const spouseMatch = content.match(/(?:wife|husband|spouse)(?:'s| is| name is| named|:) ([A-Za-z\s.'-]+)/i);
-        if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1].trim()) {
-          updatedInfo.spouseName = spouseMatch[1].trim();
-          updatedInfo.updatedFields.spouseName = true;
+      for (const { pattern, status } of maritalStatusPatterns) {
+        if (content.match(pattern) && updatedInfo.maritalStatus !== status) {
+          updatedInfo.maritalStatus = status;
+          updatedInfo.updatedFields.maritalStatus = true;
           updatedField = "FAMILY INFORMATION";
           contentUpdated = true;
-          console.log("[WillChat] Found spouse name:", updatedInfo.spouseName);
+          console.log(`[WillChat] Found marital status: ${status}`);
+          break;
         }
       }
       
-      // Extract executor information with improved matching
-      // Only if the message is from user to avoid extracting "Skyler"
-      if (message.role === 'user') {
-        const executorMatch = content.match(/executor(?:'s| is| will be| should be| name is|:) ([A-Za-z\s.'-]+)/i);
-        if (executorMatch && executorMatch[1]) {
-          const possibleExecutor = executorMatch[1].trim();
-          if (!possibleExecutor.toLowerCase().includes("skyler") && 
-              !possibleExecutor.toLowerCase().includes("assistant") &&
-              updatedInfo.executor !== possibleExecutor) {
-            updatedInfo.executor = possibleExecutor;
-            updatedInfo.updatedFields.executor = true;
-            updatedField = "EXECUTOR";
+      // 3. Extract spouse name with improved matching
+      if (updatedInfo.maritalStatus === "married" || content.toLowerCase().includes("married")) {
+        const spousePatterns = [
+          /(?:my wife|my husband|my spouse)(?:'s| is| name is| named|:) ([A-Za-z\s.'-]+)/i,
+          /married to ([A-Za-z\s.'-]+)/i,
+          /spouse is ([A-Za-z\s.'-]+)/i
+        ];
+        
+        for (const pattern of spousePatterns) {
+          const spouseMatch = content.match(pattern);
+          if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1].trim()) {
+            updatedInfo.spouseName = spouseMatch[1].trim();
+            updatedInfo.updatedFields.spouseName = true;
+            updatedField = "FAMILY INFORMATION";
             contentUpdated = true;
-            console.log("[WillChat] Found executor:", updatedInfo.executor);
+            console.log("[WillChat] Found spouse name:", updatedInfo.spouseName);
+            break;
           }
         }
       }
       
-      // Extract address with improved matching
-      const addressMatch = content.match(/address|live|reside|residing|location|stay|residence/i);
-      if (addressMatch && message.role === 'user') {
-        // Get the text after the matched term
-        const afterAddressMatch = content.substring(addressMatch.index! + addressMatch[0].length);
-        if (afterAddressMatch.length > 5 && updatedInfo.address !== afterAddressMatch.trim()) {
-          updatedInfo.address = afterAddressMatch.trim();
-          updatedInfo.updatedFields.address = true;
-          updatedField = "RESIDENCE";
-          contentUpdated = true;
-          console.log("[WillChat] Found address:", updatedInfo.address);
+      // 4. Extract executor information with improved matching
+      if (message.role === 'user') {
+        const executorPatterns = [
+          /(?:my executor|the executor|executor) (?:will be|should be|is|name is|:) ([A-Za-z\s.'-]+)/i,
+          /(?:appoint|choose|select|want|name) ([A-Za-z\s.'-]+) as (?:my|the) executor/i
+        ];
+        
+        for (const pattern of executorPatterns) {
+          const executorMatch = content.match(pattern);
+          if (executorMatch && executorMatch[1]) {
+            const possibleExecutor = executorMatch[1].trim();
+            if (!possibleExecutor.toLowerCase().includes("skyler") && 
+                !possibleExecutor.toLowerCase().includes("assistant") &&
+                updatedInfo.executor !== possibleExecutor) {
+              updatedInfo.executor = possibleExecutor;
+              updatedInfo.updatedFields.executor = true;
+              updatedField = "EXECUTOR";
+              contentUpdated = true;
+              console.log("[WillChat] Found executor:", updatedInfo.executor);
+              break;
+            }
+          }
+        }
+      }
+      
+      // 5. Extract address with improved matching
+      if (message.role === 'user') {
+        const addressPatterns = [
+          /(?:I live|I reside|my address|I live at|my home is|I stay at|I am located at) (?:at )?([A-Za-z0-9\s,.'-]+)/i,
+          /(?:address is|address:|home address is) ([A-Za-z0-9\s,.'-]+)/i
+        ];
+        
+        for (const pattern of addressPatterns) {
+          const addressMatch = content.match(pattern);
+          if (addressMatch && addressMatch[1]) {
+            const possibleAddress = addressMatch[1].trim();
+            if (possibleAddress.length > 5 && updatedInfo.address !== possibleAddress) {
+              updatedInfo.address = possibleAddress;
+              updatedInfo.updatedFields.address = true;
+              updatedField = "RESIDENCE";
+              contentUpdated = true;
+              console.log("[WillChat] Found address:", updatedInfo.address);
+              
+              // Extract city, state, zip if present in the address
+              const cityStateZipPattern = /([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)/i;
+              const cityStateMatch = updatedInfo.address.match(cityStateZipPattern);
+              if (cityStateMatch) {
+                updatedInfo.city = cityStateMatch[1].trim();
+                updatedInfo.state = cityStateMatch[2].trim();
+                updatedInfo.zipCode = cityStateMatch[3].trim();
+                updatedInfo.updatedFields.cityState = true;
+                console.log("[WillChat] Extracted city/state/zip:", updatedInfo.city, updatedInfo.state, updatedInfo.zipCode);
+              }
+              break;
+            }
+          }
+        }
+      }
+      
+      // 6. Extract children information with improved matching
+      const childrenPatterns = [
+        /(?:I have|we have) (\d+) (child|children|kids|son|daughter)/i,
+        /my (child|children|kids|son|daughter)(?:'s name is|'s names are|ren are)? ([A-Za-z\s,.'-]+)/i,
+        /(?:children|child)(?:ren)?(?:'s names are|:) ([A-Za-z\s,.'-]+)/i
+      ];
+      
+      for (const pattern of childrenPatterns) {
+        const childrenMatch = content.match(pattern);
+        if (childrenMatch && message.role === 'user') {
+          let childrenNames: string[] = [];
           
-          // Try to extract city, state, zip from address
-          const cityStateMatch = updatedInfo.address.match(/([^,]+),\s*([A-Z]{2})\s*(\d{5}(-\d{4})?)/i);
-          if (cityStateMatch) {
-            updatedInfo.city = cityStateMatch[1].trim();
-            updatedInfo.state = cityStateMatch[2].trim();
-            updatedInfo.zipCode = cityStateMatch[3].trim();
-            updatedInfo.updatedFields.cityState = true;
-            console.log("[WillChat] Extracted city/state/zip:", updatedInfo.city, updatedInfo.state, updatedInfo.zipCode);
+          if (childrenMatch[1] && /\d+/.test(childrenMatch[1])) {
+            // This matched "X children" pattern, look in the rest of the message for names
+            const rest = content.substring(childrenMatch.index! + childrenMatch[0].length);
+            // Try to extract names listed after mentioning number of children
+            const namesPattern = /(?:named|called|:)?\s*([A-Za-z\s,.'-]+)/i;
+            const namesMatch = rest.match(namesPattern);
+            if (namesMatch && namesMatch[1]) {
+              childrenNames = namesMatch[1].split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
+            }
+          } else if (childrenMatch[2]) {
+            // This matched a direct list of names
+            childrenNames = childrenMatch[2].split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
           }
-        }
-      }
-      
-      // Extract children information with improved matching
-      const childrenMatch = 
-        content.match(/children|have (\d+) (child|children|kids|son|daughter)/i) || 
-        content.match(/my (child|children|kids|son|daughter)/i);
-      
-      if (childrenMatch && message.role === 'user') {
-        // Extract names that might follow
-        const possibleNames = content.substring(childrenMatch.index! + childrenMatch[0].length);
-        if (possibleNames.length > 3) {
-          const names = possibleNames.split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
-          if (names.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(names)) {
-            updatedInfo.children = names;
+          
+          if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
+            updatedInfo.children = childrenNames;
             updatedInfo.updatedFields.children = true;
             updatedField = "FAMILY INFORMATION";
             contentUpdated = true;
             console.log("[WillChat] Found children:", updatedInfo.children);
           }
+          break;
         }
       }
       
-      // Extract asset information with improved matching
+      // 7. Extract asset information with improved matching
       if (message.role === 'user') {
-        // Look for common assets like house, car, bank account
-        if (content.match(/house|property|real estate|land|apartment|condo/i)) {
-          const newAsset = {
-            name: "Real Estate",
-            value: content
-          };
-          
-          if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
-            updatedInfo.assets.push(newAsset);
-            updatedInfo.updatedFields.assets = true;
-            updatedField = "DISTRIBUTION OF ESTATE";
-            contentUpdated = true;
-            console.log("[WillChat] Found asset: Real Estate");
-          }
-        } 
+        const assetPatterns = [
+          { pattern: /(?:my house|my home|my property|my real estate|my apartment|my condo) (?:is|at|located at|in|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Real Estate" },
+          { pattern: /(?:I have|I own) (?:a) (?:house|home|property|apartment|condo) (?:at|in|located at|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Real Estate" },
+          { pattern: /(?:my car|my vehicle|my automobile) (?:is|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Vehicle" },
+          { pattern: /(?:I have|I own) (?:a) (?:car|vehicle|automobile)(?::)? ([A-Za-z0-9\s,.'-]+)/i, type: "Vehicle" },
+          { pattern: /(?:my savings|my bank account|my checking|my investment|my money) (?:is|at|with|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Financial Assets" },
+          { pattern: /(?:I have|I own) (?:savings|money|investments|accounts) (?:at|with|in|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Financial Assets" }
+        ];
         
-        if (content.match(/car|vehicle|automobile/i)) {
-          const newAsset = {
-            name: "Vehicle",
-            value: content
-          };
-          
-          if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
-            updatedInfo.assets.push(newAsset);
-            updatedInfo.updatedFields.assets = true;
-            updatedField = "DISTRIBUTION OF ESTATE";
-            contentUpdated = true;
-            console.log("[WillChat] Found asset: Vehicle");
+        for (const { pattern, type } of assetPatterns) {
+          const assetMatch = content.match(pattern);
+          if (assetMatch && assetMatch[1]) {
+            const assetDetails = assetMatch[1].trim();
+            const newAsset = {
+              name: type,
+              value: assetDetails
+            };
+            
+            const existingAssetIndex = updatedInfo.assets.findIndex(a => a.name === type);
+            if (existingAssetIndex === -1) {
+              // Add new asset
+              updatedInfo.assets.push(newAsset);
+              updatedInfo.updatedFields.assets = true;
+              updatedField = "DISTRIBUTION OF ESTATE";
+              contentUpdated = true;
+              console.log(`[WillChat] Found asset: ${type} - ${assetDetails}`);
+            } else if (updatedInfo.assets[existingAssetIndex].value !== assetDetails) {
+              // Update existing asset
+              updatedInfo.assets[existingAssetIndex].value = assetDetails;
+              updatedInfo.updatedFields.assets = true;
+              updatedField = "DISTRIBUTION OF ESTATE";
+              contentUpdated = true;
+              console.log(`[WillChat] Updated asset: ${type} - ${assetDetails}`);
+            }
           }
         }
         
-        if (content.match(/savings|bank account|checking|investment|money/i)) {
-          const newAsset = {
-            name: "Financial Assets",
-            value: content
-          };
+        // Look for digital assets specifically for digital asset will type
+        if (templateId === 'digital-assets') {
+          const digitalAssetPatterns = [
+            { pattern: /(?:my digital assets?|online accounts?|cryptocurrency|crypto|bitcoin|ethereum|nft) (?:include|is|are|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Digital Assets" },
+            { pattern: /(?:I have|I own) (?:digital assets?|online accounts?|cryptocurrency|crypto|bitcoin|ethereum|nft) (?::)? ([A-Za-z0-9\s,.'-]+)/i, type: "Digital Assets" }
+          ];
           
-          if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
-            updatedInfo.assets.push(newAsset);
-            updatedInfo.updatedFields.assets = true;
-            updatedField = "DISTRIBUTION OF ESTATE";
-            contentUpdated = true;
-            console.log("[WillChat] Found asset: Financial Assets");
-          }
-        }
-      }
-      
-      // Extract digital assets for digital asset wills
-      if (templateId === 'digital-assets' && message.role === 'user') {
-        if (content.match(/digital|online|account|social media|email|crypto|bitcoin|ethereum/i)) {
-          const assetType = content.match(/digital|online|account|social media|email|crypto|bitcoin|ethereum/i)?.[0] || "Digital Asset";
-          const newDigitalAsset = {
-            type: assetType,
-            details: `${assetType} account`
-          };
-          
-          if (!updatedInfo.digitalAssets.some(a => a.type === newDigitalAsset.type)) {
-            updatedInfo.digitalAssets.push(newDigitalAsset);
-            updatedInfo.updatedFields.digitalAssets = true;
-            updatedField = "DIGITAL ASSETS";
-            contentUpdated = true;
-            console.log("[WillChat] Found digital asset:", assetType);
+          for (const { pattern, type } of digitalAssetPatterns) {
+            const digitalAssetMatch = content.match(pattern);
+            if (digitalAssetMatch && digitalAssetMatch[1]) {
+              const assetDetails = digitalAssetMatch[1].trim();
+              const digitalAsset = {
+                type: type,
+                details: assetDetails
+              };
+              
+              const existingAssetIndex = updatedInfo.digitalAssets.findIndex(a => a.details === assetDetails);
+              if (existingAssetIndex === -1) {
+                updatedInfo.digitalAssets.push(digitalAsset);
+                updatedInfo.updatedFields.digitalAssets = true;
+                updatedField = "DIGITAL ASSETS";
+                contentUpdated = true;
+                console.log(`[WillChat] Found digital asset: ${type} - ${assetDetails}`);
+              }
+            }
           }
         }
       }
