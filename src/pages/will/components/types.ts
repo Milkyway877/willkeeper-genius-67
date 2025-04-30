@@ -6,7 +6,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   timestamp: Date;
-  type?: 'text' | 'file';
+  type?: 'text' | 'file' | 'video' | 'video-start';
   fileUrl?: string;
   fileName?: string;
 }
