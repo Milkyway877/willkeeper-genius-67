@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -9,7 +10,7 @@ import { DocumentsUploader } from './components/DocumentsUploader';
 import { VideoRecorder } from './components/VideoRecorder';
 import { useToast } from '@/hooks/use-toast';
 import { createWill } from '@/services/willService';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useWillProgress, WillProgress } from '@/services/willProgressService';
 import { steps, templates } from './config/wizardSteps';
 import { WillWizardSteps } from './components/WillWizardSteps';
