@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +15,6 @@ import { TankDocumentCreator } from './components/creators/TankDocumentCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
 import { MessageCategory, DeliveryTrigger } from './types';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 
 const steps = [
   {
@@ -47,12 +45,6 @@ const steps = [
 ];
 
 export default function TankCreation() {
-  const [searchParams] = useSearchParams();
-  const willId = searchParams.get('willId');
-  const presetType = searchParams.get('type');
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
   const {
     currentStep,
     creationType,
@@ -81,28 +73,6 @@ export default function TankCreation() {
     handleFinalize
   } = useTankCreation();
 
-  // If we have willId and type in query params, set the type automatically
-  useEffect(() => {
-    if (presetType && !creationType) {
-      if (['letter', 'video', 'audio', 'document'].includes(presetType)) {
-        setCreationType(presetType as any);
-        
-        // If coming from will creation, auto-set some values
-        if (willId) {
-          setRecipientName("Will Beneficiaries");
-          setMessageTitle("Video Testament for Will");
-          // Fix the type error by providing the correct MessageCategory type
-          setMessageCategory('important' as MessageCategory);
-          
-          // Auto advance to creation step
-          if (currentStep === 0) {
-            setTimeout(() => handleNext(), 100); // Small delay to ensure state updates
-          }
-        }
-      }
-    }
-  }, [presetType, willId, creationType, currentStep]);
-
   const renderCreationComponent = () => {
     switch (creationType) {
       case 'letter':
@@ -119,8 +89,6 @@ export default function TankCreation() {
                  onRecipientChange={setRecipientName}
                  onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                  onVideoUrlChange={setMessageUrl}
-                 willId={willId}
-                 isForWill={!!willId}
                />;
       case 'audio':
         return <TankAudioCreator 
@@ -141,42 +109,6 @@ export default function TankCreation() {
       default:
         return <div>Please select a message type</div>;
     }
-  };
-
-  // Fix for error #1: Make sure this function doesn't pass data to handleFinalize if it doesn't accept args
-  const handleFinalization = async () => {
-    // Call the original finalize function with no arguments
-    const result = await handleFinalize();
-    
-    // If this was called from a will creation flow, redirect back
-    if (willId && messageUrl) {
-      try {
-        // Create a record in will_videos table linking the video to the will
-        const response = await fetch(`/api/link-will-video?willId=${willId}&videoPath=${encodeURIComponent(messageUrl)}`);
-        const result = await response.json();
-        
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        
-        toast({
-          title: "Video Attached to Will",
-          description: "Your video testament has been attached to your will successfully"
-        });
-        
-        // Navigate back to the will creation page
-        navigate(`/will/template-creation/${searchParams.get('returnTemplate') || 'traditional'}`);
-      } catch (error: any) {
-        console.error('Error linking video to will:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Could not attach video to your will",
-          variant: "destructive"
-        });
-      }
-    }
-    
-    return result;
   };
 
   const renderStepContent = () => {
@@ -203,11 +135,9 @@ export default function TankCreation() {
                  recipientEmail={recipientEmail}
                  deliveryType={deliveryType as DeliveryTrigger}
                  deliveryDate={deliveryDate ? deliveryDate.toISOString() : ''}
-                 // Fix for error #2: Make sure this function accepts an argument if required by TankReview
-                 onFinalize={willId ? handleFinalization : handleFinalize}
+                 onFinalize={handleFinalize}
                  isGenerating={isGenerating}
                  progress={progress}
-                 isForWill={!!willId}
                />;
       default:
         return <div>Unknown step</div>;
@@ -227,30 +157,16 @@ export default function TankCreation() {
 
   const StepIcon = getStepIcon();
 
-  // Custom cancel handler for will integration
-  const handleCancelAction = () => {
-    if (willId) {
-      // If we came from will creation, go back to the will creation page
-      navigate(`/will/template-creation/${searchParams.get('returnTemplate') || 'traditional'}`);
-    } else {
-      // Normal cancel behavior
-      handleCancel();
-    }
-  };
-
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center">
             <MessageSquare className="mr-2 h-6 w-6 md:h-8 md:w-8 text-willtank-600" />
-            {willId ? "Create Video Testament for Will" : "Create Future Message"}
+            Create Future Message
           </h1>
           <p className="text-gray-600">
-            {willId 
-              ? "Record a video testament to accompany your will" 
-              : "Craft a message that will be delivered at your chosen time in the future"
-            }
+            Craft a message that will be delivered at your chosen time in the future
           </p>
           
           <StepProgress steps={steps} currentStep={currentStep} />
@@ -288,8 +204,8 @@ export default function TankCreation() {
           </div>
           
           <div className="flex gap-3">
-            <Button onClick={handleCancelAction} variant="outline" className="text-gray-500">
-              {willId ? "Back to Will" : "Cancel"}
+            <Button onClick={handleCancel} variant="outline" className="text-gray-500">
+              Cancel
             </Button>
             
             {currentStep < 4 && (

@@ -47,7 +47,6 @@ import Wills from './pages/wills/Wills';
 import WillCreatePage from './pages/will/WillCreatePage';
 import WillChatCreation from './pages/will/WillChatCreation';
 import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
-import linkWillVideo from './pages/api/link-will-video';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -239,8 +238,6 @@ const router = createBrowserRouter([
     ],
   },
 ]);
-
-// We'll handle the API route through normal fetch requests instead of Deno
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

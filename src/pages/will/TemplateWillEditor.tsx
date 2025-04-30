@@ -11,7 +11,7 @@ import { AssetsSection } from './components/TemplateSections/AssetsSection';
 import { ExecutorsSection } from './components/TemplateSections/ExecutorsSection';
 import { FinalWishesSection } from './components/TemplateSections/FinalWishesSection';
 import { DigitalSignature } from './components/TemplateSections/DigitalSignature';
-import { AttachedVideosSection } from './components/AttachedVideosSection';
+import { VideoRecordingSection } from './components/VideoRecordingSection';
 import { WillPreviewSection } from './components/WillPreviewSection';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
@@ -65,7 +65,7 @@ interface TemplateWillEditorProps {
   templateId: string;
   initialData?: any;
   isNew?: boolean;
-  willId?: string;
+  willId?: string; // Add willId to props
 }
 
 export function TemplateWillEditor({ 
@@ -385,9 +385,9 @@ Date: ${new Date().toLocaleDateString()}
               <ExecutorsSection defaultOpen={false} />
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
-              {/* Replace VideoRecordingSection with AttachedVideosSection */}
-              <AttachedVideosSection 
+              <VideoRecordingSection 
                 defaultOpen={false} 
+                onRecordingComplete={handleVideoRecording} 
                 willId={!isNew && willId ? willId : undefined} 
               />
               <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />

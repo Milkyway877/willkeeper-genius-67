@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
@@ -94,8 +93,7 @@ export const useTankCreation = () => {
     navigate('/tank');
   };
 
-  // Modified to work with or without arguments, returning the created message
-  const handleFinalize = async (data?: any) => {
+  const handleFinalize = async () => {
     if (!creationType || !deliveryType || !deliveryDate) {
       toast({
         title: 'Missing Information',
@@ -148,8 +146,6 @@ export const useTankCreation = () => {
         setTimeout(() => {
           navigate('/tank');
         }, 2000);
-        
-        return createdMessage;
       } else {
         throw new Error('Failed to create message');
       }
@@ -160,7 +156,6 @@ export const useTankCreation = () => {
         description: 'An error occurred while creating your message. Please try again.',
         variant: 'destructive'
       });
-      return null;
     } finally {
       setIsGenerating(false);
     }
