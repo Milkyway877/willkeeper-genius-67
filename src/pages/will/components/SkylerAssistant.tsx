@@ -435,11 +435,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       }
 
       // Log available buckets for debugging
-      console.log('Available buckets:', buckets?.map(b => b.id));
+      console.log('Available buckets:', buckets?.map(b => b.name));
       
-      // Use "will-documents" bucket as defined in storage.sql
-      const bucketId = 'will-documents';
-      const bucketExists = buckets?.some(b => b.id === bucketId);
+      // Use "will_documents" bucket with underscore instead of hyphen
+      const bucketId = 'will_documents';
+      const bucketExists = buckets?.some(b => b.id === bucketId || b.name === bucketId);
       
       if (!bucketExists) {
         throw new Error(`Bucket "${bucketId}" not found. Available buckets: ${buckets?.map(b => b.id).join(', ')}`);
