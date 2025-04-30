@@ -1,10 +1,7 @@
 
 -- Create a bucket for will documents if it doesn't exist
 INSERT INTO storage.buckets (id, name, public)
-SELECT 'will-documents', 'Will Documents', TRUE
-WHERE NOT EXISTS (
-  SELECT 1 FROM storage.buckets WHERE id = 'will-documents'
-);
+VALUES ('will-documents', 'Will Documents', TRUE);
 
 -- Policy to allow users to upload their own documents
 CREATE POLICY "Users can upload their own documents"
@@ -28,10 +25,7 @@ USING (bucket_id = 'will-documents' AND (storage.foldername(name))[1] = auth.uid
 
 -- Create a bucket for will videos if it doesn't exist
 INSERT INTO storage.buckets (id, name, public)
-SELECT 'will-videos', 'Will Videos', TRUE
-WHERE NOT EXISTS (
-  SELECT 1 FROM storage.buckets WHERE id = 'will-videos'
-);
+VALUES ('will-videos', 'Will Videos', TRUE);
 
 -- Policy to allow users to upload their own videos
 CREATE POLICY "Users can upload their own videos"
@@ -52,3 +46,27 @@ USING (bucket_id = 'will-videos' AND (storage.foldername(name))[1] = auth.uid():
 CREATE POLICY "Users can delete their own videos"
 ON storage.objects FOR DELETE TO authenticated
 USING (bucket_id = 'will-videos' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Create a bucket for will images if it doesn't exist
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('will-images', 'Will Images', TRUE);
+
+-- Policy to allow users to upload their own images
+CREATE POLICY "Users can upload their own images"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'will-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Policy to allow users to view their own images
+CREATE POLICY "Users can view their own images"
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'will-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Policy to allow users to update their own images
+CREATE POLICY "Users can update their own images"
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'will-images' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Policy to allow users to delete their own images
+CREATE POLICY "Users can delete their own images"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'will-images' AND (storage.foldername(name))[1] = auth.uid()::text);
