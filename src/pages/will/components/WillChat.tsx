@@ -73,6 +73,11 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     if (inputRef.current) {
       inputRef.current.focus();
     }
+    
+    // Initialize the document with template content
+    const initialContent = getInitialContent(templateId);
+    console.log("Initializing will content:", initialContent.substring(0, 50) + "...");
+    onContentUpdate(initialContent);
   }, [templateId, templateName]);
   
   // Scroll to bottom when messages change
@@ -112,40 +117,89 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     return welcomeMessage;
   };
   
+  const getInitialContent = (templateId: string): string => {
+    const placeholders: Record<string, string> = {
+      'basic': 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.',
+      'family': 'FAMILY PROTECTION WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for the care and protection of my family.',
+      'business': 'BUSINESS OWNER WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my business assets and succession planning.',
+      'complex': 'COMPLEX ESTATE WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, addressing my extensive holdings and complex distribution wishes.',
+      'living': 'LIVING WILL AND HEALTHCARE DIRECTIVES\n\nI, [YOUR NAME], being of sound mind, declare these to be my Healthcare Directives and wishes regarding medical treatment.',
+      'digital-assets': 'DIGITAL ASSETS WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my digital assets, accounts and properties.'
+    };
+    
+    return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.';
+  };
+  
   const extractPreviewInfo = () => {
     // Extract info from current input as user types for real-time preview
     // This avoids waiting for the full message to be sent
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
     
-    // Try to extract full name
-    const nameMatch = inputValue.match(/(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-    if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1]) {
-      updatedInfo.fullName = nameMatch[1];
+    console.log("Extracting preview info from input:", inputValue);
+    
+    // Try to extract full name - more lenient regex
+    const nameMatch = inputValue.match(/(?:my name is|I am|I'm|name|call me|I go by|named) ([A-Za-z\s.'-]+)/i);
+    if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1].trim()) {
+      updatedInfo.fullName = nameMatch[1].trim();
       contentUpdated = true;
+      console.log("Found name in input:", updatedInfo.fullName);
     }
     
-    // Try to extract marital status
-    if (inputValue.match(/single/i) && updatedInfo.maritalStatus !== "single") {
+    // Try to extract marital status - more lenient regex
+    if (inputValue.match(/single|never married|not married/i) && updatedInfo.maritalStatus !== "single") {
       updatedInfo.maritalStatus = "single";
       contentUpdated = true;
-    } else if (inputValue.match(/married/i) && updatedInfo.maritalStatus !== "married") {
+      console.log("Found marital status in input: single");
+    } else if (inputValue.match(/married|I have a (husband|wife|spouse)/i) && updatedInfo.maritalStatus !== "married") {
       updatedInfo.maritalStatus = "married";
       contentUpdated = true;
+      console.log("Found marital status in input: married");
+    } else if (inputValue.match(/divorced|separated/i) && updatedInfo.maritalStatus !== "divorced") {
+      updatedInfo.maritalStatus = "divorced";
+      contentUpdated = true;
+      console.log("Found marital status in input: divorced");
+    } else if (inputValue.match(/widowed|widow|widower/i) && updatedInfo.maritalStatus !== "widowed") {
+      updatedInfo.maritalStatus = "widowed";
+      contentUpdated = true;
+      console.log("Found marital status in input: widowed");
     }
     
-    // Try to extract address info
-    const addressMatch = inputValue.match(/address (?:is|:) ([^.]+)/i);
-    if (addressMatch && addressMatch[1] && updatedInfo.address !== addressMatch[1]) {
-      updatedInfo.address = addressMatch[1];
-      contentUpdated = true;
+    // Try to extract address info - more lenient regex
+    const addressMatch = inputValue.match(/address|live|reside|residing|location|stay|residence/i);
+    if (addressMatch && inputValue.length > 10) {
+      // Get the text after the matched term
+      const afterAddressMatch = inputValue.substring(addressMatch.index! + addressMatch[0].length);
+      if (afterAddressMatch.length > 5 && updatedInfo.address !== afterAddressMatch.trim()) {
+        updatedInfo.address = afterAddressMatch.trim();
+        contentUpdated = true;
+        console.log("Found address in input:", updatedInfo.address);
+      }
+    }
+    
+    // Try to extract children information - more lenient regex
+    const childrenMatch = 
+      inputValue.match(/children|have (\d+) (child|children|kids|son|daughter)/i) || 
+      inputValue.match(/my (child|children|kids|son|daughter)/i);
+    
+    if (childrenMatch) {
+      // Extract names that might follow
+      const possibleNames = inputValue.substring(childrenMatch.index! + childrenMatch[0].length);
+      if (possibleNames.length > 3) {
+        const names = possibleNames.split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
+        if (names.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(names)) {
+          updatedInfo.children = names;
+          contentUpdated = true;
+          console.log("Found children in input:", updatedInfo.children);
+        }
+      }
     }
     
     // If we found new information, update will content for real-time preview
     if (contentUpdated) {
-      // Just update locally but don't persist to state yet
-      // This will be properly saved when the message is sent
-      generateAndUpdateWillContent({ ...updatedInfo });
+      setUserInfo(updatedInfo); // Update the state
+      generateAndUpdateWillContent(updatedInfo); // Generate new content with updated info
+      console.log("Content updated from user typing");
     }
   };
   
@@ -153,57 +207,71 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
     
+    console.log("Extracting info from all messages");
+    
     // Look through user messages to extract information
     for (const message of messages) {
-      // Skip system messages and the last assistant message
-      if (message.role === 'system' || (message.role === 'assistant' && message === messages[messages.length - 1])) {
+      // Skip system messages
+      if (message.role === 'system') {
         continue;
       }
       
-      if (message.role === 'user') {
-        // Extract full name
-        const nameMatch = message.content.match(/(?:my name is|I am|I'm|name:) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-        if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1]) {
-          updatedInfo.fullName = nameMatch[1];
+      const content = message.content;
+      
+      // Extract full name - more lenient regex
+      const nameMatch = content.match(/(?:my name is|I am|I'm|name|call me|I go by|named) ([A-Za-z\s.'-]+)/i);
+      if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1].trim()) {
+        updatedInfo.fullName = nameMatch[1].trim();
+        contentUpdated = true;
+        console.log("Found name:", updatedInfo.fullName);
+      }
+      
+      // Extract marital status - more lenient regex
+      if (content.match(/single|never married|not married/i) && updatedInfo.maritalStatus !== "single") {
+        updatedInfo.maritalStatus = "single";
+        contentUpdated = true;
+        console.log("Found marital status: single");
+      } else if (content.match(/married|I have a (husband|wife|spouse)/i) && updatedInfo.maritalStatus !== "married") {
+        updatedInfo.maritalStatus = "married";
+        contentUpdated = true;
+        console.log("Found marital status: married");
+      } else if (content.match(/divorced|separated/i) && updatedInfo.maritalStatus !== "divorced") {
+        updatedInfo.maritalStatus = "divorced";
+        contentUpdated = true;
+        console.log("Found marital status: divorced");
+      } else if (content.match(/widowed|widow|widower/i) && updatedInfo.maritalStatus !== "widowed") {
+        updatedInfo.maritalStatus = "widowed";
+        contentUpdated = true;
+        console.log("Found marital status: widowed");
+      }
+      
+      // Extract spouse name if married
+      if (updatedInfo.maritalStatus === "married") {
+        const spouseMatch = content.match(/(?:wife|husband|spouse)(?:'s| is| name is| named|:) ([A-Za-z\s.'-]+)/i);
+        if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1].trim()) {
+          updatedInfo.spouseName = spouseMatch[1].trim();
           contentUpdated = true;
+          console.log("Found spouse name:", updatedInfo.spouseName);
         }
-        
-        // Extract marital status
-        if (message.content.match(/(?:I am|I'm) single/i) && updatedInfo.maritalStatus !== "single") {
-          updatedInfo.maritalStatus = "single";
+      }
+      
+      // Extract executor information
+      const executorMatch = content.match(/executor(?:'s| is| will be| should be| name is|:) ([A-Za-z\s.'-]+)/i);
+      if (executorMatch && executorMatch[1] && updatedInfo.executor !== executorMatch[1].trim()) {
+        updatedInfo.executor = executorMatch[1].trim();
+        contentUpdated = true;
+        console.log("Found executor:", updatedInfo.executor);
+      }
+      
+      // Extract address - more lenient regex
+      const addressMatch = content.match(/address|live|reside|residing|location|stay|residence/i);
+      if (addressMatch && message.role === 'user') {
+        // Get the text after the matched term
+        const afterAddressMatch = content.substring(addressMatch.index! + addressMatch[0].length);
+        if (afterAddressMatch.length > 5 && updatedInfo.address !== afterAddressMatch.trim()) {
+          updatedInfo.address = afterAddressMatch.trim();
           contentUpdated = true;
-        } else if (message.content.match(/(?:I am|I'm) married/i) && updatedInfo.maritalStatus !== "married") {
-          updatedInfo.maritalStatus = "married";
-          contentUpdated = true;
-        } else if (message.content.match(/(?:I am|I'm) divorced/i) && updatedInfo.maritalStatus !== "divorced") {
-          updatedInfo.maritalStatus = "divorced";
-          contentUpdated = true;
-        } else if (message.content.match(/(?:I am|I'm) widowed/i) && updatedInfo.maritalStatus !== "widowed") {
-          updatedInfo.maritalStatus = "widowed";
-          contentUpdated = true;
-        }
-        
-        // Extract spouse name if married
-        if (updatedInfo.maritalStatus === "married") {
-          const spouseMatch = message.content.match(/(?:wife|husband|spouse)(?:'s| is| name is| named) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-          if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1]) {
-            updatedInfo.spouseName = spouseMatch[1];
-            contentUpdated = true;
-          }
-        }
-        
-        // Extract executor information
-        const executorMatch = message.content.match(/executor(?:'s| is| will be| should be| name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-        if (executorMatch && executorMatch[1] && updatedInfo.executor !== executorMatch[1]) {
-          updatedInfo.executor = executorMatch[1];
-          contentUpdated = true;
-        }
-        
-        // Extract address
-        const addressMatch = message.content.match(/address(?:'s| is| :) ([^.]+)/i);
-        if (addressMatch && addressMatch[1] && updatedInfo.address !== addressMatch[1]) {
-          updatedInfo.address = addressMatch[1].trim();
-          contentUpdated = true;
+          console.log("Found address:", updatedInfo.address);
           
           // Try to extract city, state, zip from address
           const cityStateMatch = updatedInfo.address.match(/([^,]+),\s*([A-Z]{2})\s*(\d{5}(-\d{4})?)/i);
@@ -213,69 +281,82 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
             updatedInfo.zipCode = cityStateMatch[3].trim();
           }
         }
-        
-        // Extract children information
-        const childrenMatch = 
-          message.content.match(/children(?:'s| are| named| :) ([^.]+)/i) || 
-          message.content.match(/have (\d+) children(?: named| :)? ([^.]+)/i);
-        
-        if (childrenMatch) {
-          let childrenText = childrenMatch[1];
-          // If we matched the "have X children" pattern, use the second capture group
-          if (childrenMatch[2]) childrenText = childrenMatch[2];
-          
-          const childrenNames = childrenText.split(/,\s*|\s+and\s+/).filter(Boolean);
-          if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
-            updatedInfo.children = childrenNames;
+      }
+      
+      // Extract children information - more lenient regex
+      const childrenMatch = 
+        content.match(/children|have (\d+) (child|children|kids|son|daughter)/i) || 
+        content.match(/my (child|children|kids|son|daughter)/i);
+      
+      if (childrenMatch && message.role === 'user') {
+        // Extract names that might follow
+        const possibleNames = content.substring(childrenMatch.index! + childrenMatch[0].length);
+        if (possibleNames.length > 3) {
+          const names = possibleNames.split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
+          if (names.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(names)) {
+            updatedInfo.children = names;
             contentUpdated = true;
+            console.log("Found children:", updatedInfo.children);
+          }
+        }
+      }
+      
+      // Extract asset information - more lenient regex
+      if (message.role === 'user') {
+        // Look for common assets like house, car, bank account
+        if (content.match(/house|property|real estate|land|apartment|condo/i)) {
+          const newAsset = {
+            name: "Real Estate",
+            value: content
+          };
+          
+          if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
+            updatedInfo.assets.push(newAsset);
+            contentUpdated = true;
+            console.log("Found asset: Real Estate");
+          }
+        } 
+        
+        if (content.match(/car|vehicle|automobile/i)) {
+          const newAsset = {
+            name: "Vehicle",
+            value: content
+          };
+          
+          if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
+            updatedInfo.assets.push(newAsset);
+            contentUpdated = true;
+            console.log("Found asset: Vehicle");
           }
         }
         
-        // Extract asset information
-        const assetMatches = message.content.match(/(?:I have|possess|own) ([^.]+)/ig);
-        if (assetMatches) {
-          for (const assetMatch of assetMatches) {
-            // Look for common assets like house, car, bank account
-            if (assetMatch.match(/house|property|real estate|land/i)) {
-              const newAsset = {
-                name: "Real Estate",
-                value: assetMatch.replace(/(?:I have|possess|own) /i, '')
-              };
-              
-              if (!updatedInfo.assets.some(a => a.name === newAsset.name && a.value === newAsset.value)) {
-                updatedInfo.assets.push(newAsset);
-                contentUpdated = true;
-              }
-            } else if (assetMatch.match(/car|vehicle|automobile/i)) {
-              const newAsset = {
-                name: "Vehicle",
-                value: assetMatch.replace(/(?:I have|possess|own) /i, '')
-              };
-              
-              if (!updatedInfo.assets.some(a => a.name === newAsset.name && a.value === newAsset.value)) {
-                updatedInfo.assets.push(newAsset);
-                contentUpdated = true;
-              }
-            }
+        if (content.match(/savings|bank account|checking|investment|money/i)) {
+          const newAsset = {
+            name: "Financial Assets",
+            value: content
+          };
+          
+          if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
+            updatedInfo.assets.push(newAsset);
+            contentUpdated = true;
+            console.log("Found asset: Financial Assets");
           }
         }
-        
-        // Extract digital assets for digital asset wills
-        if (templateId === 'digital-assets') {
-          const digitalAssetMatches = message.content.match(/(?:digital assets include|I have|own|manage) ([^.]+) (?:accounts|wallets)/i);
-          if (digitalAssetMatches && digitalAssetMatches[1]) {
-            const assetTypes = digitalAssetMatches[1].split(/,\s*|\s+and\s+/).filter(Boolean);
-            for (const assetType of assetTypes) {
-              const newDigitalAsset = {
-                type: assetType.trim(),
-                details: `${assetType.trim()} account`
-              };
-              
-              if (!updatedInfo.digitalAssets.some(a => a.type === newDigitalAsset.type)) {
-                updatedInfo.digitalAssets.push(newDigitalAsset);
-                contentUpdated = true;
-              }
-            }
+      }
+      
+      // Extract digital assets for digital asset wills
+      if (templateId === 'digital-assets' && message.role === 'user') {
+        if (content.match(/digital|online|account|social media|email|crypto|bitcoin|ethereum/i)) {
+          const assetType = content.match(/digital|online|account|social media|email|crypto|bitcoin|ethereum/i)?.[0] || "Digital Asset";
+          const newDigitalAsset = {
+            type: assetType,
+            details: `${assetType} account`
+          };
+          
+          if (!updatedInfo.digitalAssets.some(a => a.type === newDigitalAsset.type)) {
+            updatedInfo.digitalAssets.push(newDigitalAsset);
+            contentUpdated = true;
+            console.log("Found digital asset:", assetType);
           }
         }
       }
@@ -283,6 +364,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     
     // If we found new information, update state and generate new will content
     if (contentUpdated) {
+      console.log("Content updated from message analysis");
       setUserInfo(updatedInfo);
       generateAndUpdateWillContent(updatedInfo);
     }
@@ -291,6 +373,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   const generateAndUpdateWillContent = (info: typeof userInfo) => {
     // Generate and update will content based on template and extracted info
     let newContent = '';
+    console.log("Generating will content with info:", JSON.stringify(info));
     
     if (templateId === 'digital-assets') {
       newContent = generateDigitalAssetsWill(info);
@@ -301,6 +384,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     }
     
     // Call the parent component's onContentUpdate with the new content
+    console.log("Updating will content, length:", newContent.length);
     onContentUpdate(newContent);
   };
   
@@ -327,10 +411,20 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     let tempUpdatedInfo = { ...userInfo };
     let tempContentUpdated = false;
     
-    // Extract full name
-    const nameMatch = userMessage.content.match(/(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-    if (nameMatch && nameMatch[1] && tempUpdatedInfo.fullName !== nameMatch[1]) {
-      tempUpdatedInfo.fullName = nameMatch[1];
+    // Extract full name - more lenient regex
+    const nameMatch = userMessage.content.match(/(?:my name is|I am|I'm|name|call me) ([A-Za-z\s.'-]+)/i);
+    if (nameMatch && nameMatch[1] && tempUpdatedInfo.fullName !== nameMatch[1].trim()) {
+      tempUpdatedInfo.fullName = nameMatch[1].trim();
+      tempContentUpdated = true;
+      console.log("Found name in user message:", tempUpdatedInfo.fullName);
+    }
+    
+    // Extract marital status - more lenient regex
+    if (userMessage.content.match(/single|never married|not married/i) && tempUpdatedInfo.maritalStatus !== "single") {
+      tempUpdatedInfo.maritalStatus = "single";
+      tempContentUpdated = true;
+    } else if (userMessage.content.match(/married|I have a (husband|wife|spouse)/i) && tempUpdatedInfo.maritalStatus !== "married") {
+      tempUpdatedInfo.maritalStatus = "married";
       tempContentUpdated = true;
     }
     
@@ -341,6 +435,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       // Update state and content immediately for responsive feedback
       setUserInfo(tempUpdatedInfo);
       generateAndUpdateWillContent(tempUpdatedInfo);
+      console.log("Content updated immediately after user message");
     }
     
     try {
@@ -395,25 +490,33 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
     
-    // Check for confirmation of user name
-    const nameConfirmMatch = aiResponse.match(/(?:Thank you|thanks),\s+([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    // Check for confirmation of user name - more lenient regex
+    const nameConfirmMatch = aiResponse.match(/(?:Thank you|thanks|Hello),\s+([A-Za-z\s.'-]+)/i);
     if (nameConfirmMatch && nameConfirmMatch[1] && !updatedInfo.fullName) {
-      updatedInfo.fullName = nameConfirmMatch[1];
-      contentUpdated = true;
+      const possibleName = nameConfirmMatch[1].trim();
+      // Only use confirmed name if it's at least two words (first and last name)
+      if (possibleName.includes(" ") && possibleName.length > 3) {
+        updatedInfo.fullName = possibleName;
+        contentUpdated = true;
+        console.log("Found name confirmation in AI response:", updatedInfo.fullName);
+      }
     }
     
     // Check for confirmation of marital status
-    if (aiResponse.match(/you are single/i) && !updatedInfo.maritalStatus) {
+    if (aiResponse.match(/you are single|you mentioned you're single|you mentioned being single/i) && !updatedInfo.maritalStatus) {
       updatedInfo.maritalStatus = "single";
       contentUpdated = true;
-    } else if (aiResponse.match(/you are married/i) && !updatedInfo.maritalStatus) {
+      console.log("Found marital status confirmation in AI response: single");
+    } else if (aiResponse.match(/you are married|you mentioned you're married|you mentioned being married/i) && !updatedInfo.maritalStatus) {
       updatedInfo.maritalStatus = "married";
       contentUpdated = true;
+      console.log("Found marital status confirmation in AI response: married");
     }
     
     if (contentUpdated) {
       setUserInfo(updatedInfo);
       generateAndUpdateWillContent(updatedInfo);
+      console.log("Content updated from AI response");
     }
   };
   

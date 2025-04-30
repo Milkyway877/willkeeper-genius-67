@@ -9,9 +9,16 @@ export function WillPreview({ content }: WillPreviewProps) {
   const prevContentRef = useRef<string>('');
   const contentDivRef = useRef<HTMLDivElement>(null);
   
+  // Log when content changes to help with debugging
+  useEffect(() => {
+    console.log("WillPreview content updated:", content ? content.substring(0, 50) + "..." : "empty");
+  }, [content]);
+  
   // Effect to highlight changes when content updates
   useEffect(() => {
     if (prevContentRef.current !== content && contentDivRef.current) {
+      console.log("Content changed, applying highlight");
+      
       // Find the elements that might have changed
       const newContentLines = content.split('\n');
       const oldContentLines = prevContentRef.current.split('\n');
@@ -75,36 +82,40 @@ export function WillPreview({ content }: WillPreviewProps) {
       </div>
       
       <div ref={contentDivRef} className="whitespace-pre-wrap leading-relaxed">
-        {content.split('\n').map((line, index) => {
-          // Check if line is a heading (ALL CAPS)
-          if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
-            return <h3 key={index} className="font-bold text-lg mt-6 mb-3">{line}</h3>;
-          }
-          // Check if line is empty
-          else if (line.trim() === '') {
-            return <div key={index} className="h-4"></div>;
-          }
-          // Check if line contains user information (likely to change)
-          else if (line.includes('[') && line.includes(']')) {
-            return <p key={index} className="mb-3 text-amber-700">{line}</p>;
-          }
-          // Check if line has just been updated with real info (no placeholders)
-          else if (!/\[.*?\]/.test(line) && (
-            line.includes('I, ') || 
-            line.includes('married') || 
-            line.includes('single') || 
-            line.includes('divorced') || 
-            line.includes('widowed') || 
-            line.includes('children') || 
-            line.includes('appoint')
-          )) {
-            return <p key={index} className="mb-3 font-medium updated-field">{line}</p>;
-          }
-          // Regular line
-          else {
-            return <p key={index} className="mb-3">{line}</p>;
-          }
-        })}
+        {content && content.length > 0 ? (
+          content.split('\n').map((line, index) => {
+            // Check if line is a heading (ALL CAPS)
+            if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
+              return <h3 key={index} className="font-bold text-lg mt-6 mb-3">{line}</h3>;
+            }
+            // Check if line is empty
+            else if (line.trim() === '') {
+              return <div key={index} className="h-4"></div>;
+            }
+            // Check if line contains user information (likely to change)
+            else if (line.includes('[') && line.includes(']')) {
+              return <p key={index} className="mb-3 text-amber-700">{line}</p>;
+            }
+            // Check if line has just been updated with real info (no placeholders)
+            else if (!/\[.*?\]/.test(line) && (
+              line.includes('I, ') || 
+              line.includes('married') || 
+              line.includes('single') || 
+              line.includes('divorced') || 
+              line.includes('widowed') || 
+              line.includes('children') || 
+              line.includes('appoint')
+            )) {
+              return <p key={index} className="mb-3 font-medium updated-field">{line}</p>;
+            }
+            // Regular line
+            else {
+              return <p key={index} className="mb-3">{line}</p>;
+            }
+          })
+        ) : (
+          <p className="text-center text-gray-500 my-12">Creating your will document...</p>
+        )}
       </div>
       
       <div className="mt-10 pt-8 border-t border-gray-200">
