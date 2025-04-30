@@ -64,27 +64,29 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           return;
         }
         
-        // Check if our bucket exists
+        // Check if our bucket exists - looking for bucket with ID 'will_videos'
         const videoBucket = buckets?.find(b => b.id === 'will_videos');
         const bucketNames = buckets?.map(b => b.name) || [];
+        const bucketIds = buckets?.map(b => b.id) || [];
         
-        console.log('Available buckets:', bucketNames);
+        console.log('Available bucket IDs:', bucketIds.join(', '));
+        console.log('Available bucket names:', bucketNames.join(', '));
         
         if (videoBucket) {
           console.log('Found will_videos bucket:', videoBucket);
           setStorageStatus({
             bucketExists: true,
             listError: null,
-            availableBuckets: bucketNames
+            availableBuckets: bucketIds
           });
         } else {
-          console.error('will_videos bucket not found. Available buckets:', bucketNames.join(', '));
+          console.error('will_videos bucket not found among available buckets. IDs:', bucketIds.join(', '));
           setStorageStatus({
             bucketExists: false,
             listError: "The will_videos bucket doesn't exist",
-            availableBuckets: bucketNames
+            availableBuckets: bucketIds
           });
-          setUploadError('Storage not properly configured. Please contact support.');
+          setUploadError('Storage bucket "will_videos" not found. Please contact support.');
         }
       } catch (err: any) {
         console.error('Error in checkStorage:', err);
@@ -124,7 +126,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       // Generate a filename with userId as first path segment
       const userId = session.user.id;
       const filename = `${userId}/${Date.now()}.webm`;
-      const bucketId = 'will_videos';
+      const bucketId = 'will_videos'; // Use ID, not display name
       
       console.log('Attempting to upload file:', {
         bucket: bucketId,
