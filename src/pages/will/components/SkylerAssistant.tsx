@@ -260,11 +260,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   
   // Check if all required data has been collected
   useEffect(() => {
-    const { personalInfo, contacts, readyToComplete } = dataCollectionProgress;
+    const { personalInfo, contacts: contactsCollected, readyToComplete } = dataCollectionProgress;
     
+    // FIX: Changed this line to check for contacts.length as a number instead of treating it as a boolean
     // Only need minimal information
     if ((personalInfo || extractedResponses.fullName) && 
-        (contacts || contacts.length > 0 || extractedResponses.executorName)) {
+        (contactsCollected || contacts.length > 0 || extractedResponses.executorName)) {
       setIsReadyToComplete(true);
       console.log("Setting ready to complete based on data collection progress");
     }
