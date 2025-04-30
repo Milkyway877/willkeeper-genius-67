@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -29,6 +30,23 @@ export interface WillBeneficiary {
   percentage?: number;
   created_at: string;
   will_id?: string;
+}
+
+export interface WillVideo {
+  id: string;
+  will_id?: string;
+  file_path: string;
+  created_at: string;
+  thumbnail_path?: string;
+}
+
+export interface WillDocument {
+  id: string;
+  will_id?: string;
+  name: string;
+  file_path: string;
+  document_type: string;
+  created_at: string;
 }
 
 // Track in-progress operations to prevent duplicates
@@ -262,6 +280,136 @@ export const deleteWill = async (id: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error in deleteWill:', error);
+    return false;
+  }
+};
+
+// Functions for handling will media attachments
+
+export const getWillVideos = async (willId?: string): Promise<WillVideo[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    let query = supabase
+      .from('will_videos')
+      .select('*')
+      .eq('user_id', session.user.id);
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching will videos:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getWillVideos:', error);
+    return [];
+  }
+};
+
+export const attachVideoToWill = async (videoId: string, willId: string): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('will_videos')
+      .update({ will_id: willId })
+      .eq('id', videoId)
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error attaching video to will:', error);
+      return false;
+    }
+    
+    await createSystemNotification('media_attached', {
+      title: 'Video Attached',
+      description: `Your video has been attached to your will.`
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error in attachVideoToWill:', error);
+    return false;
+  }
+};
+
+export const getWillDocuments = async (willId?: string): Promise<WillDocument[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    let query = supabase
+      .from('will_documents')
+      .select('*')
+      .eq('user_id', session.user.id);
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching will documents:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getWillDocuments:', error);
+    return [];
+  }
+};
+
+export const attachDocumentToWill = async (documentId: string, willId: string): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('will_documents')
+      .update({ will_id: willId })
+      .eq('id', documentId)
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error attaching document to will:', error);
+      return false;
+    }
+    
+    await createSystemNotification('media_attached', {
+      title: 'Document Attached',
+      description: `Your document has been attached to your will.`
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error in attachDocumentToWill:', error);
     return false;
   }
 };

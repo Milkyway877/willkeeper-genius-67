@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Copy, FileText, Loader2, Check, Video } from 'lucide-react';
+import { Copy, Loader2, Check } from 'lucide-react';
 import { WillPreview } from './WillPreview';
 
 interface WillReviewStepProps {
@@ -15,8 +15,6 @@ interface WillReviewStepProps {
   handleCopyToClipboard: () => void;
   responses: Record<string, any>;
   contacts: any[];
-  documents: any[];
-  videoBlob: Blob | null;
   selectedTemplate: any;
   isCreatingWill: boolean;
   progress: number;
@@ -31,8 +29,6 @@ export const WillReviewStep = ({
   handleCopyToClipboard,
   responses,
   contacts,
-  documents,
-  videoBlob,
   selectedTemplate,
   isCreatingWill,
   progress,
@@ -123,35 +119,17 @@ export const WillReviewStep = ({
               )}
             </div>
             
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Attachments</h4>
-                <div className="mt-1">
-                  {documents.length > 0 ? (
-                    <div className="space-y-1">
-                      {documents.map((doc, i) => (
-                        <div key={i} className="flex items-center">
-                          <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                          <span>{doc.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No documents attached</p>
-                  )}
-                  
-                  {videoBlob && (
-                    <div className="flex items-center mt-2">
-                      <Video className="h-4 w-4 mr-2 text-gray-500" />
-                      <span>Video Testament</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
+            <div className="space-y-4">              
               <div>
                 <h4 className="text-sm font-medium text-gray-500">Template</h4>
                 <p className="mt-1">{selectedTemplate?.title}</p>
+              </div>
+              
+              <div className="bg-willtank-50 p-4 rounded-md border border-willtank-100">
+                <h4 className="text-sm font-medium text-willtank-700 mb-2">Note</h4>
+                <p className="text-sm text-gray-600">
+                  After finalizing your will, you can add supporting documents and video testimony using the Tank page.
+                </p>
               </div>
             </div>
           </div>
@@ -163,7 +141,7 @@ export const WillReviewStep = ({
           <Progress value={progress} className="h-2" />
           <p className="text-sm text-gray-500">
             {progress < 30 && "Generating your will document..."}
-            {progress >= 30 && progress < 60 && "Processing attachments and video..."}
+            {progress >= 30 && progress < 60 && "Processing your information..."}
             {progress >= 60 && progress < 90 && "Finalizing document structure..."}
             {progress >= 90 && "Securing and saving your will..."}
           </p>
