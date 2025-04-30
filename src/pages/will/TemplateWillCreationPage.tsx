@@ -87,6 +87,7 @@ export default function TemplateWillCreationPage() {
             templateId={templateId || ''} 
             initialData={progress?.responses} 
             isNew={!progress?.will_id}
+            willId={progress?.will_id}
           />
         )}
       </div>

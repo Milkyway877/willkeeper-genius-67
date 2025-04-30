@@ -17,6 +17,7 @@ import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Save, FileCheck } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Form validation schema
 const willSchema = z.object({
@@ -64,9 +65,15 @@ interface TemplateWillEditorProps {
   templateId: string;
   initialData?: any;
   isNew?: boolean;
+  willId?: string; // Add willId to props
 }
 
-export function TemplateWillEditor({ templateId, initialData = {}, isNew = true }: TemplateWillEditorProps) {
+export function TemplateWillEditor({ 
+  templateId, 
+  initialData = {}, 
+  isNew = true,
+  willId 
+}: TemplateWillEditorProps) {
   const [willContent, setWillContent] = useState<string>(`
 LAST WILL AND TESTAMENT
 
