@@ -59,7 +59,18 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
     
     const completionStatus = hasAllRequiredRoles && contactsHaveInfo && contacts.length > 0;
     setIsComplete(completionStatus);
-  }, [contacts, requiredContacts]);
+    
+    // Automatically set allContactsCollected to true when isComplete becomes true
+    // and we have at least one contact
+    if (completionStatus && contacts.length > 0) {
+      setAllContactsCollected(true);
+      
+      // Automatically call onComplete when everything is valid
+      if (!allContactsCollected) {
+        onComplete(contacts);
+      }
+    }
+  }, [contacts, requiredContacts, allContactsCollected, onComplete]);
 
   const addContact = () => {
     if (!newContact.name) {

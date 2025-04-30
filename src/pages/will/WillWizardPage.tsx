@@ -34,6 +34,7 @@ export default function WillWizardPage() {
   const [willId, setWillId] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState('');
   const [splitView, setSplitView] = useState(false);
+  const [contactsComplete, setContactsComplete] = useState(false);
 
   const { progress: willProgress, saveProgress } = useWillProgress(willId);
 
@@ -246,12 +247,11 @@ export default function WillWizardPage() {
 
   const handleContactsComplete = (updatedContacts: any[]) => {
     setContacts(updatedContacts);
+    setContactsComplete(true);
     
     const updatedWill = generateWillDocument(responses, updatedContacts);
     setGeneratedWill(updatedWill);
     setEditableContent(updatedWill);
-    
-    setCurrentStep(prev => prev + 1);
     
     toast({
       title: "Contacts Saved",
@@ -371,7 +371,7 @@ export default function WillWizardPage() {
       case 'ai-conversation':
         return Object.keys(responses).length > 0;
       case 'contacts':
-        return contacts.length > 0 && contacts.some(contact => contact.role === 'Executor');
+        return contactsComplete;
       case 'documents':
         return documents.length > 0;
       case 'video':
