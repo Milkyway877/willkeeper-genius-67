@@ -33,15 +33,17 @@ export function WillPreview({ content }: WillPreviewProps) {
 
   return (
     <div className="font-serif text-gray-800 p-6 bg-white">
-      <style jsx>{`
-        @keyframes highlight-fade {
-          0% { background-color: rgba(252, 211, 77, 0.3); }
-          100% { background-color: transparent; }
-        }
-        .preview-update-flash {
-          animation: highlight-fade 1s ease-out;
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes highlight-fade {
+            0% { background-color: rgba(252, 211, 77, 0.3); }
+            100% { background-color: transparent; }
+          }
+          .preview-update-flash {
+            animation: highlight-fade 1s ease-out;
+          }
+        `}
+      </style>
     
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center">
