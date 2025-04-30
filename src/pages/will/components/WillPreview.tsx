@@ -3,45 +3,43 @@ import React from 'react';
 
 interface WillPreviewProps {
   content: string;
+  formatted?: boolean;
 }
 
-export const WillPreview: React.FC<WillPreviewProps> = ({ content }) => {
-  // Format article sections with special styling and preserve line breaks
-  const formattedContent = content
-    .replace(/(ARTICLE \w+:.*)/g, '<h3 class="article-title">$1</h3>')
-    .replace(/(Digitally signed by:.*)\n(Date:.*)/g, '<div class="signature-block">$1<br/>$2</div>');
-
+export function WillPreview({ content, formatted = true }: WillPreviewProps) {
+  if (!formatted) {
+    // Plain text view with monospace font
+    return <pre className="whitespace-pre-wrap text-sm">{content}</pre>;
+  }
+  
+  // Format content for better readability
+  const paragraphs = content.split('\n\n');
+  
   return (
-    <div className="will-document font-serif">
-      <div 
-        dangerouslySetInnerHTML={{ 
-          __html: formattedContent
-            .replace(/\n\n/g, '<p class="mb-4"></p>')
-            .replace(/\n/g, '<br/>') 
-        }} 
-      />
-
-      <style>{`
-        .will-document {
-          line-height: 1.8;
-          color: #333;
-          font-size: 14px;
+    <div className="space-y-4">
+      {paragraphs.map((paragraph, index) => {
+        // Check if this paragraph is a heading
+        if (paragraph.toUpperCase() === paragraph && paragraph.trim().length > 0) {
+          return <h3 key={index} className="text-lg font-bold mt-6 mb-2">{paragraph}</h3>;
         }
-        .article-title {
-          font-weight: bold;
-          margin-top: 20px;
-          margin-bottom: 10px;
-          color: #1a4e71;
-          font-size: 16px;
-          text-decoration: underline;
+        
+        // Handle article headings (e.g., "ARTICLE I: REVOCATION")
+        if (paragraph.startsWith('ARTICLE')) {
+          return <h4 key={index} className="text-md font-bold mt-5 mb-2">{paragraph}</h4>;
         }
-        .signature-block {
-          margin-top: 40px;
-          padding: 20px 10px;
-          border-top: 1px solid #ccc;
-          font-style: italic;
-        }
-      `}</style>
+        
+        // Regular paragraph
+        return (
+          <p key={index} className="text-sm">
+            {paragraph.split('\n').map((line, i) => (
+              <React.Fragment key={i}>
+                {line}
+                {i < paragraph.split('\n').length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </p>
+        );
+      })}
     </div>
   );
-};
+}

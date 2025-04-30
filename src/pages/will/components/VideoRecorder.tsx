@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -101,10 +100,21 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   }, []);
 
   const uploadToStorage = async (blob: Blob) => {
+    // Use the enhanced video if available, otherwise use the original
+    const blobToUpload = recordedBlob;
+    
+    if (!blobToUpload) {
+      toast({
+        title: "No Video Found",
+        description: "Please record or upload a video first.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    setLoading(true);
+    
     try {
-      setUploadError(null);
-      setLoading(true);
-      
       // Get authenticated user session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
@@ -124,18 +134,10 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         authStatus: session ? 'authenticated' : 'not authenticated'
       });
 
-      // Double-check bucket exists before uploading
-      if (!storageStatus.bucketExists) {
-        console.error('Upload failed: Bucket does not exist', {
-          availableBuckets: storageStatus.availableBuckets
-        });
-        throw new Error(`Storage bucket "${bucketId}" not found or not accessible`);
-      }
-
-      // Upload the file
+      // Upload the file directly to the bucket
       const { data, error } = await supabase.storage
         .from(bucketId)
-        .upload(filename, blob, {
+        .upload(filename, blobToUpload, {
           contentType: 'video/webm',
           cacheControl: '3600',
           upsert: false
