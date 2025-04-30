@@ -9,7 +9,6 @@ import { SkylerAssistant } from './components/SkylerAssistant';
 import { WillPreview } from './components/WillPreview';
 import { templates } from './config/wizardSteps';
 import { createWill } from '@/services/willService';
-import { EventType } from '@/services/notificationService';
 
 export default function WillChatCreation() {
   const navigate = useNavigate();
@@ -278,23 +277,25 @@ export default function WillChatCreation() {
               </CardContent>
             </Card>
             
-            <style jsx>{`
-              .pulse-animation {
-                animation: pulse 2s infinite;
-              }
-              
-              @keyframes pulse {
-                0% {
-                  box-shadow: 0 0 0 0 rgba(155, 135, 245, 0.4);
+            <style dangerouslySetInnerHTML={{
+              __html: `
+                .pulse-animation {
+                  animation: pulse 2s infinite;
                 }
-                70% {
-                  box-shadow: 0 0 0 10px rgba(155, 135, 245, 0);
+                
+                @keyframes pulse {
+                  0% {
+                    box-shadow: 0 0 0 0 rgba(155, 135, 245, 0.4);
+                  }
+                  70% {
+                    box-shadow: 0 0 0 10px rgba(155, 135, 245, 0);
+                  }
+                  100% {
+                    box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
+                  }
                 }
-                100% {
-                  box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
-                }
-              }
-            `}</style>
+              `
+            }} />
           </div>
         )}
       </div>

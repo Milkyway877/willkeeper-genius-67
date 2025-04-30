@@ -1,11 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { 
   getWillProgress, 
-  getWillCompletionPercentage, 
   WillProgress 
 } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
@@ -19,9 +18,35 @@ interface WillProgressTrackerProps {
 export function WillProgressTracker({ willId }: WillProgressTrackerProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const progress = willId ? getWillProgress(willId) : null;
-  const completionPercentage = progress ? getWillCompletionPercentage(progress) : 0;
+  const [progress, setProgress] = useState<WillProgress | null>(null);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (willId) {
+        setIsLoading(true);
+        try {
+          const progressData = await getWillProgress(willId);
+          setProgress(progressData);
+          
+          // Calculate completion percentage based on completed sections
+          if (progressData?.completedSections) {
+            const percentage = (progressData.completedSections.length / 9) * 100;
+            setCompletionPercentage(Math.round(percentage));
+          }
+        } catch (error) {
+          console.error("Error loading progress:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    loadProgress();
+  }, [willId]);
+  
+  if (isLoading) return <div className="animate-pulse h-40 bg-gray-100 rounded-md"></div>;
   if (!progress) return null;
   
   const handleResumeEditing = () => {
@@ -49,7 +74,7 @@ export function WillProgressTracker({ willId }: WillProgressTrackerProps) {
           <h3 className="font-medium mb-1">Continue your progress</h3>
           <div className="text-sm text-gray-500 flex items-center">
             <Clock className="h-3 w-3 mr-1" />
-            Last edited: {formatLastEdited(progress.lastEdited)}
+            Last edited: {progress.updated_at ? formatLastEdited(progress.updated_at) : 'Never'}
           </div>
         </div>
         
@@ -67,7 +92,7 @@ export function WillProgressTracker({ willId }: WillProgressTrackerProps) {
       </div>
       
       <div className="mt-3 space-y-1">
-        {progress.completedSections?.length > 0 ? (
+        {progress.completedSections && progress.completedSections.length > 0 ? (
           <div className="text-sm text-green-600 flex items-center">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             {progress.completedSections.length} sections completed

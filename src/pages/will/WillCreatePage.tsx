@@ -76,9 +76,9 @@ export default function WillCreatePage() {
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center">
-                        <div className={cn("p-2 rounded-full", template.bgColor || "bg-blue-100")}>
+                        <div className={cn("p-2 rounded-full", "bg-blue-100")}>
                           {template.icon ? (
-                            <template.icon className={cn("h-5 w-5", template.iconColor || "text-blue-600")} />
+                            <template.icon className={cn("h-5 w-5", template.iconClassName || "text-blue-600")} />
                           ) : (
                             <div className="h-5 w-5" />
                           )}
@@ -92,9 +92,9 @@ export default function WillCreatePage() {
                       )}
                     </div>
                     <p className="text-sm text-gray-600 mb-3">{template.description}</p>
-                    {template.popularityBadge && (
+                    {template.tags && template.tags.length > 0 && (
                       <Badge variant="outline" className="bg-willtank-50 text-willtank-700 border-willtank-200">
-                        {template.popularityBadge}
+                        {template.tags[0]}
                       </Badge>
                     )}
                   </div>
