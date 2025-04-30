@@ -1,13 +1,48 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface WillPreviewProps {
   content: string;
 }
 
 export function WillPreview({ content }: WillPreviewProps) {
+  const prevContentRef = useRef<string>('');
+  const contentDivRef = useRef<HTMLDivElement>(null);
+  
+  // Effect to highlight changes when content updates
+  useEffect(() => {
+    if (prevContentRef.current !== content && contentDivRef.current) {
+      // Find the elements that might have changed
+      const newContentLines = content.split('\n');
+      const oldContentLines = prevContentRef.current.split('\n');
+      
+      // Update the reference for next comparison
+      prevContentRef.current = content;
+      
+      // Apply subtle highlight animation to the content div
+      if (contentDivRef.current) {
+        contentDivRef.current.classList.add('preview-update-flash');
+        setTimeout(() => {
+          if (contentDivRef.current) {
+            contentDivRef.current.classList.remove('preview-update-flash');
+          }
+        }, 1000);
+      }
+    }
+  }, [content]);
+
   return (
     <div className="font-serif text-gray-800 p-6 bg-white">
+      <style jsx>{`
+        @keyframes highlight-fade {
+          0% { background-color: rgba(252, 211, 77, 0.3); }
+          100% { background-color: transparent; }
+        }
+        .preview-update-flash {
+          animation: highlight-fade 1s ease-out;
+        }
+      `}</style>
+    
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center">
           <div className="h-12 w-12 bg-willtank-500 rounded-md flex items-center justify-center mr-4">
@@ -24,7 +59,7 @@ export function WillPreview({ content }: WillPreviewProps) {
         </div>
       </div>
       
-      <div className="whitespace-pre-wrap leading-relaxed">
+      <div ref={contentDivRef} className="whitespace-pre-wrap leading-relaxed">
         {content.split('\n').map((line, index) => {
           // Check if line is a heading (ALL CAPS)
           if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
@@ -33,6 +68,14 @@ export function WillPreview({ content }: WillPreviewProps) {
           // Check if line is empty
           else if (line.trim() === '') {
             return <div key={index} className="h-4"></div>;
+          }
+          // Check if line contains user information (likely to change)
+          else if (line.includes('[') && line.includes(']')) {
+            return <p key={index} className="mb-3 text-amber-700">{line}</p>;
+          }
+          // Check if line has just been updated with real info (no placeholders)
+          else if (!/\[.*?\]/.test(line) && (line.includes('I, ') || line.includes('married') || line.includes('single') || line.includes('divorced') || line.includes('widowed') || line.includes('children') || line.includes('appoint'))) {
+            return <p key={index} className="mb-3 font-medium">{line}</p>;
           }
           // Regular line
           else {

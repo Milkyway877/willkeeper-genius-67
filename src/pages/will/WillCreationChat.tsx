@@ -32,6 +32,7 @@ export default function WillCreationChat() {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize the will template info
   useEffect(() => {
@@ -105,22 +106,30 @@ export default function WillCreationChat() {
     }
   }, [willDraft.content]);
   
-  // Function to update will content from chat
+  // Function to update will content from chat with debounce
   const updateWillContent = async (newContent: string) => {
+    // Immediately update local state for real-time preview
     setWillDraft(prev => ({ ...prev, content: newContent }));
     
     if (willDraft.id) {
-      // Don't save too frequently - simple debounce
-      if (isSaving) return;
-      
-      setIsSaving(true);
-      try {
-        await updateWill(willDraft.id, { content: newContent });
-      } catch (error) {
-        console.error('Error updating will content:', error);
-      } finally {
-        setTimeout(() => setIsSaving(false), 3000); // Wait before allowing another save
+      // Implement debounced saving to reduce API calls
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
+      
+      saveTimeoutRef.current = setTimeout(async () => {
+        if (isSaving) return;
+        
+        setIsSaving(true);
+        try {
+          await updateWill(willDraft.id, { content: newContent });
+          console.log('Will content saved successfully');
+        } catch (error) {
+          console.error('Error updating will content:', error);
+        } finally {
+          setIsSaving(false);
+        }
+      }, 2000); // 2 second debounce
     }
   };
   
@@ -155,6 +164,12 @@ export default function WillCreationChat() {
   const handleSaveAndExit = async () => {
     if (willDraft.id) {
       try {
+        // Clear any pending save timeout
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = null;
+        }
+        
         await updateWill(willDraft.id, willDraft);
         toast({
           title: "Will draft saved",

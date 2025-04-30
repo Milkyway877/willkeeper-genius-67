@@ -33,6 +33,15 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   const navigate = useNavigate();
   const recognitionRef = useRef<any>(null);
   
+  // Track user information for real-time updates
+  const [userInfo, setUserInfo] = useState({
+    fullName: "",
+    maritalStatus: "",
+    children: [] as string[],
+    executor: "",
+    beneficiaries: [] as string[]
+  });
+  
   // Check if speech recognition is supported
   const [recordingSupported, setRecordingSupported] = useState(false);
   
@@ -63,6 +72,81 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  // Effect to extract information from messages and update will content in real-time
+  useEffect(() => {
+    const extractAndUpdateInfo = () => {
+      let updatedInfo = { ...userInfo };
+      let contentUpdated = false;
+      
+      // Look through user messages to extract information
+      for (const message of messages) {
+        if (message.role === 'user') {
+          // Extract full name
+          const nameMatch = message.content.match(/(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+          if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1]) {
+            updatedInfo.fullName = nameMatch[1];
+            contentUpdated = true;
+          }
+          
+          // Extract marital status
+          if (message.content.match(/single/i) && updatedInfo.maritalStatus !== "single") {
+            updatedInfo.maritalStatus = "single";
+            contentUpdated = true;
+          } else if (message.content.match(/married/i) && updatedInfo.maritalStatus !== "married") {
+            updatedInfo.maritalStatus = "married";
+            contentUpdated = true;
+          } else if (message.content.match(/divorced/i) && updatedInfo.maritalStatus !== "divorced") {
+            updatedInfo.maritalStatus = "divorced";
+            contentUpdated = true;
+          } else if (message.content.match(/widowed/i) && updatedInfo.maritalStatus !== "widowed") {
+            updatedInfo.maritalStatus = "widowed";
+            contentUpdated = true;
+          }
+          
+          // Extract executor information
+          const executorMatch = message.content.match(/executor is ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+          if (executorMatch && executorMatch[1] && updatedInfo.executor !== executorMatch[1]) {
+            updatedInfo.executor = executorMatch[1];
+            contentUpdated = true;
+          }
+          
+          // Extract children information
+          const childrenMatch = message.content.match(/children are ([^.]+)/i) || message.content.match(/children: ([^.]+)/i);
+          if (childrenMatch && childrenMatch[1]) {
+            const childrenNames = childrenMatch[1].split(/,\s*|\s+and\s+/).filter(Boolean);
+            if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
+              updatedInfo.children = childrenNames;
+              contentUpdated = true;
+            }
+          }
+        }
+      }
+      
+      // If we found new information, update state and generate new will content
+      if (contentUpdated) {
+        setUserInfo(updatedInfo);
+        
+        // Generate and update will content based on template and extracted info
+        let newContent = '';
+        if (templateId === 'digital-assets') {
+          newContent = generateDigitalAssetsWill(updatedInfo);
+        } else if (templateId === 'business') {
+          newContent = generateBusinessWill(updatedInfo);
+        } else {
+          newContent = generateBasicWill(updatedInfo);
+        }
+        
+        // Call the parent component's onContentUpdate with the new content
+        onContentUpdate(newContent);
+      }
+    };
+    
+    // Only run extraction if we have user messages
+    if (messages.length > 1) {
+      extractAndUpdateInfo();
+    }
+  }, [messages, templateId, onContentUpdate]);
   
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -132,9 +216,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       // Check for completion phrases to determine if we're done
       checkForCompletion(aiResponse);
       
-      // Update the will content
-      updateWillContent();
-      
     } catch (error) {
       console.error("Error processing message:", error);
       
@@ -148,142 +229,78 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     }
   };
   
-  const updateWillContent = () => {
-    // Extract information from the conversation to update the will
-    const fullNameMatch = messages.find(m => 
-      m.role === 'user' && /^(my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i.test(m.content)
-    );
-    
-    const maritalStatusMatch = messages.find(m => 
-      m.role === 'user' && /(single|married|divorced|widowed)/i.test(m.content)
-    );
-    
-    const childrenMatch = messages.find(m => 
-      m.role === 'user' && /(children|child|kids|kid)/i.test(m.content)
-    );
-    
-    const executorMatch = messages.find(m => 
-      m.role === 'user' && /(executor|executrix)/i.test(m.content)
-    );
-    
-    // Extract full name
-    let fullName = "[YOUR NAME]";
-    if (fullNameMatch) {
-      const nameRegex = /(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i;
-      const match = fullNameMatch.content.match(nameRegex);
-      if (match && match[1]) {
-        fullName = match[1];
-      }
-    }
-    
-    // Extract marital status
-    let maritalStatus = "";
-    if (maritalStatusMatch) {
-      if (maritalStatusMatch.content.match(/single/i)) maritalStatus = "single";
-      else if (maritalStatusMatch.content.match(/married/i)) maritalStatus = "married";
-      else if (maritalStatusMatch.content.match(/divorced/i)) maritalStatus = "divorced";
-      else if (maritalStatusMatch.content.match(/widowed/i)) maritalStatus = "widowed";
-    }
-    
-    // Generate will content based on template and user input
-    let newContent = '';
-    
-    if (templateId === 'digital-assets') {
-      newContent = generateDigitalAssetsWill(fullName, maritalStatus);
-    } else if (templateId === 'business') {
-      newContent = generateBusinessWill(fullName, maritalStatus);
-    } else {
-      newContent = generateBasicWill(fullName, maritalStatus);
-    }
-    
-    // Call the parent component's onContentUpdate with the new content
-    onContentUpdate(newContent);
-  };
-  
-  const generateBasicWill = (fullName: string, maritalStatus: string): string => {
+  const generateBasicWill = (info: typeof userInfo): string => {
     return `LAST WILL AND TESTAMENT
 
-I, ${fullName}, being of sound mind, declare this to be my Last Will and Testament.
+I, ${info.fullName || "[YOUR NAME]"}, being of sound mind, declare this to be my Last Will and Testament.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
 
 ARTICLE II: FAMILY INFORMATION
-I am ${maritalStatus || "[MARITAL STATUS]"}.
-${messages.some(m => m.content.toLowerCase().includes('child')) ? 
-  "I have children as named below." : 
+I am ${info.maritalStatus || "[MARITAL STATUS]"}.
+${info.children.length > 0 ? 
+  `I have ${info.children.length} children as named below: ${info.children.join(', ')}.` : 
   "I have no children."}
 
 ARTICLE III: EXECUTOR
-${messages.some(m => m.content.toLowerCase().includes('executor')) ? 
-  `I appoint ${messages.find(m => m.content.toLowerCase().includes('executor'))?.content.match(/name is ([A-Za-z ]+)/i)?.[1] || "[EXECUTOR NAME]"} as the Executor of this Will.` : 
+${info.executor ? 
+  `I appoint ${info.executor} as the Executor of this Will.` : 
   "I appoint [EXECUTOR NAME] as the Executor of this Will."}
 
 ARTICLE IV: DISTRIBUTION OF ESTATE
-${messages.some(m => m.content.toLowerCase().includes('distribution') || m.content.toLowerCase().includes('asset')) ? 
-  "I direct that my assets be distributed as detailed in our conversation." : 
+${info.beneficiaries.length > 0 ? 
+  `I direct that my assets be distributed to ${info.beneficiaries.join(', ')}.` : 
   "I direct that my assets be distributed as follows:"}
 
-${messages.length > 5 ? "Additional details will be incorporated as we continue our conversation." : ""}`;
+Additional details will be incorporated as we continue our conversation.`;
   };
   
-  const generateDigitalAssetsWill = (fullName: string, maritalStatus: string): string => {
+  const generateDigitalAssetsWill = (info: typeof userInfo): string => {
     return `DIGITAL ASSET WILL AND TESTAMENT
 
-I, ${fullName}, being of sound mind, declare this to be my Digital Asset Will and Testament.
+I, ${info.fullName || "[YOUR NAME]"}, being of sound mind, declare this to be my Digital Asset Will and Testament.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils relating to digital assets.
 
 ARTICLE II: DIGITAL EXECUTOR
-${messages.some(m => m.content.toLowerCase().includes('executor')) ? 
-  `I appoint ${messages.find(m => m.content.toLowerCase().includes('executor'))?.content.match(/name is ([A-Za-z ]+)/i)?.[1] || "[DIGITAL EXECUTOR NAME]"} as the Digital Executor of this Will.` : 
+${info.executor ? 
+  `I appoint ${info.executor} as the Digital Executor of this Will.` : 
   "I appoint [DIGITAL EXECUTOR NAME] as the Digital Executor of this Will."}
 
 ARTICLE III: DIGITAL ASSETS
 My digital assets include:
-${messages.some(m => m.content.toLowerCase().includes('crypto') || m.content.toLowerCase().includes('bitcoin')) ? 
-  "- Cryptocurrency assets as detailed in our conversation" : 
-  "- [CRYPTOCURRENCY]"}
-${messages.some(m => m.content.toLowerCase().includes('social') || m.content.toLowerCase().includes('facebook') || m.content.toLowerCase().includes('instagram')) ? 
-  "- Social media accounts as detailed in our conversation" : 
-  "- [SOCIAL MEDIA ACCOUNTS]"}
-${messages.some(m => m.content.toLowerCase().includes('email')) ? 
-  "- Email accounts as detailed in our conversation" : 
-  "- [EMAIL ACCOUNTS]"}
+- [CRYPTOCURRENCY]
+- [SOCIAL MEDIA ACCOUNTS]
+- [EMAIL ACCOUNTS]
 
 ARTICLE IV: ACCESS INSTRUCTIONS
-${messages.some(m => m.content.toLowerCase().includes('password') || m.content.toLowerCase().includes('access')) ? 
-  "Access instructions as discussed in our conversation will be securely stored." : 
-  "Access instructions will be securely stored with my Digital Executor."}
+Access instructions will be securely stored with my Digital Executor.
 
-${messages.length > 5 ? "Additional details will be incorporated as we continue our conversation." : ""}`;
+Additional details will be incorporated as we continue our conversation.`;
   };
   
-  const generateBusinessWill = (fullName: string, maritalStatus: string): string => {
+  const generateBusinessWill = (info: typeof userInfo): string => {
     return `BUSINESS OWNER WILL AND TESTAMENT
 
-I, ${fullName}, being of sound mind, declare this to be my Last Will and Testament with special provisions for my business interests.
+I, ${info.fullName || "[YOUR NAME]"}, being of sound mind, declare this to be my Last Will and Testament with special provisions for my business interests.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
 
 ARTICLE II: EXECUTOR
-${messages.some(m => m.content.toLowerCase().includes('executor')) ? 
-  `I appoint ${messages.find(m => m.content.toLowerCase().includes('executor'))?.content.match(/name is ([A-Za-z ]+)/i)?.[1] || "[EXECUTOR NAME]"} as the Executor of this Will.` : 
+${info.executor ? 
+  `I appoint ${info.executor} as the Executor of this Will.` : 
   "I appoint [EXECUTOR NAME] as the Executor of this Will."}
 
 ARTICLE III: BUSINESS INTERESTS
-${messages.some(m => m.content.toLowerCase().includes('business') || m.content.toLowerCase().includes('company')) ? 
-  "My business interests are to be handled as detailed in our conversation." : 
-  "My business interests are to be handled as follows:"}
+My business interests are to be handled as follows:
 
 ARTICLE IV: SUCCESSION PLAN
-${messages.some(m => m.content.toLowerCase().includes('successor') || m.content.toLowerCase().includes('succession')) ? 
-  "Business succession details as discussed in our conversation." : 
-  "My business succession plan is as follows:"}
+My business succession plan is as follows:
 
-${messages.length > 5 ? "Additional details will be incorporated as we continue our conversation." : ""}`;
+Additional details will be incorporated as we continue our conversation.`;
   };
   
   const checkForCompletion = (aiResponse: string) => {
