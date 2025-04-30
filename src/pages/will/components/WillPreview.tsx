@@ -42,6 +42,19 @@ export function WillPreview({ content }: WillPreviewProps) {
           .preview-update-flash {
             animation: highlight-fade 1s ease-out;
           }
+          .updated-field {
+            background-color: rgba(252, 211, 77, 0.1);
+            border-bottom: 1px dashed #f59e0b;
+            padding-bottom: 2px;
+            transition: all 0.5s ease;
+          }
+          .highlight-section {
+            animation: section-highlight 2s ease-out;
+          }
+          @keyframes section-highlight {
+            0% { background-color: rgba(252, 211, 77, 0.3); }
+            100% { background-color: transparent; }
+          }
         `}
       </style>
     
@@ -76,8 +89,16 @@ export function WillPreview({ content }: WillPreviewProps) {
             return <p key={index} className="mb-3 text-amber-700">{line}</p>;
           }
           // Check if line has just been updated with real info (no placeholders)
-          else if (!/\[.*?\]/.test(line) && (line.includes('I, ') || line.includes('married') || line.includes('single') || line.includes('divorced') || line.includes('widowed') || line.includes('children') || line.includes('appoint'))) {
-            return <p key={index} className="mb-3 font-medium">{line}</p>;
+          else if (!/\[.*?\]/.test(line) && (
+            line.includes('I, ') || 
+            line.includes('married') || 
+            line.includes('single') || 
+            line.includes('divorced') || 
+            line.includes('widowed') || 
+            line.includes('children') || 
+            line.includes('appoint')
+          )) {
+            return <p key={index} className="mb-3 font-medium updated-field">{line}</p>;
           }
           // Regular line
           else {

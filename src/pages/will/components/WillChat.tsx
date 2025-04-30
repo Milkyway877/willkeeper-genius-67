@@ -39,7 +39,14 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     maritalStatus: "",
     children: [] as string[],
     executor: "",
-    beneficiaries: [] as string[]
+    beneficiaries: [] as string[],
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    spouseName: "",
+    assets: [] as {name: string, value: string, recipient?: string}[],
+    digitalAssets: [] as {type: string, details: string, recipient?: string}[]
   });
   
   // Check if speech recognition is supported
@@ -75,78 +82,15 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   
   // Effect to extract information from messages and update will content in real-time
   useEffect(() => {
-    const extractAndUpdateInfo = () => {
-      let updatedInfo = { ...userInfo };
-      let contentUpdated = false;
-      
-      // Look through user messages to extract information
-      for (const message of messages) {
-        if (message.role === 'user') {
-          // Extract full name
-          const nameMatch = message.content.match(/(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-          if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1]) {
-            updatedInfo.fullName = nameMatch[1];
-            contentUpdated = true;
-          }
-          
-          // Extract marital status
-          if (message.content.match(/single/i) && updatedInfo.maritalStatus !== "single") {
-            updatedInfo.maritalStatus = "single";
-            contentUpdated = true;
-          } else if (message.content.match(/married/i) && updatedInfo.maritalStatus !== "married") {
-            updatedInfo.maritalStatus = "married";
-            contentUpdated = true;
-          } else if (message.content.match(/divorced/i) && updatedInfo.maritalStatus !== "divorced") {
-            updatedInfo.maritalStatus = "divorced";
-            contentUpdated = true;
-          } else if (message.content.match(/widowed/i) && updatedInfo.maritalStatus !== "widowed") {
-            updatedInfo.maritalStatus = "widowed";
-            contentUpdated = true;
-          }
-          
-          // Extract executor information
-          const executorMatch = message.content.match(/executor is ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-          if (executorMatch && executorMatch[1] && updatedInfo.executor !== executorMatch[1]) {
-            updatedInfo.executor = executorMatch[1];
-            contentUpdated = true;
-          }
-          
-          // Extract children information
-          const childrenMatch = message.content.match(/children are ([^.]+)/i) || message.content.match(/children: ([^.]+)/i);
-          if (childrenMatch && childrenMatch[1]) {
-            const childrenNames = childrenMatch[1].split(/,\s*|\s+and\s+/).filter(Boolean);
-            if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
-              updatedInfo.children = childrenNames;
-              contentUpdated = true;
-            }
-          }
-        }
-      }
-      
-      // If we found new information, update state and generate new will content
-      if (contentUpdated) {
-        setUserInfo(updatedInfo);
-        
-        // Generate and update will content based on template and extracted info
-        let newContent = '';
-        if (templateId === 'digital-assets') {
-          newContent = generateDigitalAssetsWill(updatedInfo);
-        } else if (templateId === 'business') {
-          newContent = generateBusinessWill(updatedInfo);
-        } else {
-          newContent = generateBasicWill(updatedInfo);
-        }
-        
-        // Call the parent component's onContentUpdate with the new content
-        onContentUpdate(newContent);
-      }
-    };
-    
-    // Only run extraction if we have user messages
-    if (messages.length > 1) {
-      extractAndUpdateInfo();
+    extractAndUpdateInfo();
+  }, [messages]);
+  
+  // Also extract info from input as user types (real-time preview)
+  useEffect(() => {
+    if (inputValue.trim()) {
+      extractPreviewInfo();
     }
-  }, [messages, templateId, onContentUpdate]);
+  }, [inputValue]);
   
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -168,6 +112,198 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     return welcomeMessage;
   };
   
+  const extractPreviewInfo = () => {
+    // Extract info from current input as user types for real-time preview
+    // This avoids waiting for the full message to be sent
+    let updatedInfo = { ...userInfo };
+    let contentUpdated = false;
+    
+    // Try to extract full name
+    const nameMatch = inputValue.match(/(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1]) {
+      updatedInfo.fullName = nameMatch[1];
+      contentUpdated = true;
+    }
+    
+    // Try to extract marital status
+    if (inputValue.match(/single/i) && updatedInfo.maritalStatus !== "single") {
+      updatedInfo.maritalStatus = "single";
+      contentUpdated = true;
+    } else if (inputValue.match(/married/i) && updatedInfo.maritalStatus !== "married") {
+      updatedInfo.maritalStatus = "married";
+      contentUpdated = true;
+    }
+    
+    // Try to extract address info
+    const addressMatch = inputValue.match(/address (?:is|:) ([^.]+)/i);
+    if (addressMatch && addressMatch[1] && updatedInfo.address !== addressMatch[1]) {
+      updatedInfo.address = addressMatch[1];
+      contentUpdated = true;
+    }
+    
+    // If we found new information, update will content for real-time preview
+    if (contentUpdated) {
+      // Just update locally but don't persist to state yet
+      // This will be properly saved when the message is sent
+      generateAndUpdateWillContent({ ...updatedInfo });
+    }
+  };
+  
+  const extractAndUpdateInfo = () => {
+    let updatedInfo = { ...userInfo };
+    let contentUpdated = false;
+    
+    // Look through user messages to extract information
+    for (const message of messages) {
+      // Skip system messages and the last assistant message
+      if (message.role === 'system' || (message.role === 'assistant' && message === messages[messages.length - 1])) {
+        continue;
+      }
+      
+      if (message.role === 'user') {
+        // Extract full name
+        const nameMatch = message.content.match(/(?:my name is|I am|I'm|name:) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+        if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1]) {
+          updatedInfo.fullName = nameMatch[1];
+          contentUpdated = true;
+        }
+        
+        // Extract marital status
+        if (message.content.match(/(?:I am|I'm) single/i) && updatedInfo.maritalStatus !== "single") {
+          updatedInfo.maritalStatus = "single";
+          contentUpdated = true;
+        } else if (message.content.match(/(?:I am|I'm) married/i) && updatedInfo.maritalStatus !== "married") {
+          updatedInfo.maritalStatus = "married";
+          contentUpdated = true;
+        } else if (message.content.match(/(?:I am|I'm) divorced/i) && updatedInfo.maritalStatus !== "divorced") {
+          updatedInfo.maritalStatus = "divorced";
+          contentUpdated = true;
+        } else if (message.content.match(/(?:I am|I'm) widowed/i) && updatedInfo.maritalStatus !== "widowed") {
+          updatedInfo.maritalStatus = "widowed";
+          contentUpdated = true;
+        }
+        
+        // Extract spouse name if married
+        if (updatedInfo.maritalStatus === "married") {
+          const spouseMatch = message.content.match(/(?:wife|husband|spouse)(?:'s| is| name is| named) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+          if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1]) {
+            updatedInfo.spouseName = spouseMatch[1];
+            contentUpdated = true;
+          }
+        }
+        
+        // Extract executor information
+        const executorMatch = message.content.match(/executor(?:'s| is| will be| should be| name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+        if (executorMatch && executorMatch[1] && updatedInfo.executor !== executorMatch[1]) {
+          updatedInfo.executor = executorMatch[1];
+          contentUpdated = true;
+        }
+        
+        // Extract address
+        const addressMatch = message.content.match(/address(?:'s| is| :) ([^.]+)/i);
+        if (addressMatch && addressMatch[1] && updatedInfo.address !== addressMatch[1]) {
+          updatedInfo.address = addressMatch[1].trim();
+          contentUpdated = true;
+          
+          // Try to extract city, state, zip from address
+          const cityStateMatch = updatedInfo.address.match(/([^,]+),\s*([A-Z]{2})\s*(\d{5}(-\d{4})?)/i);
+          if (cityStateMatch) {
+            updatedInfo.city = cityStateMatch[1].trim();
+            updatedInfo.state = cityStateMatch[2].trim();
+            updatedInfo.zipCode = cityStateMatch[3].trim();
+          }
+        }
+        
+        // Extract children information
+        const childrenMatch = 
+          message.content.match(/children(?:'s| are| named| :) ([^.]+)/i) || 
+          message.content.match(/have (\d+) children(?: named| :)? ([^.]+)/i);
+        
+        if (childrenMatch) {
+          let childrenText = childrenMatch[1];
+          // If we matched the "have X children" pattern, use the second capture group
+          if (childrenMatch[2]) childrenText = childrenMatch[2];
+          
+          const childrenNames = childrenText.split(/,\s*|\s+and\s+/).filter(Boolean);
+          if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
+            updatedInfo.children = childrenNames;
+            contentUpdated = true;
+          }
+        }
+        
+        // Extract asset information
+        const assetMatches = message.content.match(/(?:I have|possess|own) ([^.]+)/ig);
+        if (assetMatches) {
+          for (const assetMatch of assetMatches) {
+            // Look for common assets like house, car, bank account
+            if (assetMatch.match(/house|property|real estate|land/i)) {
+              const newAsset = {
+                name: "Real Estate",
+                value: assetMatch.replace(/(?:I have|possess|own) /i, '')
+              };
+              
+              if (!updatedInfo.assets.some(a => a.name === newAsset.name && a.value === newAsset.value)) {
+                updatedInfo.assets.push(newAsset);
+                contentUpdated = true;
+              }
+            } else if (assetMatch.match(/car|vehicle|automobile/i)) {
+              const newAsset = {
+                name: "Vehicle",
+                value: assetMatch.replace(/(?:I have|possess|own) /i, '')
+              };
+              
+              if (!updatedInfo.assets.some(a => a.name === newAsset.name && a.value === newAsset.value)) {
+                updatedInfo.assets.push(newAsset);
+                contentUpdated = true;
+              }
+            }
+          }
+        }
+        
+        // Extract digital assets for digital asset wills
+        if (templateId === 'digital-assets') {
+          const digitalAssetMatches = message.content.match(/(?:digital assets include|I have|own|manage) ([^.]+) (?:accounts|wallets)/i);
+          if (digitalAssetMatches && digitalAssetMatches[1]) {
+            const assetTypes = digitalAssetMatches[1].split(/,\s*|\s+and\s+/).filter(Boolean);
+            for (const assetType of assetTypes) {
+              const newDigitalAsset = {
+                type: assetType.trim(),
+                details: `${assetType.trim()} account`
+              };
+              
+              if (!updatedInfo.digitalAssets.some(a => a.type === newDigitalAsset.type)) {
+                updatedInfo.digitalAssets.push(newDigitalAsset);
+                contentUpdated = true;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // If we found new information, update state and generate new will content
+    if (contentUpdated) {
+      setUserInfo(updatedInfo);
+      generateAndUpdateWillContent(updatedInfo);
+    }
+  };
+  
+  const generateAndUpdateWillContent = (info: typeof userInfo) => {
+    // Generate and update will content based on template and extracted info
+    let newContent = '';
+    
+    if (templateId === 'digital-assets') {
+      newContent = generateDigitalAssetsWill(info);
+    } else if (templateId === 'business') {
+      newContent = generateBusinessWill(info);
+    } else {
+      newContent = generateBasicWill(info);
+    }
+    
+    // Call the parent component's onContentUpdate with the new content
+    onContentUpdate(newContent);
+  };
+  
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
     
@@ -185,6 +321,27 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsProcessing(true);
+    
+    // Extract information immediately from the user's message
+    // to update the preview without waiting for the AI response
+    let tempUpdatedInfo = { ...userInfo };
+    let tempContentUpdated = false;
+    
+    // Extract full name
+    const nameMatch = userMessage.content.match(/(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    if (nameMatch && nameMatch[1] && tempUpdatedInfo.fullName !== nameMatch[1]) {
+      tempUpdatedInfo.fullName = nameMatch[1];
+      tempContentUpdated = true;
+    }
+    
+    // Extract other information as in the main extraction function
+    // This is a simplified version for immediate feedback
+    
+    if (tempContentUpdated) {
+      // Update state and content immediately for responsive feedback
+      setUserInfo(tempUpdatedInfo);
+      generateAndUpdateWillContent(tempUpdatedInfo);
+    }
     
     try {
       const { data, error } = await supabase.functions.invoke('gpt-will-assistant', {
@@ -216,6 +373,9 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       // Check for completion phrases to determine if we're done
       checkForCompletion(aiResponse);
       
+      // Extract information from AI response as well
+      extractInfoFromAIResponse(aiResponse);
+      
     } catch (error) {
       console.error("Error processing message:", error);
       
@@ -229,6 +389,34 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     }
   };
   
+  const extractInfoFromAIResponse = (aiResponse: string) => {
+    // This function extracts info from AI responses
+    // Often AI will confirm information or suggest next steps
+    let updatedInfo = { ...userInfo };
+    let contentUpdated = false;
+    
+    // Check for confirmation of user name
+    const nameConfirmMatch = aiResponse.match(/(?:Thank you|thanks),\s+([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    if (nameConfirmMatch && nameConfirmMatch[1] && !updatedInfo.fullName) {
+      updatedInfo.fullName = nameConfirmMatch[1];
+      contentUpdated = true;
+    }
+    
+    // Check for confirmation of marital status
+    if (aiResponse.match(/you are single/i) && !updatedInfo.maritalStatus) {
+      updatedInfo.maritalStatus = "single";
+      contentUpdated = true;
+    } else if (aiResponse.match(/you are married/i) && !updatedInfo.maritalStatus) {
+      updatedInfo.maritalStatus = "married";
+      contentUpdated = true;
+    }
+    
+    if (contentUpdated) {
+      setUserInfo(updatedInfo);
+      generateAndUpdateWillContent(updatedInfo);
+    }
+  };
+  
   const generateBasicWill = (info: typeof userInfo): string => {
     return `LAST WILL AND TESTAMENT
 
@@ -238,20 +426,28 @@ ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
 
 ARTICLE II: FAMILY INFORMATION
-I am ${info.maritalStatus || "[MARITAL STATUS]"}.
+I am ${info.maritalStatus || "[MARITAL STATUS]"}${info.spouseName ? ` and married to ${info.spouseName}` : ""}.
 ${info.children.length > 0 ? 
-  `I have ${info.children.length} children as named below: ${info.children.join(', ')}.` : 
+  `I have ${info.children.length} ${info.children.length === 1 ? "child" : "children"} as named below: ${info.children.join(', ')}.` : 
   "I have no children."}
 
-ARTICLE III: EXECUTOR
+${info.address ? `ARTICLE III: RESIDENCE\nMy current residence is at ${info.address}.` : ""}
+
+ARTICLE ${info.address ? "IV" : "III"}: EXECUTOR
 ${info.executor ? 
   `I appoint ${info.executor} as the Executor of this Will.` : 
   "I appoint [EXECUTOR NAME] as the Executor of this Will."}
 
-ARTICLE IV: DISTRIBUTION OF ESTATE
+ARTICLE ${info.address ? "V" : "IV"}: DISTRIBUTION OF ESTATE
 ${info.beneficiaries.length > 0 ? 
   `I direct that my assets be distributed to ${info.beneficiaries.join(', ')}.` : 
   "I direct that my assets be distributed as follows:"}
+
+${info.assets.length > 0 ? 
+  info.assets.map(asset => 
+    `${asset.name}: ${asset.value}${asset.recipient ? ` to ${asset.recipient}` : ""}`
+  ).join('\n') : 
+  ""}
 
 Additional details will be incorporated as we continue our conversation.`;
   };
@@ -264,18 +460,22 @@ I, ${info.fullName || "[YOUR NAME]"}, being of sound mind, declare this to be my
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils relating to digital assets.
 
-ARTICLE II: DIGITAL EXECUTOR
+${info.address ? `ARTICLE II: RESIDENCE\nMy current residence is at ${info.address}.` : ""}
+
+ARTICLE ${info.address ? "III" : "II"}: DIGITAL EXECUTOR
 ${info.executor ? 
   `I appoint ${info.executor} as the Digital Executor of this Will.` : 
   "I appoint [DIGITAL EXECUTOR NAME] as the Digital Executor of this Will."}
 
-ARTICLE III: DIGITAL ASSETS
+ARTICLE ${info.address ? "IV" : "III"}: DIGITAL ASSETS
 My digital assets include:
-- [CRYPTOCURRENCY]
+${info.digitalAssets.length > 0 ? 
+  info.digitalAssets.map(asset => `- ${asset.type}: ${asset.details}`).join('\n') : 
+  `- [CRYPTOCURRENCY]
 - [SOCIAL MEDIA ACCOUNTS]
-- [EMAIL ACCOUNTS]
+- [EMAIL ACCOUNTS]`}
 
-ARTICLE IV: ACCESS INSTRUCTIONS
+ARTICLE ${info.address ? "V" : "IV"}: ACCESS INSTRUCTIONS
 Access instructions will be securely stored with my Digital Executor.
 
 Additional details will be incorporated as we continue our conversation.`;
@@ -289,15 +489,17 @@ I, ${info.fullName || "[YOUR NAME]"}, being of sound mind, declare this to be my
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
 
-ARTICLE II: EXECUTOR
+${info.address ? `ARTICLE II: RESIDENCE\nMy current residence is at ${info.address}.` : ""}
+
+ARTICLE ${info.address ? "III" : "II"}: EXECUTOR
 ${info.executor ? 
   `I appoint ${info.executor} as the Executor of this Will.` : 
   "I appoint [EXECUTOR NAME] as the Executor of this Will."}
 
-ARTICLE III: BUSINESS INTERESTS
+ARTICLE ${info.address ? "IV" : "III"}: BUSINESS INTERESTS
 My business interests are to be handled as follows:
 
-ARTICLE IV: SUCCESSION PLAN
+ARTICLE ${info.address ? "V" : "IV"}: SUCCESSION PLAN
 My business succession plan is as follows:
 
 Additional details will be incorporated as we continue our conversation.`;
@@ -351,6 +553,9 @@ Additional details will be incorporated as we continue our conversation.`;
           transcript += event.results[i][0].transcript;
         }
         setInputValue(transcript);
+        
+        // Try to extract info from the transcript in real-time
+        extractPreviewInfo();
       };
       
       recognitionRef.current.onerror = () => {
@@ -397,6 +602,10 @@ Additional details will be incorporated as we continue our conversation.`;
     navigate('/wills');
   };
   
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
+  
   return (
     <div className="flex flex-col h-full">
       {/* Messages area */}
@@ -440,13 +649,13 @@ Additional details will be incorporated as we continue our conversation.`;
         </div>
       </div>
       
-      {/* Input area */}
+      {/* Input area with typing indicator */}
       <div className="border-t p-4 bg-background">
         <div className="flex gap-2">
           <Input
             ref={inputRef}
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyPress}
             placeholder={isProcessing ? "Waiting for response..." : "Type your message..."}
             disabled={isProcessing}
@@ -484,6 +693,12 @@ Additional details will be incorporated as we continue our conversation.`;
         {isRecording && (
           <div className="text-xs text-center mt-1">
             <span className="text-red-500">●</span> Recording... Speak clearly.
+          </div>
+        )}
+        
+        {!isRecording && inputValue && (
+          <div className="text-xs text-gray-500 mt-1">
+            <span>Typing preview: Will updates in real-time as you type...</span>
           </div>
         )}
       </div>
