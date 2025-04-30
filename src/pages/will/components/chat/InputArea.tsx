@@ -81,7 +81,7 @@ export const InputArea = ({
       {isReadyToComplete && onCompleteInfo && (
         <Button
           variant="default"
-          className="mt-4 bg-willtank-600 hover:bg-willtank-700 w-full text-white font-medium py-3 px-4 animate-pulse shadow-lg text-lg"
+          className="mt-4 bg-willtank-600 hover:bg-willtank-700 w-full text-white font-medium py-4 px-4 animate-pulse shadow-lg text-lg rounded-md transition-all duration-300 transform hover:-translate-y-1"
           onClick={onCompleteInfo}
         >
           Generate My Will Document Now

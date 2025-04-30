@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Bot } from 'lucide-react';
@@ -144,14 +143,42 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   
   // Enhanced information extraction to handle all types of data
   const extractInformation = useCallback((messageContent: string) => {
-    const updates: Record<string, any> = {};
+    const updates: Record<string, any> = {...extractedResponses};
     
     // Personal information extraction
-    const nameMatch = messageContent.match(/(?:my name is|I am|I'm|name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    const nameMatch = messageContent.match(/(?:my name is|I am|I'm|name is|I'm called) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
     if (nameMatch && nameMatch[1]) {
       updates.fullName = nameMatch[1];
       setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
       console.log("Extracted name:", nameMatch[1]);
+    }
+    
+    // Name at beginning of sentence
+    const nameMatchStart = messageContent.match(/^([A-Z][a-z]+ [A-Z][a-z]+)(?:\.|,| here)/i);
+    if (nameMatchStart && nameMatchStart[1] && !updates.fullName) {
+      updates.fullName = nameMatchStart[1];
+      setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
+      console.log("Extracted name from start:", nameMatchStart[1]);
+    }
+    
+    // Extract any name mentioned along with "my name"
+    if (messageContent.toLowerCase().includes("my name") && !updates.fullName) {
+      const words = messageContent.split(/\s+/);
+      for (let i = 0; i < words.length - 1; i++) {
+        if (words[i].toLowerCase() === "name" && 
+            i > 0 && words[i-1].toLowerCase() === "my" && 
+            i+1 < words.length && 
+            words[i+1].charAt(0) === words[i+1].charAt(0).toUpperCase()) {
+          const nameParts = [];
+          for (let j = i+1; j < words.length && words[j].charAt(0) === words[j].charAt(0).toUpperCase(); j++) {
+            nameParts.push(words[j].replace(/[,.;:!?]$/, ''));
+          }
+          if (nameParts.length > 0) {
+            updates.fullName = nameParts.join(' ');
+          }
+          break;
+        }
+      }
     }
     
     // Marital status extraction
@@ -164,13 +191,13 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
     
     // Spouse information extraction
-    const spouseMatch = messageContent.match(/(?:my spouse is|married to|wife is|husband is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    const spouseMatch = messageContent.match(/(?:my spouse is|married to|wife is|husband is|partner is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
     if (spouseMatch && spouseMatch[1]) {
       updates.spouseName = spouseMatch[1];
       console.log("Extracted spouse name:", spouseMatch[1]);
     }
     
-    // Children extraction
+    // Children extraction - multiple patterns
     const childrenMatch = messageContent.match(/(?:I have|with) (?:a|one|1) (?:child|daughter|son)(?: named| called)? ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
     if (childrenMatch && childrenMatch[1]) {
       updates.hasChildren = true;
@@ -182,72 +209,125 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       console.log("Extracted child:", childrenMatch[1]);
     }
     
-    // Contact extraction
-    const executorMatch = messageContent.match(/(?:executor is|appointed|choose|want|designate) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-    if (executorMatch && executorMatch[1]) {
-      updates.executorName = executorMatch[1];
-      console.log("Extracted executor:", executorMatch[1]);
-      
-      // Check if we already have this contact
-      const existingContact = contacts.find(c => c.name === executorMatch[1]);
-      if (!existingContact) {
-        const newContact: Contact = {
-          id: `contact-${Date.now()}`,
-          name: executorMatch[1],
-          role: 'Executor',
-          email: '',
-          phone: '',
-          address: ''
-        };
+    // Children mentioned with name
+    const childMentionMatch = messageContent.match(/(?:my|the) (?:child|daughter|son) (?:is )?(?:called |named )?([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    if (childMentionMatch && childMentionMatch[1] && !updates.childrenNames) {
+      updates.hasChildren = true;
+      updates.childrenNames = childMentionMatch[1];
+      const newBeneficiary = childMentionMatch[1];
+      if (!beneficiaries.includes(newBeneficiary)) {
+        setBeneficiaries(prev => [...prev, newBeneficiary]);
+      }
+      console.log("Extracted child from mention:", childMentionMatch[1]);
+    }
+    
+    // Extract beneficiaries/children from "leave to" phrases
+    const leaveToMatch = messageContent.match(/leave (?:everything |all |my (?:estate |property |assets |belongings ))?to (?:my (?:daughter|son|child) )?([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    if (leaveToMatch && leaveToMatch[1]) {
+      const newBeneficiary = leaveToMatch[1].trim();
+      if (!beneficiaries.includes(newBeneficiary)) {
+        setBeneficiaries(prev => [...prev, newBeneficiary]);
+        updates.leaveTo = newBeneficiary;
+      }
+      console.log("Extracted beneficiary from 'leave to':", newBeneficiary);
+    }
+    
+    // Contact extraction - multiple patterns for executor
+    const executorMatches = [
+      messageContent.match(/(?:executor is|appointed|choose|want|designate) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i),
+      messageContent.match(/([A-Z][a-z]+(?: [A-Z][a-z]+)+) (?:as|to be|will be|should be) (?:my|the) executor/i),
+      messageContent.match(/(?:my|the) executor (?:is|should be|will be) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i)
+    ];
+    
+    for (const match of executorMatches) {
+      if (match && match[1]) {
+        updates.executorName = match[1];
+        console.log("Extracted executor:", match[1]);
         
-        setContacts(prev => [...prev, newContact]);
-        setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
+        // Check if we already have this contact
+        const existingContact = contacts.find(c => c.name.toLowerCase() === match[1].toLowerCase());
+        if (!existingContact) {
+          const newContact: Contact = {
+            id: `contact-${Date.now()}`,
+            name: match[1],
+            role: 'Executor',
+            email: '',
+            phone: '',
+            address: ''
+          };
+          
+          setContacts(prev => [...prev, newContact]);
+          setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
+        }
+        break;
       }
     }
     
-    // Guardian extraction
-    const guardianMatch = messageContent.match(/(?:guardian for|guardian is|guardian|take care of) (?:my|the) (?:child|children|daughter|son)(?:ren)? (?:is |would be |will be |should be )?([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-    if (guardianMatch && guardianMatch[1]) {
-      updates.guardianName = guardianMatch[1];
-      updates.guardianNeeded = true;
-      console.log("Extracted guardian:", guardianMatch[1]);
-      
-      // Check if we already have this contact
-      const existingContact = contacts.find(c => c.name === guardianMatch[1]);
-      if (!existingContact) {
-        const newContact: Contact = {
-          id: `contact-${Date.now()}`,
-          name: guardianMatch[1],
-          role: 'Guardian',
-          email: '',
-          phone: '',
-          address: ''
-        };
+    // Guardian extraction - multiple patterns
+    const guardianMatches = [
+      messageContent.match(/(?:guardian for|guardian is|guardian|take care of) (?:my|the) (?:child|children|daughter|son)(?:ren)? (?:is |would be |will be |should be )?([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i),
+      messageContent.match(/([A-Z][a-z]+(?: [A-Z][a-z]+)+) (?:as|to be|will be|should be) (?:my|the) guardian/i),
+      messageContent.match(/(?:appoint|designate|choose) ([A-Z][a-z]+(?: [A-Z][a-z]+)+) (?:as|to be) (?:the |my )?guardian/i)
+    ];
+    
+    for (const match of guardianMatches) {
+      if (match && match[1]) {
+        updates.guardianName = match[1];
+        updates.guardianNeeded = true;
+        console.log("Extracted guardian:", match[1]);
         
-        setContacts(prev => [...prev, newContact]);
+        // Check if we already have this contact
+        const existingContact = contacts.find(c => c.name.toLowerCase() === match[1].toLowerCase());
+        if (!existingContact) {
+          const newContact: Contact = {
+            id: `contact-${Date.now()}`,
+            name: match[1],
+            role: 'Guardian',
+            email: '',
+            phone: '',
+            address: ''
+          };
+          
+          setContacts(prev => [...prev, newContact]);
+        }
+        break;
       }
     }
     
     // Asset extraction - property/house
-    const propertyMatch = messageContent.match(/(?:I have|I own|my house|my property|my home)(?: is| at)? (?:located at |at )?([\d]+ [A-Za-z]+ (?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle)[, ]+[A-Za-z]+(?:[, ]+[A-Za-z]+)?)/i);
-    if (propertyMatch && propertyMatch[1]) {
-      updates.propertyAddress = propertyMatch[1];
-      const newAsset = `House at ${propertyMatch[1]}`;
-      if (!assetsList.includes(newAsset)) {
-        setAssetsList(prev => [...prev, newAsset]);
+    const propertyMatches = [
+      messageContent.match(/(?:I have|I own|my house|my property|my home)(?: is| at)? (?:located at |at )?([\d]+ [A-Za-z]+ (?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle)[, ]+[A-Za-z]+(?:[, ]+[A-Za-z]+)?)/i),
+      messageContent.match(/(?:house|property|home) (?:at|on) ([\d]+ [A-Za-z]+ (?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle))/i)
+    ];
+    
+    for (const match of propertyMatches) {
+      if (match && match[1]) {
+        updates.propertyAddress = match[1];
+        const newAsset = `House at ${match[1]}`;
+        if (!assetsList.includes(newAsset)) {
+          setAssetsList(prev => [...prev, newAsset]);
+        }
+        console.log("Extracted property:", match[1]);
+        break;
       }
-      console.log("Extracted property:", propertyMatch[1]);
     }
     
     // Asset extraction - vehicles
-    const vehicleMatch = messageContent.match(/(?:I have|I own|my car|my vehicle) (?:is |a )?((?:[A-Za-z]+ )?[A-Za-z]+ [A-Za-z0-9]+)/i);
-    if (vehicleMatch && vehicleMatch[1]) {
-      updates.vehicle = vehicleMatch[1];
-      const newAsset = `Vehicle: ${vehicleMatch[1]}`;
-      if (!assetsList.includes(newAsset)) {
-        setAssetsList(prev => [...prev, newAsset]);
+    const vehicleMatches = [
+      messageContent.match(/(?:I have|I own|my car|my vehicle) (?:is |a )?((?:[A-Za-z]+ )?[A-Za-z]+ [A-Za-z0-9]+)/i),
+      messageContent.match(/(?:drive|own|have) (?:a |an )?([A-Za-z]+ (?:car|vehicle|truck|SUV|motorcycle|van|bus))/i),
+    ];
+    
+    for (const match of vehicleMatches) {
+      if (match && match[1]) {
+        updates.vehicle = match[1];
+        const newAsset = `Vehicle: ${match[1]}`;
+        if (!assetsList.includes(newAsset)) {
+          setAssetsList(prev => [...prev, newAsset]);
+        }
+        console.log("Extracted vehicle:", match[1]);
+        break;
       }
-      console.log("Extracted vehicle:", vehicleMatch[1]);
     }
     
     // Email pattern extraction
@@ -259,6 +339,14 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       // Associate with executor by default if we have one
       if (updates.executorName || extractedResponses.executorName) {
         updates.executorEmail = email;
+        
+        // Update the executor contact if it exists
+        const executorName = updates.executorName || extractedResponses.executorName;
+        if (executorName) {
+          setContacts(prev => prev.map(c => 
+            c.name.toLowerCase() === executorName.toLowerCase() ? { ...c, email: email } : c
+          ));
+        }
       }
       
       // Look for context to associate this email with a contact
@@ -266,7 +354,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       for (const line of lines) {
         if (line.includes(email)) {
           for (const contact of contacts) {
-            if (line.includes(contact.name)) {
+            if (line.toLowerCase().includes(contact.name.toLowerCase())) {
               // Update the contact's email
               setContacts(prev => prev.map(c => 
                 c.id === contact.id ? { ...c, email: email } : c
@@ -287,6 +375,14 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       // Associate with executor by default if we have one
       if (updates.executorName || extractedResponses.executorName) {
         updates.executorPhone = phone;
+        
+        // Update the executor contact if it exists
+        const executorName = updates.executorName || extractedResponses.executorName;
+        if (executorName) {
+          setContacts(prev => prev.map(c => 
+            c.name.toLowerCase() === executorName.toLowerCase() ? { ...c, phone: phone } : c
+          ));
+        }
       }
       
       // Look for context to associate this phone with a contact
@@ -294,7 +390,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       for (const line of lines) {
         if (line.includes(phone)) {
           for (const contact of contacts) {
-            if (line.includes(contact.name)) {
+            if (line.toLowerCase().includes(contact.name.toLowerCase())) {
               // Update the contact's phone
               setContacts(prev => prev.map(c => 
                 c.id === contact.id ? { ...c, phone: phone } : c
@@ -311,6 +407,14 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       console.log("Enough exchanges detected - setting ready status");
       setIsReadyToComplete(true);
       setDataCollectionProgress(prev => ({ ...prev, readyToComplete: true }));
+    }
+    
+    // Extract general address information
+    const addressPattern = /(?:I live|address is|located|reside|stay)(?:s)? (?:at|in|on) ([^,.]+(?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle)[^,.]+)/i;
+    const addressMatches = messageContent.match(addressPattern);
+    if (addressMatches && addressMatches[1] && !updates.propertyAddress) {
+      updates.propertyAddress = addressMatches[1].trim();
+      console.log("Extracted general address:", updates.propertyAddress);
     }
     
     setExtractedResponses(prev => ({ ...prev, ...updates }));
@@ -341,16 +445,37 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const allText = messages.map(m => m.content).join(' ');
     
     // Try to extract more information from the entire conversation context
-    const nameMatches = allText.match(/(?:my name is|I am|I'm|name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/ig);
-    if (nameMatches && nameMatches.length > 0 && !extractedContent.fullName) {
-      const nameMatch = nameMatches[0].match(/(?:my name is|I am|I'm|name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
-      if (nameMatch && nameMatch[1]) {
-        extractedContent.fullName = nameMatch[1];
+    // Name pattern
+    if (!extractedContent.fullName) {
+      const nameMatches = allText.match(/(?:my name is|I am|I'm|name is|I'm called) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/ig);
+      if (nameMatches && nameMatches.length > 0) {
+        const nameMatch = nameMatches[0].match(/(?:my name is|I am|I'm|name is|I'm called) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+        if (nameMatch && nameMatch[1]) {
+          extractedContent.fullName = nameMatch[1];
+        }
       }
     }
     
-    // Extract specifics from user messages only
+    // Extract residential/property address
+    if (!extractedContent.propertyAddress) {
+      const addressPattern = /(?:I live|address is|located|reside|stay)(?:s)? (?:at|in|on) ([^,.]+(?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle)[^,.]+)/i;
+      const addressMatches = allText.match(addressPattern);
+      if (addressMatches && addressMatches[1]) {
+        extractedContent.propertyAddress = addressMatches[1].trim();
+      }
+    }
+    
+    // Extract specifics from all user messages
     const userMessages = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
+    
+    // Extract vehicle information
+    if (!extractedContent.vehicle) {
+      const vehiclePattern = /(?:I have|I own|my car|my vehicle) (?:is |a )?((?:[A-Za-z]+ )?[A-Za-z]+ [A-Za-z0-9]+)/i;
+      const vehicleMatches = userMessages.match(vehiclePattern);
+      if (vehicleMatches && vehicleMatches[1]) {
+        extractedContent.vehicle = vehicleMatches[1];
+      }
+    }
     
     // Add assets to bequests
     if (assetsList.length > 0) {
@@ -367,6 +492,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       extractedContent.residualEstate = beneficiaryText;
     } else if (extractedContent.childrenNames) {
       extractedContent.residualEstate = extractedContent.childrenNames;
+    } else if (extractedContent.leaveTo) {
+      extractedContent.residualEstate = extractedContent.leaveTo;
     }
     
     return extractedContent;
@@ -561,6 +688,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         finalResponses.bequestsDetails = assetsList.join(', ');
       }
       
+      console.log("Final extracted data for will generation:", finalResponses);
+      console.log("Assets list:", assetsList);
+      console.log("Beneficiaries list:", beneficiaries);
+      console.log("Contacts list:", contacts);
+      
       const generatedWillContent = generateWillContent(templateId, finalResponses);
       setGeneratedWill(generatedWillContent);
       
@@ -596,71 +728,85 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   };
   
   const generateWillContent = (templateId: string, responses: Record<string, any>) => {
+    const fullName = responses.fullName || 'Name not provided';
+    const executorName = responses.executorName || 'Executor not specified';
+    const executorEmail = responses.executorEmail ? `Email: ${responses.executorEmail}` : 'Email not provided';
+    const executorPhone = responses.executorPhone ? `Phone: ${responses.executorPhone}` : 'Phone not provided';
+    const maritalStatus = responses.maritalStatus || 'Marital status not specified';
+    const spouseInfo = responses.spouseName ? ` to ${responses.spouseName}` : '';
+    const hasChildren = responses.hasChildren || (responses.childrenNames ? true : false);
+    const childrenNames = responses.childrenNames || 'Children not specified';
+    const propertyAddress = responses.propertyAddress ? `${responses.propertyAddress}` : 'No property specified';
+    const vehicleDetails = responses.vehicle ? `${responses.vehicle}` : 'No vehicle specified';
+    const guardianName = responses.guardianName || 'Guardian not specified';
+    const bequestsDetails = responses.bequestsDetails || 'No specific bequests';
+    const residualEstate = responses.residualEstate || 'Not specified';
+    const currentDate = new Date().toLocaleDateString();
+    
     if (templateId === 'digital-assets') {
-      return `DIGITAL ASSET WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
+      return `DIGITAL ASSET WILL AND TESTAMENT OF ${fullName.toUpperCase()}
 
-I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my Digital Asset Will and Testament.
+I, ${fullName}, being of sound mind, declare this to be my Digital Asset Will and Testament.
 
 ARTICLE I: DIGITAL EXECUTOR
-I appoint ${responses.executorName || '[DIGITAL EXECUTOR]'} as my Digital Executor with authority to manage all my digital assets.
-${responses.executorEmail ? `My executor's email is ${responses.executorEmail}.` : ''}
-${responses.executorPhone ? `My executor's phone number is ${responses.executorPhone}.` : ''}
+I appoint ${executorName} as my Digital Executor with authority to manage all my digital assets.
+${executorEmail}
+${executorPhone}
 
 ARTICLE II: CRYPTOCURRENCY ASSETS
-${responses.digitalAssetsDetails?.includes('crypto') ? `My cryptocurrency assets include: ${responses.digitalAssetsDetails || '[CRYPTOCURRENCY DETAILS]'}` : 'I have no cryptocurrency assets.'}
+${responses.digitalAssetsDetails?.includes('crypto') ? `My cryptocurrency assets include: ${responses.digitalAssetsDetails}` : 'I have no cryptocurrency assets.'}
 
 ARTICLE III: NFT ASSETS
-${responses.digitalAssetsDetails?.includes('nft') ? `My NFT holdings include: ${responses.digitalAssetsDetails || '[NFT DETAILS]'}` : 'I have no NFT assets.'}
+${responses.digitalAssetsDetails?.includes('nft') ? `My NFT holdings include: ${responses.digitalAssetsDetails}` : 'I have no NFT assets.'}
 
 ARTICLE IV: SOCIAL MEDIA ACCOUNTS
-${responses.digitalAssetsDetails?.includes('social') ? `My social media accounts include: ${responses.digitalAssetsDetails || '[SOCIAL MEDIA ACCOUNTS]'}` : 'My social media accounts should be handled according to the individual platform policies.'}
+${responses.digitalAssetsDetails?.includes('social') ? `My social media accounts include: ${responses.digitalAssetsDetails}` : 'My social media accounts should be handled according to the individual platform policies.'}
 
 ARTICLE V: EMAIL ACCOUNTS
-${responses.digitalAssetsDetails?.includes('email') ? `My email accounts include: ${responses.digitalAssetsDetails || '[EMAIL ACCOUNTS]'}` : 'My email accounts should be closed after important information is saved.'}
+${responses.digitalAssetsDetails?.includes('email') ? `My email accounts include: ${responses.digitalAssetsDetails}` : 'My email accounts should be closed after important information is saved.'}
 
 ARTICLE VI: ACCESS INFORMATION
-${responses.digitalAssetsDetails?.includes('password') ? `My access information is stored in: ${responses.digitalAssetsDetails || '[PASSWORD MANAGER DETAILS]'}` : 'I have provided separate secure instructions for accessing my digital accounts.'}
+${responses.digitalAssetsDetails?.includes('password') ? `My access information is stored in: ${responses.digitalAssetsDetails}` : 'I have provided separate secure instructions for accessing my digital accounts.'}
 
 ARTICLE VII: DIGITAL LEGACY PREFERENCES
-My preferences for my digital legacy are: ${responses.digitalAssetsDetails || '[DIGITAL LEGACY PREFERENCES]'}
+My preferences for my digital legacy are: ${responses.digitalLegacyPreferences || 'I wish for my digital assets to be preserved where possible and deleted where appropriate, at the discretion of my Digital Executor.'}
 
-Signed: ${responses.fullName || '[NAME]'}
-Date: ${new Date().toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]`;
+Digitally signed by: ${fullName}
+Date: ${currentDate}`;
     } else {
-      return `LAST WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
+      return `LAST WILL AND TESTAMENT OF ${fullName.toUpperCase()}
 
-I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my Last Will and Testament.
+I, ${fullName}, being of sound mind, declare this to be my Last Will and Testament.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
 
 ARTICLE II: FAMILY INFORMATION
-I am ${responses.maritalStatus || '[MARITAL STATUS]'}${responses.spouseName ? ` to ${responses.spouseName}` : ''}.
-${responses.hasChildren ? `I have the following children: ${responses.childrenNames || '[CHILDREN NAMES]'}.` : 'I have no children.'}
+I am ${maritalStatus}${spouseInfo}.
+${hasChildren ? `I have the following children: ${childrenNames}.` : 'I have no children.'}
 
 ARTICLE III: EXECUTOR
-I appoint ${responses.executorName || '[EXECUTOR NAME]'} as the Executor of this Will.
-${responses.executorEmail ? `My executor's email is ${responses.executorEmail}.` : ''}
-${responses.executorPhone ? `My executor's phone number is ${responses.executorPhone}.` : ''}
-${responses.alternateExecutor ? `If they are unable or unwilling to serve, I appoint ${responses.alternateExecutorName || '[ALTERNATE EXECUTOR]'} as alternate Executor.` : ''}
+I appoint ${executorName} as the Executor of this Will.
+${executorEmail}
+${executorPhone}
+${responses.alternateExecutor ? `If they are unable or unwilling to serve, I appoint ${responses.alternateExecutorName} as alternate Executor.` : ''}
 
 ${responses.guardianNeeded ? `ARTICLE IV: GUARDIAN
-If needed, I appoint ${responses.guardianName || '[GUARDIAN NAME]'} as guardian of my minor children.` : ''}
+If needed, I appoint ${guardianName} as guardian of my minor children.` : ''}
 
 ARTICLE ${responses.guardianNeeded ? 'V' : 'IV'}: DISPOSITION OF PROPERTY
-${responses.specificBequests ? `I make the following specific bequests: ${responses.bequestsDetails || '[SPECIFIC BEQUESTS]'}` : ''}
+${responses.specificBequests ? `I make the following specific bequests: ${bequestsDetails}` : ''}
 
-${responses.propertyAddress ? `I own a property located at ${responses.propertyAddress}.` : ''}
-${responses.vehicle ? `I own a vehicle described as: ${responses.vehicle}.` : ''}
+${responses.propertyAddress ? `I own a property located at ${propertyAddress}.` : ''}
+${responses.vehicle ? `I own a vehicle described as: ${vehicleDetails}.` : ''}
 
-I give all my remaining property to ${responses.residualEstate || '[BENEFICIARIES]'}.
+I give all my remaining property to ${residualEstate}.
 
 ARTICLE ${responses.guardianNeeded ? 'VI' : 'V'}: DIGITAL ASSETS
-${responses.digitalAssets ? `I direct my Executor regarding my digital assets as follows: ${responses.digitalAssetsDetails || '[DIGITAL ASSETS DETAILS]'}` : 'I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.'}
+${responses.digitalAssets ? `I direct my Executor regarding my digital assets as follows: ${responses.digitalAssetsDetails}` : 'I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.'}
 
-Digitally signed by: ${responses.fullName || '[NAME]'}
-Date: ${new Date().toLocaleDateString()}`;
+Digitally signed by: ${fullName}
+Date: ${currentDate}`;
     }
   };
   

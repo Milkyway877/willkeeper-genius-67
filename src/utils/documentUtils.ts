@@ -21,6 +21,7 @@ export const createDocumentUrl = (content: string, title: string): string => {
           body { font-family: 'Times New Roman', Times, serif; margin: 3cm; }
           h1 { text-align: center; font-size: 24pt; margin-bottom: 24pt; }
           .content { line-height: 1.5; font-size: 12pt; }
+          .article-title { font-weight: bold; margin-top: 16px; margin-bottom: 8px; color: #1a4e71; }
           .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; text-align: center; }
           .date { margin-top: 30pt; }
           .header { text-align: center; margin-bottom: 30pt; }
@@ -32,7 +33,7 @@ export const createDocumentUrl = (content: string, title: string): string => {
           <p>Created on ${new Date().toLocaleDateString()}</p>
         </div>
         <div class="content">
-          ${content.replace(/\n/g, '<br>')}
+          ${content.replace(/\n\n/g, '<p></p>').replace(/\n/g, '<br>').replace(/ARTICLE ([^:]+):/g, '<h3 class="article-title">ARTICLE $1:</h3>')}
         </div>
       </body>
     </html>
@@ -63,6 +64,7 @@ export const downloadDocument = (content: string, title: string, signatureData?:
           .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; text-align: center; }
           .date { margin-top: 30pt; }
           .header { text-align: center; margin-bottom: 30pt; }
+          .article-title { font-weight: bold; margin-top: 16px; margin-bottom: 8px; color: #1a4e71; }
         </style>
       </head>
       <body>
@@ -71,7 +73,10 @@ export const downloadDocument = (content: string, title: string, signatureData?:
           <p>Created on ${new Date().toLocaleDateString()}</p>
         </div>
         <div class="content">
-          ${content.replace(/\n/g, '<br>')}
+          ${content
+            .replace(/\n\n/g, '<p></p>')
+            .replace(/\n/g, '<br>')
+            .replace(/ARTICLE ([^:]+):/g, '<h3 class="article-title">ARTICLE $1:</h3>')}
         </div>
         ${signatureData ? `
           <div class="date">

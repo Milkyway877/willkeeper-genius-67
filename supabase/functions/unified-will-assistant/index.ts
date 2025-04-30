@@ -75,6 +75,14 @@ serve(async (req) => {
       });
     }
     
+    // Add context about what we already know
+    if (Object.keys(extracted_data).length > 0) {
+      messages.push({
+        role: "system", 
+        content: `Context - Information I already have about you: ${JSON.stringify(extracted_data)}`
+      });
+    }
+    
     // Add the current query
     messages.push({ role: "user", content: query });
 
@@ -122,6 +130,29 @@ serve(async (req) => {
     if (forceReady && !updatedProgress.readyToComplete) {
       updatedProgress.readyToComplete = true;
       console.log("Force setting readyToComplete to true due to conversation length");
+    }
+    
+    // Save the conversation data to the database if user is authenticated
+    if (user) {
+      try {
+        const conversationData = {
+          conversation_data: [...conversation_history, { role: "user", content: query }, { role: "assistant", content: assistantResponse }],
+          extracted_entities: updatedExtractedData
+        };
+        
+        const { data: savedData, error: saveError } = await supabaseClient
+          .from('will_ai_conversations')
+          .insert([conversationData])
+          .select();
+          
+        if (saveError) {
+          console.error('Error saving conversation data:', saveError);
+        } else {
+          console.log('Saved conversation data:', savedData);
+        }
+      } catch (dbError) {
+        console.error('Database error:', dbError);
+      }
     }
 
     return new Response(
@@ -205,6 +236,21 @@ function extractMoreInformation(query: string, response: string, currentData: an
     }
   }
   
+  // Try to extract name if first word is capitalized (likely a name)
+  if (!data.fullName && query.length > 0) {
+    const words = query.trim().split(/\s+/);
+    if (words.length >= 2 && 
+        words[0].charAt(0) === words[0].charAt(0).toUpperCase() && 
+        words[1].charAt(0) === words[1].charAt(0).toUpperCase()) {
+      data.fullName = `${words[0]} ${words[1]}`;
+      
+      // Check if there might be more name parts
+      if (words.length >= 3 && words[2].charAt(0) === words[2].charAt(0).toUpperCase() && !/[,.!?]/.test(words[2])) {
+        data.fullName += ` ${words[2]}`;
+      }
+    }
+  }
+  
   // Marital status extraction
   const maritalStatusPatterns = [
     /(?:I am|I'm) (single|married|divorced|widowed)/i,
@@ -220,9 +266,38 @@ function extractMoreInformation(query: string, response: string, currentData: an
     }
   }
   
+  // Spouse extraction
+  const spousePatterns = [
+    /(?:my spouse|my husband|my wife|married to) (?:is |)([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i,
+    /(?:partner|spouse) (?:is|being|named) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i
+  ];
+  
+  for (const pattern of spousePatterns) {
+    const spouseMatch = combinedText.match(pattern);
+    if (spouseMatch && spouseMatch[1] && !data.spouseName) {
+      data.spouseName = spouseMatch[1].trim();
+      break;
+    }
+  }
+  
+  // Children extraction
+  const childrenPatterns = [
+    /(?:I have|with) (?:a|one|1) (?:child|daughter|son)(?: named| called)? ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i,
+    /(?:my|the) (?:child|daughter|son)(?:'s name)? is ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i,
+  ];
+  
+  for (const pattern of childrenPatterns) {
+    const childMatch = combinedText.match(pattern);
+    if (childMatch && childMatch[1] && !data.childrenNames) {
+      data.hasChildren = true;
+      data.childrenNames = childMatch[1].trim();
+      break;
+    }
+  }
+  
   // Executor extraction with enhanced patterns
   const executorPatterns = [
-    /(?:executor|appoint|choose|select|want|designate)(?: my| the)? ([A-Z][a-z]+(?: [A-Z][a-z]+)+)(?: as(?: my)? executor)/i,
+    /(?:executor|appoint|choose|select|want|designate)(?: my| the)? ([A-Z][a-z]+(?: [A-Z][a-z]+)+)(?: as(?: my)? executor)?/i,
     /([A-Z][a-z]+ [A-Z][a-z]+) (?:will|should|can) be (?:my|the) executor/i,
     /executor(?:'s| is| will be) ([A-Z][a-z]+ [A-Z][a-z]+)/i
   ];
@@ -236,22 +311,97 @@ function extractMoreInformation(query: string, response: string, currentData: an
   }
   
   // Email extraction
-  const emailMatch = combinedText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  if (emailMatch && emailMatch[0]) {
-    data.executorEmail = emailMatch[0];
+  const emailMatches = combinedText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+  if (emailMatches && emailMatches.length > 0) {
+    data.executorEmail = emailMatches[0];
+    
+    // Check if there are multiple emails in context with names
+    if (emailMatches.length > 1) {
+      // Try to match emails to names in the same sentence
+      const sentences = combinedText.split(/[.!?]/);
+      for (const sentence of sentences) {
+        if (sentence.match(/executor|appoint|choose|select/i)) {
+          const emailInSentence = sentence.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+          if (emailInSentence) {
+            data.executorEmail = emailInSentence[0];
+            break;
+          }
+        }
+      }
+    }
   }
   
   // Phone extraction
-  const phoneMatch = combinedText.match(/(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/);
-  if (phoneMatch && phoneMatch[0]) {
-    data.executorPhone = phoneMatch[0];
+  const phoneMatches = combinedText.match(/(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g);
+  if (phoneMatches && phoneMatches.length > 0) {
+    data.executorPhone = phoneMatches[0];
+    
+    // Check if there are multiple phone numbers in context with names
+    if (phoneMatches.length > 1) {
+      // Try to match phone numbers to names in the same sentence
+      const sentences = combinedText.split(/[.!?]/);
+      for (const sentence of sentences) {
+        if (sentence.match(/executor|appoint|choose|select/i)) {
+          const phoneInSentence = sentence.match(/(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/);
+          if (phoneInSentence) {
+            data.executorPhone = phoneInSentence[0];
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // Guardian extraction
+  const guardianPatterns = [
+    /(?:guardian for|guardian is|guardian|take care of) (?:my|the) (?:child|children|daughter|son)(?:ren)? (?:is |would be |will be |should be )?([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i,
+    /([A-Z][a-z]+(?: [A-Z][a-z]+)+) (?:as|to be|will be|should be) (?:my|the) guardian/i,
+    /(?:appoint|designate|choose) ([A-Z][a-z]+(?: [A-Z][a-z]+)+) (?:as|to be) (?:the |my )?guardian/i
+  ];
+  
+  for (const pattern of guardianPatterns) {
+    const guardianMatch = combinedText.match(pattern);
+    if (guardianMatch && guardianMatch[1] && !data.guardianName) {
+      data.guardianName = guardianMatch[1].trim();
+      data.guardianNeeded = true;
+      break;
+    }
+  }
+  
+  // Property address extraction
+  const propertyPatterns = [
+    /(?:I have|I own|my house|my property|my home)(?: is| at)? (?:located at |at )?([\d]+ [A-Za-z]+ (?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle)[, ]+[A-Za-z]+(?:[, ]+[A-Za-z]+)?)/i,
+    /(?:house|property|home) (?:at|on) ([\d]+ [A-Za-z]+ (?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle))/i
+  ];
+  
+  for (const pattern of propertyPatterns) {
+    const propertyMatch = combinedText.match(pattern);
+    if (propertyMatch && propertyMatch[1] && !data.propertyAddress) {
+      data.propertyAddress = propertyMatch[1].trim();
+      break;
+    }
+  }
+  
+  // Vehicle extraction
+  const vehiclePatterns = [
+    /(?:I have|I own|my car|my vehicle) (?:is |a )?((?:[A-Za-z]+ )?[A-Za-z]+ [A-Za-z0-9]+)/i,
+    /(?:drive|own|have) (?:a |an )?([A-Za-z]+ (?:car|vehicle|truck|SUV|motorcycle|van|bus))/i
+  ];
+  
+  for (const pattern of vehiclePatterns) {
+    const vehicleMatch = combinedText.match(pattern);
+    if (vehicleMatch && vehicleMatch[1] && !data.vehicle) {
+      data.vehicle = vehicleMatch[1].trim();
+      break;
+    }
   }
   
   // Extract additional data points common in will creation
-  if (combinedText.includes("children")) {
+  if (combinedText.includes("children") && !data.hasChildren) {
     data.hasChildren = combinedText.includes("no children") ? false : true;
   }
-  
+
+  console.log("Extracted data:", data);
   return data;
 }
 
@@ -259,7 +409,7 @@ function processContactsFromResponse(aiResponse: string, currentContacts: Contac
   const contacts = [...currentContacts];
   
   // Check for executor mentions in extracted data and add if not exists
-  if (extractedData.executorName && !contacts.some(c => c.name === extractedData.executorName)) {
+  if (extractedData.executorName && !contacts.some(c => c.name.toLowerCase() === extractedData.executorName.toLowerCase())) {
     contacts.push({
       id: `contact-${Date.now()}`,
       name: extractedData.executorName,
@@ -269,10 +419,21 @@ function processContactsFromResponse(aiResponse: string, currentContacts: Contac
       address: ''
     });
     console.log(`Added executor contact: ${extractedData.executorName}`);
+  } else if (extractedData.executorName) {
+    // Update existing contact with new information if available
+    contacts.forEach((contact, index) => {
+      if (contact.name.toLowerCase() === extractedData.executorName.toLowerCase()) {
+        contacts[index] = {
+          ...contact,
+          email: extractedData.executorEmail || contact.email,
+          phone: extractedData.executorPhone || contact.phone
+        };
+      }
+    });
   }
   
-  // Check for guardian mentions in the AI response
-  if (aiResponse.includes('guardian') && extractedData.guardianName && !contacts.some(c => c.role === 'Guardian')) {
+  // Check for guardian mentions in the extracted data
+  if (extractedData.guardianName && !contacts.some(c => c.name.toLowerCase() === extractedData.guardianName.toLowerCase())) {
     contacts.push({
       id: `contact-${Date.now() + 1}`,
       name: extractedData.guardianName,
@@ -281,6 +442,7 @@ function processContactsFromResponse(aiResponse: string, currentContacts: Contac
       phone: '',
       address: ''
     });
+    console.log(`Added guardian contact: ${extractedData.guardianName}`);
   }
   
   // Look for email addresses in the response that might belong to existing contacts
@@ -293,7 +455,7 @@ function processContactsFromResponse(aiResponse: string, currentContacts: Contac
         if (line.includes(email)) {
           for (let i = 0; i < contacts.length; i++) {
             const contact = contacts[i];
-            if (line.includes(contact.name) && !contact.email) {
+            if (line.toLowerCase().includes(contact.name.toLowerCase()) && !contact.email) {
               contacts[i] = { ...contact, email };
               break;
             }
@@ -313,7 +475,7 @@ function processContactsFromResponse(aiResponse: string, currentContacts: Contac
         if (line.includes(phone)) {
           for (let i = 0; i < contacts.length; i++) {
             const contact = contacts[i];
-            if (line.includes(contact.name) && !contact.phone) {
+            if (line.toLowerCase().includes(contact.name.toLowerCase()) && !contact.phone) {
               contacts[i] = { ...contact, phone };
               break;
             }
@@ -323,6 +485,7 @@ function processContactsFromResponse(aiResponse: string, currentContacts: Contac
     }
   }
   
+  console.log("Updated contacts:", contacts);
   return contacts;
 }
 
@@ -359,6 +522,5 @@ function analyzeProgressFromResponse(
     console.log("Forcing ready to complete due to message count");
   }
   
-  // The following are simplified requirements for our minimum viable product
   return progress;
 }
