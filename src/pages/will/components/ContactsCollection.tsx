@@ -6,9 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, Plus, Trash, UserPlus } from "lucide-react";
+import { Check, Plus, Trash, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Contact {
@@ -39,6 +38,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   // Update the required contacts to include Executor
   const [requiredContacts, setRequiredContacts] = useState<string[]>(['Executor']);
   const [isComplete, setIsComplete] = useState(false);
+  const [allContactsCollected, setAllContactsCollected] = useState(false);
   const { toast } = useToast();
 
   // Enhanced check to ensure contacts have required information
@@ -57,7 +57,8 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
       return true; // Non-required contacts don't need validation
     });
     
-    setIsComplete(hasAllRequiredRoles && contactsHaveInfo && contacts.length > 0);
+    const completionStatus = hasAllRequiredRoles && contactsHaveInfo && contacts.length > 0;
+    setIsComplete(completionStatus);
   }, [contacts, requiredContacts]);
 
   const addContact = () => {
@@ -206,6 +207,8 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
       }
     }
     
+    // Set that all contacts have been collected when explicitly completing
+    setAllContactsCollected(true);
     onComplete(contacts);
   };
 
@@ -377,14 +380,19 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
               </div>
             )}
             
-            {/* Completion status */}
+            {/* Completion status with improved success indicator */}
             <div className="border-t pt-4 mt-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
-                  {isComplete ? (
+                  {isComplete && allContactsCollected ? (
+                    <div className="flex items-center text-green-600">
+                      <CheckCircle2 className="h-5 w-5 mr-1" />
+                      <span>All required contacts have been collected successfully</span>
+                    </div>
+                  ) : isComplete ? (
                     <div className="flex items-center text-green-600">
                       <Check className="h-5 w-5 mr-1" />
-                      <span>All required contacts added</span>
+                      <span>Required contacts added</span>
                     </div>
                   ) : (
                     <div className="flex items-center text-amber-600">
@@ -397,8 +405,16 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                 <Button 
                   onClick={handleComplete}
                   disabled={!isComplete}
+                  className={allContactsCollected ? "bg-green-600 hover:bg-green-700" : ""}
                 >
-                  Save & Continue
+                  {allContactsCollected ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Continue
+                    </>
+                  ) : (
+                    "Save & Continue"
+                  )}
                 </Button>
               </div>
             </div>

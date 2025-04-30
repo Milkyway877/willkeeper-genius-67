@@ -1,9 +1,8 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowRight, Bot } from 'lucide-react';
+import { ArrowRight, Bot, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
@@ -23,6 +22,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const [generatedWill, setGeneratedWill] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [allContactsCollected, setAllContactsCollected] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -161,66 +161,9 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const checkContactsComplete = useCallback(() => {
     if (currentStage !== 'contacts') return false;
     
-    const executorName = extractedResponses.executorName;
-    const alternateExecutorName = extractedResponses.alternateExecutorName;
-    const guardianName = extractedResponses.guardianName;
-    
-    let requiredContactsCollected = true;
-    
-    // Check for executor details
-    if (executorName) {
-      const executorDetailsProvided = messages.some(m => 
-        m.role === 'user' && 
-        (m.content.toLowerCase().includes('executor') || m.content.toLowerCase().includes(executorName.toLowerCase())) &&
-        (m.content.includes('@') || m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/))
-      );
-      requiredContactsCollected = requiredContactsCollected && executorDetailsProvided;
-    }
-    
-    // Check for alternate executor details if one was named
-    if (alternateExecutorName) {
-      const alternateExecutorDetailsProvided = messages.some(m => 
-        m.role === 'user' && 
-        (m.content.toLowerCase().includes('alternate') || m.content.toLowerCase().includes(alternateExecutorName.toLowerCase())) &&
-        (m.content.includes('@') || m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/))
-      );
-      requiredContactsCollected = requiredContactsCollected && alternateExecutorDetailsProvided;
-    }
-    
-    // Check for guardian details if one was named
-    if (guardianName) {
-      const guardianDetailsProvided = messages.some(m => 
-        m.role === 'user' && 
-        (m.content.toLowerCase().includes('guardian') || m.content.toLowerCase().includes(guardianName.toLowerCase())) &&
-        (m.content.includes('@') || m.content.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/))
-      );
-      requiredContactsCollected = requiredContactsCollected && guardianDetailsProvided;
-    }
-    
-    // Check if AI has confirmed completion
-    const aiConfirmedCompletion = messages.some(m => 
-      m.role === 'assistant' && 
-      m.content.toLowerCase().includes('all contact information has been collected')
-    );
-    
-    const result = requiredContactsCollected && aiConfirmedCompletion;
-    
-    // If all contacts are collected but AI hasn't confirmed yet, prompt for completion
-    if (requiredContactsCollected && !aiConfirmedCompletion) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage?.role === 'user') {
-        const completionMessage: Message = {
-          id: `completion-${Date.now()}`,
-          role: 'assistant' as MessageRole,
-          content: "Great! I've collected all the necessary contact information. You can now click the Continue button to proceed to the next stage.",
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, completionMessage]);
-      }
-    }
-    
-    return result;
-  }, [currentStage, messages, extractedResponses]);
+    // Use the explicit flag from the edge function response
+    return allContactsCollected;
+  }, [currentStage, allContactsCollected]);
   
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
@@ -281,6 +224,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       }
       
       const aiResponse = data?.response || "I'm sorry, I couldn't generate a response. Let's try again.";
+      
+      // Check if the edge function indicates all contacts are collected
+      if (data?.allContactsCollected) {
+        setAllContactsCollected(true);
+      }
       
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -352,6 +300,25 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   };
   
   const checkForStageCompletion = (aiResponse: string) => {
+    // We no longer rely on text patterns for contacts stage completion
+    // Instead we use the explicit flag from the edge function
+    if (currentStage === 'contacts') {
+      if (allContactsCollected) {
+        setTimeout(() => {
+          const stageCompleteMessage: Message = {
+            id: `stage-complete-${Date.now()}`,
+            role: 'system',
+            content: getStageCompletionMessage(currentStage, getNextStage(currentStage)),
+            timestamp: new Date()
+          };
+          
+          setMessages(prev => [...prev, stageCompleteMessage]);
+        }, 1000);
+      }
+      return;
+    }
+    
+    // For other stages, keep the existing logic
     const completionPhrases = [
       "we have all the information",
       "we've collected all the necessary information",
@@ -367,17 +334,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       aiResponse.toLowerCase().includes(phrase.toLowerCase())
     );
     
-    let isComplete = false;
-    
-    if (currentStage === 'contacts') {
-      const hasFollowUpQuestion = aiResponse.toLowerCase().includes('could you') || 
-                                  aiResponse.toLowerCase().includes('please provide') ||
-                                  aiResponse.toLowerCase().includes('can you give me');
-      
-      isComplete = phraseMatches && !hasFollowUpQuestion && checkContactsComplete();
-    } else {
-      isComplete = phraseMatches || messages.length >= 15;
-    }
+    const isComplete = phraseMatches || messages.length >= 15;
     
     if (isComplete) {
       setTimeout(() => {
@@ -434,6 +391,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
     
     const nextStage = getNextStage(currentStage);
+    
+    // Reset the allContactsCollected flag when moving to the next stage
+    if (currentStage === 'contacts') {
+      setAllContactsCollected(false);
+    }
     
     setCurrentStage(nextStage);
     
@@ -784,9 +746,18 @@ Witnesses: [Witness 1], [Witness 2]`;
         <Button 
           onClick={handleStageTransition} 
           disabled={(currentStage === 'contacts' && !checkContactsComplete()) || isProcessing}
-          className="px-6"
+          className={allContactsCollected ? "bg-green-600 hover:bg-green-700 px-6" : "px-6"}
         >
-          Continue <ArrowRight className="ml-2 h-4 w-4" />
+          {allContactsCollected && currentStage === 'contacts' ? (
+            <>
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Continue
+            </>
+          ) : (
+            <>
+              Continue <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
 

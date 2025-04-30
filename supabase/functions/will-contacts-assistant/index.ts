@@ -56,6 +56,54 @@ Key individuals requiring contact information:
       systemPrompt += `- Guardian: ${extracted_responses.guardianName}\n`;
     }
 
+    // Check if all contacts have been collected to determine if we should send a completion message
+    let allContactsCollected = false;
+    
+    // Check conversation history to see if we've collected information for all required contacts
+    if (conversation_history && conversation_history.length > 0) {
+      const requiredContacts = [];
+      if (extracted_responses.executorName) requiredContacts.push(extracted_responses.executorName.toLowerCase());
+      if (extracted_responses.alternateExecutorName) requiredContacts.push(extracted_responses.alternateExecutorName.toLowerCase());
+      if (extracted_responses.guardianName) requiredContacts.push(extracted_responses.guardianName.toLowerCase());
+      
+      // Count how many contacts we have complete information for
+      const contactsWithInfo = new Set();
+      
+      for (const message of conversation_history) {
+        if (message.role === 'user') {
+          const content = message.content.toLowerCase();
+          // Check if message contains email or phone pattern
+          const hasContactInfo = content.includes('@') || /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(content);
+          
+          if (hasContactInfo) {
+            // Find which contact this message is about
+            for (const contact of requiredContacts) {
+              if (content.includes(contact.toLowerCase())) {
+                contactsWithInfo.add(contact);
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // If the current query includes contact info as well, consider it
+      if (query.includes('@') || /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(query)) {
+        for (const contact of requiredContacts) {
+          if (query.toLowerCase().includes(contact.toLowerCase())) {
+            contactsWithInfo.add(contact);
+            break;
+          }
+        }
+      }
+      
+      // Only set allContactsCollected to true if we have information for all required contacts
+      // AND we have a decent number of messages (to avoid premature completion)
+      allContactsCollected = requiredContacts.length > 0 && 
+                             contactsWithInfo.size === requiredContacts.length && 
+                             conversation_history.length >= (requiredContacts.length * 2);
+    }
+
     // Add specific instructions
     systemPrompt += `
 For each person, collect:
@@ -66,8 +114,26 @@ For each person, collect:
 
 Ask for ONE PERSON'S information at a time.
 Be conversational but focused on collecting accurate contact information.
-Once you've collected information for all key individuals, indicate that the contact collection phase is complete.
+
+IMPORTANT: Only indicate that the contact collection phase is complete after you have collected
+all required information for ALL key individuals mentioned. Never say the collection is complete
+until you've verified that ALL required contacts have complete information.
 `;
+
+    // Add instruction about completion messaging based on our check
+    if (allContactsCollected) {
+      systemPrompt += `
+All required contacts now have their information collected. You should inform the user that
+the contact collection phase is complete with the message:
+"Great! I've collected all the necessary contact information for everyone mentioned in your will.
+All contact information has been collected, and you can now proceed to the next step."
+`;
+    } else {
+      systemPrompt += `
+DO NOT tell the user that "All contact information has been collected" or that they can
+"click the Continue button to proceed" until you've collected information for ALL required contacts.
+`;
+    }
 
     // Call OpenAI to process the request
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -137,7 +203,8 @@ Once you've collected information for all key individuals, indicate that the con
     }
     
     return new Response(JSON.stringify({
-      response: assistantResponse
+      response: assistantResponse,
+      allContactsCollected: allContactsCollected
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200

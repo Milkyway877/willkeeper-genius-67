@@ -362,6 +362,24 @@ export default function WillWizardPage() {
     }
   };
 
+  // Function to determine if the current step is completable
+  const isStepCompletable = () => {
+    switch (steps[currentStep].id) {
+      case 'template':
+        return selectedTemplate !== null;
+      case 'ai-conversation':
+        return Object.keys(responses).length > 0;
+      case 'contacts':
+        return contacts.length > 0 && contacts.some(contact => contact.role === 'Executor');
+      case 'documents':
+        return documents.length > 0;
+      case 'video':
+        return videoBlob !== null;
+      default:
+        return true;
+    }
+  };
+
   const renderStep = () => {
     switch (steps[currentStep].id) {
       case 'template':
@@ -474,13 +492,18 @@ export default function WillWizardPage() {
             {steps[currentStep].id !== 'ai-conversation' && (
               <Button
                 onClick={() => setCurrentStep(prev => prev + 1)}
-                disabled={
-                  (steps[currentStep].id === 'contacts' && contacts.length === 0) ||
-                  (steps[currentStep].id === 'documents' && documents.length === 0) ||
-                  (steps[currentStep].id === 'video' && !videoBlob)
-                }
+                disabled={!isStepCompletable()}
+                className={isStepCompletable() ? "bg-green-600 hover:bg-green-700" : ""}
               >
-                Continue <ArrowRight className="ml-2 h-4 w-4" />
+                {isStepCompletable() ? (
+                  <>
+                    Continue <CheckCircle2 className="ml-2 h-4 w-4" />
+                  </>
+                ) : (
+                  <>
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             )}
           </div>
