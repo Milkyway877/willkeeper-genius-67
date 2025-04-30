@@ -1,8 +1,8 @@
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Paperclip, Mic, MicOff, Send, Loader2 } from 'lucide-react';
+import { Paperclip, Mic, MicOff, Send, Loader2, Video } from 'lucide-react';
 
 interface InputAreaProps {
   inputValue: string;
@@ -14,6 +14,7 @@ interface InputAreaProps {
   onSendMessage: () => void;
   onToggleVoiceInput: () => void;
   onFileButtonClick: () => void;
+  onVideoButtonClick?: () => void;
 }
 
 export const InputArea = ({
@@ -26,6 +27,7 @@ export const InputArea = ({
   onSendMessage,
   onToggleVoiceInput,
   onFileButtonClick,
+  onVideoButtonClick,
 }: InputAreaProps) => {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -41,10 +43,21 @@ export const InputArea = ({
         size="icon"
         className="mr-2"
         onClick={onFileButtonClick}
-        disabled={currentStage !== 'documents' || isProcessing}
+        disabled={isProcessing}
       >
         <Paperclip className="h-5 w-5" />
       </Button>
+      
+      {onVideoButtonClick && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="mr-2"
+          onClick={onVideoButtonClick}
+        >
+          <Video className="h-5 w-5 text-willtank-600" />
+        </Button>
+      )}
       
       {recordingSupported && (
         <Button
@@ -75,7 +88,7 @@ export const InputArea = ({
         size="icon"
         className="ml-2"
         onClick={onSendMessage}
-        disabled={!inputValue.trim() || isProcessing}
+        disabled={(!inputValue.trim() && !isRecording) || isProcessing}
       >
         {isProcessing ? (
           <Loader2 className="h-5 w-5 animate-spin" />

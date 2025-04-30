@@ -1,18 +1,19 @@
 
 import React from 'react';
-import { Bot, User, FileText } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Bot, User, FileText, Video } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface MessageProps {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
-  type?: 'text' | 'file' | 'video';
+  type?: 'text' | 'file' | 'video' | 'video-start';
   fileUrl?: string;
   fileName?: string;
+  onStopRecording?: () => void;
 }
 
-export const Message = ({ role, content, timestamp, type, fileUrl, fileName }: MessageProps) => {
+export const Message = ({ role, content, timestamp, type, fileUrl, fileName, onStopRecording }: MessageProps) => {
   return (
     <div
       className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -23,6 +24,8 @@ export const Message = ({ role, content, timestamp, type, fileUrl, fileName }: M
             ? 'bg-black text-white ml-4 rounded-tr-none'
             : role === 'assistant'
             ? 'bg-gray-100 text-gray-800 mr-4 rounded-tl-none'
+            : role === 'system' && type === 'video-start'
+            ? 'bg-rose-50 text-rose-800 mx-auto border border-rose-200'
             : role === 'system'
             ? 'bg-willtank-50 text-willtank-800 mx-auto border border-willtank-200'
             : 'bg-rose-100 text-red-800 mx-auto'
@@ -60,6 +63,21 @@ export const Message = ({ role, content, timestamp, type, fileUrl, fileName }: M
                 className="w-full h-auto rounded mt-2 mb-2" 
                 style={{ maxHeight: '200px' }}
               />
+            </div>
+          ) : type === 'video-start' ? (
+            <div className="space-y-3">
+              <div className="whitespace-pre-wrap">{content}</div>
+              <div className="flex justify-center mt-2">
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  className="flex items-center"
+                  onClick={onStopRecording}
+                >
+                  <Video className="h-4 w-4 mr-2" />
+                  Stop Recording
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="whitespace-pre-wrap">{content}</div>

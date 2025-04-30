@@ -1,13 +1,12 @@
 
 export type MessageRole = 'user' | 'assistant' | 'system';
-export type StageType = 'information' | 'contacts' | 'documents' | 'video' | 'review';
 
 export interface Message {
   id: string;
   role: MessageRole;
   content: string;
   timestamp: Date;
-  type?: 'text' | 'file' | 'video';
+  type?: 'text' | 'file' | 'video' | 'video-start';
   fileUrl?: string;
   fileName?: string;
 }

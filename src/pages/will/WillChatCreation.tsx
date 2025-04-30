@@ -121,10 +121,6 @@ export default function WillChatCreation() {
       description: "Will content copied to clipboard.",
     });
   };
-  
-  const handleBackToChat = () => {
-    setStage('chat');
-  };
 
   if (!selectedTemplate) {
     return (
@@ -153,7 +149,7 @@ export default function WillChatCreation() {
           </h1>
           <p className="text-gray-500">
             {stage === 'chat' 
-              ? 'Skyler will guide you through the will creation process with a series of questions.' 
+              ? 'Chat with Skyler to create your will - answer questions and provide information through the conversation.' 
               : 'Review and finalize your will document before saving.'}
           </p>
         </div>
@@ -254,9 +250,9 @@ export default function WillChatCreation() {
                 <div className="flex justify-between mt-8">
                   <Button
                     variant="outline"
-                    onClick={handleBackToChat}
+                    onClick={() => setStage('chat')}
                   >
-                    Back to Questions
+                    Back to Chat
                   </Button>
                   
                   <Button

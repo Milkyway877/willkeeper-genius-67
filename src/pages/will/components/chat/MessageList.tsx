@@ -7,9 +7,10 @@ import { Message as MessageType } from '../types';
 
 interface MessageListProps {
   messages: MessageType[];
+  onStopRecording?: () => void;
 }
 
-export const MessageList = ({ messages }: MessageListProps) => {
+export const MessageList = ({ messages, onStopRecording }: MessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,7 +30,10 @@ export const MessageList = ({ messages }: MessageListProps) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <Message {...message} />
+              <Message 
+                {...message} 
+                onStopRecording={message.type === 'video-start' ? onStopRecording : undefined} 
+              />
             </motion.div>
           ))}
         </AnimatePresence>
