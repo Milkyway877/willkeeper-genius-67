@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -49,9 +48,6 @@ import WillCreatePage from './pages/will/WillCreatePage';
 import WillCreationChat from './pages/will/WillCreationChat';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-// Ensure React is available globally to prevent multiple instances
-window.React = React;
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();

@@ -14,8 +14,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react({
-      // Configure React plugin properly
-      jsxRuntime: 'automatic',
+      // Only use supported options
       fastRefresh: true,
     }),
     mode === 'development' &&
@@ -44,9 +43,8 @@ export default defineConfig(({ mode }) => ({
       mainFields: ['module', 'main'],
     },
   },
-  // Force single instance of React
+  // Avoid dynamic requires
   define: {
     'process.env': process.env,
-    __REACT_VERSION__: JSON.stringify(require('react').version),
   },
 }));
