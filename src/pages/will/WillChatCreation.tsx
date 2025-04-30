@@ -40,6 +40,8 @@ export default function WillChatCreation() {
   
   // When the AI assistant completes all questions, this function will be called
   const handleAssistantComplete = async (data: any) => {
+    console.log("Assistant complete triggered with data:", data);
+    
     setWillData(data);
     setEditableContent(data.generatedWill || '');
     setStage('review');
@@ -258,7 +260,7 @@ export default function WillChatCreation() {
                   <Button
                     onClick={handleSaveWill}
                     disabled={isSaving}
-                    className="pulse-animation"
+                    className="bg-willtank-600 hover:bg-willtank-700 text-white"
                   >
                     {isSaving ? (
                       <>
@@ -272,26 +274,6 @@ export default function WillChatCreation() {
                 </div>
               </CardContent>
             </Card>
-            
-            <style>
-              {`
-                .pulse-animation {
-                  animation: pulse 2s infinite;
-                }
-                
-                @keyframes pulse {
-                  0% {
-                    box-shadow: 0 0 0 0 rgba(155, 135, 245, 0.4);
-                  }
-                  70% {
-                    box-shadow: 0 0 0 10px rgba(155, 135, 245, 0);
-                  }
-                  100% {
-                    box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
-                  }
-                }
-              `}
-            </style>
           </div>
         )}
       </div>

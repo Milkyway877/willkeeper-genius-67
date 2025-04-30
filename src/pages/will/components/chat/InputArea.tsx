@@ -81,7 +81,7 @@ export const InputArea = ({
       {isReadyToComplete && onCompleteInfo && (
         <Button
           variant="default"
-          className="mt-2 bg-willtank-600 hover:bg-willtank-700 w-full"
+          className="mt-2 bg-willtank-600 hover:bg-willtank-700 w-full text-white font-medium py-3 px-4 animate-pulse"
           onClick={onCompleteInfo}
         >
           Complete Information & Generate Will

@@ -28,9 +28,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const [generatedWill, setGeneratedWill] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isReadyToComplete, setIsReadyToComplete] = useState(false);
+  const [exchangeCount, setExchangeCount] = useState(0);
   const [dataCollectionProgress, setDataCollectionProgress] = useState({
     personalInfo: false,
-    contacts: false
+    contacts: false,
+    readyToComplete: false
   });
   
   const recognitionRef = useRef<any>(null);
@@ -53,7 +55,30 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     if (SpeechRecognition) {
       setRecordingSupported(true);
     }
+    
+    // Add fallback timer to show the generate button after 5 messages if not shown already
+    const timer = setTimeout(() => {
+      if (!isReadyToComplete && messages.length >= 5) {
+        console.log("Fallback timer activating ready to complete");
+        setIsReadyToComplete(true);
+      }
+    }, 10000); // 10 seconds after component mount
+    
+    return () => clearTimeout(timer);
   }, [templateId, templateName]);
+  
+  // Add a separate useEffect to track message count and force button to appear
+  useEffect(() => {
+    // Force button to appear after 4 exchanges (8 messages - 4 from user, 4 from assistant)
+    if (messages.length >= 7 && !isReadyToComplete) {
+      console.log("Message count threshold reached - forcing ready to complete");
+      setIsReadyToComplete(true);
+    }
+    
+    // Update exchange count
+    const userMessageCount = messages.filter(m => m.role === 'user').length;
+    setExchangeCount(userMessageCount);
+  }, [messages, isReadyToComplete]);
   
   const getWelcomeMessage = (templateId: string, templateName: string) => {
     let welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant. I'll guide you through creating a ${templateName} with a simple conversation. Let's start with the basics: What is your full legal name?`;
@@ -120,10 +145,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const updates: Record<string, any> = {};
     
     // Personal information extraction
-    const nameMatch = messageContent.match(/(?:my name is|I am|I'm) ([A-Z][a-z]+ [A-Z][a-z]+)/i);
+    const nameMatch = messageContent.match(/(?:my name is|I am|I'm|name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
     if (nameMatch && nameMatch[1]) {
       updates.fullName = nameMatch[1];
       setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
+      console.log("Extracted name:", nameMatch[1]);
     }
     
     // Marital status extraction
@@ -131,19 +157,22 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       const statusMatch = messageContent.match(/(?:I am|I'm) (single|married|divorced|widowed)/i);
       if (statusMatch && statusMatch[1]) {
         updates.maritalStatus = statusMatch[1].charAt(0).toUpperCase() + statusMatch[1].slice(1).toLowerCase();
+        console.log("Extracted marital status:", updates.maritalStatus);
       }
     }
     
     // Spouse information extraction
-    const spouseMatch = messageContent.match(/(?:my spouse is|married to|wife is|husband is) ([A-Z][a-z]+ [A-Z][a-z]+)/i);
+    const spouseMatch = messageContent.match(/(?:my spouse is|married to|wife is|husband is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
     if (spouseMatch && spouseMatch[1]) {
       updates.spouseName = spouseMatch[1];
+      console.log("Extracted spouse name:", spouseMatch[1]);
     }
     
     // Contact extraction
-    const executorMatch = messageContent.match(/(?:executor is|appointed) ([A-Z][a-z]+ [A-Z][a-z]+)/i);
+    const executorMatch = messageContent.match(/(?:executor is|appointed|choose|want|designate) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
     if (executorMatch && executorMatch[1]) {
       updates.executorName = executorMatch[1];
+      console.log("Extracted executor:", executorMatch[1]);
       
       // Check if we already have this contact
       const existingContact = contacts.find(c => c.name === executorMatch[1]);
@@ -158,6 +187,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         };
         
         setContacts(prev => [...prev, newContact]);
+        setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
       }
     }
     
@@ -165,6 +195,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const emailMatch = messageContent.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (emailMatch && emailMatch[0]) {
       const email = emailMatch[0];
+      console.log("Extracted email:", email);
+      
+      // Associate with executor by default if we have one
+      if (updates.executorName || extractedResponses.executorName) {
+        updates.executorEmail = email;
+      }
       
       // Look for context to associate this email with a contact
       const lines = messageContent.split(/[.!?]/);
@@ -187,6 +223,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const phoneMatches = messageContent.match(/(\+\d{1,3})?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g);
     if (phoneMatches && phoneMatches.length > 0) {
       const phone = phoneMatches[0];
+      console.log("Extracted phone:", phone);
+      
+      // Associate with executor by default if we have one
+      if (updates.executorName || extractedResponses.executorName) {
+        updates.executorPhone = phone;
+      }
       
       // Look for context to associate this phone with a contact
       const lines = messageContent.split(/[.!?]/);
@@ -205,24 +247,34 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       }
     }
     
-    // Check if we have at least one executor with contact info
-    if (contacts.some(c => c.role === 'Executor' && (c.email || c.phone))) {
-      setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
+    // Manually force ready status after a few exchanges
+    if (exchangeCount >= 3 && (updates.fullName || extractedResponses.fullName)) {
+      console.log("Enough exchanges detected - setting ready status");
+      setIsReadyToComplete(true);
+      setDataCollectionProgress(prev => ({ ...prev, readyToComplete: true }));
     }
     
     setExtractedResponses(prev => ({ ...prev, ...updates }));
     return updates;
-  }, [contacts]);
+  }, [contacts, extractedResponses, exchangeCount]);
   
   // Check if all required data has been collected
   useEffect(() => {
-    const { personalInfo, contacts } = dataCollectionProgress;
+    const { personalInfo, contacts, readyToComplete } = dataCollectionProgress;
     
-    // If personal info and contacts are collected, we're ready to complete
-    if (personalInfo && contacts) {
+    // Only need minimal information
+    if ((personalInfo || extractedResponses.fullName) && 
+        (contacts || contacts.length > 0 || extractedResponses.executorName)) {
       setIsReadyToComplete(true);
+      console.log("Setting ready to complete based on data collection progress");
     }
-  }, [dataCollectionProgress]);
+    
+    // Always allow generation after 4 exchanges
+    if (messages.filter(m => m.role === 'user').length >= 4 && !isReadyToComplete) {
+      setIsReadyToComplete(true);
+      console.log("Setting ready to complete based on exchange count");
+    }
+  }, [dataCollectionProgress, contacts.length, extractedResponses, messages, isReadyToComplete]);
   
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
@@ -265,6 +317,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         contacts: contacts
       };
       
+      console.log("Sending to edge function:", requestBody);
+      
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: requestBody
       });
@@ -272,6 +326,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       if (error) {
         throw new Error(`Error calling AI assistant: ${error.message}`);
       }
+      
+      console.log("Response from edge function:", data);
       
       const aiResponse = data?.response || "I'm sorry, I couldn't generate a response. Let's try again.";
       
@@ -304,6 +360,16 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       // Update progress indicators
       if (data?.progress) {
         setDataCollectionProgress(prev => ({ ...prev, ...data.progress }));
+        
+        // Check if we're ready to complete based on the progress
+        if (data.progress.readyToComplete) {
+          setIsReadyToComplete(true);
+        }
+      }
+      
+      // Always check isComplete from response
+      if (data?.isComplete) {
+        setIsReadyToComplete(true);
       }
       
       const aiMessage: MessageType = {
@@ -315,6 +381,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       };
       
       setMessages(prev => [...prev, aiMessage]);
+      
+      // Force ready status after a few exchanges
+      if (messages.filter(m => m.role === 'user').length >= 3) {
+        setIsReadyToComplete(true);
+      }
       
       if (session?.user?.id) {
         try {
@@ -478,9 +549,8 @@ I give all my remaining property to ${responses.residualEstate || '[BENEFICIARIE
 ARTICLE ${responses.guardianNeeded ? 'VI' : 'V'}: DIGITAL ASSETS
 ${responses.digitalAssets ? `I direct my Executor regarding my digital assets as follows: ${responses.digitalAssetsDetails || '[DIGITAL ASSETS DETAILS]'}` : 'I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.'}
 
-Signed: ${responses.fullName || '[NAME]'}
-Date: ${new Date().toLocaleDateString()}
-Witnesses: [Witness 1], [Witness 2]`;
+Digitally signed by: ${responses.fullName || '[NAME]'}
+Date: ${new Date().toLocaleDateString()}`;
     }
   };
   

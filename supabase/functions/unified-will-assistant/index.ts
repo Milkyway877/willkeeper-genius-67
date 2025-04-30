@@ -38,6 +38,9 @@ serve(async (req) => {
 
     console.log(`Processing query: ${query}`);
     console.log(`Template type: ${template_type}`);
+    console.log(`Current progress:`, progress);
+    console.log(`Current extracted data:`, extracted_data);
+    console.log(`Current contacts:`, contacts);
     
     // Get the current auth session
     const supabaseClient = createClient(
@@ -103,26 +106,31 @@ serve(async (req) => {
     const openaiData = await openaiResponse.json();
     const assistantResponse = openaiData.choices[0].message.content;
 
-    // Process the AI response to extract any contact information
-    const updatedContacts = processContactsFromResponse(assistantResponse, contacts, extracted_data);
+    console.log("Assistant response:", assistantResponse);
+
+    // Extract more information from both query and response
+    const updatedExtractedData = extractMoreInformation(query, assistantResponse, extracted_data);
     
-    // Check if we need to trigger a video recording
-    const triggerVideo = shouldTriggerVideo(assistantResponse, progress);
+    // Process the AI response to extract any contact information
+    const updatedContacts = processContactsFromResponse(assistantResponse, contacts, updatedExtractedData);
     
     // Check if all required data has been collected
-    const updatedProgress = analyzeProgressFromResponse(assistantResponse, progress, extracted_data, updatedContacts);
+    const updatedProgress = analyzeProgressFromResponse(assistantResponse, progress, updatedExtractedData, updatedContacts, conversation_history.length);
     
-    // Check if we're ready to complete
-    const isComplete = checkIfComplete(updatedProgress);
+    // Always force ready status after a few exchanges
+    const forceReady = conversation_history.length >= 4 && query.length > 0;
+    if (forceReady && !updatedProgress.readyToComplete) {
+      updatedProgress.readyToComplete = true;
+      console.log("Force setting readyToComplete to true due to conversation length");
+    }
 
     return new Response(
       JSON.stringify({
         response: assistantResponse,
         contacts: updatedContacts,
-        extracted_data: extracted_data,
+        extracted_data: updatedExtractedData,
         progress: updatedProgress,
-        triggerVideo,
-        isComplete
+        isComplete: updatedProgress.readyToComplete
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -177,19 +185,90 @@ Ask specifically about access methods, passwords, and how they'd like these asse
   return basePrompt;
 }
 
+// Enhanced information extraction function that gets more data from both query and response
+function extractMoreInformation(query: string, response: string, currentData: any): any {
+  const combinedText = query + " " + response;
+  const data = { ...currentData };
+  
+  // Name extraction with enhanced patterns
+  const namePatterns = [
+    /(?:my name is|I am|I'm|name's|call me) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i,
+    /([A-Z][a-z]+ [A-Z][a-z]+) (?:here|speaking)/i,
+    /(?:This is) ([A-Z][a-z]+ [A-Z][a-z]+)/i
+  ];
+  
+  for (const pattern of namePatterns) {
+    const nameMatch = combinedText.match(pattern);
+    if (nameMatch && nameMatch[1] && !data.fullName) {
+      data.fullName = nameMatch[1].trim();
+      break;
+    }
+  }
+  
+  // Marital status extraction
+  const maritalStatusPatterns = [
+    /(?:I am|I'm) (single|married|divorced|widowed)/i,
+    /marital status(?:\s+is)? (single|married|divorced|widowed)/i,
+    /(?:I'm|I am)(?: currently)? (single|married|divorced|widowed)/i
+  ];
+  
+  for (const pattern of maritalStatusPatterns) {
+    const statusMatch = combinedText.match(pattern);
+    if (statusMatch && statusMatch[1] && !data.maritalStatus) {
+      data.maritalStatus = statusMatch[1].charAt(0).toUpperCase() + statusMatch[1].slice(1).toLowerCase();
+      break;
+    }
+  }
+  
+  // Executor extraction with enhanced patterns
+  const executorPatterns = [
+    /(?:executor|appoint|choose|select|want|designate)(?: my| the)? ([A-Z][a-z]+(?: [A-Z][a-z]+)+)(?: as(?: my)? executor)/i,
+    /([A-Z][a-z]+ [A-Z][a-z]+) (?:will|should|can) be (?:my|the) executor/i,
+    /executor(?:'s| is| will be) ([A-Z][a-z]+ [A-Z][a-z]+)/i
+  ];
+  
+  for (const pattern of executorPatterns) {
+    const executorMatch = combinedText.match(pattern);
+    if (executorMatch && executorMatch[1] && !data.executorName) {
+      data.executorName = executorMatch[1].trim();
+      break;
+    }
+  }
+  
+  // Email extraction
+  const emailMatch = combinedText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  if (emailMatch && emailMatch[0]) {
+    data.executorEmail = emailMatch[0];
+  }
+  
+  // Phone extraction
+  const phoneMatch = combinedText.match(/(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/);
+  if (phoneMatch && phoneMatch[0]) {
+    data.executorPhone = phoneMatch[0];
+  }
+  
+  // Extract additional data points common in will creation
+  if (combinedText.includes("children")) {
+    data.hasChildren = combinedText.includes("no children") ? false : true;
+  }
+  
+  return data;
+}
+
 function processContactsFromResponse(aiResponse: string, currentContacts: ContactType[], extractedData: any): ContactType[] {
   const contacts = [...currentContacts];
   
-  // Check for executor mentions in the AI response
-  if (aiResponse.includes('executor') && extractedData.executorName && !contacts.some(c => c.role === 'Executor')) {
+  // Check for executor mentions in extracted data and add if not exists
+  if (extractedData.executorName && !contacts.some(c => c.name === extractedData.executorName)) {
     contacts.push({
       id: `contact-${Date.now()}`,
       name: extractedData.executorName,
       role: 'Executor',
-      email: '',
-      phone: '',
+      email: extractedData.executorEmail || '',
+      phone: extractedData.executorPhone || '',
       address: ''
     });
+    console.log(`Added executor contact: ${extractedData.executorName}`);
   }
   
   // Check for guardian mentions in the AI response
@@ -251,48 +330,35 @@ function analyzeProgressFromResponse(
   aiResponse: string, 
   currentProgress: any, 
   extractedData: any,
-  contacts: ContactType[]
+  contacts: ContactType[],
+  messageCount: number
 ): any {
   const progress = { ...currentProgress };
   
-  // Check for personal info completion
-  if (extractedData.fullName && (extractedData.maritalStatus || aiResponse.includes('marital status'))) {
+  // Check for personal info completion - just need a name
+  if (extractedData.fullName) {
     progress.personalInfo = true;
+    console.log("Personal info marked as complete");
   }
   
-  // Check for contacts completion
-  const hasExecutor = contacts.some(c => c.role === 'Executor' && (c.email || c.phone));
-  if (hasExecutor) {
+  // Check for contacts - just need one contact with a role
+  if (contacts.length > 0 && contacts.some(c => c.role)) {
     progress.contacts = true;
+    console.log("Contacts marked as complete");
   }
   
-  // Check for document requests in the AI's response
-  if (aiResponse.toLowerCase().includes('upload') && 
-      (aiResponse.toLowerCase().includes('document') || aiResponse.toLowerCase().includes('proof'))) {
-    progress.documentsRequested = true;
+  // Set ready to complete if we have the minimum requirements
+  if (progress.personalInfo && progress.contacts) {
+    progress.readyToComplete = true;
+    console.log("Ready to complete is now true");
   }
   
+  // Force ready after enough messages even without all data
+  if (messageCount >= 4) {
+    progress.readyToComplete = true;
+    console.log("Forcing ready to complete due to message count");
+  }
+  
+  // The following are simplified requirements for our minimum viable product
   return progress;
-}
-
-function shouldTriggerVideo(aiResponse: string, progress: any): boolean {
-  const personalInfoComplete = progress.personalInfo === true;
-  const contactsComplete = progress.contacts === true;
-  
-  // Only trigger video if we've collected personal info and contacts
-  if (personalInfoComplete && contactsComplete) {
-    // Check if the AI is asking about video recording
-    return aiResponse.toLowerCase().includes('video testament') || 
-           aiResponse.toLowerCase().includes('record a video') ||
-           aiResponse.toLowerCase().includes('video recording');
-  }
-  
-  return false;
-}
-
-function checkIfComplete(progress: any): boolean {
-  // Consider the process complete when we have personal info, contacts, and either documents or video
-  return progress.personalInfo === true && 
-         progress.contacts === true && 
-         (progress.documents === true || progress.video === true);
 }
