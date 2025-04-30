@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification } from "./notificationService";
+import { createSystemNotification, EventType } from "./notificationService";
 
 export interface Will {
   id: string;
