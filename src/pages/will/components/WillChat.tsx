@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +16,7 @@ interface Message {
 interface WillChatProps {
   templateId: string;
   templateName: string;
-  onContentUpdate: (content: string) => void;
+  onContentUpdate: (content: string, updatedField?: string) => void;
   willContent: string;
   onComplete?: (data: {
     extractedData: Record<string, any>;
@@ -26,6 +25,20 @@ interface WillChatProps {
     documents: any[];
   }) => void;
 }
+
+// Utility functions moved outside component to prevent recreation
+const debounce = <F extends (...args: any[]) => any>(func: F, waitFor: number) => {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  
+  return (...args: Parameters<F>): ReturnType<F> | void => {
+    if (timeout !== null) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+    timeout = setTimeout(() => func(...args), waitFor);
+    return undefined;
+  };
+};
 
 export function WillChat({ templateId, templateName, onContentUpdate, willContent, onComplete }: WillChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -43,6 +56,15 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   const navigate = useNavigate();
   const recognitionRef = useRef<any>(null);
   const willDraftIdRef = useRef<string | null>(localStorage.getItem('currentWillDraftId'));
+  const extractionRef = useRef<{
+    isExtracting: boolean,
+    lastExtractionTime: number,
+    pendingExtraction: boolean
+  }>({
+    isExtracting: false,
+    lastExtractionTime: 0,
+    pendingExtraction: false
+  });
   
   // Track user information in a structured way
   const [userInfo, setUserInfo] = useState({
@@ -90,7 +112,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     
     // Initialize the document with template content
     const initialContent = getInitialContent(templateId);
-    console.log("[WillChat] Initializing will content:", initialContent.substring(0, 50) + "...");
     onContentUpdate(initialContent);
 
     // Load previously extracted data from localStorage if available
@@ -105,18 +126,16 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         setExtractedData(parsedData);
         
         // Generate updated content with the loaded data
-        setTimeout(() => {
-          const updatedContent = generateWillContent({
-            ...userInfo,
-            ...parsedData
-          });
-          onContentUpdate(updatedContent);
-        }, 100);
+        const updatedContent = generateWillContent({
+          ...userInfo,
+          ...parsedData
+        });
+        onContentUpdate(updatedContent);
       } catch (e) {
         console.error("Error parsing saved extracted data:", e);
       }
     }
-  }, [templateId, templateName]);
+  }, [templateId, templateName, onContentUpdate]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -156,14 +175,13 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.';
   };
 
-  // Save extracted data to localStorage and Supabase
-  const saveExtractedData = useCallback(async (data: Record<string, any>) => {
+  // Debounced save to avoid excessive database calls
+  const debouncedSaveExtractedData = useCallback(debounce(async (data: Record<string, any>) => {
     if (!willDraftIdRef.current) return;
     
     // Save to localStorage for immediate access
     localStorage.setItem(`will_extracted_data_${willDraftIdRef.current}`, JSON.stringify(data));
     
-    // Save to Supabase for persistence
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !sessionData.session) {
@@ -193,8 +211,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       }));
       
       if (existingConversation) {
-        // Update existing conversation
-        const { error: updateError } = await supabase
+        await supabase
           .from('will_ai_conversations')
           .update({
             conversation_data: conversationData,
@@ -202,372 +219,218 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
             updated_at: new Date().toISOString()
           })
           .eq('id', existingConversation.id);
-        
-        if (updateError) {
-          console.error("Error updating conversation data:", updateError);
-        } else {
-          console.log("Successfully updated conversation data in Supabase");
-        }
       } else {
-        // Create new conversation
-        const { error: insertError } = await supabase
+        await supabase
           .from('will_ai_conversations')
           .insert({
             will_id: willDraftIdRef.current,
             conversation_data: conversationData,
             extracted_entities: data
           });
-        
-        if (insertError) {
-          console.error("Error inserting conversation data:", insertError);
-        } else {
-          console.log("Successfully saved conversation data to Supabase");
-        }
       }
     } catch (error) {
       console.error("Error saving extracted data:", error);
     }
-  }, [messages]);
+  }, 2000), [messages]);
   
-  // Function to extract information after each message exchange - now optimized with better patterns
+  // Function to extract information - optimized to run less frequently
   const extractAndUpdateInfo = useCallback(() => {
+    // Prevent concurrent extraction and limit frequency
+    if (extractionRef.current.isExtracting) {
+      extractionRef.current.pendingExtraction = true;
+      return null;
+    }
+    
+    const currentTime = Date.now();
+    if (currentTime - extractionRef.current.lastExtractionTime < 1000) {
+      extractionRef.current.pendingExtraction = true;
+      return null;
+    }
+    
+    extractionRef.current.isExtracting = true;
+    extractionRef.current.lastExtractionTime = currentTime;
+    extractionRef.current.pendingExtraction = false;
+    
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
     let lastField = "";
     
-    console.log("[WillChat] Extracting info from all messages");
-    
-    // We'll analyze the conversation as a whole to capture context
-    let conversationContext = '';
-    const userMessages = messages.filter(msg => msg.role === 'user');
+    // We'll analyze only the most recent messages for efficiency
+    const recentUserMessages = messages
+      .filter(msg => msg.role === 'user')
+      .slice(-3);  // Look at the last 3 user messages
     
     // Aggregate user messages to build context
-    userMessages.forEach(msg => {
+    let conversationContext = '';
+    recentUserMessages.forEach(msg => {
       conversationContext += msg.content + ' ';
     });
     
-    // Look through individual messages for specific pieces of information
-    for (const message of messages) {
-      // Skip system messages
-      if (message.role === 'system') {
-        continue;
-      }
-      
-      const content = message.content.toLowerCase();
-      
-      // Skip if the message contains the assistant's self-introduction
-      if (content.includes("i'm skyler") || content.includes("i am skyler")) {
-        continue;
-      }
-      
-      // 1. Extract full name (improved patterns)
-      if (message.role === 'user') {
-        // Check for direct name input (just a name with no other context)
-        if (content.trim().split(' ').length >= 2 && 
-            /^[A-Za-z][a-z]+ [A-Za-z][a-z]+$/i.test(content.trim()) &&
-            !updatedInfo.fullName) {
-          updatedInfo.fullName = content.trim();
+    // Extract full name with improved matching
+    const namePatterns = [
+      /(?:my name is|I am|I'm|name|call me) ([A-Za-z\s.'-]+)/i,
+      /(?:I'm|I am) ([A-Za-z\s.'-]+)/i,
+      /(?:I,) ([A-Za-z\s.'-]+)/i,
+      /(?:name:?) ([A-Za-z\s.'-]+)/i
+    ];
+    
+    for (const pattern of namePatterns) {
+      const nameMatch = conversationContext.match(pattern);
+      if (nameMatch && nameMatch[1]) {
+        const possibleName = nameMatch[1].trim();
+        if (!possibleName.toLowerCase().includes("skyler") && 
+            !possibleName.toLowerCase().includes("assistant") &&
+            possibleName.split(' ').length >= 2 &&
+            updatedInfo.fullName !== possibleName) {
+          updatedInfo.fullName = possibleName;
           updatedInfo.updatedFields.name = true;
           lastField = "name";
           contentUpdated = true;
-        }
-        
-        // Look for "my name is" patterns with improved flexibility
-        const namePatterns = [
-          /(?:my name is|I am|I'm|name|call me) ([A-Za-z\s.'-]+)/i,
-          /(?:I'm|I am) ([A-Za-z\s.'-]+)/i,
-          /(?:I,) ([A-Za-z\s.'-]+)/i,
-          /(?:name:?) ([A-Za-z\s.'-]+)/i
-        ];
-        
-        for (const pattern of namePatterns) {
-          const nameMatch = message.content.match(pattern);
-          if (nameMatch && nameMatch[1]) {
-            const possibleName = nameMatch[1].trim();
-            // Avoid extracting "Skyler" as the name (it's the AI assistant)
-            if (!possibleName.toLowerCase().includes("skyler") && 
-                !possibleName.toLowerCase().includes("assistant") &&
-                possibleName.split(' ').length >= 2) {
-              updatedInfo.fullName = possibleName;
-              updatedInfo.updatedFields.name = true;
-              lastField = "name";
-              contentUpdated = true;
-              break;
-            }
-          }
-        }
-      }
-      
-      // Look for names in AI responses (confirmation patterns)
-      if (message.role === 'assistant' && !updatedInfo.fullName) {
-        const aiNameConfirmation = [
-          /thank you,? ([A-Za-z\s.'-]+)\.? now/i,
-          /hello ([A-Za-z\s.'-]+)!? let's/i,
-          /thanks,? ([A-Za-z\s.'-]+)\./i
-        ];
-        
-        for (const pattern of aiNameConfirmation) {
-          const nameMatch = message.content.match(pattern);
-          if (nameMatch && nameMatch[1]) {
-            const possibleName = nameMatch[1].trim();
-            if (!possibleName.toLowerCase().includes("skyler") && 
-                !possibleName.toLowerCase().includes("assistant") &&
-                possibleName.split(' ').length >= 1) {
-              updatedInfo.fullName = possibleName;
-              updatedInfo.updatedFields.name = true;
-              lastField = "name";
-              contentUpdated = true;
-              break;
-            }
-          }
-        }
-      }
-      
-      // 2. Extract marital status with improved patterns
-      const maritalStatusPatterns = [
-        { pattern: /(?:I am|I'm) single|never married|not married|unmarried/i, status: "single" },
-        { pattern: /(?:I am|I'm) married|I have a (husband|wife|spouse)|my (husband|wife|spouse)|(?:I am|I'm) (?:a )?(?:married|husband|wife)/i, status: "married" },
-        { pattern: /(?:I am|I'm) divorced|(?:I am|I'm) separated/i, status: "divorced" },
-        { pattern: /(?:I am|I'm) widowed|(?:I am|I'm) (?:a )?widow(?:er)?/i, status: "widowed" }
-      ];
-      
-      for (const { pattern, status } of maritalStatusPatterns) {
-        if (content.match(pattern) && updatedInfo.maritalStatus !== status) {
-          updatedInfo.maritalStatus = status;
-          updatedInfo.updatedFields.maritalStatus = true;
-          lastField = "maritalStatus";
-          contentUpdated = true;
           break;
-        }
-      }
-      
-      // 3. Extract spouse name with improved matching
-      if (updatedInfo.maritalStatus === "married" || content.includes("married")) {
-        const spousePatterns = [
-          /(?:my wife|my husband|my spouse)(?:'s| is| name is| named|:) ([A-Za-z\s.'-]+)/i,
-          /married to ([A-Za-z\s.'-]+)/i,
-          /spouse is ([A-Za-z\s.'-]+)/i,
-          /(?:wife|husband|spouse):? ([A-Za-z\s.'-]+)/i
-        ];
-        
-        for (const pattern of spousePatterns) {
-          const spouseMatch = message.content.match(pattern);
-          if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1].trim()) {
-            updatedInfo.spouseName = spouseMatch[1].trim();
-            updatedInfo.updatedFields.spouseName = true;
-            lastField = "spouseName";
-            contentUpdated = true;
-            break;
-          }
-        }
-      }
-      
-      // 4. Extract executor information with improved matching
-      if (message.role === 'user') {
-        const executorPatterns = [
-          /(?:my executor|the executor|executor) (?:will be|should be|is|name is|:) ([A-Za-z\s.'-]+)/i,
-          /(?:appoint|choose|select|want|name) ([A-Za-z\s.'-]+) as (?:my|the) executor/i,
-          /executor:? ([A-Za-z\s.'-]+)/i
-        ];
-        
-        for (const pattern of executorPatterns) {
-          const executorMatch = message.content.match(pattern);
-          if (executorMatch && executorMatch[1]) {
-            const possibleExecutor = executorMatch[1].trim();
-            if (!possibleExecutor.toLowerCase().includes("skyler") && 
-                !possibleExecutor.toLowerCase().includes("assistant") &&
-                updatedInfo.executor !== possibleExecutor) {
-              updatedInfo.executor = possibleExecutor;
-              updatedInfo.updatedFields.executor = true;
-              lastField = "executor";
-              contentUpdated = true;
-              break;
-            }
-          }
-        }
-      }
-      
-      // 5. Extract address with improved matching
-      if (message.role === 'user') {
-        const addressPatterns = [
-          /(?:I live|I reside|my address|I live at|my home is|I stay at|I am located at) (?:at )?([A-Za-z0-9\s,.'-]+)/i,
-          /(?:address is|address:|home address is) ([A-Za-z0-9\s,.'-]+)/i,
-          /(?:address:?) ([A-Za-z0-9\s,.'-]+)/i
-        ];
-        
-        for (const pattern of addressPatterns) {
-          const addressMatch = message.content.match(pattern);
-          if (addressMatch && addressMatch[1]) {
-            const possibleAddress = addressMatch[1].trim();
-            if (possibleAddress.length > 5 && updatedInfo.address !== possibleAddress) {
-              updatedInfo.address = possibleAddress;
-              updatedInfo.updatedFields.address = true;
-              lastField = "address";
-              contentUpdated = true;
-              
-              // Extract city, state, zip if present in the address
-              const cityStateZipPattern = /([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)/i;
-              const cityStateMatch = updatedInfo.address.match(cityStateZipPattern);
-              if (cityStateMatch) {
-                updatedInfo.city = cityStateMatch[1].trim();
-                updatedInfo.state = cityStateMatch[2].trim();
-                updatedInfo.zipCode = cityStateMatch[3].trim();
-                updatedInfo.updatedFields.cityState = true;
-              }
-              break;
-            }
-          }
-        }
-      }
-      
-      // 6. Extract children information with improved matching
-      const childrenPatterns = [
-        /(?:I have|we have) (\d+) (child|children|kids|son|daughter|sons|daughters)/i,
-        /my (child|children|kids|son|daughter|sons|daughters)(?:'s name is|'s names are|ren are)? ([A-Za-z\s,.'-]+)/i,
-        /(?:children|child)(?:ren)?(?:'s names are|:) ([A-Za-z\s,.'-]+)/i,
-        /(?:I have|we have) ([A-Za-z\s,.'-]+) and ([A-Za-z\s,.'-]+)(?: as my| as our)? (?:kids|children|sons|daughters)/i
-      ];
-      
-      for (const pattern of childrenPatterns) {
-        const childrenMatch = message.content.match(pattern);
-        if (childrenMatch && message.role === 'user') {
-          let childrenNames: string[] = [];
-          
-          if (childrenMatch[1] && /\d+/.test(childrenMatch[1])) {
-            // This matched "X children" pattern, look in the rest of the message for names
-            const rest = message.content.substring(childrenMatch.index! + childrenMatch[0].length);
-            // Try to extract names listed after mentioning number of children
-            const namesPattern = /(?:named|called|:)?\s*([A-Za-z\s,.'-]+)/i;
-            const namesMatch = rest.match(namesPattern);
-            if (namesMatch && namesMatch[1]) {
-              childrenNames = namesMatch[1].split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
-            }
-          } else if (childrenMatch[2]) {
-            // This matched a direct list of names
-            childrenNames = childrenMatch[2].split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
-          }
-          // Special case for "I have X and Y as my children" pattern
-          else if (childrenMatch[1] && childrenMatch[2]) {
-            childrenNames = [childrenMatch[1].trim(), childrenMatch[2].trim()];
-          }
-          
-          if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
-            updatedInfo.children = childrenNames;
-            updatedInfo.updatedFields.children = true;
-            lastField = "children";
-            contentUpdated = true;
-          }
-          break;
-        }
-      }
-      
-      // 7. Extract asset information with improved matching
-      if (message.role === 'user') {
-        const assetPatterns = [
-          { pattern: /(?:my house|my home|my property|my real estate|my apartment|my condo) (?:is|at|located at|in|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Real Estate" },
-          { pattern: /(?:I have|I own) (?:a) (?:house|home|property|apartment|condo) (?:at|in|located at|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Real Estate" },
-          { pattern: /(?:my car|my vehicle|my automobile) (?:is|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Vehicle" },
-          { pattern: /(?:I have|I own) (?:a) (?:car|vehicle|automobile)(?::)? ([A-Za-z0-9\s,.'-]+)/i, type: "Vehicle" },
-          { pattern: /(?:my savings|my bank account|my checking|my investment|my money) (?:is|at|with|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Financial Assets" },
-          { pattern: /(?:I have|I own) (?:savings|money|investments|accounts) (?:at|with|in|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Financial Assets" }
-        ];
-        
-        for (const { pattern, type } of assetPatterns) {
-          const assetMatch = message.content.match(pattern);
-          if (assetMatch && assetMatch[1]) {
-            const assetDetails = assetMatch[1].trim();
-            const newAsset = {
-              name: type,
-              value: assetDetails
-            };
-            
-            const existingAssetIndex = updatedInfo.assets.findIndex(a => a.name === type);
-            if (existingAssetIndex === -1) {
-              // Add new asset
-              updatedInfo.assets.push(newAsset);
-              updatedInfo.updatedFields.assets = true;
-              lastField = "assets";
-              contentUpdated = true;
-            } else if (updatedInfo.assets[existingAssetIndex].value !== assetDetails) {
-              // Update existing asset
-              updatedInfo.assets[existingAssetIndex].value = assetDetails;
-              updatedInfo.updatedFields.assets = true;
-              lastField = "assets";
-              contentUpdated = true;
-            }
-          }
-        }
-        
-        // Look for digital assets specifically for digital asset will type
-        if (templateId === 'digital-assets') {
-          const digitalAssetPatterns = [
-            { pattern: /(?:my digital assets?|online accounts?|cryptocurrency|crypto|bitcoin|ethereum|nft) (?:include|is|are|:) ([A-Za-z0-9\s,.'-]+)/i, type: "Digital Assets" },
-            { pattern: /(?:I have|I own) (?:digital assets?|online accounts?|cryptocurrency|crypto|bitcoin|ethereum|nft) (?::)? ([A-Za-z0-9\s,.'-]+)/i, type: "Digital Assets" }
-          ];
-          
-          for (const { pattern, type } of digitalAssetPatterns) {
-            const digitalAssetMatch = message.content.match(pattern);
-            if (digitalAssetMatch && digitalAssetMatch[1]) {
-              const assetDetails = digitalAssetMatch[1].trim();
-              const digitalAsset = {
-                type: type,
-                details: assetDetails
-              };
-              
-              const existingAssetIndex = updatedInfo.digitalAssets.findIndex(a => a.details === assetDetails);
-              if (existingAssetIndex === -1) {
-                updatedInfo.digitalAssets.push(digitalAsset);
-                updatedInfo.updatedFields.digitalAssets = true;
-                lastField = "digitalAssets";
-                contentUpdated = true;
-              }
-            }
-          }
         }
       }
     }
     
-    // If we found new information, update state
+    // Extract marital status with improved patterns
+    const maritalStatusPatterns = [
+      { pattern: /(?:I am|I'm) single|never married|not married|unmarried/i, status: "single" },
+      { pattern: /(?:I am|I'm) married|I have a (husband|wife|spouse)|my (husband|wife|spouse)|(?:I am|I'm) (?:a )?(?:married|husband|wife)/i, status: "married" },
+      { pattern: /(?:I am|I'm) divorced|(?:I am|I'm) separated/i, status: "divorced" },
+      { pattern: /(?:I am|I'm) widowed|(?:I am|I'm) (?:a )?widow(?:er)?/i, status: "widowed" }
+    ];
+    
+    for (const { pattern, status } of maritalStatusPatterns) {
+      if (conversationContext.match(pattern) && updatedInfo.maritalStatus !== status) {
+        updatedInfo.maritalStatus = status;
+        updatedInfo.updatedFields.maritalStatus = true;
+        lastField = "maritalStatus";
+        contentUpdated = true;
+        break;
+      }
+    }
+    
+    // Extract spouse name
+    if (updatedInfo.maritalStatus === "married" || conversationContext.includes("married")) {
+      const spousePatterns = [
+        /(?:my wife|my husband|my spouse)(?:'s| is| name is| named|:) ([A-Za-z\s.'-]+)/i,
+        /married to ([A-Za-z\s.'-]+)/i,
+        /spouse is ([A-Za-z\s.'-]+)/i,
+        /(?:wife|husband|spouse):? ([A-Za-z\s.'-]+)/i
+      ];
+      
+      for (const pattern of spousePatterns) {
+        const spouseMatch = conversationContext.match(pattern);
+        if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1].trim()) {
+          updatedInfo.spouseName = spouseMatch[1].trim();
+          updatedInfo.updatedFields.spouseName = true;
+          lastField = "spouseName";
+          contentUpdated = true;
+          break;
+        }
+      }
+    }
+    
+    // Extract executor information
+    const executorPatterns = [
+      /(?:my executor|the executor|executor) (?:will be|should be|is|name is|:) ([A-Za-z\s.'-]+)/i,
+      /(?:appoint|choose|select|want|name) ([A-Za-z\s.'-]+) as (?:my|the) executor/i,
+      /executor:? ([A-Za-z\s.'-]+)/i
+    ];
+    
+    for (const pattern of executorPatterns) {
+      const executorMatch = conversationContext.match(pattern);
+      if (executorMatch && executorMatch[1]) {
+        const possibleExecutor = executorMatch[1].trim();
+        if (!possibleExecutor.toLowerCase().includes("skyler") && 
+            !possibleExecutor.toLowerCase().includes("assistant") &&
+            updatedInfo.executor !== possibleExecutor) {
+          updatedInfo.executor = possibleExecutor;
+          updatedInfo.updatedFields.executor = true;
+          lastField = "executor";
+          contentUpdated = true;
+          break;
+        }
+      }
+    }
+    
+    // Extract children information
+    const childrenPatterns = [
+      /(?:I have|we have) (\d+) (child|children|kids|son|daughter|sons|daughters)/i,
+      /my (child|children|kids|son|daughter|sons|daughters)(?:'s name is|'s names are|ren are)? ([A-Za-z\s,.'-]+)/i,
+      /(?:children|child)(?:ren)?(?:'s names are|:) ([A-Za-z\s,.'-]+)/i,
+      /(?:I have|we have) ([A-Za-z\s,.'-]+) and ([A-Za-z\s,.'-]+)(?: as my| as our)? (?:kids|children|sons|daughters)/i
+    ];
+    
+    for (const pattern of childrenPatterns) {
+      const childrenMatch = conversationContext.match(pattern);
+      if (childrenMatch) {
+        let childrenNames: string[] = [];
+        
+        if (childrenMatch[1] && /\d+/.test(childrenMatch[1])) {
+          // Look for names in the rest of the context
+          const namesPattern = /(?:named|called|:)?\s*([A-Za-z\s,.'-]+)/i;
+          const namesMatch = conversationContext.substring(childrenMatch.index! + childrenMatch[0].length).match(namesPattern);
+          if (namesMatch && namesMatch[1]) {
+            childrenNames = namesMatch[1].split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
+          }
+        } else if (childrenMatch[2]) {
+          childrenNames = childrenMatch[2].split(/,\s*|\s+and\s+|\s+&\s+/).filter(Boolean).map(n => n.trim());
+        } else if (childrenMatch[1] && childrenMatch[2]) {
+          childrenNames = [childrenMatch[1].trim(), childrenMatch[2].trim()];
+        }
+        
+        if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
+          updatedInfo.children = childrenNames;
+          updatedInfo.updatedFields.children = true;
+          lastField = "children";
+          contentUpdated = true;
+        }
+        break;
+      }
+    }
+    
+    // If we found new information, update state and will content
     if (contentUpdated) {
-      console.log("[WillChat] Content updated from message analysis, new info:", JSON.stringify(updatedInfo));
       updatedInfo.lastUpdatedField = lastField;
       setLastUpdatedField(lastField);
       setUserInfo(updatedInfo);
       setExtractedData(updatedInfo);
       
       // Save extracted data for persistence
-      saveExtractedData(updatedInfo);
+      debouncedSaveExtractedData(updatedInfo);
       
       // Update the will content
       const updatedWillContent = generateWillContent(updatedInfo);
-      onContentUpdate(updatedWillContent);
+      onContentUpdate(updatedWillContent, lastField);
     }
 
+    extractionRef.current.isExtracting = false;
+    
+    // If there's a pending extraction, run it after a short delay
+    if (extractionRef.current.pendingExtraction) {
+      setTimeout(() => extractAndUpdateInfo(), 500);
+    }
+    
     return updatedInfo;
-  }, [messages, userInfo, templateId, onContentUpdate, saveExtractedData]);
+  }, [userInfo, onContentUpdate, messages, debouncedSaveExtractedData]);
   
-  // Run extraction whenever messages change
+  // Throttled extraction - only run after message updates
   useEffect(() => {
     if (messages.length > 1) {
       extractAndUpdateInfo();
     }
-  }, [messages, extractAndUpdateInfo]);
+  }, [messages.length, extractAndUpdateInfo]);
   
   // Generate will content based on extracted information
   const generateWillContent = (info: typeof userInfo) => {
     // Generate will content based on template and extracted info
-    let newContent = '';
-    console.log("[WillChat] Generating will content with info:", JSON.stringify(info));
-    
     if (templateId === 'digital-assets') {
-      newContent = generateDigitalAssetsWill(info);
+      return generateDigitalAssetsWill(info);
     } else if (templateId === 'business') {
-      newContent = generateBusinessWill(info);
+      return generateBusinessWill(info);
     } else {
-      newContent = generateBasicWill(info);
+      return generateBasicWill(info);
     }
-    
-    return newContent;
   };
   
   const handleSendMessage = async () => {
@@ -615,16 +478,16 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       
       setMessages(prev => [...prev, aiMessage]);
       
-      // Extract information after receiving AI response
+      // Extract information after receiving AI response with a small delay
       setTimeout(() => {
         extractAndUpdateInfo();
-      }, 100);
+      }, 300);
       
-      // Check for completion phrases to determine if we're done
+      // Check for completion phrases
       checkForCompletion(aiResponse);
       
     } catch (error) {
-      console.error("[WillChat] Error processing message:", error);
+      console.error("Error processing message:", error);
       
       toast({
         title: "Communication Error",
@@ -636,7 +499,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     }
   };
   
-  // Function to check for completion phrases to determine if we're done
+  // Function to check for completion phrases
   const checkForCompletion = (aiResponse: string) => {
     const completionPhrases = [
       /your will is now complete/i,
@@ -648,7 +511,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     for (const phrase of completionPhrases) {
       if (aiResponse.match(phrase)) {
         setIsComplete(true);
-        console.log("[WillChat] Will completion detected");
         break;
       }
     }
@@ -688,7 +550,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         };
         
         recognition.onerror = (event: any) => {
-          console.error('[WillChat] Speech recognition error', event.error);
+          console.error('Speech recognition error', event.error);
           setIsRecording(false);
           toast({
             title: "Voice Recognition Error",
@@ -701,7 +563,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         recognitionRef.current = recognition;
         setIsRecording(true);
       } catch (error) {
-        console.error('[WillChat] Error setting up speech recognition', error);
+        console.error('Error setting up speech recognition', error);
         setRecordingSupported(false);
         toast({
           title: "Voice Recording Error",
@@ -715,7 +577,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   // Handle the completion process
   const handleComplete = () => {
     // Extract all information from the conversation
-    const updatedInfo = extractAndUpdateInfo();
+    const updatedInfo = extractAndUpdateInfo() || userInfo;
     
     // Generate the final will content
     const generatedContent = generateWillContent(updatedInfo);

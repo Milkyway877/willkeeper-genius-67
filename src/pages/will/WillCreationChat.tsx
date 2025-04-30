@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,9 @@ export default function WillCreationChat() {
   const [extractedData, setExtractedData] = useState<Record<string, any>>({});
   const [contacts, setContacts] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [lastUpdatedField, setLastUpdatedField] = useState<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const contentUpdateCountRef = useRef(0);
   
   // Initialize the will template info
   useEffect(() => {
@@ -150,10 +152,32 @@ export default function WillCreationChat() {
     }
   }, [willDraft.content]);
   
-  // Function to update will content from chat
-  const updateWillContent = async (newContent: string) => {
+  // Function to update will content from chat - debounced and throttled
+  const updateWillContent = useCallback((newContent: string, updatedField?: string) => {
+    // Throttle updates - only process every 3rd update unless it's been 5+ seconds
+    const currentTime = Date.now();
+    const lastUpdateTime = contentUpdateCountRef.current;
+    const timeSinceLastUpdate = currentTime - lastUpdateTime;
+    
+    contentUpdateCountRef.current = (contentUpdateCountRef.current + 1) % 3;
+    
+    if (contentUpdateCountRef.current !== 0 && timeSinceLastUpdate < 5000) {
+      return;
+    }
+    
+    // Track last updated field for highlighting
+    if (updatedField) {
+      setLastUpdatedField(updatedField);
+    }
+    
     // Update local state
-    setWillDraft(prev => ({ ...prev, content: newContent }));
+    setWillDraft(prev => {
+      // Only update if content has actually changed
+      if (prev.content !== newContent) {
+        return { ...prev, content: newContent };
+      }
+      return prev;
+    });
     
     if (willDraft.id) {
       // Implement debounced saving to reduce API calls
@@ -167,15 +191,14 @@ export default function WillCreationChat() {
         setIsSaving(true);
         try {
           await updateWill(willDraft.id, { content: newContent });
-          console.log('Will content saved successfully');
         } catch (error) {
           console.error('Error updating will content:', error);
         } finally {
           setIsSaving(false);
         }
-      }, 2000); // 2 second debounce
+      }, 3000); // 3 second debounce
     }
-  };
+  }, [willDraft.id, isSaving]);
 
   // Method to handle completion of the chat phase
   const handleChatComplete = (data: {
@@ -388,6 +411,7 @@ export default function WillCreationChat() {
               isCreatingWill={isSaving}
               progress={isSaving ? 50 : 0}
               handleFinalizeWill={handleFinalizeWill}
+              lastUpdatedField={lastUpdatedField}
             />
           )}
 

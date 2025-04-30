@@ -4,11 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 interface WillPreviewProps {
   content: string;
   showHighlights?: boolean;
+  lastUpdatedField?: string | null;
 }
 
-export function WillPreview({ content, showHighlights = false }: WillPreviewProps) {
+export function WillPreview({ content, showHighlights = false, lastUpdatedField = null }: WillPreviewProps) {
   const contentDivRef = useRef<HTMLDivElement>(null);
-  const [lastUpdatedField, setLastUpdatedField] = useState<string | null>(null);
   const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
   const [documentId, setDocumentId] = useState<string>('');
   
@@ -26,28 +26,23 @@ export function WillPreview({ content, showHighlights = false }: WillPreviewProp
     setDocumentId(storedId);
   }, []);
   
-  // Log when content changes to help with debugging
+  // Log when content changes to help with debugging - reduced frequency
   useEffect(() => {
-    console.log("[WillPreview] Content updated:", content ? content.substring(0, 50) + "..." : "empty");
-    
-    // Extract last updated field from content if available
-    const match = content.match(/\s•\sUpdated$/m);
-    if (match) {
-      const lineIndex = content.substring(0, match.index).lastIndexOf('\n');
-      if (lineIndex >= 0) {
-        const line = content.substring(lineIndex, match.index || 0);
-        setLastUpdatedField(line.trim());
-        
-        // Highlight the section by scrolling to it
-        setTimeout(() => {
-          const elementToScrollTo = contentDivRef.current?.querySelector('.newly-updated');
-          if (elementToScrollTo) {
-            elementToScrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 300);
-      }
+    // Only log significant content changes
+    if (content && content.length > 0) {
+      console.log("[WillPreview] Content updated:", content ? content.substring(0, 50) + "..." : "empty");
     }
-  }, [content]);
+    
+    // Highlight the section by scrolling to it if lastUpdatedField is provided
+    if (lastUpdatedField && showHighlights) {
+      setTimeout(() => {
+        const elementToScrollTo = contentDivRef.current?.querySelector('.newly-updated');
+        if (elementToScrollTo) {
+          elementToScrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [content, lastUpdatedField, showHighlights]);
   
   // Function to add a ref to a field element
   const addFieldRef = (id: string, element: HTMLHeadingElement | HTMLParagraphElement | null) => {
