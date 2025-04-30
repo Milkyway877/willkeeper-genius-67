@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createSystemNotification, EventType } from "./notificationService";
+import { createSystemNotification } from "./notificationService";
 
 export interface Will {
   id: string;
@@ -186,56 +186,42 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
   }
 };
 
-// Add this function to safely create notifications without breaking the app flow
-const safelyCreateNotification = async (eventType: EventType, title: string, description: string) => {
-  try {
-    await createSystemNotification(eventType, { title, description });
-  } catch (error) {
-    // Just log the error but don't throw - this is non-critical functionality
-    console.warn('Non-critical error creating notification:', error);
-  }
-};
-
 export const updateWill = async (id: string, updates: Partial<Will>): Promise<Will | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      throw new Error('No authenticated user');
+      console.error('User is not authenticated');
+      return null;
     }
-    
-    const willUpdates = {
+
+    const updatedWill = {
       ...updates,
-      updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
-    
+
     const { data, error } = await supabase
       .from('wills')
-      .update(willUpdates)
+      .update(updatedWill)
       .eq('id', id)
       .eq('user_id', session.user.id)
-      .select('*')
+      .select()
       .single();
-    
+      
     if (error) {
       console.error('Error updating will:', error);
-      throw error;
+      return null;
     }
     
-    // Only try to create notification if we have a title
-    // Use the safe notification method that won't break the app flow
-    if (data && data.title) {
-      safelyCreateNotification(
-        'will_updated',
-        'Will Updated',
-        `Your will "${data.title}" has been updated successfully.`
-      );
-    }
+    await createSystemNotification('will_updated', {
+      title: 'Will Updated',
+      description: `Your will "${data.title}" has been updated successfully.`
+    });
     
     return data;
   } catch (error) {
     console.error('Error in updateWill:', error);
-    throw error;
+    return null;
   }
 };
 

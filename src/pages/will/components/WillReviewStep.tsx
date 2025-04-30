@@ -1,31 +1,29 @@
 
 import React from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Copy, Clipboard } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Copy, FileText, Loader2, Check, Video } from 'lucide-react';
 import { WillPreview } from './WillPreview';
-import { toast } from '@/hooks/use-toast';
 
 interface WillReviewStepProps {
   editableContent: string;
   splitView: boolean;
-  setSplitView: (split: boolean) => void;
+  setSplitView: (value: boolean) => void;
   handleContentChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleCopyToClipboard: () => void;
   responses: Record<string, any>;
   contacts: any[];
   documents: any[];
   videoBlob: Blob | null;
-  selectedTemplate: {
-    id: string;
-    name: string;
-  };
+  selectedTemplate: any;
   isCreatingWill: boolean;
   progress: number;
   handleFinalizeWill: () => void;
-  lastUpdatedField?: string | null;
 }
 
-export function WillReviewStep({
+export const WillReviewStep = ({
   editableContent,
   splitView,
   setSplitView,
@@ -39,166 +37,151 @@ export function WillReviewStep({
   isCreatingWill,
   progress,
   handleFinalizeWill,
-  lastUpdatedField
-}: WillReviewStepProps) {
-  const copyToClipboard = () => {
-    try {
-      navigator.clipboard.writeText(editableContent);
-      toast({
-        title: "Copied to clipboard",
-        description: "The will content has been copied to clipboard",
-      });
-    } catch (error) {
-      console.error("Failed to copy:", error);
-      toast({
-        title: "Copy failed",
-        description: "Could not copy content to clipboard",
-        variant: "destructive",
-      });
-    }
-    
-    // Call parent handler if provided
-    if (handleCopyToClipboard) {
-      handleCopyToClipboard();
-    }
-  };
-
+}: WillReviewStepProps) => {
   return (
-    <div className="space-y-6 bg-white p-6 rounded-lg border">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Review Your Will</h2>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSplitView(!splitView)}
-          >
-            {splitView ? "Single View" : "Split View"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={copyToClipboard}
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Copy
-          </Button>
-        </div>
-      </div>
-
-      <div className={splitView ? "flex flex-col md:flex-row gap-6" : "space-y-6"}>
-        <div className={splitView ? "w-full md:w-1/2 border rounded-lg overflow-auto" : "border rounded-lg"} style={{maxHeight: '800px'}}>
-          <div className="p-2 bg-slate-50 border-b">
-            <h3 className="font-medium">Document Preview</h3>
-          </div>
-          <div className="p-4">
-            <WillPreview 
-              content={editableContent} 
-              showHighlights={true}
-              lastUpdatedField={lastUpdatedField}
-            />
-          </div>
-        </div>
-
-        {splitView && (
-          <div className="w-full md:w-1/2 border rounded-lg">
-            <div className="p-2 bg-slate-50 border-b">
-              <h3 className="font-medium">Edit Document</h3>
-            </div>
-            <div className="p-4">
-              <textarea
-                value={editableContent}
-                onChange={handleContentChange}
-                className="w-full min-h-[600px] p-4 border rounded-lg font-mono text-sm"
-              ></textarea>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Will Preview</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setSplitView(!splitView)}
+              >
+                {splitView ? "Single View" : "Split View"}
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyToClipboard}
+              >
+                <Copy className="h-4 w-4 mr-1" />
+                Copy
+              </Button>
             </div>
           </div>
-        )}
-      </div>
-
-      {responses && Object.keys(responses).length > 0 && (
-        <div className="border rounded-lg">
-          <div className="p-2 bg-slate-50 border-b">
-            <h3 className="font-medium">Extracted Information</h3>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(responses)
-                .filter(([key, value]) => key !== 'updatedFields' && key !== 'lastUpdatedField')
-                .map(([key, value]) => (
-                  <div key={key} className="border rounded p-3">
-                    <div className="text-sm text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
-                    <div className="font-medium">
-                      {Array.isArray(value)
-                        ? value.join(', ')
-                        : typeof value === 'object'
-                          ? JSON.stringify(value)
-                          : String(value)}
-                    </div>
-                  </div>
-                ))}
+          <CardDescription>
+            Review your will document before finalizing it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className={`${splitView ? 'flex flex-col md:flex-row gap-6' : 'space-y-6'}`}>
+            <div className={`${splitView ? 'w-full md:w-1/2' : ''} border rounded-md p-6 bg-gray-50`}>
+              <h3 className="font-medium mb-4">Document Preview</h3>
+              <div className="max-h-[50vh] overflow-y-auto">
+                <WillPreview content={editableContent} />
+              </div>
             </div>
+            
+            {splitView && (
+              <div className="w-full md:w-1/2 border rounded-md p-6">
+                <h3 className="font-medium mb-4">Edit Document</h3>
+                <textarea
+                  value={editableContent}
+                  onChange={handleContentChange}
+                  className="w-full min-h-[50vh] p-4 border rounded-md text-sm font-mono"
+                ></textarea>
+              </div>
+            )}
           </div>
-        </div>
-      )}
-
-      {documents && documents.length > 0 && (
-        <div className="border rounded-lg">
-          <div className="p-2 bg-slate-50 border-b">
-            <h3 className="font-medium">Supporting Documents</h3>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {documents.map((doc, index) => (
-                <div key={index} className="border rounded p-3 flex items-center">
-                  <Clipboard className="h-5 w-5 mr-2 text-gray-500" />
-                  <div>
-                    <div className="font-medium truncate">{doc.name}</div>
-                    <div className="text-xs text-gray-500">{doc.type}</div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Will Details</CardTitle>
+          <CardDescription>
+            Summary of the information you've provided
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Personal Information</h4>
+                <p className="mt-1">{responses.fullName || 'Not specified'}</p>
+                <p className="text-sm text-gray-500">
+                  {responses.maritalStatus || 'Not specified'}{responses.spouseName ? `, married to ${responses.spouseName}` : ''}
+                </p>
+              </div>
+              
+              {contacts.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Key People</h4>
+                  <div className="mt-1 space-y-1">
+                    {contacts.map((contact, i) => (
+                      <div key={i} className="flex items-center">
+                        <Badge variant="outline" className="mr-2">{contact.role}</Badge>
+                        <span>{contact.name}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        </div>
-      )}
-
-      {contacts && contacts.length > 0 && (
-        <div className="border rounded-lg">
-          <div className="p-2 bg-slate-50 border-b">
-            <h3 className="font-medium">Will Contacts</h3>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {contacts.map((contact, index) => (
-                <div key={index} className="border rounded p-3">
-                  <div className="font-medium">{contact.name}</div>
-                  <div className="text-sm">{contact.role}</div>
-                  {contact.email && (
-                    <div className="text-sm text-gray-500">{contact.email}</div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Attachments</h4>
+                <div className="mt-1">
+                  {documents.length > 0 ? (
+                    <div className="space-y-1">
+                      {documents.map((doc, i) => (
+                        <div key={i} className="flex items-center">
+                          <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                          <span>{doc.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No documents attached</p>
+                  )}
+                  
+                  {videoBlob && (
+                    <div className="flex items-center mt-2">
+                      <Video className="h-4 w-4 mr-2 text-gray-500" />
+                      <span>Video Testament</span>
+                    </div>
                   )}
                 </div>
-              ))}
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Template</h4>
+                <p className="mt-1">{selectedTemplate?.title}</p>
+              </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+      
+      {isCreatingWill ? (
+        <div className="text-center space-y-4">
+          <Progress value={progress} className="h-2" />
+          <p className="text-sm text-gray-500">
+            {progress < 30 && "Generating your will document..."}
+            {progress >= 30 && progress < 60 && "Processing attachments and video..."}
+            {progress >= 60 && progress < 90 && "Finalizing document structure..."}
+            {progress >= 90 && "Securing and saving your will..."}
+          </p>
+          <Button disabled className="mx-auto">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Processing
+          </Button>
         </div>
-      )}
-
-      {videoBlob && (
-        <div className="border rounded-lg">
-          <div className="p-2 bg-slate-50 border-b">
-            <h3 className="font-medium">Video Testament</h3>
-          </div>
-          <div className="p-4">
-            <video
-              src={URL.createObjectURL(videoBlob)}
-              controls
-              className="w-full rounded"
-              style={{maxHeight: "300px"}}
-            />
-          </div>
-        </div>
+      ) : (
+        <Button
+          onClick={handleFinalizeWill}
+          className="w-full"
+          size="lg"
+        >
+          <Check className="mr-2 h-4 w-4" />
+          Finalize and Save Will
+        </Button>
       )}
     </div>
   );
-}
+};

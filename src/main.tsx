@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -45,7 +46,6 @@ import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
 import Wills from './pages/wills/Wills';
 import WillCreatePage from './pages/will/WillCreatePage';
-import WillCreationChat from './pages/will/WillCreationChat'; // New import for Will Creation Chat
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -221,10 +221,6 @@ const router = createBrowserRouter([
       {
         path: "/will/create",
         element: <WillCreatePage />,
-      },
-      {
-        path: "/will/create/chat/:templateId",
-        element: <WillCreationChat />,
       },
       {
         path: "*",

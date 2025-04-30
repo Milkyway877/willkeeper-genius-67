@@ -146,15 +146,13 @@ export const createSystemNotification = async (
       .single();
       
     if (error) {
-      // Just log the error but don't throw - this allows app to continue
-      // even if notifications fail (RLS or other issues)
-      console.warn('Non-critical error creating notification:', error);
+      console.error('Error creating notification:', error);
       return null;
     }
     
     return data;
   } catch (error) {
-    console.warn('Non-critical error in createSystemNotification:', error);
+    console.error('Error in createSystemNotification:', error);
     return null;
   }
 };

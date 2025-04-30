@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -217,23 +218,35 @@ export default function WillCreatePage() {
         throw new Error('Template not found');
       }
       
+      // Create a draft will with the selected template
+      const willData = {
+        title: `${template.name} Draft`,
+        status: 'draft',
+        template_type: templateId,
+        document_url: '',
+        content: ''
+      };
+      
+      // Create the draft will in the database
+      await createWill(willData);
+      
       // Show success notification
       toast({
         title: "Template Selected",
-        description: `"${template.name}" template selected. Preparing AI assistant...`,
+        description: `Your "${template.name}" template has been saved as a draft. You can find it in your wills page.`,
         variant: "default",
       });
       
-      // Navigate to the new AI chat interface with the selected template
+      // Redirect to wills page after a short delay
       setTimeout(() => {
-        navigate(`/will/create/chat/${templateId}`);
-      }, 1000);
+        navigate('/wills');
+      }, 1500);
       
     } catch (error) {
-      console.error('Error selecting template:', error);
+      console.error('Error creating draft will:', error);
       toast({
         title: "Error",
-        description: "There was a problem selecting your template. Please try again.",
+        description: "There was a problem saving your template. Please try again.",
         variant: "destructive",
       });
     } finally {

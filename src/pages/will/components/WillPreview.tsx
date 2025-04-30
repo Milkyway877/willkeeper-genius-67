@@ -1,180 +1,13 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 
 interface WillPreviewProps {
   content: string;
-  showHighlights?: boolean;
-  lastUpdatedField?: string | null;
 }
 
-export function WillPreview({ content, showHighlights = false, lastUpdatedField = null }: WillPreviewProps) {
-  const contentDivRef = useRef<HTMLDivElement>(null);
-  const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
-  const [documentId, setDocumentId] = useState<string>('');
-  
-  // Initialize document ID once on first render
-  useEffect(() => {
-    // Try to get from localStorage first
-    let storedId = localStorage.getItem('currentWillDocumentId');
-    
-    if (!storedId) {
-      // Generate a new one if not found
-      storedId = Math.random().toString(36).substring(2, 10).toUpperCase();
-      localStorage.setItem('currentWillDocumentId', storedId);
-    }
-    
-    setDocumentId(storedId);
-  }, []);
-  
-  // Log when content changes to help with debugging - reduced frequency
-  useEffect(() => {
-    // Only log significant content changes
-    if (content && content.length > 0) {
-      console.log("[WillPreview] Content updated:", content ? content.substring(0, 50) + "..." : "empty");
-    }
-    
-    // Highlight the section by scrolling to it if lastUpdatedField is provided
-    if (lastUpdatedField && showHighlights) {
-      setTimeout(() => {
-        const elementToScrollTo = contentDivRef.current?.querySelector('.newly-updated');
-        if (elementToScrollTo) {
-          elementToScrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 300);
-    }
-  }, [content, lastUpdatedField, showHighlights]);
-  
-  // Function to add a ref to a field element
-  const addFieldRef = (id: string, element: HTMLHeadingElement | HTMLParagraphElement | null) => {
-    if (element) {
-      fieldRefs.current.set(id, element);
-    }
-  };
-  
-  // Process the will content to identify each field and section
-  const processWillContent = () => {
-    if (!content) return null;
-    
-    const lines = content.split('\n');
-    let currentSection: string | null = null;
-    
-    return lines.map((line, index) => {
-      // Check if line is a heading (ALL CAPS)
-      if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
-        currentSection = line.replace(/:/g, '').trim();
-        const isHighlighted = currentSection === lastUpdatedField && showHighlights;
-        
-        return (
-          <h3 
-            key={`section-${index}`} 
-            ref={(el) => addFieldRef(currentSection || `section-${index}`, el)}
-            className={`font-bold text-lg mt-6 mb-3 ${isHighlighted ? 'highlight-section' : ''}`}
-            id={`section-${currentSection?.replace(/\s+/g, '-').toLowerCase() || index}`}
-          >
-            {line}
-            {isHighlighted && (
-              <span className="ml-2 text-amber-500 animate-pulse">•</span>
-            )}
-          </h3>
-        );
-      }
-      // Check if line is empty
-      else if (line.trim() === '') {
-        return <div key={`empty-${index}`} className="h-4"></div>;
-      }
-      // Check if line contains placeholder information (likely to change)
-      else if (line.includes('[') && line.includes(']')) {
-        return (
-          <p 
-            key={`placeholder-${index}`}
-            className="mb-3 text-amber-700"
-          >
-            {line}
-          </p>
-        );
-      }
-      // Check if line has real user information (no placeholders)
-      else if (!/\[.*?\]/.test(line) && (
-        line.includes('I, ') || 
-        line.includes('married') || 
-        line.includes('single') || 
-        line.includes('divorced') || 
-        line.includes('widowed') || 
-        line.includes('children') || 
-        line.includes('appoint') ||
-        // Add more patterns to highlight real information
-        line.match(/I have \d+ children/) ||
-        line.match(/I appoint .+ as (?:the )?Executor/)
-      )) {
-        const isUpdated = currentSection === lastUpdatedField && showHighlights;
-        
-        return (
-          <p 
-            key={`info-${index}`}
-            ref={(el) => addFieldRef(`info-${currentSection || index}`, el)}
-            className={`mb-3 font-medium ${isUpdated && showHighlights ? 'updated-field newly-updated' : ''}`}
-            id={`field-${index}`}
-          >
-            {line}
-            {isUpdated && showHighlights && (
-              <span className="ml-2 text-amber-500 animate-pulse text-xs">• Updated</span>
-            )}
-          </p>
-        );
-      }
-      // Regular line
-      else {
-        return <p key={`line-${index}`} className="mb-3">{line}</p>;
-      }
-    });
-  };
-
+export function WillPreview({ content }: WillPreviewProps) {
   return (
     <div className="font-serif text-gray-800 p-6 bg-white">
-      <style>
-        {`
-          @keyframes highlight-fade {
-            0% { background-color: rgba(252, 211, 77, 0.3); }
-            100% { background-color: transparent; }
-          }
-          .preview-update-flash {
-            animation: highlight-fade 1s ease-out;
-          }
-          .updated-field {
-            background-color: rgba(252, 211, 77, 0.1);
-            border-bottom: 1px dashed #f59e0b;
-            padding-bottom: 2px;
-            transition: all 0.5s ease;
-          }
-          .newly-updated {
-            background-color: rgba(252, 211, 77, 0.3);
-            border-left: 3px solid #f59e0b;
-            padding-left: 8px;
-          }
-          .highlight-section {
-            animation: section-highlight 2s ease-out;
-          }
-          @keyframes section-highlight {
-            0% { background-color: rgba(252, 211, 77, 0.3); }
-            100% { background-color: transparent; }
-          }
-          .field-updated-indicator {
-            position: absolute;
-            right: 12px;
-            color: #f59e0b;
-            font-size: 14px;
-          }
-          @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-          }
-          .animate-pulse {
-            animation: pulse 1.5s infinite;
-          }
-        `}
-      </style>
-    
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center">
           <div className="h-12 w-12 bg-willtank-500 rounded-md flex items-center justify-center mr-4">
@@ -187,16 +20,25 @@ export function WillPreview({ content, showHighlights = false, lastUpdatedField 
         </div>
         <div className="border-2 border-gray-300 rounded-lg p-2 text-center">
           <p className="text-xs text-gray-400">Document ID</p>
-          <p className="text-sm font-mono">{documentId}</p>
+          <p className="text-sm font-mono">{Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
         </div>
       </div>
       
-      <div ref={contentDivRef} className="whitespace-pre-wrap leading-relaxed relative">
-        {content && content.length > 0 ? (
-          processWillContent()
-        ) : (
-          <p className="text-center text-gray-500 my-12">Creating your will document...</p>
-        )}
+      <div className="whitespace-pre-wrap leading-relaxed">
+        {content.split('\n').map((line, index) => {
+          // Check if line is a heading (ALL CAPS)
+          if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
+            return <h3 key={index} className="font-bold text-lg mt-6 mb-3">{line}</h3>;
+          }
+          // Check if line is empty
+          else if (line.trim() === '') {
+            return <div key={index} className="h-4"></div>;
+          }
+          // Regular line
+          else {
+            return <p key={index} className="mb-3">{line}</p>;
+          }
+        })}
       </div>
       
       <div className="mt-10 pt-8 border-t border-gray-200">
