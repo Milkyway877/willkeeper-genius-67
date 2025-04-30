@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Bot } from 'lucide-react';
@@ -6,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
 import { Contact, Message as MessageType } from './types';
-import { VideoRecorder } from './VideoRecorder';
+import { useSystemNotifications } from '@/hooks/use-system-notifications';
 
 interface SkylerAssistantProps {
   templateId: string;
@@ -14,8 +15,6 @@ interface SkylerAssistantProps {
   onComplete: (data: {
     responses: Record<string, any>;
     contacts: Contact[];
-    documents: any[];
-    videoBlob?: Blob;
     generatedWill: string;
   }) => void;
 }
@@ -26,30 +25,20 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedResponses, setExtractedResponses] = useState<Record<string, any>>({});
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [generatedWill, setGeneratedWill] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [isReadyToComplete, setIsReadyToComplete] = useState(false);
   const [dataCollectionProgress, setDataCollectionProgress] = useState({
     personalInfo: false,
-    contacts: false,
-    documents: false,
-    video: false
+    contacts: false
   });
-  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  
+  const recognitionRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSupported, setRecordingSupported] = useState(false);
-  const recognitionRef = useRef<any>(null);
   
   const { toast } = useToast();
+  const { notifyInfo } = useSystemNotifications();
   
   useEffect(() => {
     const welcomeMessage = getWelcomeMessage(templateId, templateName);
@@ -227,16 +216,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   
   // Check if all required data has been collected
   useEffect(() => {
-    const { personalInfo, contacts, documents, video } = dataCollectionProgress;
+    const { personalInfo, contacts } = dataCollectionProgress;
     
-    // If personal info and contacts are collected, and we have at least one document or video
-    if (personalInfo && contacts && (documents || video)) {
-      setIsComplete(true);
-    }
-    
-    // If all data is collected, generate the will
-    if (personalInfo && contacts && documents && video && !isGenerating && !generatedWill) {
-      handleGenerateWill();
+    // If personal info and contacts are collected, we're ready to complete
+    if (personalInfo && contacts) {
+      setIsReadyToComplete(true);
     }
   }, [dataCollectionProgress]);
   
@@ -251,7 +235,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       id: `user-${Date.now()}`,
       role: 'user',
       content: inputValue,
-      timestamp: new Date()
+      timestamp: new Date(),
+      type: 'text'
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -321,28 +306,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         setDataCollectionProgress(prev => ({ ...prev, ...data.progress }));
       }
       
-      // If the AI indicates we should prompt for video, trigger video recording
-      if (data?.triggerVideo) {
-        setTimeout(() => {
-          startVideoRecording();
-        }, 1500);
-      }
-      
-      // If the AI indicates all data is collected, generate the will
-      if (data?.isComplete) {
-        setIsComplete(true);
-        if (!generatedWill && !isGenerating) {
-          setTimeout(() => {
-            handleGenerateWill();
-          }, 2000);
-        }
-      }
-      
       const aiMessage: MessageType = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
         content: aiResponse,
-        timestamp: new Date()
+        timestamp: new Date(),
+        type: 'text'
       };
       
       setMessages(prev => [...prev, aiMessage]);
@@ -381,7 +350,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         id: `error-${Date.now()}`,
         role: 'system',
         content: "I'm sorry, I encountered an error. Let's try again.",
-        timestamp: new Date()
+        timestamp: new Date(),
+        type: 'text'
       };
       
       setMessages(prev => [...prev, errorMessage]);
@@ -393,246 +363,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       });
     } finally {
       setIsProcessing(false);
-    }
-  };
-  
-  const handleFileButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    
-    try {
-      const userMessage: MessageType = {
-        id: `user-upload-${Date.now()}`,
-        role: 'user',
-        content: `I'm uploading a document called "${file.name}"`,
-        timestamp: new Date(),
-        type: 'file',
-        fileName: file.name
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
-
-      // Check if the bucket exists before uploading
-      const { data: buckets, error: bucketsError } = await supabase.storage
-        .listBuckets();
-      
-      if (bucketsError) {
-        console.error('Error checking buckets:', bucketsError);
-        throw new Error(`Storage error: ${bucketsError.message}`);
-      }
-
-      // Log available buckets for debugging
-      console.log('Available buckets:', buckets?.map(b => b.name));
-      
-      // Use "will_documents" bucket with underscore
-      const bucketId = 'will_documents';
-      const bucketExists = buckets?.some(b => b.id === bucketId || b.name === bucketId);
-      
-      if (!bucketExists) {
-        throw new Error(`Bucket "${bucketId}" not found. Available buckets: ${buckets?.map(b => b.id).join(', ')}`);
-      }
-      
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${userId}/will-documents/${Date.now()}-${file.name}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from(bucketId)
-        .upload(filePath, file);
-      
-      if (uploadError) {
-        console.error('Upload error details:', uploadError);
-        throw new Error(`Error uploading file: ${uploadError.message}`);
-      }
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucketId)
-        .getPublicUrl(filePath);
-      
-      const newDocument = {
-        id: `doc-${Date.now()}`,
-        name: file.name,
-        type: fileExt,
-        path: filePath,
-        url: publicUrl,
-        size: file.size
-      };
-      
-      setDocuments(prev => [...prev, newDocument]);
-      
-      // Update data collection progress
-      setDataCollectionProgress(prev => ({ ...prev, documents: true }));
-      
-      const assistantMessage: MessageType = {
-        id: `assistant-upload-${Date.now()}`,
-        role: 'assistant',
-        content: `Thank you for uploading "${file.name}". This document has been added to your will. Tell me more about why this document is important for your estate planning.`,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      
-    } catch (error: any) {
-      console.error("Error handling file upload:", error);
-      
-      const errorMessage: MessageType = {
-        id: `error-upload-${Date.now()}`,
-        role: 'system',
-        content: `Error uploading file: ${error.message || "Unknown error"}. Please try again.`,
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      
-      toast({
-        title: "Upload Error",
-        description: error.message || "There was a problem uploading your document. Please try again.",
-        variant: "destructive"
-      });
-    }
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleVideoButtonClick = () => {
-    setShowVideoRecorder(true);
-    
-    const recordingMessage: MessageType = {
-      id: `recording-start-${Date.now()}`,
-      role: 'system',
-      content: "Video recording has started. Speak clearly about your wishes and intentions. Click the stop button when you're finished.",
-      timestamp: new Date(),
-      type: 'video-start'
-    };
-    
-    setMessages(prev => [...prev, recordingMessage]);
-  };
-  
-  const handleVideoComplete = (blob: Blob) => {
-    setVideoBlob(blob);
-    setShowVideoRecorder(false);
-    
-    const videoURL = URL.createObjectURL(blob);
-    
-    const videoMessage: MessageType = {
-      id: `video-${Date.now()}`,
-      role: 'user',
-      content: "I've recorded my video testament.",
-      timestamp: new Date(),
-      type: 'video',
-      fileUrl: videoURL
-    };
-    
-    setMessages(prev => [...prev, videoMessage]);
-    
-    // Update data collection progress
-    setDataCollectionProgress(prev => ({ ...prev, video: true }));
-    
-    const assistantMessage: MessageType = {
-      id: `assistant-video-${Date.now()}`,
-      role: 'assistant',
-      content: "Thank you for recording your video testament. This adds a personal touch to your will and can help clarify your intentions. Now that we have all the necessary information, I'll generate your will document.",
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, assistantMessage]);
-  };
-  
-  const startVideoRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
-      
-      const recordingMessage: MessageType = {
-        id: `recording-start-${Date.now()}`,
-        role: 'system',
-        content: "Video recording has started. Speak clearly about your wishes and intentions. Click the stop button when you're finished.",
-        timestamp: new Date(),
-        type: 'video-start'
-      };
-      
-      setMessages(prev => [...prev, recordingMessage]);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-      
-      streamRef.current = stream;
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
-      
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        chunksRef.current.push(e.data);
-      };
-      
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        setVideoBlob(blob);
-        
-        const videoURL = URL.createObjectURL(blob);
-        
-        const videoMessage: MessageType = {
-          id: `video-${Date.now()}`,
-          role: 'user',
-          content: "I've recorded my video testament.",
-          timestamp: new Date(),
-          type: 'video',
-          fileUrl: videoURL
-        };
-        
-        setMessages(prev => [...prev, videoMessage]);
-        
-        // Update data collection progress
-        setDataCollectionProgress(prev => ({ ...prev, video: true }));
-        
-        const assistantMessage: MessageType = {
-          id: `assistant-video-${Date.now()}`,
-          role: 'assistant',
-          content: "Thank you for recording your video testament. This adds a personal touch to your will and can help clarify your intentions. Now that we have all the necessary information, I'll generate your will document.",
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, assistantMessage]);
-        
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
-      };
-      
-      mediaRecorderRef.current.start();
-      
-    } catch (error) {
-      console.error("Error starting video recording:", error);
-      
-      toast({
-        title: "Recording Error",
-        description: "There was a problem accessing your camera or microphone. Please check your permissions and try again.",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const stopVideoRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
     }
   };
   
@@ -660,24 +390,23 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       const generatedWillContent = generateWillContent(templateId, finalResponses);
       setGeneratedWill(generatedWillContent);
       
-      setTimeout(() => {
-        const completionMessage: MessageType = {
-          id: `completion-${Date.now()}`,
-          role: 'system',
-          content: "✅ Your will has been successfully generated! Now you can review and edit it before finalizing.",
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, completionMessage]);
-        
-        onComplete({
-          responses: finalResponses,
-          contacts,
-          documents,
-          videoBlob: videoBlob || undefined,
-          generatedWill: generatedWillContent
-        });
-      }, 2000);
+      const completionMessage: MessageType = {
+        id: `completion-${Date.now()}`,
+        role: 'system',
+        content: "✅ Your will has been successfully generated! You can now review and edit it before finalizing.",
+        timestamp: new Date(),
+        type: 'text'
+      };
+      
+      setMessages(prev => [...prev, completionMessage]);
+      
+      notifyInfo("Will Generated", "Your will has been generated successfully. You can now review and finalize it.");
+      
+      onComplete({
+        responses: finalResponses,
+        contacts,
+        generatedWill: generatedWillContent
+      });
       
     } catch (error) {
       console.error("Error generating will:", error);
@@ -757,50 +486,36 @@ Witnesses: [Witness 1], [Witness 2]`;
   
   return (
     <div className="flex flex-col h-[70vh]">
-      {showVideoRecorder ? (
-        <VideoRecorder onRecordingComplete={handleVideoComplete} />
-      ) : (
-        <Card className="flex-1 flex flex-col overflow-hidden h-full">
-          <CardHeader className="flex-shrink-0 border-b p-4">
-            <div className="flex items-center">
-              <div className="bg-willtank-50 p-1 rounded-full">
-                <Bot className="h-6 w-6 text-willtank-600" />
-              </div>
-              <div className="ml-3">
-                <h3 className="font-semibold">SKYLER - Will AI Assistant</h3>
-                <p className="text-xs text-gray-500">Creating your {templateName}</p>
-              </div>
+      <Card className="flex-1 flex flex-col overflow-hidden h-full">
+        <CardHeader className="flex-shrink-0 border-b p-4">
+          <div className="flex items-center">
+            <div className="bg-willtank-50 p-1 rounded-full">
+              <Bot className="h-6 w-6 text-willtank-600" />
             </div>
-          </CardHeader>
+            <div className="ml-3">
+              <h3 className="font-semibold">SKYLER - Will AI Assistant</h3>
+              <p className="text-xs text-gray-500">Creating your {templateName}</p>
+            </div>
+          </div>
+        </CardHeader>
 
-          <CardContent className="p-0 flex-1 overflow-hidden">
-            <MessageList messages={messages} onStopRecording={stopVideoRecording} />
-          </CardContent>
+        <CardContent className="p-0 flex-1 overflow-hidden">
+          <MessageList messages={messages} />
+        </CardContent>
 
-          <InputArea
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            isProcessing={isProcessing}
-            isRecording={isRecording}
-            recordingSupported={recordingSupported}
-            currentStage="unified"
-            onSendMessage={handleSendMessage}
-            onToggleVoiceInput={toggleVoiceInput}
-            onFileButtonClick={handleFileButtonClick}
-            onVideoButtonClick={handleVideoButtonClick}
-          />
-        </Card>
-      )}
-
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        style={{ display: 'none' }} 
-        onChange={handleFileChange} 
-        accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      />
-
-      <video ref={videoRef} style={{ display: 'none' }} />
+        <InputArea
+          inputValue={inputValue}
+          setInputValue={setInputValue}
+          isProcessing={isProcessing || isGenerating}
+          isRecording={isRecording}
+          recordingSupported={recordingSupported}
+          currentStage="unified"
+          onSendMessage={handleSendMessage}
+          onToggleVoiceInput={toggleVoiceInput}
+          onCompleteInfo={handleGenerateWill}
+          isReadyToComplete={isReadyToComplete && !isGenerating}
+        />
+      </Card>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -8,25 +9,30 @@ import { supabase } from '@/integrations/supabase/client';
 import { createWill } from '@/services/willService';
 import { SkylerAssistant } from './components/SkylerAssistant';
 import { WillPreview } from './components/WillPreview';
-import { Book, FileText, User, Video, ArrowLeft, Sparkles, Save, Copy } from 'lucide-react';
+import { Book, FileText, ArrowLeft, Save, Copy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { TemplateCard } from './components/TemplateCard';
 import { templates } from './config/wizardSteps';
 import { clearWillProgress } from '@/services/willProgressService';
+import { useSystemNotifications } from '@/hooks/use-system-notifications';
 
 export default function WillCreationAI() {
   const navigate = useNavigate();
   const { id: templateId } = useParams<{ id?: string }>();
   const { toast } = useToast();
+  const { notifySuccess } = useSystemNotifications();
 
   const [selectedTemplate, setSelectedTemplate] = useState(
     templateId ? templates.find(t => t.id === templateId) : null
   );
-  const [phase, setPhase] = useState<'template' | 'creation' | 'review'>('template');
+  const [phase, setPhase] = useState<'template' | 'creation' | 'review' | 'signing'>('template');
   const [willData, setWillData] = useState<any>(null);
   const [splitView, setSplitView] = useState(false);
   const [editableContent, setEditableContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [signature, setSignature] = useState('');
+  const [isSigned, setIsSigned] = useState(false);
+  const [signatureDate, setSignatureDate] = useState(new Date());
 
   useEffect(() => {
     if (templateId) {
@@ -87,10 +93,7 @@ export default function WillCreationAI() {
       
       const createdWill = await createWill(will);
       
-      toast({
-        title: "Will Finalized",
-        description: "Your will has been successfully finalized and saved.",
-      });
+      notifySuccess("Will Finalized", "Your will has been successfully finalized and saved.");
       
       if (createdWill && createdWill.id) {
         clearWillProgress(createdWill.id);
@@ -120,6 +123,27 @@ export default function WillCreationAI() {
       title: "Copied",
       description: "Will content copied to clipboard.",
     });
+  };
+  
+  const handleSignWill = () => {
+    if (signature) {
+      setIsSigned(true);
+      setSignatureDate(new Date());
+      
+      const signedContent = editableContent + `\n\nDigitally signed by: ${signature}\nDate: ${new Date().toLocaleDateString()}`;
+      setEditableContent(signedContent);
+      
+      toast({
+        title: "Will Signed",
+        description: "Your will has been digitally signed.",
+      });
+    } else {
+      toast({
+        title: "Signature Required",
+        description: "Please enter your signature to continue.",
+        variant: "destructive"
+      });
+    }
   };
   
   const renderTemplateSelection = () => (
@@ -211,35 +235,59 @@ export default function WillCreationAI() {
               </div>
             )}
             
-            {willData?.documents && willData.documents.length > 0 && (
+            {willData?.contacts && willData.contacts.length > 0 && (
               <div className="mt-8 border rounded-md p-6">
-                <h3 className="font-medium mb-4">Supporting Documents</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {willData.documents.map((doc: any) => (
-                    <Card key={doc.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center">
-                          <FileText className="h-5 w-5 mr-2 text-willtank-600" />
-                          <span className="text-sm font-medium truncate">{doc.name}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                <h3 className="font-medium mb-4">Key Contacts</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {willData.contacts.map((contact: any) => (
+                    <div key={contact.id} className="border rounded-md p-4">
+                      <div className="font-medium">{contact.name}</div>
+                      <div className="text-sm text-gray-500">{contact.role}</div>
+                      {contact.email && <div className="text-sm">{contact.email}</div>}
+                      {contact.phone && <div className="text-sm">{contact.phone}</div>}
+                    </div>
                   ))}
                 </div>
               </div>
             )}
             
-            {willData?.videoBlob && (
-              <div className="mt-8 border rounded-md p-6">
-                <h3 className="font-medium mb-4">Video Testament</h3>
-                <video 
-                  src={URL.createObjectURL(willData.videoBlob)} 
-                  controls 
-                  className="w-full h-auto rounded border"
-                  style={{ maxHeight: '300px' }}
-                />
-              </div>
-            )}
+            <div className="mt-8 border rounded-md p-6">
+              <h3 className="font-medium mb-4">Digital Signature</h3>
+              {!isSigned ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500">
+                    Please enter your full legal name as your digital signature to finalize this will.
+                  </p>
+                  <div className="flex flex-col space-y-2">
+                    <input
+                      type="text"
+                      value={signature}
+                      onChange={(e) => setSignature(e.target.value)}
+                      placeholder="Your full legal name"
+                      className="border rounded-md p-2"
+                    />
+                    <Button
+                      onClick={handleSignWill}
+                      disabled={!signature}
+                      className="w-full"
+                    >
+                      Sign Will
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="border-b pb-2">
+                    <p className="text-sm font-medium">Signed by:</p>
+                    <p className="text-lg font-serif italic">{signature}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Date:</p>
+                    <p>{signatureDate.toLocaleDateString()}</p>
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div className="flex justify-between mt-6">
               <Button
@@ -252,8 +300,8 @@ export default function WillCreationAI() {
               
               <Button
                 onClick={handleSaveWill}
-                disabled={isSaving}
-                className="pulse-animation"
+                disabled={isSaving || !isSigned}
+                className={isSigned ? "pulse-animation" : ""}
               >
                 {isSaving ? (
                   <>
@@ -268,6 +316,14 @@ export default function WillCreationAI() {
                 )}
               </Button>
             </div>
+            
+            {isSigned && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-green-800 text-sm">
+                  <strong>Tip:</strong> After saving your will, you can record a supporting video testament or upload additional documents in the Documents section of your dashboard.
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

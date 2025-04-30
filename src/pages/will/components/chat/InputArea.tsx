@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Paperclip, Mic, MicOff, Send, Loader2, Video } from 'lucide-react';
+import { Mic, MicOff, Send, Loader2 } from 'lucide-react';
 
 interface InputAreaProps {
   inputValue: string;
@@ -13,8 +13,8 @@ interface InputAreaProps {
   currentStage: string;
   onSendMessage: () => void;
   onToggleVoiceInput: () => void;
-  onFileButtonClick: () => void;
-  onVideoButtonClick?: () => void;
+  onCompleteInfo?: () => void;
+  isReadyToComplete: boolean;
 }
 
 export const InputArea = ({
@@ -26,8 +26,8 @@ export const InputArea = ({
   currentStage,
   onSendMessage,
   onToggleVoiceInput,
-  onFileButtonClick,
-  onVideoButtonClick,
+  onCompleteInfo,
+  isReadyToComplete,
 }: InputAreaProps) => {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -37,65 +37,56 @@ export const InputArea = ({
   };
 
   return (
-    <div className="flex items-center p-4 border-t">
-      <Button
-        variant="outline"
-        size="icon"
-        className="mr-2"
-        onClick={onFileButtonClick}
-        disabled={isProcessing}
-      >
-        <Paperclip className="h-5 w-5" />
-      </Button>
-      
-      {onVideoButtonClick && (
+    <div className="flex flex-col p-4 border-t gap-2">
+      <div className="flex items-center">
+        {recordingSupported && (
+          <Button
+            variant="outline"
+            size="icon"
+            className={`mr-2 ${isRecording ? 'bg-rose-100' : ''}`}
+            onClick={onToggleVoiceInput}
+          >
+            {isRecording ? (
+              <MicOff className="h-5 w-5 text-rose-500" />
+            ) : (
+              <Mic className="h-5 w-5" />
+            )}
+          </Button>
+        )}
+        
+        <Input
+          placeholder={isRecording ? "Listening..." : "Type your message..."}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyPress}
+          disabled={isProcessing}
+          className="flex-1"
+        />
+        
         <Button
-          variant="outline"
+          variant="default"
           size="icon"
-          className="mr-2"
-          onClick={onVideoButtonClick}
+          className="ml-2"
+          onClick={onSendMessage}
+          disabled={(!inputValue.trim() && !isRecording) || isProcessing}
         >
-          <Video className="h-5 w-5 text-willtank-600" />
-        </Button>
-      )}
-      
-      {recordingSupported && (
-        <Button
-          variant="outline"
-          size="icon"
-          className={`mr-2 ${isRecording ? 'bg-rose-100' : ''}`}
-          onClick={onToggleVoiceInput}
-        >
-          {isRecording ? (
-            <MicOff className="h-5 w-5 text-rose-500" />
+          {isProcessing ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <Mic className="h-5 w-5" />
+            <Send className="h-5 w-5" />
           )}
         </Button>
+      </div>
+      
+      {isReadyToComplete && onCompleteInfo && (
+        <Button
+          variant="default"
+          className="mt-2 bg-willtank-600 hover:bg-willtank-700 w-full"
+          onClick={onCompleteInfo}
+        >
+          Complete Information & Generate Will
+        </Button>
       )}
-      
-      <Input
-        placeholder={isRecording ? "Listening..." : "Type your message..."}
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyPress}
-        disabled={isProcessing}
-        className="flex-1"
-      />
-      
-      <Button
-        variant="default"
-        size="icon"
-        className="ml-2"
-        onClick={onSendMessage}
-        disabled={(!inputValue.trim() && !isRecording) || isProcessing}
-      >
-        {isProcessing ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Send className="h-5 w-5" />
-        )}
-      </Button>
     </div>
   );
 };
