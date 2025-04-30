@@ -10,7 +10,7 @@ import { VideoRecorder } from './components/VideoRecorder';
 import { useToast } from '@/hooks/use-toast';
 import { createWill } from '@/services/willService';
 import { ArrowRight } from 'lucide-react';
-import { useWillProgress } from '@/services/willProgressService';
+import { useWillProgress, WillProgress } from '@/services/willProgressService';
 import { steps, templates } from './config/wizardSteps';
 import { WillWizardSteps } from './components/WillWizardSteps';
 import { WillTemplateSelection } from './components/WillTemplateSelection';
@@ -29,12 +29,12 @@ export default function WillWizardPage() {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [generatedWill, setGeneratedWill] = useState<string>('');
   const [isCreatingWill, setIsCreatingWill] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(0); // This is for the progress bar
   const [willId, setWillId] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState('');
   const [splitView, setSplitView] = useState(false);
 
-  const { progress: willProgress, setProgress: setWillProgress } = useWillProgress(willId);
+  const { progress: willProgress, saveProgress } = useWillProgress(willId);
 
   useEffect(() => {
     const templateParam = searchParams.get('template');
@@ -326,12 +326,9 @@ export default function WillWizardPage() {
       
       const createdWill = await createWill(will);
       
-      if (progress) {
-        // Update the progress with a flag indicating it's finalized
-        setProgress({ 
-          completedSections: progress.completedSections || [], 
-          lastEdited: new Date() 
-        });
+      if (willProgress) {
+        // Update the will progress with finalization information
+        await saveProgress();
       }
       
       clearInterval(progressInterval);
