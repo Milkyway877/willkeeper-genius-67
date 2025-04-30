@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
 import { Contact, Message as MessageType } from './types';
+import { VideoRecorder } from './VideoRecorder';
 
 interface SkylerAssistantProps {
   templateId: string;
@@ -37,6 +38,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     documents: false,
     video: false
   });
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -476,6 +478,50 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       fileInputRef.current.value = '';
     }
   };
+
+  const handleVideoButtonClick = () => {
+    setShowVideoRecorder(true);
+    
+    const recordingMessage: MessageType = {
+      id: `recording-start-${Date.now()}`,
+      role: 'system',
+      content: "Video recording has started. Speak clearly about your wishes and intentions. Click the stop button when you're finished.",
+      timestamp: new Date(),
+      type: 'video-start'
+    };
+    
+    setMessages(prev => [...prev, recordingMessage]);
+  };
+  
+  const handleVideoComplete = (blob: Blob) => {
+    setVideoBlob(blob);
+    setShowVideoRecorder(false);
+    
+    const videoURL = URL.createObjectURL(blob);
+    
+    const videoMessage: MessageType = {
+      id: `video-${Date.now()}`,
+      role: 'user',
+      content: "I've recorded my video testament.",
+      timestamp: new Date(),
+      type: 'video',
+      fileUrl: videoURL
+    };
+    
+    setMessages(prev => [...prev, videoMessage]);
+    
+    // Update data collection progress
+    setDataCollectionProgress(prev => ({ ...prev, video: true }));
+    
+    const assistantMessage: MessageType = {
+      id: `assistant-video-${Date.now()}`,
+      role: 'assistant',
+      content: "Thank you for recording your video testament. This adds a personal touch to your will and can help clarify your intentions. Now that we have all the necessary information, I'll generate your will document.",
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, assistantMessage]);
+  };
   
   const startVideoRecording = async () => {
     try {
@@ -682,35 +728,40 @@ Witnesses: [Witness 1], [Witness 2]`;
   
   return (
     <div className="flex flex-col h-[70vh]">
-      <Card className="flex-1 flex flex-col overflow-hidden h-full">
-        <CardHeader className="flex-shrink-0 border-b p-4">
-          <div className="flex items-center">
-            <div className="bg-willtank-50 p-1 rounded-full">
-              <Bot className="h-6 w-6 text-willtank-600" />
+      {showVideoRecorder ? (
+        <VideoRecorder onRecordingComplete={handleVideoComplete} />
+      ) : (
+        <Card className="flex-1 flex flex-col overflow-hidden h-full">
+          <CardHeader className="flex-shrink-0 border-b p-4">
+            <div className="flex items-center">
+              <div className="bg-willtank-50 p-1 rounded-full">
+                <Bot className="h-6 w-6 text-willtank-600" />
+              </div>
+              <div className="ml-3">
+                <h3 className="font-semibold">SKYLER - Will AI Assistant</h3>
+                <p className="text-xs text-gray-500">Creating your {templateName}</p>
+              </div>
             </div>
-            <div className="ml-3">
-              <h3 className="font-semibold">SKYLER - Will AI Assistant</h3>
-              <p className="text-xs text-gray-500">Creating your {templateName}</p>
-            </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
 
-        <CardContent className="p-0 flex-1 overflow-hidden">
-          <MessageList messages={messages} />
-        </CardContent>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <MessageList messages={messages} onStopRecording={stopVideoRecording} />
+          </CardContent>
 
-        <InputArea
-          inputValue={inputValue}
-          setInputValue={setInputValue}
-          isProcessing={isProcessing}
-          isRecording={isRecording}
-          recordingSupported={recordingSupported}
-          currentStage="unified"
-          onSendMessage={handleSendMessage}
-          onToggleVoiceInput={toggleVoiceInput}
-          onFileButtonClick={handleFileButtonClick}
-        />
-      </Card>
+          <InputArea
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            isProcessing={isProcessing}
+            isRecording={isRecording}
+            recordingSupported={recordingSupported}
+            currentStage="unified"
+            onSendMessage={handleSendMessage}
+            onToggleVoiceInput={toggleVoiceInput}
+            onFileButtonClick={handleFileButtonClick}
+            onVideoButtonClick={handleVideoButtonClick}
+          />
+        </Card>
+      )}
 
       <input 
         type="file" 
