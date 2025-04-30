@@ -34,6 +34,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     contacts: false,
     readyToComplete: false
   });
+  const [assetsList, setAssetsList] = useState<string[]>([]);
+  const [beneficiaries, setBeneficiaries] = useState<string[]>([]);
   
   const recognitionRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -168,6 +170,18 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       console.log("Extracted spouse name:", spouseMatch[1]);
     }
     
+    // Children extraction
+    const childrenMatch = messageContent.match(/(?:I have|with) (?:a|one|1) (?:child|daughter|son)(?: named| called)? ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    if (childrenMatch && childrenMatch[1]) {
+      updates.hasChildren = true;
+      updates.childrenNames = childrenMatch[1];
+      const newBeneficiary = childrenMatch[1];
+      if (!beneficiaries.includes(newBeneficiary)) {
+        setBeneficiaries(prev => [...prev, newBeneficiary]);
+      }
+      console.log("Extracted child:", childrenMatch[1]);
+    }
+    
     // Contact extraction
     const executorMatch = messageContent.match(/(?:executor is|appointed|choose|want|designate) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
     if (executorMatch && executorMatch[1]) {
@@ -189,6 +203,51 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         setContacts(prev => [...prev, newContact]);
         setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
       }
+    }
+    
+    // Guardian extraction
+    const guardianMatch = messageContent.match(/(?:guardian for|guardian is|guardian|take care of) (?:my|the) (?:child|children|daughter|son)(?:ren)? (?:is |would be |will be |should be )?([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+    if (guardianMatch && guardianMatch[1]) {
+      updates.guardianName = guardianMatch[1];
+      updates.guardianNeeded = true;
+      console.log("Extracted guardian:", guardianMatch[1]);
+      
+      // Check if we already have this contact
+      const existingContact = contacts.find(c => c.name === guardianMatch[1]);
+      if (!existingContact) {
+        const newContact: Contact = {
+          id: `contact-${Date.now()}`,
+          name: guardianMatch[1],
+          role: 'Guardian',
+          email: '',
+          phone: '',
+          address: ''
+        };
+        
+        setContacts(prev => [...prev, newContact]);
+      }
+    }
+    
+    // Asset extraction - property/house
+    const propertyMatch = messageContent.match(/(?:I have|I own|my house|my property|my home)(?: is| at)? (?:located at |at )?([\d]+ [A-Za-z]+ (?:Road|Street|Avenue|Drive|Lane|Place|Blvd|Boulevard|Way|Court|Terrace|Circle)[, ]+[A-Za-z]+(?:[, ]+[A-Za-z]+)?)/i);
+    if (propertyMatch && propertyMatch[1]) {
+      updates.propertyAddress = propertyMatch[1];
+      const newAsset = `House at ${propertyMatch[1]}`;
+      if (!assetsList.includes(newAsset)) {
+        setAssetsList(prev => [...prev, newAsset]);
+      }
+      console.log("Extracted property:", propertyMatch[1]);
+    }
+    
+    // Asset extraction - vehicles
+    const vehicleMatch = messageContent.match(/(?:I have|I own|my car|my vehicle) (?:is |a )?((?:[A-Za-z]+ )?[A-Za-z]+ [A-Za-z0-9]+)/i);
+    if (vehicleMatch && vehicleMatch[1]) {
+      updates.vehicle = vehicleMatch[1];
+      const newAsset = `Vehicle: ${vehicleMatch[1]}`;
+      if (!assetsList.includes(newAsset)) {
+        setAssetsList(prev => [...prev, newAsset]);
+      }
+      console.log("Extracted vehicle:", vehicleMatch[1]);
     }
     
     // Email pattern extraction
@@ -256,13 +315,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     
     setExtractedResponses(prev => ({ ...prev, ...updates }));
     return updates;
-  }, [contacts, extractedResponses, exchangeCount]);
+  }, [contacts, extractedResponses, exchangeCount, assetsList, beneficiaries]);
   
   // Check if all required data has been collected
   useEffect(() => {
     const { personalInfo, contacts: contactsCollected, readyToComplete } = dataCollectionProgress;
     
-    // FIX: Changed this line to check for contacts.length as a number instead of treating it as a boolean
     // Only need minimal information
     if ((personalInfo || extractedResponses.fullName) && 
         (contactsCollected || contacts.length > 0 || extractedResponses.executorName)) {
@@ -276,6 +334,43 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       console.log("Setting ready to complete based on exchange count");
     }
   }, [dataCollectionProgress, contacts.length, extractedResponses, messages, isReadyToComplete]);
+  
+  // Enhanced function to extract all relevant conversation content
+  const extractConversationContent = useCallback(() => {
+    const extractedContent: Record<string, any> = { ...extractedResponses };
+    const allText = messages.map(m => m.content).join(' ');
+    
+    // Try to extract more information from the entire conversation context
+    const nameMatches = allText.match(/(?:my name is|I am|I'm|name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/ig);
+    if (nameMatches && nameMatches.length > 0 && !extractedContent.fullName) {
+      const nameMatch = nameMatches[0].match(/(?:my name is|I am|I'm|name is) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i);
+      if (nameMatch && nameMatch[1]) {
+        extractedContent.fullName = nameMatch[1];
+      }
+    }
+    
+    // Extract specifics from user messages only
+    const userMessages = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
+    
+    // Add assets to bequests
+    if (assetsList.length > 0) {
+      extractedContent.specificBequests = true;
+      extractedContent.bequestsDetails = assetsList.join(', ');
+    }
+    
+    // Add beneficiaries
+    if (beneficiaries.length > 0) {
+      const beneficiaryText = beneficiaries.length === 1 
+        ? beneficiaries[0]
+        : beneficiaries.slice(0, -1).join(', ') + ' and ' + beneficiaries[beneficiaries.length - 1];
+        
+      extractedContent.residualEstate = beneficiaryText;
+    } else if (extractedContent.childrenNames) {
+      extractedContent.residualEstate = extractedContent.childrenNames;
+    }
+    
+    return extractedContent;
+  }, [messages, extractedResponses, assetsList, beneficiaries]);
   
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
@@ -442,7 +537,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     setIsGenerating(true);
     
     try {
-      const finalResponses = { ...extractedResponses };
+      // Extract more comprehensive data from the conversation
+      const finalResponses = extractConversationContent();
       
       // Add contact information to responses
       contacts.forEach(contact => {
@@ -458,6 +554,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
           finalResponses.guardianName = contact.name;
         }
       });
+      
+      // Add assets information
+      if (assetsList.length > 0) {
+        finalResponses.specificBequests = true;
+        finalResponses.bequestsDetails = assetsList.join(', ');
+      }
       
       const generatedWillContent = generateWillContent(templateId, finalResponses);
       setGeneratedWill(generatedWillContent);
@@ -501,6 +603,8 @@ I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my
 
 ARTICLE I: DIGITAL EXECUTOR
 I appoint ${responses.executorName || '[DIGITAL EXECUTOR]'} as my Digital Executor with authority to manage all my digital assets.
+${responses.executorEmail ? `My executor's email is ${responses.executorEmail}.` : ''}
+${responses.executorPhone ? `My executor's phone number is ${responses.executorPhone}.` : ''}
 
 ARTICLE II: CRYPTOCURRENCY ASSETS
 ${responses.digitalAssetsDetails?.includes('crypto') ? `My cryptocurrency assets include: ${responses.digitalAssetsDetails || '[CRYPTOCURRENCY DETAILS]'}` : 'I have no cryptocurrency assets.'}
@@ -537,6 +641,8 @@ ${responses.hasChildren ? `I have the following children: ${responses.childrenNa
 
 ARTICLE III: EXECUTOR
 I appoint ${responses.executorName || '[EXECUTOR NAME]'} as the Executor of this Will.
+${responses.executorEmail ? `My executor's email is ${responses.executorEmail}.` : ''}
+${responses.executorPhone ? `My executor's phone number is ${responses.executorPhone}.` : ''}
 ${responses.alternateExecutor ? `If they are unable or unwilling to serve, I appoint ${responses.alternateExecutorName || '[ALTERNATE EXECUTOR]'} as alternate Executor.` : ''}
 
 ${responses.guardianNeeded ? `ARTICLE IV: GUARDIAN
@@ -544,6 +650,9 @@ If needed, I appoint ${responses.guardianName || '[GUARDIAN NAME]'} as guardian 
 
 ARTICLE ${responses.guardianNeeded ? 'V' : 'IV'}: DISPOSITION OF PROPERTY
 ${responses.specificBequests ? `I make the following specific bequests: ${responses.bequestsDetails || '[SPECIFIC BEQUESTS]'}` : ''}
+
+${responses.propertyAddress ? `I own a property located at ${responses.propertyAddress}.` : ''}
+${responses.vehicle ? `I own a vehicle described as: ${responses.vehicle}.` : ''}
 
 I give all my remaining property to ${responses.residualEstate || '[BENEFICIARIES]'}.
 
