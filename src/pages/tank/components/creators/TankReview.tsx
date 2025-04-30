@@ -16,6 +16,7 @@ interface TankReviewProps {
   isGenerating: boolean;
   progress: number;
   onFinalize: () => void;
+  isForWill?: boolean; // Added isForWill prop with optional flag
 }
 
 export const TankReview: React.FC<TankReviewProps> = ({
@@ -27,7 +28,8 @@ export const TankReview: React.FC<TankReviewProps> = ({
   deliveryDate,
   isGenerating,
   progress,
-  onFinalize
+  onFinalize,
+  isForWill = false // Default to false if not provided
 }) => {
   const formatDeliveryType = (type: DeliveryTrigger) => {
     switch (type) {
@@ -55,6 +57,12 @@ export const TankReview: React.FC<TankReviewProps> = ({
                 <span className="text-gray-600">Title:</span>
                 <span className="font-medium">{title}</span>
               </div>
+              {isForWill && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Purpose:</span>
+                  <span className="font-medium text-willtank-600">Will Testament</span>
+                </div>
+              )}
             </div>
           </div>
           
@@ -96,7 +104,7 @@ export const TankReview: React.FC<TankReviewProps> = ({
             onClick={onFinalize}
             className="w-full md:w-auto md:min-w-[200px] bg-willtank-600 hover:bg-willtank-700 text-white"
           >
-            Finalize and Schedule
+            {isForWill ? 'Attach to Will' : 'Finalize and Schedule'}
           </Button>
         )}
         
