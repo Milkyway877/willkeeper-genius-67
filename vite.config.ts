@@ -13,7 +13,10 @@ export default defineConfig(({ mode }) => ({
     historyApiFallback: true,
   },
   plugins: [
-    react(),
+    react({
+      // Ensure proper React refresh handling
+      jsxRuntime: 'automatic',
+    }),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
@@ -24,6 +27,7 @@ export default defineConfig(({ mode }) => ({
       "react": path.resolve(__dirname, "node_modules/react"),
       "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
+    dedupe: ['react', 'react-dom']
   },
   // Add SPA-friendly build options
   build: {
@@ -36,6 +40,7 @@ export default defineConfig(({ mode }) => ({
   // Ensure proper optimization to avoid duplicate React instances
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+    force: true,
     esbuildOptions: {
       mainFields: ['module', 'main'],
     },
@@ -43,5 +48,8 @@ export default defineConfig(({ mode }) => ({
   // Use proper environment variable handling
   define: {
     'process.env': JSON.stringify(process.env),
+    // Force React to use a single instance
+    __VUE_OPTIONS_API__: false,
+    __VUE_PROD_DEVTOOLS__: false,
   },
 }));
