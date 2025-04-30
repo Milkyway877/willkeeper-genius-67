@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
 import { DeliveryTrigger, MessageType } from '../../types';
-import { Check, Clock, Mail } from 'lucide-react';
+import { Check, Clock, Mail, FileCheck } from 'lucide-react';
 
 interface TankReviewProps {
   messageType: MessageType;
@@ -16,6 +16,7 @@ interface TankReviewProps {
   isGenerating: boolean;
   progress: number;
   onFinalize: () => void;
+  isForWill?: boolean;
 }
 
 export const TankReview: React.FC<TankReviewProps> = ({
@@ -27,7 +28,8 @@ export const TankReview: React.FC<TankReviewProps> = ({
   deliveryDate,
   isGenerating,
   progress,
-  onFinalize
+  onFinalize,
+  isForWill = false
 }) => {
   const formatDeliveryType = (type: DeliveryTrigger) => {
     switch (type) {
@@ -55,6 +57,15 @@ export const TankReview: React.FC<TankReviewProps> = ({
                 <span className="text-gray-600">Title:</span>
                 <span className="font-medium">{title}</span>
               </div>
+              {isForWill && (
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-gray-600">Will Attachment:</span>
+                  <span className="font-medium flex items-center text-green-600">
+                    <FileCheck className="h-4 w-4 mr-1" />
+                    Will be attached
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           

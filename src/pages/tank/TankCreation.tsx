@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ export default function TankCreation() {
     isGenerating,
     progress,
     messageUrl,
+    selectedWillId,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -138,6 +140,7 @@ export default function TankCreation() {
                  onFinalize={handleFinalize}
                  isGenerating={isGenerating}
                  progress={progress}
+                 isForWill={!!selectedWillId}
                />;
       default:
         return <div>Unknown step</div>;
@@ -163,10 +166,12 @@ export default function TankCreation() {
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center">
             <MessageSquare className="mr-2 h-6 w-6 md:h-8 md:w-8 text-willtank-600" />
-            Create Future Message
+            {selectedWillId ? 'Create Video Testament' : 'Create Future Message'}
           </h1>
           <p className="text-gray-600">
-            Craft a message that will be delivered at your chosen time in the future
+            {selectedWillId 
+              ? 'Record a video that will be attached to your will and can be delivered at your chosen time'
+              : 'Craft a message that will be delivered at your chosen time in the future'}
           </p>
           
           <StepProgress steps={steps} currentStep={currentStep} />

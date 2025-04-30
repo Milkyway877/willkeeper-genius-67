@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,13 @@ import {
   X, 
   Check,
   User,
-  FileText
+  FileText,
+  FileCheck,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +32,11 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { MessageCategory } from '../../types';
 import { useMessageEnhancer } from '../../hooks/useMessageEnhancer';
+
+interface Will {
+  id: string;
+  title: string;
+}
 
 interface TankVideoCreatorProps {
   onContentChange: (content: string) => void;
@@ -62,10 +72,41 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isApplyingEnhancements, setIsApplyingEnhancements] = useState(false);
   const [enhancedVideoBlob, setEnhancedVideoBlob] = useState<Blob | null>(null);
+  const [wills, setWills] = useState<Will[]>([]);
+  const [selectedWillId, setSelectedWillId] = useState<string | null>(null);
+  const [loadingWills, setLoadingWills] = useState(false);
+  
+  const queryParams = new URLSearchParams(window.location.search);
+  const willIdFromUrl = queryParams.get('willId');
   
   useEffect(() => {
     onCategoryChange('story');
+    fetchWills();
+    
+    // Set will ID from URL if available
+    if (willIdFromUrl) {
+      setSelectedWillId(willIdFromUrl);
+    }
   }, [onCategoryChange]);
+  
+  const fetchWills = async () => {
+    try {
+      setLoadingWills(true);
+      const { data, error } = await supabase
+        .from('wills')
+        .select('id, title')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      setWills(data || []);
+    } catch (err) {
+      console.error('Error fetching wills:', err);
+    } finally {
+      setLoadingWills(false);
+    }
+  };
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -270,6 +311,31 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         return null;
       }
       
+      // If a will is selected, link this video to it as well
+      if (selectedWillId) {
+        const { error: willVideoError } = await supabase
+          .from('will_videos')
+          .insert({
+            will_id: selectedWillId,
+            file_path: filePath,
+            duration: 0 // We could calculate this
+          });
+        
+        if (willVideoError) {
+          console.error('Error linking video to will:', willVideoError);
+          toast({
+            title: "Video Linked Error",
+            description: "Video was uploaded but couldn't be linked to the selected will.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Video Testament Added",
+            description: "Your video testament has been added to the selected will successfully."
+          });
+        }
+      }
+      
       // Get and set the public URL
       const { data: urlData } = supabase.storage
         .from('future-videos')
@@ -417,7 +483,9 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     if (filePath) {
       toast({
         title: "Video Ready",
-        description: "Your video is ready to be delivered."
+        description: selectedWillId ? 
+          "Your video is ready to be delivered and has been attached to your will." : 
+          "Your video is ready to be delivered."
       });
     }
   };
@@ -459,6 +527,47 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
             />
           </div>
         </div>
+      </div>
+      
+      {/* Will selection dropdown */}
+      <div>
+        <Label htmlFor="willSelect" className="block text-sm font-medium text-gray-700 mb-1">
+          Attach to Will (Optional)
+        </Label>
+        <Select
+          value={selectedWillId || ""}
+          onValueChange={(value) => setSelectedWillId(value || null)}
+          disabled={loadingWills}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a will to attach this video to" />
+          </SelectTrigger>
+          <SelectContent>
+            {loadingWills ? (
+              <SelectItem value="loading" disabled>Loading wills...</SelectItem>
+            ) : wills.length === 0 ? (
+              <SelectItem value="none" disabled>No wills available</SelectItem>
+            ) : (
+              <>
+                <SelectItem value="">Don't attach to a will</SelectItem>
+                {wills.map(will => (
+                  <SelectItem key={will.id} value={will.id}>
+                    {will.title}
+                  </SelectItem>
+                ))}
+              </>
+            )}
+          </SelectContent>
+        </Select>
+        
+        {selectedWillId && (
+          <div className="mt-2">
+            <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+              <FileCheck className="mr-1 h-3 w-3" />
+              Will attachment enabled
+            </Badge>
+          </div>
+        )}
       </div>
       
       <Tabs defaultValue="record" className="w-full" onValueChange={setActiveTab}>

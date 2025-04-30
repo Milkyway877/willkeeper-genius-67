@@ -1,8 +1,10 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
 import { MessageType, MessageCategory, DeliveryTrigger } from '../types';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useTankCreation = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -17,9 +19,22 @@ export const useTankCreation = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [messageUrl, setMessageUrl] = useState<string | null>(null);
+  const [selectedWillId, setSelectedWillId] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check for willId in URL params
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const willIdParam = queryParams.get('willId');
+    
+    if (willIdParam) {
+      setSelectedWillId(willIdParam);
+      // If coming from will page, default to video message type
+      setCreationType('video');
+    }
+  }, []);
 
   const handleNext = () => {
     if (currentStep === 0 && !creationType) {
@@ -90,7 +105,12 @@ export const useTankCreation = () => {
   };
 
   const handleCancel = () => {
-    navigate('/tank');
+    // If coming from a will, redirect back to wills page
+    if (selectedWillId) {
+      navigate('/wills');
+    } else {
+      navigate('/tank');
+    }
   };
 
   const handleFinalize = async () => {
@@ -134,17 +154,44 @@ export const useTankCreation = () => {
 
       const createdMessage = await createFutureMessage(message);
       
+      // If video was created and a will ID was provided, make sure to connect them
+      if (createdMessage && messageUrl && creationType === 'video' && selectedWillId) {
+        // Check if this video is already linked to the will
+        const { data: existingLink } = await supabase
+          .from('will_videos')
+          .select('id')
+          .eq('will_id', selectedWillId)
+          .eq('file_path', messageUrl)
+          .maybeSingle();
+          
+        // If not already linked, create the link
+        if (!existingLink) {
+          await supabase.from('will_videos').insert({
+            will_id: selectedWillId,
+            file_path: messageUrl,
+            duration: 0 // Could be calculated
+          });
+        }
+      }
+      
       clearInterval(progressInterval);
       setProgress(100);
       
       if (createdMessage) {
         toast({
           title: 'Message Created',
-          description: 'Your future message has been successfully created.'
+          description: selectedWillId ? 
+            'Your video testament has been created and attached to your will.' :
+            'Your future message has been successfully created.'
         });
         
         setTimeout(() => {
-          navigate('/tank');
+          // Navigate to appropriate page based on context
+          if (selectedWillId) {
+            navigate('/wills');
+          } else {
+            navigate('/tank');
+          }
         }, 2000);
       } else {
         throw new Error('Failed to create message');
@@ -174,6 +221,7 @@ export const useTankCreation = () => {
     isGenerating,
     progress,
     messageUrl,
+    selectedWillId,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -183,6 +231,7 @@ export const useTankCreation = () => {
     setMessageCategory,
     setDeliveryDate,
     setMessageUrl,
+    setSelectedWillId,
     handleNext,
     handlePrev,
     handleCancel,

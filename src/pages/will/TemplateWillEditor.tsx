@@ -11,13 +11,14 @@ import { AssetsSection } from './components/TemplateSections/AssetsSection';
 import { ExecutorsSection } from './components/TemplateSections/ExecutorsSection';
 import { FinalWishesSection } from './components/TemplateSections/FinalWishesSection';
 import { DigitalSignature } from './components/TemplateSections/DigitalSignature';
-import { VideoRecordingSection } from './components/VideoRecordingSection';
 import { WillPreviewSection } from './components/WillPreviewSection';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Save, FileCheck } from 'lucide-react';
+import { Loader2, Save, FileCheck, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Form validation schema
 const willSchema = z.object({
@@ -65,7 +66,7 @@ interface TemplateWillEditorProps {
   templateId: string;
   initialData?: any;
   isNew?: boolean;
-  willId?: string; // Add willId to props
+  willId?: string;
 }
 
 export function TemplateWillEditor({ 
@@ -104,8 +105,6 @@ Date: ${new Date().toLocaleDateString()}
   
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
-  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
-  const [videoData, setVideoData] = useState<{ path: string, url: string } | null>(null);
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -231,11 +230,6 @@ Date: ${new Date().toLocaleDateString()}
     setSignature(signatureData);
   };
   
-  const handleVideoRecording = (blob: Blob, data: { path: string, url: string }) => {
-    setVideoBlob(blob);
-    setVideoData(data);
-  };
-  
   const handleSaveDraft = async () => {
     try {
       setSaving(true);
@@ -257,29 +251,10 @@ Date: ${new Date().toLocaleDateString()}
         status: 'draft',
         template_type: templateId,
         ai_generated: false,
-        document_url: '' // Add the missing document_url property
+        document_url: ''
       };
       
       const savedWill = await createWill(willData);
-      
-      // Add video reference if we have one
-      if (savedWill?.id && videoData?.path) {
-        try {
-          const { error } = await supabase
-            .from('will_videos')
-            .insert({
-              will_id: savedWill.id,
-              file_path: videoData.path,
-              duration: 0, // We could calculate this
-            });
-            
-          if (error) {
-            console.error('Error saving video record:', error);
-          }
-        } catch (videoError) {
-          console.error('Error linking video to will:', videoError);
-        }
-      }
       
       toast({
         title: "Draft Saved",
@@ -329,34 +304,14 @@ Date: ${new Date().toLocaleDateString()}
         status: 'active', // Mark as active/finalized
         template_type: templateId,
         ai_generated: false,
-        document_url: '', // Add the missing document_url property
-        // Add signature data as needed
+        document_url: '',
       };
       
       const savedWill = await createWill(willData);
       
-      // Add video reference if we have one
-      if (savedWill?.id && videoData?.path) {
-        try {
-          const { error } = await supabase
-            .from('will_videos')
-            .insert({
-              will_id: savedWill.id,
-              file_path: videoData.path,
-              duration: 0, // We could calculate this
-            });
-            
-          if (error) {
-            console.error('Error saving video record:', error);
-          }
-        } catch (videoError) {
-          console.error('Error linking video to will:', videoError);
-        }
-      }
-      
       toast({
         title: "Will Finalized",
-        description: "Your will has been successfully finalized.",
+        description: "Your will has been successfully finalized. You can now add a video testament through the Tank section.",
       });
       
       // Navigate to wills listing
@@ -385,11 +340,16 @@ Date: ${new Date().toLocaleDateString()}
               <ExecutorsSection defaultOpen={false} />
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
-              <VideoRecordingSection 
-                defaultOpen={false} 
-                onRecordingComplete={handleVideoRecording} 
-                willId={!isNew && willId ? willId : undefined} 
-              />
+              
+              {!isNew && willId && (
+                <Alert className="bg-blue-50 border border-blue-100">
+                  <Video className="h-4 w-4 text-blue-500" />
+                  <AlertDescription className="text-blue-700">
+                    After finalizing your will, you can create video testimonies in the Tank section and attach them to this will.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
             </div>
             
@@ -401,6 +361,10 @@ Date: ${new Date().toLocaleDateString()}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                 />
+                
+                {!isNew && willId && (
+                  <WillAttachedVideosSection willId={willId} />
+                )}
                 
                 <Card className="mt-6 p-4">
                   <div className="space-y-4">
