@@ -21,7 +21,6 @@ const eventTypeToNotificationType = (eventType: NotificationEventType): 'success
     case 'beneficiary_added':
     case 'executor_added':
     case 'will_deleted':
-    case 'will_media_attached':
     case 'info':
     case 'warning':
     default:

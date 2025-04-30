@@ -26,7 +26,8 @@ export interface SkylerAssistantProps {
   onComplete: (data: {
     responses: Record<string, any>;
     contacts: Contact[];
-    documents?: any[];
+    documents: any[];
+    videoBlob?: Blob;
     generatedWill: string;
   }) => void;
 }

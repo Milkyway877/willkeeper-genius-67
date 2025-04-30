@@ -1,425 +1,334 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Video, Upload, Plus, FileText, Image, Link, Play } from 'lucide-react';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Table, 
+  TableBody, 
+  TableCaption, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { FileText, Video, Mic, File, Eye, Plus, Trash2 } from 'lucide-react';
+import { getFutureMessages, deleteFutureMessage, checkScheduledMessages } from '@/services/tankService';
+import { MessagePreview } from './preview/MessagePreview';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { VideoRecorder } from '@/pages/will/components/VideoRecorder';
-import { AttachWillToMedia } from './AttachWillToMedia';
+import { useNotificationManager } from '@/hooks/use-notification-manager';
 
-export function TankDashboard() {
-  const [activeTab, setActiveTab] = useState('videos');
-  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
-  const [userVideos, setUserVideos] = useState<any[]>([]);
-  const [userDocuments, setUserDocuments] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface Message {
+  id: string;
+  type: string;
+  title: string;
+  recipient: string;
+  deliveryDate: string;
+  status: string;
+  preview: string;
+  category?: string;
+  messageUrl?: string;
+}
+
+export const TankDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [previewMessage, setPreviewMessage] = useState<Message | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const { toast } = useToast();
-
+  const { notifyInfo, notifySuccess, notifyWarning } = useNotificationManager();
+  
   useEffect(() => {
-    const fetchUserMedia = async () => {
-      setIsLoading(true);
+    fetchMessages();
+  }, []);
+  
+  useEffect(() => {
+    const checkForScheduledMessages = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          throw new Error('User not authenticated');
-        }
-
-        // Fetch videos
-        const { data: videos, error: videosError } = await supabase
-          .from('will_videos')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false });
+        const result = await checkScheduledMessages();
+        if (result && result.processed > 0) {
+          toast({
+            title: 'Message Delivery Check',
+            description: `Checked ${result.processed} messages: ${result.successful} delivered, ${result.failed} failed.`,
+          });
           
-        if (videosError) {
-          console.error('Error fetching videos:', videosError);
-        } else {
-          setUserVideos(videos || []);
-        }
-
-        // Fetch documents
-        const { data: docs, error: docsError } = await supabase
-          .from('will_documents')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false });
+          if (result.successful > 0) {
+            notifySuccess(
+              "Messages Delivered", 
+              `${result.successful} messages have been successfully delivered.`,
+              "high"
+            );
+          }
           
-        if (docsError) {
-          console.error('Error fetching documents:', docsError);
-        } else {
-          setUserDocuments(docs || []);
+          fetchMessages();
         }
       } catch (error) {
-        console.error('Error fetching user media:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load your stored media.',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
+        console.error('Error checking scheduled messages:', error);
       }
     };
-
-    fetchUserMedia();
-  }, [toast]);
-
-  const handleVideoRecordingComplete = async (blob: Blob) => {
+    
+    checkForScheduledMessages();
+  }, [toast, notifySuccess]);
+  
+  const fetchMessages = async () => {
     try {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
+      setLoading(true);
+      const data = await getFutureMessages();
+      const formattedMessages = data.map(msg => ({
+        id: msg.id,
+        type: msg.message_type || 'letter',
+        title: msg.title || 'Untitled',
+        recipient: msg.recipient_name,
+        deliveryDate: msg.delivery_date,
+        status: msg.status,
+        preview: msg.preview || 'No preview available',
+        category: msg.category || undefined,
+        messageUrl: msg.message_url || undefined
+      }));
       
-      if (!session?.user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Generate filename
-      const userId = session.user.id;
-      const filename = `${userId}/${Date.now()}.webm`;
-      const bucketId = 'will_videos';
-      
-      // Upload to storage
-      const { data, error } = await supabase.storage
-        .from(bucketId)
-        .upload(filename, blob, {
-          contentType: 'video/webm',
-          cacheControl: '3600'
-        });
-        
-      if (error) {
-        throw error;
-      }
-      
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(bucketId)
-        .getPublicUrl(filename);
-        
-      // Create database entry
-      const { data: videoRecord, error: dbError } = await supabase
-        .from('will_videos')
-        .insert({
-          user_id: session.user.id,
-          file_path: filename,
-          duration: 0 // You could calculate actual duration if needed
-        })
-        .select()
-        .single();
-        
-      if (dbError) {
-        throw dbError;
-      }
-      
-      setSelectedVideoId(videoRecord.id);
-      setUserVideos(prev => [videoRecord, ...prev]);
-      
-      toast({
-        title: 'Video Recorded Successfully',
-        description: 'Your video has been saved. You can now attach it to a will.'
-      });
-      
-      setShowVideoRecorder(false);
-    } catch (error: any) {
-      console.error('Error saving video:', error);
-      toast({
-        title: 'Error Saving Video',
-        description: error.message || 'An error occurred while saving your video.',
-        variant: 'destructive'
-      });
+      console.log('Formatted messages with URLs:', formattedMessages);
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
   
-  const attachVideoToWill = async (willId: string) => {
-    if (!selectedVideoId) return;
-    
-    try {
-      const { error } = await supabase
-        .from('will_videos')
-        .update({ will_id: willId })
-        .eq('id', selectedVideoId);
-        
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error attaching video to will:', error);
-      throw error;
-    }
+  const handleCreateMessage = () => {
+    navigate('/tank/create');
   };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
+  
+  const handleViewMessage = (id: string) => {
+    navigate(`/tank/message/${id}`);
+  };
+  
+  const handlePreviewMessage = (message: Message) => {
+    console.log('Previewing message:', message);
+    setPreviewMessage(message);
+    setPreviewOpen(true);
+  };
+  
+  const handleDeleteMessage = async (messageId: string) => {
     try {
-      setIsLoading(true);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('User not authenticated');
+      const success = await deleteFutureMessage(messageId);
+      if (success) {
+        toast({
+          title: "Message Deleted",
+          description: "The message has been successfully deleted.",
+        });
+        
+        // Add notification for message deletion
+        notifyInfo(
+          "Message Deleted", 
+          "Your future message has been successfully deleted.",
+          "medium"
+        );
+        
+        fetchMessages();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete the message. Please try again.",
+          variant: "destructive",
+        });
+        
+        notifyWarning(
+          "Delete Operation Failed", 
+          "There was an issue deleting your message. Please try again.",
+          "medium"
+        );
       }
-      
-      const file = files[0];
-      const userId = session.user.id;
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${userId}/documents/${Date.now()}-${file.name}`;
-      const bucketId = 'will_documents';
-      
-      // Upload file
-      const { error: uploadError } = await supabase.storage
-        .from(bucketId)
-        .upload(filePath, file);
-        
-      if (uploadError) throw uploadError;
-      
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(bucketId)
-        .getPublicUrl(filePath);
-        
-      // Create database entry
-      const { data: docRecord, error: dbError } = await supabase
-        .from('will_documents')
-        .insert({
-          user_id: session.user.id,
-          name: file.name,
-          document_type: fileExt,
-          file_path: filePath,
-          content_type: file.type,
-          file_size: file.size
-        })
-        .select()
-        .single();
-        
-      if (dbError) throw dbError;
-      
-      setUserDocuments(prev => [docRecord, ...prev]);
-      
+    } catch (error) {
+      console.error('Error deleting message:', error);
       toast({
-        title: 'Document Uploaded Successfully',
-        description: 'Your document has been saved. You can now attach it to a will.'
+        title: "Error",
+        description: "An unexpected error occurred while deleting the message.",
+        variant: "destructive",
       });
-    } catch (error: any) {
-      console.error('Error uploading document:', error);
-      toast({
-        title: 'Error Uploading Document',
-        description: error.message || 'An error occurred while uploading your document.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoading(false);
-      // Reset file input
-      e.target.value = '';
     }
   };
-
+  
+  const getMessageIcon = (type: string) => {
+    switch(type) {
+      case 'video': return <Video className="h-4 w-4 text-blue-500" />;
+      case 'audio': return <Mic className="h-4 w-4 text-green-500" />;
+      case 'document': return <File className="h-4 w-4 text-amber-500" />;
+      default: return <FileText className="h-4 w-4 text-purple-500" />;
+    }
+  };
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scheduled': return 'bg-amber-500';
+      case 'delivered': return 'bg-green-500';
+      case 'processing': return 'bg-blue-500';
+      case 'failed': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+  
   return (
     <div className="space-y-6">
-      <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="videos">
-            <Video className="h-4 w-4 mr-2" />
-            Video Testimonials
-          </TabsTrigger>
-          <TabsTrigger value="documents">
-            <FileText className="h-4 w-4 mr-2" />
-            Documents
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="videos" className="space-y-6">
-          {showVideoRecorder ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Record Video Testament</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <VideoRecorder onRecordingComplete={handleVideoRecordingComplete} />
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Your Video Testimonials</h2>
-              <Button onClick={() => setShowVideoRecorder(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Record New Video
-              </Button>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Your Future Messages</h1>
+        <Button onClick={handleCreateMessage} className="bg-willtank-600 hover:bg-willtank-700">
+          <Plus className="mr-2 h-4 w-4" /> Create New Message
+        </Button>
+      </div>
+      
+      {loading ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
             </div>
-          )}
-          
-          {selectedVideoId && (
-            <AttachWillToMedia 
-              mediaId={selectedVideoId} 
-              mediaType="video" 
-              onAttach={attachVideoToWill}
-            />
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {isLoading ? (
-              <Card className="p-6 text-center">
-                <div className="animate-spin h-8 w-8 border-4 border-willtank-200 border-t-willtank-600 rounded-full mx-auto"></div>
-                <p className="mt-4 text-gray-500">Loading videos...</p>
-              </Card>
-            ) : userVideos.length > 0 ? (
-              userVideos.map((video) => (
-                <Card key={video.id} className="overflow-hidden">
-                  <div className="aspect-video bg-gray-100 relative">
-                    {video.thumbnail_path ? (
-                      <img 
-                        src={supabase.storage.from('will_videos').getPublicUrl(video.thumbnail_path).data.publicUrl} 
-                        alt="Video thumbnail" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                        <Video className="h-12 w-12 text-gray-400" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Button 
-                        variant="secondary" 
-                        className="rounded-full h-12 w-12 flex items-center justify-center"
-                        onClick={() => setSelectedVideoId(video.id)}
-                      >
-                        <Play className="h-6 w-6" />
-                      </Button>
-                    </div>
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Video Testament</p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(video.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      {video.will_id && (
-                        <Badge variant="outline" className="ml-2">
-                          <Link className="h-3 w-3 mr-1" />
-                          Attached
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <Card className="p-6 text-center col-span-full">
-                <Video className="h-12 w-12 mx-auto text-gray-400" />
-                <p className="mt-4 text-gray-500">No videos recorded yet</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4" 
-                  onClick={() => setShowVideoRecorder(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Record Your First Video Testament
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Message Inventory</CardTitle>
+            <CardDescription>
+              View and manage your future messages
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FileText className="h-12 w-12 text-gray-400 mb-3" />
+                <h3 className="font-medium text-lg mb-1">No Messages Yet</h3>
+                <p className="text-gray-500 max-w-md mb-4">
+                  You haven't created any future messages yet. Create your first message to get started.
+                </p>
+                <Button onClick={handleCreateMessage} className="bg-willtank-600 hover:bg-willtank-700">
+                  Create Your First Message
                 </Button>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="documents" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Your Documents</h2>
-            <label htmlFor="document-upload" className="cursor-pointer">
-              <Button>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Document
-              </Button>
-              <input
-                id="document-upload"
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-              />
-            </label>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {isLoading ? (
-              <Card className="p-6 text-center">
-                <div className="animate-spin h-8 w-8 border-4 border-willtank-200 border-t-willtank-600 rounded-full mx-auto"></div>
-                <p className="mt-4 text-gray-500">Loading documents...</p>
-              </Card>
-            ) : userDocuments.length > 0 ? (
-              userDocuments.map((doc) => (
-                <Card key={doc.id} className="overflow-hidden">
-                  <div className="aspect-video bg-gray-100 flex items-center justify-center">
-                    {doc.document_type?.match(/jpe?g|png|gif|webp/i) ? (
-                      <div className="relative w-full h-full">
-                        <img 
-                          src={supabase.storage.from('will_documents').getPublicUrl(doc.file_path).data.publicUrl} 
-                          alt={doc.name} 
-                          className="w-full h-full object-contain"
-                        />
-                        <div className="absolute bottom-2 right-2">
-                          <Badge>
-                            <Image className="h-3 w-3 mr-1" />
-                            Image
-                          </Badge>
-                        </div>
-                      </div>
-                    ) : doc.document_type?.match(/pdf/i) ? (
-                      <FileText className="h-16 w-16 text-red-400" />
-                    ) : doc.document_type?.match(/docx?/i) ? (
-                      <FileText className="h-16 w-16 text-blue-400" />
-                    ) : (
-                      <FileText className="h-16 w-16 text-gray-400" />
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium truncate max-w-xs" title={doc.name}>
-                          {doc.name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(doc.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      {doc.will_id && (
-                        <Badge variant="outline" className="ml-2">
-                          <Link className="h-3 w-3 mr-1" />
-                          Attached
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+              </div>
             ) : (
-              <Card className="p-6 text-center col-span-full">
-                <FileText className="h-12 w-12 mx-auto text-gray-400" />
-                <p className="mt-4 text-gray-500">No documents uploaded yet</p>
-                <label htmlFor="empty-document-upload" className="cursor-pointer">
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Upload Your First Document
-                  </Button>
-                  <input
-                    id="empty-document-upload"
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                  />
-                </label>
-              </Card>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Recipient</TableHead>
+                      <TableHead>Delivery Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {messages.map((message) => (
+                      <TableRow key={message.id}>
+                        <TableCell className="font-medium">{message.title}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {getMessageIcon(message.type)}
+                            <span className="capitalize">{message.type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{message.recipient}</TableCell>
+                        <TableCell>{new Date(message.deliveryDate).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge className={`${getStatusColor(message.status)} text-white`}>
+                            {message.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handlePreviewMessage(message)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewMessage(message.id)}
+                            >
+                              Details
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Message</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this message? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
-          </div>
-        </TabsContent>
-      </Tabs>
+          </CardContent>
+          <CardFooter>
+            <p className="text-sm text-gray-500">
+              Messages will be delivered according to your specified schedule.
+            </p>
+          </CardFooter>
+        </Card>
+      )}
+      
+      {previewMessage && (
+        <MessagePreview
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          messageType={previewMessage.type as any}
+          title={previewMessage.title}
+          content={previewMessage.preview}
+          messageUrl={previewMessage.messageUrl}
+        />
+      )}
     </div>
   );
-}
+};

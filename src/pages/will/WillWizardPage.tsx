@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -6,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { AIQuestionFlow } from './components/AIQuestionFlow';
 import { ContactsCollection } from './components/ContactsCollection';
+import { DocumentsUploader } from './components/DocumentsUploader';
+import { VideoRecorder } from './components/VideoRecorder';
 import { useToast } from '@/hooks/use-toast';
 import { createWill } from '@/services/willService';
 import { ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -34,6 +35,8 @@ export default function WillWizardPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [contacts, setContacts] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [generatedWill, setGeneratedWill] = useState<string>('');
   const [isCreatingWill, setIsCreatingWill] = useState(false);
   const [progress, setProgress] = useState(0); // This is for the progress bar
@@ -161,7 +164,23 @@ export default function WillWizardPage() {
     willDocument += `Date: ${currentDate}\n`;
     willDocument += `Witnesses: [Witness 1], [Witness 2]\n\n`;
     
-    willDocument += `Note: Supporting documents and video testimonials can be added from the Tank page after finalizing this will.\n`;
+    if (documents.length > 0 || videoBlob) {
+      willDocument += `ATTACHMENTS:\n\n`;
+      
+      if (documents.length > 0) {
+        willDocument += `Documents:\n`;
+        documents.forEach(doc => {
+          willDocument += `- ${doc.name} (${doc.category})\n`;
+        });
+        willDocument += `\n`;
+      }
+      
+      if (videoBlob) {
+        willDocument += `Video Testament:\n`;
+        willDocument += `- Video recorded on ${currentDate}\n`;
+        willDocument += `\n`;
+      }
+    }
     
     return willDocument;
   };
@@ -248,11 +267,39 @@ export default function WillWizardPage() {
     setGeneratedWill(updatedWill);
     setEditableContent(updatedWill);
     
-    setCurrentStep(prev => prev + 1);
-    
     toast({
       title: "Contacts Saved",
       description: `Contact information for ${updatedContacts.length} individuals has been saved.`,
+    });
+  };
+
+  const handleDocumentsComplete = (uploadedDocuments: any[]) => {
+    setDocuments(uploadedDocuments);
+    
+    const updatedWill = generateWillDocument(responses, contacts);
+    setGeneratedWill(updatedWill);
+    setEditableContent(updatedWill);
+    
+    setCurrentStep(prev => prev + 1);
+    
+    toast({
+      title: "Documents Uploaded",
+      description: `${uploadedDocuments.length} supporting documents have been securely uploaded.`,
+    });
+  };
+
+  const handleVideoComplete = (blob: Blob) => {
+    setVideoBlob(blob);
+    
+    const updatedWill = generateWillDocument(responses, contacts);
+    setGeneratedWill(updatedWill);
+    setEditableContent(updatedWill);
+    
+    setCurrentStep(prev => prev + 1);
+    
+    toast({
+      title: "Video Testament Recorded",
+      description: "Your video testament has been recorded successfully.",
     });
   };
 
@@ -365,6 +412,16 @@ export default function WillWizardPage() {
           missingInfo.push("Contact information is incomplete");
         }
         break;
+      case 'documents':
+        if (documents.length === 0) {
+          missingInfo.push("No supporting documents have been uploaded");
+        }
+        break;
+      case 'video':
+        if (!videoBlob) {
+          missingInfo.push("Video testament has not been recorded");
+        }
+        break;
       default:
         break;
     }
@@ -410,6 +467,10 @@ export default function WillWizardPage() {
         return Object.keys(responses).length > 0;
       case 'contacts':
         return contactsComplete;
+      case 'documents':
+        return documents.length > 0;
+      case 'video':
+        return videoBlob !== null;
       default:
         return true;
     }
@@ -443,6 +504,22 @@ export default function WillWizardPage() {
           />
         );
       
+      case 'documents':
+        return (
+          <DocumentsUploader
+            contacts={contacts}
+            responses={responses}
+            onComplete={handleDocumentsComplete}
+          />
+        );
+      
+      case 'video':
+        return (
+          <VideoRecorder
+            onRecordingComplete={handleVideoComplete}
+          />
+        );
+      
       case 'review':
         return (
           <WillReviewStep
@@ -453,6 +530,8 @@ export default function WillWizardPage() {
             handleCopyToClipboard={handleCopyToClipboard}
             responses={responses}
             contacts={contacts}
+            documents={documents}
+            videoBlob={videoBlob}
             selectedTemplate={selectedTemplate}
             isCreatingWill={isCreatingWill}
             progress={progress}

@@ -1,13 +1,12 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Bot, CheckCircle2, Loader2 } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
 import { Contact, Message as MessageType } from './types';
-import { Button } from '@/components/ui/button';
+import { VideoRecorder } from './VideoRecorder';
 
 interface SkylerAssistantProps {
   templateId: string;
@@ -15,7 +14,8 @@ interface SkylerAssistantProps {
   onComplete: (data: {
     responses: Record<string, any>;
     contacts: Contact[];
-    documents?: any[];
+    documents: any[];
+    videoBlob?: Blob;
     generatedWill: string;
   }) => void;
 }
@@ -26,23 +26,31 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedResponses, setExtractedResponses] = useState<Record<string, any>>({});
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [generatedWill, setGeneratedWill] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [showForceComplete, setShowForceComplete] = useState(false);
-  const [messageCount, setMessageCount] = useState(0);
   const [dataCollectionProgress, setDataCollectionProgress] = useState({
     personalInfo: false,
-    contacts: false
+    contacts: false,
+    documents: false,
+    video: false
   });
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   
-  const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSupported, setRecordingSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
   
   const { toast } = useToast();
   
-  // Initialize with welcome message
   useEffect(() => {
     const welcomeMessage = getWelcomeMessage(templateId, templateName);
     setMessages([{
@@ -56,67 +64,24 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     if (SpeechRecognition) {
       setRecordingSupported(true);
     }
-
-    // Show force complete button after 6 messages
-    const checkMessageCount = () => {
-      if (messageCount >= 6 && !showForceComplete) {
-        setShowForceComplete(true);
-      }
-    };
-
-    checkMessageCount();
-  }, [templateId, templateName, messageCount, showForceComplete]);
+  }, [templateId, templateName]);
   
   const getWelcomeMessage = (templateId: string, templateName: string) => {
-    const baseMessage = `👋 Hello! I'm SKYLER, your AI will assistant. I'll guide you through creating a ${templateName} through a simple conversation. Let's start with the basics:`;
-    
-    const questions = [
-      "• What is your full legal name?",
-      "• What is your marital status (single, married, divorced, widowed)?",
-      "• Do you have any children? If yes, please provide their names and ages.",
-      "• Who would you like to appoint as the executor of your will?",
-      "• Do you have any specific bequests you'd like to include?",
-      "• How would you like your remaining assets to be distributed?"
-    ];
-    
-    let specializedQuestions: string[] = [];
+    let welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant. I'll guide you through creating a ${templateName} with a simple conversation. Let's start with the basics: What is your full legal name?`;
     
     if (templateId === 'digital-assets') {
-      specializedQuestions = [
-        "• What digital assets do you own (cryptocurrency, online accounts, digital files)?",
-        "• Who should have access to your digital assets?",
-        "• Do you have any specific instructions for your social media accounts?"
-      ];
+      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in digital assets. I'll help you create a will that properly addresses your online accounts, cryptocurrency, and other digital property through a simple conversation. Let's start with the basics: What is your full legal name?`;
     } else if (templateId === 'living-trust') {
-      specializedQuestions = [
-        "• Who would you like to name as trustee?",
-        "• Who are the beneficiaries of your trust?",
-        "• Under what conditions should assets be distributed?"
-      ];
+      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in living trusts. I'll guide you through creating a trust that can help manage your assets during your lifetime and distribute them after your passing. Let's start with the basics: What is your full legal name?`;
     } else if (templateId === 'family') {
-      specializedQuestions = [
-        "• Who are your immediate family members?",
-        "• Do you have any guardianship provisions for minor children?",
-        "• Are there any family heirlooms you want to specifically address?"
-      ];
+      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in family-focused estate planning. I'll help you create a will that ensures your family is provided for according to your wishes. Let's start with the basics: What is your full legal name?`;
     } else if (templateId === 'business') {
-      specializedQuestions = [
-        "• What business interests do you own?",
-        "• Who should take over your business interests?",
-        "• Do you have a business succession plan in place?"
-      ];
+      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in business succession planning. I'll help you create a will that addresses your business interests and succession plans. Let's start with the basics: What is your full legal name?`;
     } else if (templateId === 'charity') {
-      specializedQuestions = [
-        "• Which charitable organizations would you like to include in your will?",
-        "• What type of charitable gifts would you like to make?",
-        "• Do you want to establish any charitable trusts?"
-      ];
+      welcomeMessage = `👋 Hello! I'm SKYLER, your AI will assistant specializing in charitable giving. I'll help you create a will that includes your philanthropic wishes. Let's start with the basics: What is your full legal name?`;
     }
     
-    const combinedQuestions = [...questions, ...specializedQuestions];
-    const questionsText = combinedQuestions.join("\n");
-    
-    return `${baseMessage}\n\nI'll be asking you about:\n${questionsText}\n\nLet's begin with your full legal name.`;
+    return welcomeMessage;
   };
   
   const initSpeechRecognition = useCallback(() => {
@@ -161,8 +126,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   }, [isRecording, initSpeechRecognition]);
   
+  // Enhanced information extraction to handle all types of data
   const extractInformation = useCallback((messageContent: string) => {
-    console.log("Extracting information from:", messageContent);
     const updates: Record<string, any> = {};
     
     // Personal information extraction
@@ -170,7 +135,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     if (nameMatch && nameMatch[1]) {
       updates.fullName = nameMatch[1];
       setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
-      console.log("Extracted name:", nameMatch[1]);
     }
     
     // Marital status extraction
@@ -178,7 +142,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       const statusMatch = messageContent.match(/(?:I am|I'm) (single|married|divorced|widowed)/i);
       if (statusMatch && statusMatch[1]) {
         updates.maritalStatus = statusMatch[1].charAt(0).toUpperCase() + statusMatch[1].slice(1).toLowerCase();
-        console.log("Extracted marital status:", updates.maritalStatus);
       }
     }
     
@@ -186,14 +149,12 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const spouseMatch = messageContent.match(/(?:my spouse is|married to|wife is|husband is) ([A-Z][a-z]+ [A-Z][a-z]+)/i);
     if (spouseMatch && spouseMatch[1]) {
       updates.spouseName = spouseMatch[1];
-      console.log("Extracted spouse name:", spouseMatch[1]);
     }
     
     // Contact extraction
     const executorMatch = messageContent.match(/(?:executor is|appointed) ([A-Z][a-z]+ [A-Z][a-z]+)/i);
     if (executorMatch && executorMatch[1]) {
       updates.executorName = executorMatch[1];
-      console.log("Extracted executor:", executorMatch[1]);
       
       // Check if we already have this contact
       const existingContact = contacts.find(c => c.name === executorMatch[1]);
@@ -215,7 +176,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const emailMatch = messageContent.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (emailMatch && emailMatch[0]) {
       const email = emailMatch[0];
-      console.log("Extracted email:", email);
       
       // Look for context to associate this email with a contact
       const lines = messageContent.split(/[.!?]/);
@@ -238,7 +198,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const phoneMatches = messageContent.match(/(\+\d{1,3})?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g);
     if (phoneMatches && phoneMatches.length > 0) {
       const phone = phoneMatches[0];
-      console.log("Extracted phone:", phone);
       
       // Look for context to associate this phone with a contact
       const lines = messageContent.split(/[.!?]/);
@@ -260,83 +219,26 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     // Check if we have at least one executor with contact info
     if (contacts.some(c => c.role === 'Executor' && (c.email || c.phone))) {
       setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
-      console.log("Contact data collection complete");
     }
     
     setExtractedResponses(prev => ({ ...prev, ...updates }));
     return updates;
   }, [contacts]);
   
-  // Check if all required data has been collected and show completion message
+  // Check if all required data has been collected
   useEffect(() => {
-    console.log("Progress check:", dataCollectionProgress);
-    console.log("Contacts:", contacts);
-    console.log("Is complete:", isComplete);
-    console.log("Generated will:", generatedWill ? "exists" : "not generated");
-
-    const { personalInfo, contacts: contactsCollected } = dataCollectionProgress;
+    const { personalInfo, contacts, documents, video } = dataCollectionProgress;
     
-    // If personal info and contacts are collected
-    if (personalInfo && contactsCollected && !isGenerating && !generatedWill && !isComplete) {
-      console.log("Setting isComplete to true");
+    // If personal info and contacts are collected, and we have at least one document or video
+    if (personalInfo && contacts && (documents || video)) {
       setIsComplete(true);
-      
-      const completionMessage: MessageType = {
-        id: `completion-ready-${Date.now()}`,
-        role: 'assistant',
-        content: "✅ Great! I have all the necessary information to generate your will. Click the 'Generate Will' button below when you're ready.",
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, completionMessage]);
     }
-  }, [dataCollectionProgress, isGenerating, generatedWill, isComplete, contacts]);
-  
-  // Track message count for force complete button
-  useEffect(() => {
-    setMessageCount(messages.length);
-  }, [messages]);
-
-  // Force completion function
-  const forceCompletion = () => {
-    if (!isComplete && !generatedWill) {
-      console.log("Forcing completion");
-      setIsComplete(true);
-      
-      // Check if we have minimum required data
-      if (!dataCollectionProgress.personalInfo && extractedResponses.fullName) {
-        setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
-      }
-      
-      if (!dataCollectionProgress.contacts && contacts.length > 0) {
-        setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
-      }
-      
-      // If we don't have an executor yet, create a placeholder
-      if (!contacts.some(c => c.role === 'Executor')) {
-        const newExecutor: Contact = {
-          id: `contact-${Date.now()}`,
-          name: "Executor to be specified",
-          role: 'Executor',
-          email: '',
-          phone: '',
-          address: ''
-        };
-        
-        setContacts(prev => [...prev, newExecutor]);
-      }
-      
-      // Add completion message
-      const completionMessage: MessageType = {
-        id: `forced-completion-${Date.now()}`,
-        role: 'assistant',
-        content: "✅ I've gathered enough information to generate your will. Click the 'Generate Will' button below to continue.",
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, completionMessage]);
+    
+    // If all data is collected, generate the will
+    if (personalInfo && contacts && documents && video && !isGenerating && !generatedWill) {
+      handleGenerateWill();
     }
-  };
+  }, [dataCollectionProgress]);
   
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
@@ -378,105 +280,98 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         contacts: contacts
       };
       
-      try {
-        const { data, error } = await supabase.functions.invoke(functionName, {
-          body: requestBody
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: requestBody
+      });
+      
+      if (error) {
+        throw new Error(`Error calling AI assistant: ${error.message}`);
+      }
+      
+      const aiResponse = data?.response || "I'm sorry, I couldn't generate a response. Let's try again.";
+      
+      // Update contacts if the AI response contains contact information
+      if (data?.contacts && data.contacts.length > 0) {
+        // Merge with existing contacts, avoiding duplicates
+        const updatedContacts = [...contacts];
+        
+        data.contacts.forEach((newContact: Contact) => {
+          const existingIndex = updatedContacts.findIndex(c => c.id === newContact.id);
+          
+          if (existingIndex >= 0) {
+            updatedContacts[existingIndex] = {
+              ...updatedContacts[existingIndex],
+              ...newContact
+            };
+          } else {
+            updatedContacts.push(newContact);
+          }
         });
         
-        if (error) {
-          throw new Error(`Error calling AI assistant: ${error.message}`);
+        setContacts(updatedContacts);
+      }
+      
+      // Update extracted data from AI processing
+      if (data?.extracted_data) {
+        setExtractedResponses(prev => ({ ...prev, ...data.extracted_data }));
+      }
+      
+      // Update progress indicators
+      if (data?.progress) {
+        setDataCollectionProgress(prev => ({ ...prev, ...data.progress }));
+      }
+      
+      // If the AI indicates we should prompt for video, trigger video recording
+      if (data?.triggerVideo) {
+        setTimeout(() => {
+          startVideoRecording();
+        }, 1500);
+      }
+      
+      // If the AI indicates all data is collected, generate the will
+      if (data?.isComplete) {
+        setIsComplete(true);
+        if (!generatedWill && !isGenerating) {
+          setTimeout(() => {
+            handleGenerateWill();
+          }, 2000);
         }
-        
-        const aiResponse = data?.response || "I'll continue gathering information for your will. What else would you like to share?";
-        
-        // Update contacts if the AI response contains contact information
-        if (data?.contacts && data.contacts.length > 0) {
-          // Merge with existing contacts, avoiding duplicates
-          const updatedContacts = [...contacts];
-          
-          data.contacts.forEach((newContact: Contact) => {
-            const existingIndex = updatedContacts.findIndex(c => c.id === newContact.id);
-            
-            if (existingIndex >= 0) {
-              updatedContacts[existingIndex] = {
-                ...updatedContacts[existingIndex],
-                ...newContact
-              };
-            } else {
-              updatedContacts.push(newContact);
-            }
+      }
+      
+      const aiMessage: MessageType = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+      if (session?.user?.id) {
+        try {
+          const saveResponse = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/save-will-conversation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              conversation_data: [...messages, userMessage, aiMessage].map(m => ({
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp
+              })),
+              extracted_responses: { ...extractedResponses, ...extractedInfo },
+              template_type: templateId,
+              user_id: session.user.id
+            }),
           });
           
-          setContacts(updatedContacts);
-        }
-        
-        // Update extracted data from AI processing
-        if (data?.extracted_data) {
-          setExtractedResponses(prev => ({ ...prev, ...data.extracted_data }));
-        }
-        
-        // Update progress indicators
-        if (data?.progress) {
-          setDataCollectionProgress(prev => ({ ...prev, ...data.progress }));
-        }
-        
-        // If the AI indicates all data is collected, update completion status
-        if (data?.isComplete) {
-          setIsComplete(true);
-        }
-        
-        const aiMessage: MessageType = {
-          id: `ai-${Date.now()}`,
-          role: 'assistant',
-          content: aiResponse,
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, aiMessage]);
-        
-        if (session?.user?.id) {
-          try {
-            const saveResponse = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/save-will-conversation', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                conversation_data: [...messages, userMessage, aiMessage].map(m => ({
-                  role: m.role,
-                  content: m.content,
-                  timestamp: m.timestamp
-                })),
-                extracted_responses: { ...extractedResponses, ...extractedInfo },
-                template_type: templateId,
-                user_id: session.user.id
-              }),
-            });
-            
-            if (saveResponse.ok) {
-              console.log("Saved will conversation data");
-            }
-          } catch (saveError) {
-            console.error("Error calling save-will-conversation function:", saveError);
+          if (saveResponse.ok) {
+            console.log("Saved will conversation data");
           }
-        }
-      } catch (aiError) {
-        console.error("Error with AI function:", aiError);
-        
-        // Fallback response if the Edge Function fails
-        const fallbackMessage: MessageType = {
-          id: `ai-fallback-${Date.now()}`,
-          role: 'assistant',
-          content: "I've recorded your information. Can you tell me more about what you'd like to include in your will?",
-          timestamp: new Date()
-        };
-        
-        setMessages(prev => [...prev, fallbackMessage]);
-        
-        // After a few messages, start showing the force complete button
-        if (messages.length > 5) {
-          setShowForceComplete(true);
+        } catch (saveError) {
+          console.error("Error calling save-will-conversation function:", saveError);
         }
       }
     } catch (error) {
@@ -500,75 +395,248 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       setIsProcessing(false);
     }
   };
-
-  const generateWillContent = (templateId: string, data: Record<string, any>) => {
-    // This is improved to generate better structured wills based on the template
-    const fullName = data.fullName || 'Unknown Name';
-    const spouseName = data.spouseName || 'Not Specified';
-    const executorName = data.executorName || 'Not Specified';
-    const maritalStatus = data.maritalStatus || 'Not Specified';
-    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    
-    let content = `LAST WILL AND TESTAMENT OF ${fullName.toUpperCase()}\n\n`;
-    content += `I, ${fullName}, a resident of [Your City], being of sound mind and memory, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.\n\n`;
-    
-    if (maritalStatus.toLowerCase() === 'married' && spouseName) {
-      content += `ARTICLE I: MARRIAGE\nI declare that I am married to ${spouseName}.\n\n`;
-    } else {
-      content += `ARTICLE I: MARITAL STATUS\nI declare that I am ${maritalStatus}.\n\n`;
-    }
-    
-    content += `ARTICLE II: EXECUTOR\nI hereby nominate and appoint ${executorName} as Executor of this Will.\n\n`;
-    
-    content += `ARTICLE III: DISTRIBUTION OF ESTATE\nI direct that all my debts, funeral expenses, and costs of administering my estate be paid as soon as practicable after my death.\n\n`;
-    
-    // Add more specific content based on the template type
-    if (templateId === 'digital-assets') {
-      content += `ARTICLE IV: DIGITAL ASSETS\nI direct that my digital assets, including online accounts, cryptocurrency, and digital files, be distributed as follows: ${data.digitalAssetsDetails || '[To be specified]'}.\n\n`;
-      content += `ARTICLE V: PASSWORD ACCESS\nI have provided my executor with instructions on how to access my password manager and digital accounts in a separate confidential document.\n\n`;
-    } else if (templateId === 'family') {
-      if (data.hasChildren) {
-        content += `ARTICLE IV: CHILDREN\nI have the following children: ${data.childrenNames || '[Names to be specified]'}.\n\n`;
-        content += `ARTICLE V: GUARDIANSHIP\nIf needed, I appoint ${data.guardianName || '[Guardian name to be specified]'} as guardian of my minor children.\n\n`;
-      }
-      content += `ARTICLE ${data.hasChildren ? 'VI' : 'IV'}: FAMILY PROVISIONS\nI direct that my assets be distributed to my family members as follows: ${data.familyDistribution || '[To be specified]'}.\n\n`;
-    } else if (templateId === 'business') {
-      content += `ARTICLE IV: BUSINESS INTERESTS\nI direct that my business interests be handled as follows: ${data.businessDetails || '[To be specified]'}.\n\n`;
-      content += `ARTICLE V: SUCCESSION PLAN\nMy business succession plan is as follows: ${data.successorDetails || '[To be specified]'}.\n\n`;
-    } else if (templateId === 'charity') {
-      content += `ARTICLE IV: CHARITABLE CONTRIBUTIONS\nI direct that the following charitable contributions be made from my estate: ${data.charityDetails || '[To be specified]'}.\n\n`;
-      content += `ARTICLE V: CHARITABLE REMAINDER TRUST\nI establish a charitable remainder trust as follows: ${data.trustDetails || '[To be specified]'}.\n\n`;
-    } else if (templateId === 'living-trust') {
-      content += `ARTICLE IV: TRUST PROVISIONS\nThe following assets shall be held in trust under the following conditions: ${data.trustDetails || '[To be specified]'}.\n\n`;
-      content += `ARTICLE V: TRUSTEE POWERS\nThe trustee shall have the following powers: ${data.trusteePowers || '[To be specified]'}.\n\n`;
-    } else {
-      content += `ARTICLE IV: SPECIFIC BEQUESTS\nI make the following specific bequests: ${data.specificBequests || '[To be specified]'}.\n\n`;
-      content += `ARTICLE V: RESIDUARY ESTATE\nI give, devise, and bequeath my residuary estate as follows: ${data.residuaryDistribution || '[To be specified]'}.\n\n`;
-    }
-    
-    content += `ARTICLE ${templateId === 'digital-assets' || templateId === 'family' || templateId === 'business' || templateId === 'charity' || templateId === 'living-trust' ? 'VI' : 'VI'}: RESIDUARY ESTATE\nI give, devise, and bequeath all the rest, residue, and remainder of my estate to: ${data.residuaryBeneficiary || '[To be specified]'}.\n\n`;
-    
-    content += `IN WITNESS WHEREOF, I have hereunto set my hand to this, my Last Will and Testament, on this ${currentDate}.\n\n`;
-    
-    content += `____________________________\n${fullName}, Testator\n\n`;
-    
-    content += `WITNESSES:\nThe foregoing instrument was signed, published, and declared by ${fullName} as their Last Will and Testament, in our presence, and we, at their request and in their presence, and in the presence of each other, have subscribed our names as witnesses.\n\n`;
-    
-    content += `____________________________\nWitness 1 Signature\n\n`;
-    content += `____________________________\nWitness 1 Name\n\n`;
-    content += `____________________________\nWitness 1 Address\n\n`;
-    
-    content += `____________________________\nWitness 2 Signature\n\n`;
-    content += `____________________________\nWitness 2 Name\n\n`;
-    content += `____________________________\nWitness 2 Address\n\n`;
-    
-    return content;
+  
+  const handleFileButtonClick = () => {
+    fileInputRef.current?.click();
   };
   
-  const handleGenerateWill = () => {
-    console.log("Generating will with data:", extractedResponses);
-    console.log("Contacts:", contacts);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    
+    try {
+      const userMessage: MessageType = {
+        id: `user-upload-${Date.now()}`,
+        role: 'user',
+        content: `I'm uploading a document called "${file.name}"`,
+        timestamp: new Date(),
+        type: 'file',
+        fileName: file.name
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
 
+      // Check if the bucket exists before uploading
+      const { data: buckets, error: bucketsError } = await supabase.storage
+        .listBuckets();
+      
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+        throw new Error(`Storage error: ${bucketsError.message}`);
+      }
+
+      // Log available buckets for debugging
+      console.log('Available buckets:', buckets?.map(b => b.name));
+      
+      // Use "will_documents" bucket with underscore
+      const bucketId = 'will_documents';
+      const bucketExists = buckets?.some(b => b.id === bucketId || b.name === bucketId);
+      
+      if (!bucketExists) {
+        throw new Error(`Bucket "${bucketId}" not found. Available buckets: ${buckets?.map(b => b.id).join(', ')}`);
+      }
+      
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${userId}/will-documents/${Date.now()}-${file.name}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from(bucketId)
+        .upload(filePath, file);
+      
+      if (uploadError) {
+        console.error('Upload error details:', uploadError);
+        throw new Error(`Error uploading file: ${uploadError.message}`);
+      }
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketId)
+        .getPublicUrl(filePath);
+      
+      const newDocument = {
+        id: `doc-${Date.now()}`,
+        name: file.name,
+        type: fileExt,
+        path: filePath,
+        url: publicUrl,
+        size: file.size
+      };
+      
+      setDocuments(prev => [...prev, newDocument]);
+      
+      // Update data collection progress
+      setDataCollectionProgress(prev => ({ ...prev, documents: true }));
+      
+      const assistantMessage: MessageType = {
+        id: `assistant-upload-${Date.now()}`,
+        role: 'assistant',
+        content: `Thank you for uploading "${file.name}". This document has been added to your will. Tell me more about why this document is important for your estate planning.`,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+      
+    } catch (error: any) {
+      console.error("Error handling file upload:", error);
+      
+      const errorMessage: MessageType = {
+        id: `error-upload-${Date.now()}`,
+        role: 'system',
+        content: `Error uploading file: ${error.message || "Unknown error"}. Please try again.`,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "Upload Error",
+        description: error.message || "There was a problem uploading your document. Please try again.",
+        variant: "destructive"
+      });
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleVideoButtonClick = () => {
+    setShowVideoRecorder(true);
+    
+    const recordingMessage: MessageType = {
+      id: `recording-start-${Date.now()}`,
+      role: 'system',
+      content: "Video recording has started. Speak clearly about your wishes and intentions. Click the stop button when you're finished.",
+      timestamp: new Date(),
+      type: 'video-start'
+    };
+    
+    setMessages(prev => [...prev, recordingMessage]);
+  };
+  
+  const handleVideoComplete = (blob: Blob) => {
+    setVideoBlob(blob);
+    setShowVideoRecorder(false);
+    
+    const videoURL = URL.createObjectURL(blob);
+    
+    const videoMessage: MessageType = {
+      id: `video-${Date.now()}`,
+      role: 'user',
+      content: "I've recorded my video testament.",
+      timestamp: new Date(),
+      type: 'video',
+      fileUrl: videoURL
+    };
+    
+    setMessages(prev => [...prev, videoMessage]);
+    
+    // Update data collection progress
+    setDataCollectionProgress(prev => ({ ...prev, video: true }));
+    
+    const assistantMessage: MessageType = {
+      id: `assistant-video-${Date.now()}`,
+      role: 'assistant',
+      content: "Thank you for recording your video testament. This adds a personal touch to your will and can help clarify your intentions. Now that we have all the necessary information, I'll generate your will document.",
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, assistantMessage]);
+  };
+  
+  const startVideoRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      
+      const recordingMessage: MessageType = {
+        id: `recording-start-${Date.now()}`,
+        role: 'system',
+        content: "Video recording has started. Speak clearly about your wishes and intentions. Click the stop button when you're finished.",
+        timestamp: new Date(),
+        type: 'video-start'
+      };
+      
+      setMessages(prev => [...prev, recordingMessage]);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      
+      streamRef.current = stream;
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      chunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        chunksRef.current.push(e.data);
+      };
+      
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        setVideoBlob(blob);
+        
+        const videoURL = URL.createObjectURL(blob);
+        
+        const videoMessage: MessageType = {
+          id: `video-${Date.now()}`,
+          role: 'user',
+          content: "I've recorded my video testament.",
+          timestamp: new Date(),
+          type: 'video',
+          fileUrl: videoURL
+        };
+        
+        setMessages(prev => [...prev, videoMessage]);
+        
+        // Update data collection progress
+        setDataCollectionProgress(prev => ({ ...prev, video: true }));
+        
+        const assistantMessage: MessageType = {
+          id: `assistant-video-${Date.now()}`,
+          role: 'assistant',
+          content: "Thank you for recording your video testament. This adds a personal touch to your will and can help clarify your intentions. Now that we have all the necessary information, I'll generate your will document.",
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+      };
+      
+      mediaRecorderRef.current.start();
+      
+    } catch (error) {
+      console.error("Error starting video recording:", error);
+      
+      toast({
+        title: "Recording Error",
+        description: "There was a problem accessing your camera or microphone. Please check your permissions and try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const stopVideoRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+  
+  const handleGenerateWill = async () => {
     setIsGenerating(true);
     
     try {
@@ -605,109 +673,134 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         onComplete({
           responses: finalResponses,
           contacts,
+          documents,
+          videoBlob: videoBlob || undefined,
           generatedWill: generatedWillContent
         });
-        
-        setIsGenerating(false);
       }, 2000);
       
     } catch (error) {
       console.error("Error generating will:", error);
-      setIsGenerating(false);
       
       toast({
         title: "Generation Error",
         description: "There was a problem generating your will. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
+  
+  const generateWillContent = (templateId: string, responses: Record<string, any>) => {
+    if (templateId === 'digital-assets') {
+      return `DIGITAL ASSET WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
 
+I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my Digital Asset Will and Testament.
+
+ARTICLE I: DIGITAL EXECUTOR
+I appoint ${responses.executorName || '[DIGITAL EXECUTOR]'} as my Digital Executor with authority to manage all my digital assets.
+
+ARTICLE II: CRYPTOCURRENCY ASSETS
+${responses.digitalAssetsDetails?.includes('crypto') ? `My cryptocurrency assets include: ${responses.digitalAssetsDetails || '[CRYPTOCURRENCY DETAILS]'}` : 'I have no cryptocurrency assets.'}
+
+ARTICLE III: NFT ASSETS
+${responses.digitalAssetsDetails?.includes('nft') ? `My NFT holdings include: ${responses.digitalAssetsDetails || '[NFT DETAILS]'}` : 'I have no NFT assets.'}
+
+ARTICLE IV: SOCIAL MEDIA ACCOUNTS
+${responses.digitalAssetsDetails?.includes('social') ? `My social media accounts include: ${responses.digitalAssetsDetails || '[SOCIAL MEDIA ACCOUNTS]'}` : 'My social media accounts should be handled according to the individual platform policies.'}
+
+ARTICLE V: EMAIL ACCOUNTS
+${responses.digitalAssetsDetails?.includes('email') ? `My email accounts include: ${responses.digitalAssetsDetails || '[EMAIL ACCOUNTS]'}` : 'My email accounts should be closed after important information is saved.'}
+
+ARTICLE VI: ACCESS INFORMATION
+${responses.digitalAssetsDetails?.includes('password') ? `My access information is stored in: ${responses.digitalAssetsDetails || '[PASSWORD MANAGER DETAILS]'}` : 'I have provided separate secure instructions for accessing my digital accounts.'}
+
+ARTICLE VII: DIGITAL LEGACY PREFERENCES
+My preferences for my digital legacy are: ${responses.digitalAssetsDetails || '[DIGITAL LEGACY PREFERENCES]'}
+
+Signed: ${responses.fullName || '[NAME]'}
+Date: ${new Date().toLocaleDateString()}
+Witnesses: [Witness 1], [Witness 2]`;
+    } else {
+      return `LAST WILL AND TESTAMENT OF ${responses.fullName?.toUpperCase() || '[NAME]'}
+
+I, ${responses.fullName || '[NAME]'}, being of sound mind, declare this to be my Last Will and Testament.
+
+ARTICLE I: REVOCATION
+I revoke all previous wills and codicils.
+
+ARTICLE II: FAMILY INFORMATION
+I am ${responses.maritalStatus || '[MARITAL STATUS]'}${responses.spouseName ? ` to ${responses.spouseName}` : ''}.
+${responses.hasChildren ? `I have the following children: ${responses.childrenNames || '[CHILDREN NAMES]'}.` : 'I have no children.'}
+
+ARTICLE III: EXECUTOR
+I appoint ${responses.executorName || '[EXECUTOR NAME]'} as the Executor of this Will.
+${responses.alternateExecutor ? `If they are unable or unwilling to serve, I appoint ${responses.alternateExecutorName || '[ALTERNATE EXECUTOR]'} as alternate Executor.` : ''}
+
+${responses.guardianNeeded ? `ARTICLE IV: GUARDIAN
+If needed, I appoint ${responses.guardianName || '[GUARDIAN NAME]'} as guardian of my minor children.` : ''}
+
+ARTICLE ${responses.guardianNeeded ? 'V' : 'IV'}: DISPOSITION OF PROPERTY
+${responses.specificBequests ? `I make the following specific bequests: ${responses.bequestsDetails || '[SPECIFIC BEQUESTS]'}` : ''}
+
+I give all my remaining property to ${responses.residualEstate || '[BENEFICIARIES]'}.
+
+ARTICLE ${responses.guardianNeeded ? 'VI' : 'V'}: DIGITAL ASSETS
+${responses.digitalAssets ? `I direct my Executor regarding my digital assets as follows: ${responses.digitalAssetsDetails || '[DIGITAL ASSETS DETAILS]'}` : 'I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.'}
+
+Signed: ${responses.fullName || '[NAME]'}
+Date: ${new Date().toLocaleDateString()}
+Witnesses: [Witness 1], [Witness 2]`;
+    }
+  };
+  
   return (
-    <Card className="flex flex-col h-full overflow-hidden">
-      <CardHeader className="bg-willtank-50 flex items-center">
-        <div className="flex items-center">
-          <div className="mr-4 bg-willtank-100 p-2 rounded-full">
-            <Bot className="h-6 w-6 text-willtank-700" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium">SKYLER</h3>
-            <p className="text-sm text-gray-500">AI Will Assistant</p>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="flex-grow overflow-y-auto p-0 relative">
-        <MessageList messages={messages} />
-        
-        {isComplete && !generatedWill && (
-          <div className="p-4 bg-green-50 border-t border-green-100 flex justify-center">
-            <button 
-              onClick={handleGenerateWill}
-              disabled={isGenerating}
-              className={`px-6 py-3 text-white rounded-full shadow-lg flex items-center justify-center transform transition-transform duration-300 ${
-                isGenerating 
-                  ? "bg-gray-400" 
-                  : "bg-gradient-to-r from-willtank-600 to-willtank-700 hover:scale-105 pulse-animation"
-              }`}
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                  Generating Your Will...
-                </>
-              ) : (
-                <>Generate Your Will</>
-              )}
-            </button>
-          </div>
-        )}
-        
-        {showForceComplete && !isComplete && !generatedWill && (
-          <div className="p-4 border-t border-gray-200 flex justify-center">
-            <Button 
-              variant="outline"
-              onClick={forceCompletion}
-              className="flex items-center"
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Complete Information Collection
-            </Button>
-          </div>
-        )}
-      </CardContent>
-      
-      <div className="p-4 border-t border-gray-200">
-        <InputArea 
-          inputValue={inputValue}
-          onInputChange={(e) => setInputValue(e.target.value)}
-          onSubmit={handleSendMessage}
-          isSubmitting={isProcessing}
-          placeholder="Type your message here..."
-          onVoiceToggle={recordingSupported ? toggleVoiceInput : undefined}
-          isRecording={isRecording}
-        />
-      </div>
-      
-      <style>
-        {`
-        .pulse-animation {
-          animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(155, 135, 245, 0.7);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(155, 135, 245, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
-          }
-        }
-        `}
-      </style>
-    </Card>
+    <div className="flex flex-col h-[70vh]">
+      {showVideoRecorder ? (
+        <VideoRecorder onRecordingComplete={handleVideoComplete} />
+      ) : (
+        <Card className="flex-1 flex flex-col overflow-hidden h-full">
+          <CardHeader className="flex-shrink-0 border-b p-4">
+            <div className="flex items-center">
+              <div className="bg-willtank-50 p-1 rounded-full">
+                <Bot className="h-6 w-6 text-willtank-600" />
+              </div>
+              <div className="ml-3">
+                <h3 className="font-semibold">SKYLER - Will AI Assistant</h3>
+                <p className="text-xs text-gray-500">Creating your {templateName}</p>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <MessageList messages={messages} onStopRecording={stopVideoRecording} />
+          </CardContent>
+
+          <InputArea
+            inputValue={inputValue}
+            setInputValue={setInputValue}
+            isProcessing={isProcessing}
+            isRecording={isRecording}
+            recordingSupported={recordingSupported}
+            currentStage="unified"
+            onSendMessage={handleSendMessage}
+            onToggleVoiceInput={toggleVoiceInput}
+            onFileButtonClick={handleFileButtonClick}
+            onVideoButtonClick={handleVideoButtonClick}
+          />
+        </Card>
+      )}
+
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        onChange={handleFileChange} 
+        accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      />
+
+      <video ref={videoRef} style={{ display: 'none' }} />
+    </div>
   );
 }
