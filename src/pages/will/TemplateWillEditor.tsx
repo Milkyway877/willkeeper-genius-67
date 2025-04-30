@@ -127,7 +127,8 @@ Date: ${new Date().toLocaleDateString()}
         content: willContent,
         status: 'draft',
         template_type: templateId,
-        ai_generated: false
+        ai_generated: false,
+        document_url: '' // Add the missing document_url property
       };
       
       const savedWill = await createWill(willData);
@@ -182,6 +183,7 @@ Date: ${new Date().toLocaleDateString()}
         status: 'active', // Mark as active/finalized
         template_type: templateId,
         ai_generated: false,
+        document_url: '', // Add the missing document_url property
         // Add signature data as needed
       };
       
