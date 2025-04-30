@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -327,7 +326,13 @@ export default function WillWizardPage() {
       
       const createdWill = await createWill(will);
       
-      setWillProgress({ ...willProgress, isFinalized: true });
+      if (progress) {
+        // Update the progress with a flag indicating it's finalized
+        setProgress({ 
+          completedSections: progress.completedSections || [], 
+          lastEdited: new Date() 
+        });
+      }
       
       clearInterval(progressInterval);
       setProgress(100);

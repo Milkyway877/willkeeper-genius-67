@@ -42,7 +42,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
   const [content, setContent] = useState('');
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   const [showRecoveryNotice, setShowRecoveryNotice] = useState(false);
-  const { progress, setProgress } = useWillProgress(willId);
+  const { progress, setProgress, isLoading: progressLoading } = useWillProgress(willId);
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -53,48 +53,61 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
   const [createdDate, setCreatedDate] = useState<string | null>(null);
 
   useEffect(() => {
-    if (willData) {
-      setContent(willData.content || '');
-      setTitle(willData.title || "Last Will and Testament");
-      
-      setProgress({
-        id: willId,
-        content: willData.content || '',
-        title: willData.title,
-        completedSections: detectCompletedSections(willData.content || '')
-      });
-    } else {
-      const savedProgress = getWillProgress('new_will');
-      if (savedProgress?.content) {
-        setContent(savedProgress.content);
+    const loadData = async () => {
+      if (willData) {
+        setContent(willData.content || '');
+        setTitle(willData.title || "Last Will and Testament");
         
-        if (savedProgress.title) {
-          setTitle(savedProgress.title);
+        if (willId) {
+          setProgress({
+            id: willId,
+            content: willData.content || '',
+            title: willData.title,
+            completedSections: detectCompletedSections(willData.content || '')
+          });
         }
-        
-        if (savedProgress.lastEditedSection && !readOnly) {
-          setShowRecoveryNotice(true);
-          setActiveSection(savedProgress.lastEditedSection);
-        }
-        
-        setProgress({
-          content: savedProgress.content,
-          title: savedProgress.title,
-          lastEditedSection: savedProgress.lastEditedSection,
-          completedSections: savedProgress.completedSections || []
-        });
       } else if (!readOnly) {
-        const defaultContent = "LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], residing at [YOUR ADDRESS], being of sound mind, declare this to be my Will, revoking all previous wills and codicils.\n\n[START WRITING YOUR WILL HERE]";
-        setContent(defaultContent);
-        
-        setProgress({
-          content: defaultContent,
-          title: title,
-          completedSections: []
-        });
+        try {
+          const savedProgress = await getWillProgress('new_will');
+          
+          if (savedProgress?.content) {
+            setContent(savedProgress.content);
+            
+            if (savedProgress.title) {
+              setTitle(savedProgress.title);
+            }
+            
+            if (savedProgress.lastEditedSection) {
+              setShowRecoveryNotice(true);
+              setActiveSection(savedProgress.lastEditedSection);
+            }
+            
+            setProgress({
+              content: savedProgress.content,
+              title: savedProgress.title,
+              lastEditedSection: savedProgress.lastEditedSection,
+              completedSections: savedProgress.completedSections || []
+            });
+          } else {
+            const defaultContent = "LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], residing at [YOUR ADDRESS], being of sound mind, declare this to be my Will, revoking all previous wills and codicils.\n\n[START WRITING YOUR WILL HERE]";
+            setContent(defaultContent);
+            
+            setProgress({
+              content: defaultContent,
+              title: title,
+              completedSections: []
+            });
+          }
+        } catch (error) {
+          console.error('Error loading progress:', error);
+          const defaultContent = "LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], residing at [YOUR ADDRESS], being of sound mind, declare this to be my Will, revoking all previous wills and codicils.\n\n[START WRITING YOUR WILL HERE]";
+          setContent(defaultContent);
+        }
       }
-    }
-  }, [willData, willId, setProgress, readOnly]);
+    };
+    
+    loadData();
+  }, [willData, willId, setProgress, readOnly, title]);
 
   useEffect(() => {
     if (progress) {
@@ -102,8 +115,16 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
       setCompletionPercentage(percentage);
       
       if (!readOnly) {
-        const willSuggestions = getWillSuggestions(progress);
-        setSuggestions(willSuggestions);
+        const loadSuggestions = async () => {
+          try {
+            const willSuggestions = await getWillSuggestions(progress);
+            setSuggestions(willSuggestions);
+          } catch (error) {
+            console.error('Error loading suggestions:', error);
+          }
+        };
+        
+        loadSuggestions();
       }
     }
   }, [progress, readOnly]);
@@ -118,21 +139,31 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
         lastEdited: new Date()
       });
       
-      if (willId) {
-        saveWillProgress(willId, {
-          content: newContent,
-          title: title,
-          lastEditedSection: activeSection || undefined,
-          lastEdited: new Date()
-        });
-      } else {
-        saveWillProgress('new_will', {
-          content: newContent,
-          title: title,
-          lastEditedSection: activeSection || undefined,
-          lastEdited: new Date()
-        });
-      }
+      const saveProgressData = async () => {
+        if (willId) {
+          await saveWillProgress({
+            template_id: willId,
+            current_step: 'editing',
+            content: newContent,
+            title: title,
+            lastEditedSection: activeSection || undefined,
+            lastEdited: new Date(),
+            responses: {}
+          });
+        } else {
+          await saveWillProgress({
+            template_id: 'new_will',
+            current_step: 'editing',
+            content: newContent,
+            title: title,
+            lastEditedSection: activeSection || undefined,
+            lastEdited: new Date(),
+            responses: {}
+          });
+        }
+      };
+      
+      saveProgressData();
     }
     
     const completedSections = detectCompletedSections(newContent);
@@ -221,7 +252,7 @@ export function WillEditor({ readOnly = false, willData = null, willId }: WillEd
             description: "Will has been created successfully"
           });
           
-          clearWillProgress('new_will');
+          await clearWillProgress('new_will');
           
           navigate(`/will/${newWill.id}`);
         } else {

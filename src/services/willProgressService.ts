@@ -18,6 +18,7 @@ export interface WillProgress {
   lastEditedSection?: string;
   completedSections?: string[];
   lastEdited?: Date;
+  isFinalized?: boolean;
 }
 
 // Will sections constant for progress tracking - as an object with properties
@@ -152,7 +153,8 @@ export const saveWillProgress = async (
           content: progress.content,
           title: progress.title,
           lastEditedSection: progress.lastEditedSection,
-          completedSections: progress.completedSections
+          completedSections: progress.completedSections,
+          isFinalized: progress.isFinalized
         })
         .eq('id', existingProgress.id)
         .select()
@@ -178,7 +180,8 @@ export const saveWillProgress = async (
           content: progress.content,
           title: progress.title,
           lastEditedSection: progress.lastEditedSection,
-          completedSections: progress.completedSections
+          completedSections: progress.completedSections,
+          isFinalized: progress.isFinalized
         })
         .select()
         .single();
