@@ -1,6 +1,6 @@
 
 import { Routes, Route } from 'react-router-dom';
-import HomePage from '@/pages/HomePage';
+import Home from '@/pages/Index';
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
@@ -21,7 +21,7 @@ import TemplateWillCreationPage from '@/pages/will/TemplateWillCreationPage';
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

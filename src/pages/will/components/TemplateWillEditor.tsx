@@ -7,7 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from '@/components/ui/button';
-import { Check, Upload, Video, Save, FileText, AlertCircle, Edit, ChevronRight } from 'lucide-react';
+import { Check, Upload, Video, Save, FileText, Edit, ChevronRight, Loader2 } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -712,7 +712,7 @@ export const TemplateWillEditor: React.FC<TemplateWillEditorProps> = ({
         <AlertDescription>
           Fill out each section below to create your will. Click the (i) icon next to each field for guidance.
           All fields marked with * are required. You can save your progress at any time.
-        </Alert>
+        </AlertDescription>
       </Alert>
       
       {/* Main form with accordion sections */}
