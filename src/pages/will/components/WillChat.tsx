@@ -709,4 +709,186 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     willContent += `I explicitly authorize my Digital Executor to access, handle, distribute, and dispose of my digital assets. This includes accessing my computers, smartphones, tablets, storage devices, email accounts, social media accounts, financial accounts, cryptocurrency wallets, domain names, digital intellectual property, and other digital assets.\n\n`;
     
     // Password manager info if applicable
-    willContent += `PASSWORDS
+    willContent += `PASSWORDS AND ACCESS INFORMATION\n\n`;
+    
+    willContent += `My password manager information and other access details are stored in a secure location known to my executor. I have provided separate instructions for accessing my digital accounts and assets.\n\n`;
+    
+    // Continue with the rest of the will content
+    willContent += `GENERAL PROVISIONS FOR DIGITAL ASSETS\n\n`;
+    willContent += `If any of my digital assets have financial value, they should be liquidated or transferred according to the instructions above. If not specifically mentioned, digital assets should be handled according to the general distribution of my estate.\n\n`;
+    
+    // Signature section
+    willContent += `IN WITNESS WHEREOF, I have signed this Digital Assets Will on this ____ day of ____________, 20____.\n\n`;
+    willContent += `____________________________\n${info.fullName || '[YOUR SIGNATURE]'}\n\n`;
+    
+    // Witnesses section
+    willContent += `The foregoing instrument was signed, published, and declared by ${info.fullName || '[NAME OF TESTATOR]'} as their Will in our presence, and we, at their request and in their presence, and in the presence of each other, have subscribed our names as witnesses thereto, believing said ${info.fullName || '[NAME OF TESTATOR]'} to be of sound mind and memory.\n\n`;
+    willContent += `____________________________\nWITNESS SIGNATURE\n\n`;
+    willContent += `____________________________\nWITNESS SIGNATURE\n`;
+    
+    return willContent;
+  };
+  
+  const generateBusinessWill = (info: typeof userInfo): string => {
+    let willContent = `BUSINESS OWNER WILL AND TESTAMENT\n\n`;
+    
+    // Personal information section
+    willContent += `I, ${info.fullName || '[YOUR NAME]'}, being of sound mind, declare this to be my Last Will and Testament with specific provisions for my business assets. I revoke all wills and codicils previously made by me.\n\n`;
+    
+    // Residence information if available
+    if (info.address || info.city || info.state || info.zipCode) {
+      willContent += `RESIDENCE\n\n`;
+      willContent += `At the time of executing this Will, I reside at ${info.address || '[ADDRESS]'}, ${info.city || '[CITY]'}, ${info.state || '[STATE]'} ${info.zipCode || '[ZIP CODE]'}.\n\n`;
+    }
+    
+    // Family information if available
+    if (info.maritalStatus || info.spouseName || (info.children && info.children.length > 0)) {
+      willContent += `FAMILY INFORMATION\n\n`;
+      
+      // Add marital status info
+      if (info.maritalStatus === 'single') {
+        willContent += `I am currently single.\n\n`;
+      } else if (info.maritalStatus === 'married') {
+        willContent += `I am married to ${info.spouseName || '[SPOUSE NAME]'}.\n\n`;
+      } else if (info.maritalStatus === 'divorced') {
+        willContent += `I am divorced.\n\n`;
+      } else if (info.maritalStatus === 'widowed') {
+        willContent += `I am widowed.\n\n`;
+      }
+      
+      // Add children info if available
+      if (info.children && info.children.length > 0) {
+        if (info.children.length === 1) {
+          willContent += `I have one child, ${info.children[0]}.\n\n`;
+        } else {
+          willContent += `I have ${info.children.length} children: ${info.children.join(', ')}.\n\n`;
+        }
+      }
+    }
+    
+    // Executor section
+    willContent += `EXECUTOR\n\n`;
+    willContent += `I appoint ${info.executor || '[EXECUTOR NAME]'} as Executor of this Will. If ${info.executor || 'my named Executor'} is unwilling or unable to serve, I appoint [ALTERNATE EXECUTOR] to serve as my alternate Executor.\n\n`;
+    
+    // Business provisions
+    willContent += `BUSINESS ASSETS\n\n`;
+    willContent += `I own the following business assets:\n\n`;
+    
+    if (info.assets && info.assets.length > 0) {
+      info.assets.forEach((asset, index) => {
+        willContent += `${index + 1}. ${asset.name}: ${asset.value}${asset.recipient ? ` - I give this to ${asset.recipient}` : ''}\n`;
+      });
+    } else {
+      willContent += `1. [BUSINESS NAME]: [DESCRIPTION AND OWNERSHIP PERCENTAGE]\n`;
+      willContent += `2. [BUSINESS PROPERTY]: [DESCRIPTION AND LOCATION]\n`;
+    }
+    
+    willContent += `\nBUSINESS SUCCESSION PLAN\n\n`;
+    willContent += `I direct my Executor to transfer ownership of my business interests as follows:\n\n`;
+    willContent += `[SPECIFIC INSTRUCTIONS FOR BUSINESS SUCCESSION]\n\n`;
+    
+    // Signature section
+    willContent += `IN WITNESS WHEREOF, I have signed this Business Owner Will on this ____ day of ____________, 20____.\n\n`;
+    willContent += `____________________________\n${info.fullName || '[YOUR SIGNATURE]'}\n\n`;
+    
+    // Witnesses section
+    willContent += `The foregoing instrument was signed, published, and declared by ${info.fullName || '[NAME OF TESTATOR]'} as their Will in our presence, and we, at their request and in their presence, and in the presence of each other, have subscribed our names as witnesses thereto, believing said ${info.fullName || '[NAME OF TESTATOR]'} to be of sound mind and memory.\n\n`;
+    willContent += `____________________________\nWITNESS SIGNATURE\n\n`;
+    willContent += `____________________________\nWITNESS SIGNATURE\n`;
+    
+    return willContent;
+  };
+  
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-4">
+        {messages.map((message, index) => (
+          <div 
+            key={message.id} 
+            className={`mb-4 ${message.role === 'user' ? 'text-right' : 'text-left'}`}
+          >
+            <div 
+              className={`inline-block p-3 rounded-lg max-w-[80%] ${
+                message.role === 'user' 
+                  ? 'bg-blue-100 text-blue-900' 
+                  : 'bg-gray-100 text-gray-900'
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{message.content}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {message.timestamp.toLocaleTimeString()}
+              </p>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      <div className="border-t p-4 bg-white">
+        {isComplete ? (
+          <div className="text-center space-y-4">
+            <p className="text-green-600 font-medium">
+              Great job! We've collected all the necessary information for your will.
+            </p>
+            <Button 
+              onClick={handleComplete} 
+              className="w-full"
+            >
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Review Your Will
+            </Button>
+          </div>
+        ) : (
+          <div className="flex space-x-2">
+            <div className="relative flex-1">
+              <Input
+                ref={inputRef}
+                type="text"
+                placeholder="Type your message here..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isProcessing}
+                className="pr-10"
+              />
+              {recordingSupported && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                  onClick={toggleVoiceInput}
+                  disabled={isProcessing}
+                >
+                  {isRecording ? (
+                    <MicOff className="h-4 w-4 text-red-500" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+            </div>
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isProcessing}
+            >
+              {isProcessing ? (
+                <span className="animate-pulse">Processing...</span>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
