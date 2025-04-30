@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +20,15 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [bucketStatus, setBucketStatus] = useState<{exists: boolean, name: string} | null>(null);
+  const [storageStatus, setStorageStatus] = useState<{
+    bucketExists: boolean, 
+    listError: string | null,
+    availableBuckets: string[]
+  }>({
+    bucketExists: false,
+    listError: null,
+    availableBuckets: []
+  });
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -30,66 +39,100 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   
   // Check if buckets exist on component mount
   useEffect(() => {
-    async function checkBuckets() {
+    async function checkStorage() {
       try {
+        // Get session to check if user is authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          setStorageStatus({
+            bucketExists: false,
+            listError: "Not authenticated",
+            availableBuckets: []
+          });
+          return;
+        }
+        
+        // List available buckets
         const { data: buckets, error } = await supabase.storage.listBuckets();
         
         if (error) {
           console.error('Error checking buckets:', error);
+          setStorageStatus({
+            bucketExists: false,
+            listError: error.message,
+            availableBuckets: []
+          });
           return;
         }
         
-        const videoBucket = buckets?.find(b => b.id === 'will_videos' || b.name === 'will_videos');
+        // Check if our bucket exists
+        const videoBucket = buckets?.find(b => b.id === 'will_videos');
+        const bucketNames = buckets?.map(b => b.name) || [];
+        
+        console.log('Available buckets:', bucketNames);
         
         if (videoBucket) {
           console.log('Found will_videos bucket:', videoBucket);
-          setBucketStatus({ exists: true, name: videoBucket.name });
+          setStorageStatus({
+            bucketExists: true,
+            listError: null,
+            availableBuckets: bucketNames
+          });
         } else {
-          console.error('will_videos bucket not found. Available buckets:', buckets?.map(b => b.name).join(', '));
-          setBucketStatus({ exists: false, name: 'will_videos' });
+          console.error('will_videos bucket not found. Available buckets:', bucketNames.join(', '));
+          setStorageStatus({
+            bucketExists: false,
+            listError: "The will_videos bucket doesn't exist",
+            availableBuckets: bucketNames
+          });
           setUploadError('Storage not properly configured. Please contact support.');
         }
-      } catch (err) {
-        console.error('Error in checkBuckets:', err);
+      } catch (err: any) {
+        console.error('Error in checkStorage:', err);
+        setStorageStatus({
+          bucketExists: false,
+          listError: err.message,
+          availableBuckets: []
+        });
       }
     }
     
-    checkBuckets();
+    checkStorage();
   }, []);
 
   const uploadToStorage = async (blob: Blob) => {
     try {
       setUploadError(null);
+      setLoading(true);
+      
+      // Get authenticated user session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         throw new Error('User not authenticated');
       }
 
-      // Check bucket status
-      if (bucketStatus && !bucketStatus.exists) {
-        throw new Error(`Bucket "${bucketStatus.name}" not found. Please contact support.`);
-      }
-
-      const filename = `${session.user.id}/${Date.now()}.webm`;
+      // Generate a filename with userId as first path segment
+      const userId = session.user.id;
+      const filename = `${userId}/${Date.now()}.webm`;
       const bucketId = 'will_videos';
       
-      // Add client-side validation to confirm bucket exists
-      const { data: buckets, error: bucketsError } = await supabase.storage
-        .listBuckets();
-      
-      if (bucketsError) {
-        console.error('Error checking buckets:', bucketsError);
-        throw new Error(`Storage error: ${bucketsError.message}`);
-      }
-      
-      // Log available buckets for debugging
-      console.log('Available buckets for upload:', buckets?.map(b => b.name));
-      
-      if (!buckets?.some(b => b.id === bucketId || b.name === bucketId)) {
-        throw new Error(`Bucket "${bucketId}" not found. Available buckets: ${buckets?.map(b => b.id).join(', ')}`);
+      console.log('Attempting to upload file:', {
+        bucket: bucketId,
+        path: filename,
+        contentType: 'video/webm',
+        userId: userId,
+        authStatus: session ? 'authenticated' : 'not authenticated'
+      });
+
+      // Double-check bucket exists before uploading
+      if (!storageStatus.bucketExists) {
+        console.error('Upload failed: Bucket does not exist', {
+          availableBuckets: storageStatus.availableBuckets
+        });
+        throw new Error(`Storage bucket "${bucketId}" not found or not accessible`);
       }
 
-      // Proceed with upload
+      // Upload the file
       const { data, error } = await supabase.storage
         .from(bucketId)
         .upload(filename, blob, {
@@ -99,16 +142,34 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         });
 
       if (error) {
-        console.error('Upload error details:', error);
+        console.error('Upload error:', {
+          errorMessage: error.message,
+          errorDetails: error,
+          bucket: bucketId,
+          path: filename
+        });
         throw error;
       }
 
       console.log('Upload successful:', data);
-      return data.path;
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from(bucketId)
+        .getPublicUrl(filename);
+        
+      console.log('File URL:', urlData.publicUrl);
+      
+      return {
+        path: data.path,
+        url: urlData.publicUrl
+      };
     } catch (error: any) {
       console.error('Error uploading video:', error);
       setUploadError(error.message || 'Error uploading video');
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,12 +177,13 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     if (recordedBlob) {
       try {
         setLoading(true);
-        await uploadToStorage(recordedBlob);
+        const result = await uploadToStorage(recordedBlob);
         onRecordingComplete(recordedBlob);
         toast({
           title: "Video Saved",
           description: "Your video testament has been saved successfully."
         });
+        return result;
       } catch (error: any) {
         console.error('Error saving video:', error);
         toast({
@@ -284,10 +346,13 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       </div>
       
       <div className="p-4">
-        {bucketStatus && !bucketStatus.exists && (
+        {!storageStatus.bucketExists && (
           <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded mb-4 text-sm">
             <p className="font-medium">Storage Configuration Issue</p>
-            <p>The video storage system is not properly configured. Your recording will work but uploading may fail.</p>
+            <p>The video storage system is not properly configured. {storageStatus.listError}</p>
+            {storageStatus.availableBuckets.length > 0 && (
+              <p className="mt-1">Available buckets: {storageStatus.availableBuckets.join(', ')}</p>
+            )}
           </div>
         )}
         
@@ -370,7 +435,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
               
               <Button 
                 onClick={saveRecording} 
-                disabled={loading || (bucketStatus && !bucketStatus.exists)}
+                disabled={loading || !storageStatus.bucketExists}
               >
                 {loading ? (
                   <>
@@ -390,4 +455,120 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       </div>
     </div>
   );
+
+  function initCamera() {
+    setLoading(true);
+    setCameraError(null);
+    
+    navigator.mediaDevices.getUserMedia({ 
+      video: true, 
+      audio: true 
+    })
+    .then((mediaStream) => {
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        return videoRef.current.play();
+      }
+    })
+    .catch((error) => {
+      console.error('Error accessing camera:', error);
+      setCameraError('Camera or microphone could not be accessed. Please check your permissions.');
+      toast({
+        title: "Camera Error",
+        description: "Unable to access camera or microphone. Please check your permissions.",
+        variant: "destructive"
+      });
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+  }
+  
+  function startRecording() {
+    if (!stream) {
+      toast({
+        title: "Error",
+        description: "Camera is not available. Please refresh and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      chunksRef.current = [];
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+      
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+        setRecordedBlob(blob);
+        setRecordingComplete(true);
+      };
+      
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      
+      let startTime = Date.now();
+      timerIntervalRef.current = window.setInterval(() => {
+        setTimer(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000) as unknown as number;
+      
+      toast({
+        title: "Recording Started",
+        description: "You're now recording your video testament."
+      });
+      
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast({
+        title: "Recording Error",
+        description: "Failed to start recording. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }
+  
+  function stopRecording() {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      
+      toast({
+        title: "Recording Complete",
+        description: "Your video testament has been recorded successfully."
+      });
+    }
+  }
+  
+  function resetRecording() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    
+    setPreviewUrl(null);
+    setRecordedBlob(null);
+    setRecordingComplete(false);
+    setTimer(0);
+    setUploadError(null);
+  }
+  
+  function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
 }
+
