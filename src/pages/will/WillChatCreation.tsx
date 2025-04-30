@@ -277,8 +277,8 @@ export default function WillChatCreation() {
               </CardContent>
             </Card>
             
-            <style dangerouslySetInnerHTML={{
-              __html: `
+            <style>
+              {`
                 .pulse-animation {
                   animation: pulse 2s infinite;
                 }
@@ -294,8 +294,8 @@ export default function WillChatCreation() {
                     box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
                   }
                 }
-              `
-            }} />
+              `}
+            </style>
           </div>
         )}
       </div>

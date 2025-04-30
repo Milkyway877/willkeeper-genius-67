@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { supabase } from "@/integrations/supabase/client";
 
 // Interface for will creation progress data
@@ -19,8 +20,21 @@ export interface WillProgress {
   lastEdited?: Date;
 }
 
-// Will sections constant for progress tracking
-export const WILL_SECTIONS = [
+// Will sections constant for progress tracking - as an object with properties
+export const WILL_SECTIONS = {
+  PERSONAL_INFO: 'personal_info',
+  ASSETS: 'property',
+  BENEFICIARIES: 'beneficiaries',
+  EXECUTORS: 'executor',
+  GUARDIANS: 'guardian',
+  DIGITAL_ASSETS: 'digital_assets',
+  FINAL_WISHES: 'funeral_wishes',
+  SPECIFIC_BEQUESTS: 'specific_bequests',
+  RESIDUAL_ESTATE: 'residual_estate'
+};
+
+// Will sections as an array (for backward compatibility)
+export const WILL_SECTIONS_ARRAY = [
   'personal_info',
   'family_info',
   'executor',
@@ -37,16 +51,13 @@ export const getWillCompletionPercentage = (progress: WillProgress): number => {
   if (!progress || !progress.completedSections) return 0;
   
   const completedCount = progress.completedSections.length;
-  const totalSections = WILL_SECTIONS.length;
+  const totalSections = WILL_SECTIONS_ARRAY.length;
   
   return Math.round((completedCount / totalSections) * 100);
 };
 
 // Get suggestions for will content based on responses
-export const getWillSuggestions = async (
-  templateId: string,
-  responses: Record<string, any>
-): Promise<string[]> => {
+export const getWillSuggestions = async (progress: WillProgress): Promise<string[]> => {
   try {
     // In a real implementation, this would call an API or use AI
     // For now returning mock suggestions
@@ -62,22 +73,55 @@ export const getWillSuggestions = async (
   }
 };
 
-// Custom hook for will progress (mock implementation)
+// Custom hook for will progress with proper setProgress method
 export const useWillProgress = (willId?: string) => {
-  // This would use React Query or useState + useEffect in a real implementation
-  // Just returning a stub for type compatibility
-  return {
-    progress: null,
-    isLoading: false,
-    error: null,
-    saveProgress: async () => {},
-    updateSection: async () => {}
+  const [progress, setProgressState] = React.useState<WillProgress | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<any>(null);
+  
+  React.useEffect(() => {
+    if (willId) {
+      setIsLoading(true);
+      getWillProgress(willId)
+        .then(data => {
+          setProgressState(data);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          setError(err);
+          setIsLoading(false);
+        });
+    }
+  }, [willId]);
+
+  const setProgress = (updates: Partial<WillProgress>) => {
+    setProgressState(prev => {
+      if (!prev) return updates as WillProgress;
+      return { ...prev, ...updates };
+    });
   };
+
+  const saveProgress = async () => {
+    if (progress) {
+      try {
+        await saveWillProgress(progress);
+      } catch (err) {
+        setError(err);
+      }
+    }
+  };
+
+  const updateSection = async () => {
+    // Implementation for updating specific section
+    console.log("Updating section");
+  };
+
+  return { progress, isLoading, error, saveProgress, updateSection, setProgress };
 };
 
 // Save the current progress of will creation
 export const saveWillProgress = async (
-  progress: Omit<WillProgress, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+  progress: WillProgress
 ): Promise<WillProgress | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -104,7 +148,11 @@ export const saveWillProgress = async (
           responses: progress.responses,
           conversation_data: progress.conversation_data,
           will_id: progress.will_id,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          content: progress.content,
+          title: progress.title,
+          lastEditedSection: progress.lastEditedSection,
+          completedSections: progress.completedSections
         })
         .eq('id', existingProgress.id)
         .select()
@@ -126,7 +174,11 @@ export const saveWillProgress = async (
           current_step: progress.current_step,
           responses: progress.responses,
           conversation_data: progress.conversation_data,
-          will_id: progress.will_id
+          will_id: progress.will_id,
+          content: progress.content,
+          title: progress.title,
+          lastEditedSection: progress.lastEditedSection,
+          completedSections: progress.completedSections
         })
         .select()
         .single();
@@ -145,13 +197,18 @@ export const saveWillProgress = async (
 };
 
 // Get the saved progress for a specific template
-export const getWillProgress = async (templateId: string): Promise<WillProgress | null> => {
+export const getWillProgress = async (templateId: string): Promise<WillProgress> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
       console.error('User is not authenticated');
-      return null;
+      return {
+        template_id: templateId,
+        current_step: 'template',
+        responses: {},
+        completedSections: []
+      };
     }
 
     const { data, error } = await supabase
@@ -163,13 +220,28 @@ export const getWillProgress = async (templateId: string): Promise<WillProgress 
     
     if (error) {
       console.error('Error fetching will progress:', error);
-      return null;
+      return {
+        template_id: templateId,
+        current_step: 'template',
+        responses: {},
+        completedSections: []
+      };
     }
     
-    return data;
+    return data || {
+      template_id: templateId,
+      current_step: 'template',
+      responses: {},
+      completedSections: []
+    };
   } catch (error) {
     console.error('Error in getWillProgress:', error);
-    return null;
+    return {
+      template_id: templateId,
+      current_step: 'template',
+      responses: {},
+      completedSections: []
+    };
   }
 };
 

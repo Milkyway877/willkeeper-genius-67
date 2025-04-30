@@ -62,7 +62,8 @@ export function WillProgressTracker({ willId }: WillProgressTrackerProps) {
     });
   };
   
-  const formatLastEdited = (date: Date | string) => {
+  const formatLastEdited = (date: Date | string | undefined) => {
+    if (!date) return 'Never';
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return format(dateObj, 'PPpp');
   };
