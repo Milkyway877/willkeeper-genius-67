@@ -328,9 +328,11 @@ export function TankDashboard() {
         <TabsContent value="documents" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Your Documents</h2>
-            <Button as="label" htmlFor="document-upload">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Document
+            <label htmlFor="document-upload" className="cursor-pointer">
+              <Button>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Document
+              </Button>
               <input
                 id="document-upload"
                 type="file"
@@ -338,7 +340,7 @@ export function TankDashboard() {
                 onChange={handleFileUpload}
                 accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
               />
-            </Button>
+            </label>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -397,14 +399,14 @@ export function TankDashboard() {
               <Card className="p-6 text-center col-span-full">
                 <FileText className="h-12 w-12 mx-auto text-gray-400" />
                 <p className="mt-4 text-gray-500">No documents uploaded yet</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4" 
-                  as="label" 
-                  htmlFor="empty-document-upload"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Upload Your First Document
+                <label htmlFor="empty-document-upload" className="cursor-pointer">
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Upload Your First Document
+                  </Button>
                   <input
                     id="empty-document-upload"
                     type="file"
@@ -412,7 +414,7 @@ export function TankDashboard() {
                     onChange={handleFileUpload}
                     accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                   />
-                </Button>
+                </label>
               </Card>
             )}
           </div>

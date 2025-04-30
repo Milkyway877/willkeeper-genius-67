@@ -528,8 +528,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       
       <div className="p-4 border-t border-gray-200">
         <InputArea 
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          inputValue={inputValue}
+          onInputChange={(e) => setInputValue(e.target.value)}
           onSubmit={handleSendMessage}
           isSubmitting={isProcessing}
           placeholder="Type your message here..."

@@ -1,100 +1,70 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Paperclip, Mic, MicOff, Send, Loader2, Video } from 'lucide-react';
+import { Mic, MicOff, SendIcon } from 'lucide-react';
 
 interface InputAreaProps {
   inputValue: string;
-  setInputValue: (value: string) => void;
-  isProcessing: boolean;
-  isRecording: boolean;
-  recordingSupported: boolean;
-  currentStage: string;
-  onSendMessage: () => void;
-  onToggleVoiceInput: () => void;
-  onFileButtonClick: () => void;
-  onVideoButtonClick?: () => void;
+  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+  placeholder: string;
+  onVoiceToggle?: () => void;
+  isRecording?: boolean;
 }
 
-export const InputArea = ({
+export const InputArea: React.FC<InputAreaProps> = ({
   inputValue,
-  setInputValue,
-  isProcessing,
-  isRecording,
-  recordingSupported,
-  currentStage,
-  onSendMessage,
-  onToggleVoiceInput,
-  onFileButtonClick,
-  onVideoButtonClick,
-}: InputAreaProps) => {
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  onInputChange,
+  onSubmit,
+  isSubmitting,
+  placeholder,
+  onVoiceToggle,
+  isRecording = false,
+}) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isSubmitting) {
       e.preventDefault();
-      onSendMessage();
+      onSubmit();
     }
   };
 
   return (
-    <div className="flex items-center p-4 border-t">
-      <Button
-        variant="outline"
-        size="icon"
-        className="mr-2"
-        onClick={onFileButtonClick}
-        disabled={isProcessing}
-      >
-        <Paperclip className="h-5 w-5" />
-      </Button>
-      
-      {onVideoButtonClick && (
+    <div className="flex items-center space-x-2">
+      {onVoiceToggle && (
         <Button
-          variant="outline"
+          type="button"
+          variant="ghost"
           size="icon"
-          className="mr-2"
-          onClick={onVideoButtonClick}
+          className={isRecording ? "bg-red-100 text-red-600" : ""}
+          onClick={onVoiceToggle}
         >
-          <Video className="h-5 w-5 text-willtank-600" />
+          {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          <span className="sr-only">{isRecording ? 'Stop recording' : 'Start recording'}</span>
         </Button>
       )}
       
-      {recordingSupported && (
-        <Button
-          variant="outline"
-          size="icon"
-          className={`mr-2 ${isRecording ? 'bg-rose-100' : ''}`}
-          onClick={onToggleVoiceInput}
-        >
-          {isRecording ? (
-            <MicOff className="h-5 w-5 text-rose-500" />
-          ) : (
-            <Mic className="h-5 w-5" />
-          )}
-        </Button>
-      )}
+      <div className="relative flex-grow">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={onInputChange}
+          placeholder={placeholder}
+          onKeyDown={handleKeyPress}
+          className="rounded-lg border border-gray-300 w-full py-2 px-4 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-willtank-500 focus:border-transparent"
+          disabled={isSubmitting}
+        />
+      </div>
       
-      <Input
-        placeholder={isRecording ? "Listening..." : "Type your message..."}
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyPress}
-        disabled={isProcessing}
-        className="flex-1"
-      />
-      
-      <Button
-        variant="default"
+      <Button 
+        type="button" 
+        onClick={onSubmit} 
+        disabled={isSubmitting || !inputValue.trim()}
         size="icon"
-        className="ml-2"
-        onClick={onSendMessage}
-        disabled={(!inputValue.trim() && !isRecording) || isProcessing}
+        className="bg-willtank-600 hover:bg-willtank-700"
       >
-        {isProcessing ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Send className="h-5 w-5" />
-        )}
+        <SendIcon className="h-4 w-4" />
+        <span className="sr-only">Send</span>
       </Button>
     </div>
   );

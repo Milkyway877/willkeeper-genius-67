@@ -338,7 +338,7 @@ export const attachVideoToWill = async (videoId: string, willId: string): Promis
       return false;
     }
     
-    await createSystemNotification('media_attached', {
+    await createSystemNotification('will_media_attached', {
       title: 'Video Attached',
       description: `Your video has been attached to your will.`
     });
@@ -402,7 +402,7 @@ export const attachDocumentToWill = async (documentId: string, willId: string): 
       return false;
     }
     
-    await createSystemNotification('media_attached', {
+    await createSystemNotification('will_media_attached', {
       title: 'Document Attached',
       description: `Your document has been attached to your will.`
     });
