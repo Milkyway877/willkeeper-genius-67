@@ -1,109 +1,141 @@
 
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { supabase } from "@/integrations/supabase/client";
 
+// Interface for will creation progress data
 export interface WillProgress {
   id?: string;
-  lastEditedSection?: string;
-  completedSections: string[];
-  lastEdited: Date;
-  content?: string;
-  title?: string;
-  isFinalized?: boolean;
+  will_id?: string;
+  user_id?: string;
+  template_id: string;
+  current_step: string;
+  responses: Record<string, any>;
+  conversation_data?: any[];
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Define will sections for tracking
-export const WILL_SECTIONS = {
-  PERSONAL_INFO: 'personal_info',
-  ASSETS: 'assets',
-  BENEFICIARIES: 'beneficiaries',
-  EXECUTORS: 'executors',
-  GUARDIANS: 'guardians',
-  DIGITAL_ASSETS: 'digital_assets',
-  FINAL_WISHES: 'final_wishes',
-  ATTACHMENTS: 'attachments',
+// Save the current progress of will creation
+export const saveWillProgress = async (
+  progress: Omit<WillProgress, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+): Promise<WillProgress | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+
+    // Check if there's an existing progress for this template
+    const { data: existingProgress } = await supabase
+      .from('will_progress')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('template_id', progress.template_id)
+      .maybeSingle();
+    
+    if (existingProgress) {
+      // Update existing progress
+      const { data, error } = await supabase
+        .from('will_progress')
+        .update({
+          current_step: progress.current_step,
+          responses: progress.responses,
+          conversation_data: progress.conversation_data,
+          will_id: progress.will_id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingProgress.id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error updating will progress:', error);
+        return null;
+      }
+      
+      return data;
+    } else {
+      // Create new progress
+      const { data, error } = await supabase
+        .from('will_progress')
+        .insert({
+          user_id: session.user.id,
+          template_id: progress.template_id,
+          current_step: progress.current_step,
+          responses: progress.responses,
+          conversation_data: progress.conversation_data,
+          will_id: progress.will_id
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error saving will progress:', error);
+        return null;
+      }
+      
+      return data;
+    }
+  } catch (error) {
+    console.error('Error in saveWillProgress:', error);
+    return null;
+  }
 };
 
-// Simpler implementations of functions without autosave functionality
+// Get the saved progress for a specific template
+export const getWillProgress = async (templateId: string): Promise<WillProgress | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
 
-// Get progress from memory or empty object
-export const getWillProgress = (willId: string | undefined): WillProgress | null => {
-  // Return default empty progress object
-  return {
-    completedSections: [],
-    lastEdited: new Date()
-  };
+    const { data, error } = await supabase
+      .from('will_progress')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('template_id', templateId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching will progress:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in getWillProgress:', error);
+    return null;
+  }
 };
 
-// Get all saved will progress entries - simplified
-export const getAllWillProgress = (): Record<string, WillProgress> => {
-  return {};
-};
+// Clear the saved progress after completing the will
+export const clearWillProgress = async (willId: string): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return false;
+    }
 
-// Clear progress for a specific will - now a no-op function
-export const clearWillProgress = (willId: string | undefined): void => {
-  // No longer does anything with localStorage
-  console.log('Will progress cleared (simulated)');
-};
-
-// Save progress - now a no-op function
-export const saveWillProgress = (willId: string | undefined, progress: Partial<WillProgress>): void => {
-  // No longer saves to localStorage
-  console.log('Will progress saved (simulated)');
-};
-
-// Hook for accessing will progress in components - simplified
-export function useWillProgress(willId: string | undefined) {
-  // Create simple state management without localStorage
-  const defaultProgress: WillProgress = {
-    completedSections: [],
-    lastEdited: new Date(),
-  };
-  
-  // Just return the default values and a no-op function
-  return { 
-    progress: defaultProgress, 
-    setProgress: (newProgress: Partial<WillProgress>) => {
-      console.log('Will progress updated (simulated)');
-    } 
-  };
-}
-
-// Get suggestions based on progress
-export const getWillSuggestions = (progress: WillProgress): string[] => {
-  const suggestions: string[] = [];
-  const completed = new Set(progress.completedSections || []);
-  
-  if (!completed.has(WILL_SECTIONS.PERSONAL_INFO)) {
-    suggestions.push('Add your personal information to begin your will');
+    const { error } = await supabase
+      .from('will_progress')
+      .delete()
+      .eq('user_id', session.user.id)
+      .eq('will_id', willId);
+    
+    if (error) {
+      console.error('Error clearing will progress:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in clearWillProgress:', error);
+    return false;
   }
-  
-  if (!completed.has(WILL_SECTIONS.ASSETS)) {
-    suggestions.push('Document your assets and properties');
-  }
-  
-  if (!completed.has(WILL_SECTIONS.BENEFICIARIES)) {
-    suggestions.push('Specify your beneficiaries');
-  }
-  
-  if (!completed.has(WILL_SECTIONS.EXECUTORS)) {
-    suggestions.push('Designate an executor for your will');
-  }
-  
-  if (!completed.has(WILL_SECTIONS.GUARDIANS) && !completed.has(WILL_SECTIONS.DIGITAL_ASSETS)) {
-    suggestions.push('Consider adding guardians for dependents or digital asset instructions');
-  }
-  
-  if (suggestions.length === 0 && !completed.has(WILL_SECTIONS.ATTACHMENTS)) {
-    suggestions.push('Your will is nearly complete. Consider adding supporting attachments');
-  }
-  
-  return suggestions;
-};
-
-// Estimate completion percentage
-export const getWillCompletionPercentage = (progress: WillProgress): number => {
-  const totalSections = Object.keys(WILL_SECTIONS).length;
-  const completedCount = (progress.completedSections || []).length;
-  
-  return Math.round((completedCount / totalSections) * 100);
 };

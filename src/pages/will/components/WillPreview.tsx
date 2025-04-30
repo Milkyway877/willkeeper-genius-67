@@ -6,6 +6,22 @@ interface WillPreviewProps {
 }
 
 export function WillPreview({ content }: WillPreviewProps) {
+  // Generate a unique document ID that's consistent for the same content
+  const generateDocumentId = () => {
+    // Use the first 8 characters of a hash of the content, or fallback to random ID
+    const hashCode = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return Math.abs(hash).toString(36).substring(0, 8).toUpperCase();
+    };
+    
+    return content ? hashCode(content) : Math.random().toString(36).substring(2, 10).toUpperCase();
+  };
+
   return (
     <div className="font-serif text-gray-800 p-6 bg-white">
       <div className="mb-6 flex justify-between items-center">
@@ -20,7 +36,7 @@ export function WillPreview({ content }: WillPreviewProps) {
         </div>
         <div className="border-2 border-gray-300 rounded-lg p-2 text-center">
           <p className="text-xs text-gray-400">Document ID</p>
-          <p className="text-sm font-mono">{Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
+          <p className="text-sm font-mono">{generateDocumentId()}</p>
         </div>
       </div>
       
