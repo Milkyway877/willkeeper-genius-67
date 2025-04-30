@@ -1,6 +1,5 @@
 
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
 
 interface WillPreviewProps {
   content: string;
@@ -23,7 +22,7 @@ export const WillPreview: React.FC<WillPreviewProps> = ({ content }) => {
         }} 
       />
 
-      <style jsx>{`
+      <style>{`
         .will-document {
           line-height: 1.6;
           color: #333;
