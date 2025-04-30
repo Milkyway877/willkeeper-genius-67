@@ -40,8 +40,8 @@ export default defineConfig(({ mode }) => ({
       mainFields: ['module', 'main'],
     },
   },
-  // Avoid dynamic requires
+  // Use proper environment variable handling
   define: {
-    'process.env': process.env,
+    'process.env': JSON.stringify(process.env),
   },
 }));

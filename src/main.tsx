@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -52,8 +53,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Ensure React is available globally to prevent multiple instances
 window.React = React;
 
-// Create a QueryClient instance
-const queryClient = new QueryClient();
+// Create a QueryClient instance with proper configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Create a unified router configuration
 const router = createBrowserRouter([
@@ -243,8 +251,10 @@ if (!rootElement) {
   throw new Error("Failed to find the root element");
 }
 
+// Use createRoot instead of ReactDOM.render for React 18+
 const root = ReactDOM.createRoot(rootElement);
 
+// Wrap the entire app with StrictMode and QueryClientProvider
 root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
