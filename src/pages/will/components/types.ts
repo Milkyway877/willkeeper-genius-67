@@ -6,7 +6,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   timestamp: Date;
-  type?: 'text' | 'file' | 'video' | 'video-start';
+  type?: 'text' | 'file';
   fileUrl?: string;
   fileName?: string;
 }
@@ -26,8 +26,7 @@ export interface SkylerAssistantProps {
   onComplete: (data: {
     responses: Record<string, any>;
     contacts: Contact[];
-    documents: any[];
-    videoBlob?: Blob;
+    documents?: any[];
     generatedWill: string;
   }) => void;
 }

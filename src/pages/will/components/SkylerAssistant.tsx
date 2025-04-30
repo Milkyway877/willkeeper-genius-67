@@ -1,11 +1,13 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Bot } from 'lucide-react';
+import { Bot, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
 import { Contact, Message as MessageType } from './types';
+import { Button } from '@/components/ui/button';
 
 interface SkylerAssistantProps {
   templateId: string;
@@ -13,6 +15,7 @@ interface SkylerAssistantProps {
   onComplete: (data: {
     responses: Record<string, any>;
     contacts: Contact[];
+    documents?: any[];
     generatedWill: string;
   }) => void;
 }
@@ -26,6 +29,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   const [generatedWill, setGeneratedWill] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [showForceComplete, setShowForceComplete] = useState(false);
+  const [messageCount, setMessageCount] = useState(0);
   const [dataCollectionProgress, setDataCollectionProgress] = useState({
     personalInfo: false,
     contacts: false
@@ -37,6 +42,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   
   const { toast } = useToast();
   
+  // Initialize with welcome message
   useEffect(() => {
     const welcomeMessage = getWelcomeMessage(templateId, templateName);
     setMessages([{
@@ -50,7 +56,16 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     if (SpeechRecognition) {
       setRecordingSupported(true);
     }
-  }, [templateId, templateName]);
+
+    // Show force complete button after 6 messages
+    const checkMessageCount = () => {
+      if (messageCount >= 6 && !showForceComplete) {
+        setShowForceComplete(true);
+      }
+    };
+
+    checkMessageCount();
+  }, [templateId, templateName, messageCount, showForceComplete]);
   
   const getWelcomeMessage = (templateId: string, templateName: string) => {
     const baseMessage = `👋 Hello! I'm SKYLER, your AI will assistant. I'll guide you through creating a ${templateName} through a simple conversation. Let's start with the basics:`;
@@ -147,6 +162,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   }, [isRecording, initSpeechRecognition]);
   
   const extractInformation = useCallback((messageContent: string) => {
+    console.log("Extracting information from:", messageContent);
     const updates: Record<string, any> = {};
     
     // Personal information extraction
@@ -154,6 +170,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     if (nameMatch && nameMatch[1]) {
       updates.fullName = nameMatch[1];
       setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
+      console.log("Extracted name:", nameMatch[1]);
     }
     
     // Marital status extraction
@@ -161,6 +178,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       const statusMatch = messageContent.match(/(?:I am|I'm) (single|married|divorced|widowed)/i);
       if (statusMatch && statusMatch[1]) {
         updates.maritalStatus = statusMatch[1].charAt(0).toUpperCase() + statusMatch[1].slice(1).toLowerCase();
+        console.log("Extracted marital status:", updates.maritalStatus);
       }
     }
     
@@ -168,12 +186,14 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const spouseMatch = messageContent.match(/(?:my spouse is|married to|wife is|husband is) ([A-Z][a-z]+ [A-Z][a-z]+)/i);
     if (spouseMatch && spouseMatch[1]) {
       updates.spouseName = spouseMatch[1];
+      console.log("Extracted spouse name:", spouseMatch[1]);
     }
     
     // Contact extraction
     const executorMatch = messageContent.match(/(?:executor is|appointed) ([A-Z][a-z]+ [A-Z][a-z]+)/i);
     if (executorMatch && executorMatch[1]) {
       updates.executorName = executorMatch[1];
+      console.log("Extracted executor:", executorMatch[1]);
       
       // Check if we already have this contact
       const existingContact = contacts.find(c => c.name === executorMatch[1]);
@@ -195,6 +215,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const emailMatch = messageContent.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (emailMatch && emailMatch[0]) {
       const email = emailMatch[0];
+      console.log("Extracted email:", email);
       
       // Look for context to associate this email with a contact
       const lines = messageContent.split(/[.!?]/);
@@ -217,6 +238,7 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     const phoneMatches = messageContent.match(/(\+\d{1,3})?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g);
     if (phoneMatches && phoneMatches.length > 0) {
       const phone = phoneMatches[0];
+      console.log("Extracted phone:", phone);
       
       // Look for context to associate this phone with a contact
       const lines = messageContent.split(/[.!?]/);
@@ -238,17 +260,25 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     // Check if we have at least one executor with contact info
     if (contacts.some(c => c.role === 'Executor' && (c.email || c.phone))) {
       setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
+      console.log("Contact data collection complete");
     }
     
     setExtractedResponses(prev => ({ ...prev, ...updates }));
     return updates;
   }, [contacts]);
   
+  // Check if all required data has been collected and show completion message
   useEffect(() => {
-    const { personalInfo, contacts } = dataCollectionProgress;
+    console.log("Progress check:", dataCollectionProgress);
+    console.log("Contacts:", contacts);
+    console.log("Is complete:", isComplete);
+    console.log("Generated will:", generatedWill ? "exists" : "not generated");
+
+    const { personalInfo, contacts: contactsCollected } = dataCollectionProgress;
     
     // If personal info and contacts are collected
-    if (personalInfo && contacts && !isGenerating && !generatedWill && !isComplete) {
+    if (personalInfo && contactsCollected && !isGenerating && !generatedWill && !isComplete) {
+      console.log("Setting isComplete to true");
       setIsComplete(true);
       
       const completionMessage: MessageType = {
@@ -260,7 +290,53 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       
       setMessages(prev => [...prev, completionMessage]);
     }
-  }, [dataCollectionProgress, isGenerating, generatedWill, isComplete]);
+  }, [dataCollectionProgress, isGenerating, generatedWill, isComplete, contacts]);
+  
+  // Track message count for force complete button
+  useEffect(() => {
+    setMessageCount(messages.length);
+  }, [messages]);
+
+  // Force completion function
+  const forceCompletion = () => {
+    if (!isComplete && !generatedWill) {
+      console.log("Forcing completion");
+      setIsComplete(true);
+      
+      // Check if we have minimum required data
+      if (!dataCollectionProgress.personalInfo && extractedResponses.fullName) {
+        setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
+      }
+      
+      if (!dataCollectionProgress.contacts && contacts.length > 0) {
+        setDataCollectionProgress(prev => ({ ...prev, contacts: true }));
+      }
+      
+      // If we don't have an executor yet, create a placeholder
+      if (!contacts.some(c => c.role === 'Executor')) {
+        const newExecutor: Contact = {
+          id: `contact-${Date.now()}`,
+          name: "Executor to be specified",
+          role: 'Executor',
+          email: '',
+          phone: '',
+          address: ''
+        };
+        
+        setContacts(prev => [...prev, newExecutor]);
+      }
+      
+      // Add completion message
+      const completionMessage: MessageType = {
+        id: `forced-completion-${Date.now()}`,
+        role: 'assistant',
+        content: "✅ I've gathered enough information to generate your will. Click the 'Generate Will' button below to continue.",
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, completionMessage]);
+    }
+  };
   
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
@@ -302,86 +378,105 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         contacts: contacts
       };
       
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: requestBody
-      });
-      
-      if (error) {
-        throw new Error(`Error calling AI assistant: ${error.message}`);
-      }
-      
-      const aiResponse = data?.response || "I'm sorry, I couldn't generate a response. Let's try again.";
-      
-      // Update contacts if the AI response contains contact information
-      if (data?.contacts && data.contacts.length > 0) {
-        // Merge with existing contacts, avoiding duplicates
-        const updatedContacts = [...contacts];
-        
-        data.contacts.forEach((newContact: Contact) => {
-          const existingIndex = updatedContacts.findIndex(c => c.id === newContact.id);
-          
-          if (existingIndex >= 0) {
-            updatedContacts[existingIndex] = {
-              ...updatedContacts[existingIndex],
-              ...newContact
-            };
-          } else {
-            updatedContacts.push(newContact);
-          }
+      try {
+        const { data, error } = await supabase.functions.invoke(functionName, {
+          body: requestBody
         });
         
-        setContacts(updatedContacts);
-      }
-      
-      // Update extracted data from AI processing
-      if (data?.extracted_data) {
-        setExtractedResponses(prev => ({ ...prev, ...data.extracted_data }));
-      }
-      
-      // Update progress indicators
-      if (data?.progress) {
-        setDataCollectionProgress(prev => ({ ...prev, ...data.progress }));
-      }
-      
-      // If the AI indicates all data is collected, update completion status
-      if (data?.isComplete) {
-        setIsComplete(true);
-      }
-      
-      const aiMessage: MessageType = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      if (session?.user?.id) {
-        try {
-          const saveResponse = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/save-will-conversation', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              conversation_data: [...messages, userMessage, aiMessage].map(m => ({
-                role: m.role,
-                content: m.content,
-                timestamp: m.timestamp
-              })),
-              extracted_responses: { ...extractedResponses, ...extractedInfo },
-              template_type: templateId,
-              user_id: session.user.id
-            }),
+        if (error) {
+          throw new Error(`Error calling AI assistant: ${error.message}`);
+        }
+        
+        const aiResponse = data?.response || "I'll continue gathering information for your will. What else would you like to share?";
+        
+        // Update contacts if the AI response contains contact information
+        if (data?.contacts && data.contacts.length > 0) {
+          // Merge with existing contacts, avoiding duplicates
+          const updatedContacts = [...contacts];
+          
+          data.contacts.forEach((newContact: Contact) => {
+            const existingIndex = updatedContacts.findIndex(c => c.id === newContact.id);
+            
+            if (existingIndex >= 0) {
+              updatedContacts[existingIndex] = {
+                ...updatedContacts[existingIndex],
+                ...newContact
+              };
+            } else {
+              updatedContacts.push(newContact);
+            }
           });
           
-          if (saveResponse.ok) {
-            console.log("Saved will conversation data");
+          setContacts(updatedContacts);
+        }
+        
+        // Update extracted data from AI processing
+        if (data?.extracted_data) {
+          setExtractedResponses(prev => ({ ...prev, ...data.extracted_data }));
+        }
+        
+        // Update progress indicators
+        if (data?.progress) {
+          setDataCollectionProgress(prev => ({ ...prev, ...data.progress }));
+        }
+        
+        // If the AI indicates all data is collected, update completion status
+        if (data?.isComplete) {
+          setIsComplete(true);
+        }
+        
+        const aiMessage: MessageType = {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          content: aiResponse,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, aiMessage]);
+        
+        if (session?.user?.id) {
+          try {
+            const saveResponse = await fetch('https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/save-will-conversation', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                conversation_data: [...messages, userMessage, aiMessage].map(m => ({
+                  role: m.role,
+                  content: m.content,
+                  timestamp: m.timestamp
+                })),
+                extracted_responses: { ...extractedResponses, ...extractedInfo },
+                template_type: templateId,
+                user_id: session.user.id
+              }),
+            });
+            
+            if (saveResponse.ok) {
+              console.log("Saved will conversation data");
+            }
+          } catch (saveError) {
+            console.error("Error calling save-will-conversation function:", saveError);
           }
-        } catch (saveError) {
-          console.error("Error calling save-will-conversation function:", saveError);
+        }
+      } catch (aiError) {
+        console.error("Error with AI function:", aiError);
+        
+        // Fallback response if the Edge Function fails
+        const fallbackMessage: MessageType = {
+          id: `ai-fallback-${Date.now()}`,
+          role: 'assistant',
+          content: "I've recorded your information. Can you tell me more about what you'd like to include in your will?",
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, fallbackMessage]);
+        
+        // After a few messages, start showing the force complete button
+        if (messages.length > 5) {
+          setShowForceComplete(true);
         }
       }
     } catch (error) {
@@ -471,6 +566,9 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   };
   
   const handleGenerateWill = () => {
+    console.log("Generating will with data:", extractedResponses);
+    console.log("Contacts:", contacts);
+
     setIsGenerating(true);
     
     try {
@@ -555,13 +653,26 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
             >
               {isGenerating ? (
                 <>
-                  <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
                   Generating Your Will...
                 </>
               ) : (
                 <>Generate Your Will</>
               )}
             </button>
+          </div>
+        )}
+        
+        {showForceComplete && !isComplete && !generatedWill && (
+          <div className="p-4 border-t border-gray-200 flex justify-center">
+            <Button 
+              variant="outline"
+              onClick={forceCompletion}
+              className="flex items-center"
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Complete Information Collection
+            </Button>
           </div>
         )}
       </CardContent>
