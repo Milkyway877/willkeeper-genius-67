@@ -7,22 +7,22 @@ WHERE NOT EXISTS (
 );
 
 -- Policy to allow users to upload their own documents
-CREATE POLICY IF NOT EXISTS "Users can upload their own documents"
+CREATE POLICY "Users can upload their own documents"
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (bucket_id = 'will-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy to allow users to view their own documents
-CREATE POLICY IF NOT EXISTS "Users can view their own documents"
+CREATE POLICY "Users can view their own documents"
 ON storage.objects FOR SELECT TO authenticated
 USING (bucket_id = 'will-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy to allow users to update their own documents
-CREATE POLICY IF NOT EXISTS "Users can update their own documents"
+CREATE POLICY "Users can update their own documents"
 ON storage.objects FOR UPDATE TO authenticated
 USING (bucket_id = 'will-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy to allow users to delete their own documents
-CREATE POLICY IF NOT EXISTS "Users can delete their own documents"
+CREATE POLICY "Users can delete their own documents"
 ON storage.objects FOR DELETE TO authenticated
 USING (bucket_id = 'will-documents' AND (storage.foldername(name))[1] = auth.uid()::text);
 
@@ -34,21 +34,21 @@ WHERE NOT EXISTS (
 );
 
 -- Policy to allow users to upload their own videos
-CREATE POLICY IF NOT EXISTS "Users can upload their own videos"
+CREATE POLICY "Users can upload their own videos"
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (bucket_id = 'will-videos' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy to allow users to view their own videos
-CREATE POLICY IF NOT EXISTS "Users can view their own videos"
+CREATE POLICY "Users can view their own videos"
 ON storage.objects FOR SELECT TO authenticated
 USING (bucket_id = 'will-videos' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy to allow users to update their own videos
-CREATE POLICY IF NOT EXISTS "Users can update their own videos"
+CREATE POLICY "Users can update their own videos"
 ON storage.objects FOR UPDATE TO authenticated
 USING (bucket_id = 'will-videos' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy to allow users to delete their own videos
-CREATE POLICY IF NOT EXISTS "Users can delete their own videos"
+CREATE POLICY "Users can delete their own videos"
 ON storage.objects FOR DELETE TO authenticated
 USING (bucket_id = 'will-videos' AND (storage.foldername(name))[1] = auth.uid()::text);
