@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface WillPreviewProps {
   content: string;
@@ -8,13 +8,15 @@ interface WillPreviewProps {
 export function WillPreview({ content }: WillPreviewProps) {
   const prevContentRef = useRef<string>('');
   const contentDivRef = useRef<HTMLDivElement>(null);
+  const [lastUpdatedField, setLastUpdatedField] = useState<string | null>(null);
+  const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
   
   // Log when content changes to help with debugging
   useEffect(() => {
     console.log("[WillPreview] Content updated:", content ? content.substring(0, 50) + "..." : "empty");
   }, [content]);
   
-  // Effect to highlight changes when content updates
+  // Effect to highlight changes and scroll when content updates
   useEffect(() => {
     if (prevContentRef.current !== content && contentDivRef.current) {
       console.log("[WillPreview] Content changed, applying highlight");
@@ -22,6 +24,39 @@ export function WillPreview({ content }: WillPreviewProps) {
       // Find the elements that might have changed
       const newContentLines = content.split('\n');
       const oldContentLines = prevContentRef.current.split('\n');
+      
+      // Find which section was updated
+      let updatedSection: string | null = null;
+      
+      // Check for changes in sections
+      for (let i = 0; i < newContentLines.length; i++) {
+        const newLine = newContentLines[i];
+        const oldLine = i < oldContentLines.length ? oldContentLines[i] : '';
+        
+        if (newLine !== oldLine) {
+          // Check if this line is a heading
+          if (/^[A-Z\s]+:/.test(newLine) || /^ARTICLE [IVX]+:/.test(newLine) || /^ARTICLE [IVX]+/.test(newLine)) {
+            updatedSection = newLine.replace(/:/g, '').trim();
+          } 
+          // If it's not a heading but it changed, look for the nearest heading above
+          else {
+            for (let j = i; j >= 0; j--) {
+              const possibleHeading = newContentLines[j];
+              if (/^[A-Z\s]+:/.test(possibleHeading) || /^ARTICLE [IVX]+:/.test(possibleHeading) || /^ARTICLE [IVX]+/.test(possibleHeading)) {
+                updatedSection = possibleHeading.replace(/:/g, '').trim();
+                break;
+              }
+            }
+          }
+        }
+        
+        // Once we find an updated section, no need to continue
+        if (updatedSection) break;
+      }
+      
+      if (updatedSection) {
+        setLastUpdatedField(updatedSection);
+      }
       
       // Update the reference for next comparison
       prevContentRef.current = content;
@@ -37,6 +72,112 @@ export function WillPreview({ content }: WillPreviewProps) {
       }
     }
   }, [content]);
+  
+  // Effect to scroll to the last updated field
+  useEffect(() => {
+    if (lastUpdatedField && fieldRefs.current.has(lastUpdatedField)) {
+      const element = fieldRefs.current.get(lastUpdatedField);
+      if (element) {
+        // Add highlight-section class to the element
+        element.classList.add('highlight-section');
+        
+        // Scroll the element into view
+        setTimeout(() => {
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+          
+          // Remove highlight after animation completes
+          setTimeout(() => {
+            element.classList.remove('highlight-section');
+          }, 2000);
+        }, 100);
+      }
+    }
+  }, [lastUpdatedField]);
+
+  // Function to add a ref to a field element
+  const addFieldRef = (id: string, element: HTMLHeadingElement | HTMLParagraphElement | null) => {
+    if (element) {
+      fieldRefs.current.set(id, element);
+    }
+  };
+  
+  // Process the will content to identify each field and section
+  const processWillContent = () => {
+    if (!content) return null;
+    
+    const lines = content.split('\n');
+    let currentSection: string | null = null;
+    
+    return lines.map((line, index) => {
+      // Check if line is a heading (ALL CAPS)
+      if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
+        currentSection = line.replace(/:/g, '').trim();
+        const isHighlighted = currentSection === lastUpdatedField;
+        
+        return (
+          <h3 
+            key={`section-${index}`} 
+            ref={(el) => addFieldRef(currentSection || `section-${index}`, el)}
+            className={`font-bold text-lg mt-6 mb-3 ${isHighlighted ? 'highlight-section' : ''}`}
+            id={`section-${currentSection?.replace(/\s+/g, '-').toLowerCase() || index}`}
+          >
+            {line}
+            {isHighlighted && (
+              <span className="ml-2 text-amber-500 animate-pulse">•</span>
+            )}
+          </h3>
+        );
+      }
+      // Check if line is empty
+      else if (line.trim() === '') {
+        return <div key={`empty-${index}`} className="h-4"></div>;
+      }
+      // Check if line contains placeholder information (likely to change)
+      else if (line.includes('[') && line.includes(']')) {
+        return (
+          <p 
+            key={`placeholder-${index}`}
+            className="mb-3 text-amber-700"
+          >
+            {line}
+          </p>
+        );
+      }
+      // Check if line has real user information (no placeholders)
+      else if (!/\[.*?\]/.test(line) && (
+        line.includes('I, ') || 
+        line.includes('married') || 
+        line.includes('single') || 
+        line.includes('divorced') || 
+        line.includes('widowed') || 
+        line.includes('children') || 
+        line.includes('appoint')
+      )) {
+        const isUpdated = currentSection === lastUpdatedField;
+        
+        return (
+          <p 
+            key={`info-${index}`}
+            ref={(el) => addFieldRef(`info-${currentSection || index}`, el)}
+            className={`mb-3 font-medium updated-field ${isUpdated ? 'newly-updated' : ''}`}
+            id={`field-${index}`}
+          >
+            {line}
+            {isUpdated && (
+              <span className="ml-2 text-amber-500 animate-pulse text-xs">• Updated</span>
+            )}
+          </p>
+        );
+      }
+      // Regular line
+      else {
+        return <p key={`line-${index}`} className="mb-3">{line}</p>;
+      }
+    });
+  };
 
   return (
     <div className="font-serif text-gray-800 p-6 bg-white">
@@ -55,12 +196,31 @@ export function WillPreview({ content }: WillPreviewProps) {
             padding-bottom: 2px;
             transition: all 0.5s ease;
           }
+          .newly-updated {
+            background-color: rgba(252, 211, 77, 0.3);
+            border-left: 3px solid #f59e0b;
+            padding-left: 8px;
+          }
           .highlight-section {
             animation: section-highlight 2s ease-out;
           }
           @keyframes section-highlight {
             0% { background-color: rgba(252, 211, 77, 0.3); }
             100% { background-color: transparent; }
+          }
+          .field-updated-indicator {
+            position: absolute;
+            right: 12px;
+            color: #f59e0b;
+            font-size: 14px;
+          }
+          @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+          }
+          .animate-pulse {
+            animation: pulse 1.5s infinite;
           }
         `}
       </style>
@@ -81,38 +241,9 @@ export function WillPreview({ content }: WillPreviewProps) {
         </div>
       </div>
       
-      <div ref={contentDivRef} className="whitespace-pre-wrap leading-relaxed">
+      <div ref={contentDivRef} className="whitespace-pre-wrap leading-relaxed relative">
         {content && content.length > 0 ? (
-          content.split('\n').map((line, index) => {
-            // Check if line is a heading (ALL CAPS)
-            if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
-              return <h3 key={index} className="font-bold text-lg mt-6 mb-3">{line}</h3>;
-            }
-            // Check if line is empty
-            else if (line.trim() === '') {
-              return <div key={index} className="h-4"></div>;
-            }
-            // Check if line contains placeholder information (likely to change)
-            else if (line.includes('[') && line.includes(']')) {
-              return <p key={index} className="mb-3 text-amber-700">{line}</p>;
-            }
-            // Check if line has real user information (no placeholders)
-            else if (!/\[.*?\]/.test(line) && (
-              line.includes('I, ') || 
-              line.includes('married') || 
-              line.includes('single') || 
-              line.includes('divorced') || 
-              line.includes('widowed') || 
-              line.includes('children') || 
-              line.includes('appoint')
-            )) {
-              return <p key={index} className="mb-3 font-medium updated-field">{line}</p>;
-            }
-            // Regular line
-            else {
-              return <p key={index} className="mb-3">{line}</p>;
-            }
-          })
+          processWillContent()
         ) : (
           <p className="text-center text-gray-500 my-12">Creating your will document...</p>
         )}
