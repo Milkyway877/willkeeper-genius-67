@@ -429,10 +429,11 @@ export default function WillWizardPage() {
     return missingInfo;
   };
 
-  // Modified function to remove the disabled state completely
+  // Completely rewritten function to ALWAYS allow proceeding to next step
   const handleProceedToNextStep = () => {
     const missingInfo = checkMissingInfo();
     
+    // Show dialog with warning if there's missing info
     if (missingInfo.length > 0) {
       setIncompleteInfo(missingInfo);
       setDialogOpen(true);
@@ -443,13 +444,12 @@ export default function WillWizardPage() {
     }
   };
   
-  // Handle confirmation from dialog
+  // Handle confirmation from dialog - always proceed when confirmed
   const handleConfirmProceed = () => {
     setDialogOpen(false);
-    if (pendingStepChange) {
-      setCurrentStep(prev => prev + 1);
-      setPendingStepChange(false);
-    }
+    // Always proceed to the next step when confirmed
+    setCurrentStep(prev => prev + 1);
+    setPendingStepChange(false);
   };
   
   // Handle cancellation from dialog
@@ -580,7 +580,6 @@ export default function WillWizardPage() {
             <Button
               variant="outline"
               onClick={() => setCurrentStep(prev => prev - 1)}
-              disabled={currentStep === 0}
             >
               Back
             </Button>

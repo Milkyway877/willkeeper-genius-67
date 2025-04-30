@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -185,30 +186,28 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   };
 
   const handleComplete = () => {
-    // We're keeping the validation logic, but removing the early returns
-    // that prevented completion when validation failed
-    if (!isComplete) {
-      const missingRoles = requiredContacts.filter(role => 
-        !contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
-      );
-      
-      const incompleteContacts = contacts.filter(contact => {
-        if (requiredContacts.includes(contact.role) && !contact.email && !contact.phone) {
-          return true;
-        }
-        return false;
-      });
-      
-      if (missingRoles.length > 0 || incompleteContacts.length > 0) {
-        toast({
-          title: "Missing or incomplete information",
-          description: "Some important contact information is missing, but you can continue anyway.",
-          variant: "default"
-        });
+    // No validation checks that prevent completion - always allow the user to continue
+    // Just show a toast with information if there are issues
+    const missingRoles = requiredContacts.filter(role => 
+      !contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
+    );
+    
+    const incompleteContacts = contacts.filter(contact => {
+      if (requiredContacts.includes(contact.role) && !contact.email && !contact.phone) {
+        return true;
       }
+      return false;
+    });
+    
+    if (missingRoles.length > 0 || incompleteContacts.length > 0) {
+      toast({
+        title: "Missing or incomplete information",
+        description: "Some contact information is incomplete, but you can continue anyway.",
+        variant: "default"
+      });
     }
     
-    // Always set that contacts have been collected and call onComplete
+    // Always set contacts as collected and call onComplete regardless of validation status
     setAllContactsCollected(true);
     onComplete(contacts);
   };
@@ -381,7 +380,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
               </div>
             )}
             
-            {/* Completion status with button that's always enabled */}
+            {/* Continue button - ALWAYS ENABLED */}
             <div className="border-t pt-4 mt-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
@@ -403,6 +402,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                   )}
                 </div>
                 
+                {/* Button is always enabled - no disabled prop */}
                 <Button 
                   onClick={handleComplete}
                   className={allContactsCollected ? "bg-green-600 hover:bg-green-700" : ""}
