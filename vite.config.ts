@@ -13,43 +13,18 @@ export default defineConfig(({ mode }) => ({
     historyApiFallback: true,
   },
   plugins: [
-    react({
-      // Ensure proper React refresh handling
-      jsxRuntime: 'automatic',
-    }),
+    react(),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Use exact paths to prevent duplicate React instances
-      "react": path.resolve(__dirname, "node_modules/react"),
-      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
-    dedupe: ['react', 'react-dom']
   },
   // Add SPA-friendly build options
   build: {
     // Generate SPA fallback index.html for all routes
     outDir: 'dist',
-    commonjsOptions: {
-      transformMixedEsModules: true,
-    },
-  },
-  // Ensure proper optimization to avoid duplicate React instances
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-    force: true,
-    esbuildOptions: {
-      mainFields: ['module', 'main'],
-    },
-  },
-  // Use proper environment variable handling
-  define: {
-    'process.env': JSON.stringify(process.env),
-    // Force React to use a single instance
-    __VUE_OPTIONS_API__: false,
-    __VUE_PROD_DEVTOOLS__: false,
   },
 }));

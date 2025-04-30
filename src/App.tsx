@@ -10,11 +10,11 @@ import './MobileStyles.css';
 
 export default function App() {
   return (
-    <React.Fragment>
+    <>
       <Outlet />
       <Toaster />
       <FloatingAssistant />
       <ReactQueryDevtools initialIsOpen={false} />
-    </React.Fragment>
+    </>
   );
 }

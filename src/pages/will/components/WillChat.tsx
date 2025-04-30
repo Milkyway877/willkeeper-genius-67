@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,24 +27,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [extractedInfo, setExtractedInfo] = useState<{
-    fullName: string;
-    address: string;
-    maritalStatus: string;
-    children: string[];
-    executor: string;
-    assets: string[];
-    beneficiaries: string[];
-  }>({
-    fullName: "",
-    address: "",
-    maritalStatus: "",
-    children: [],
-    executor: "",
-    assets: [],
-    beneficiaries: []
-  });
-  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -101,71 +84,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     return welcomeMessage;
   };
   
-  // Extract information from user message
-  const extractUserInformation = (message: string) => {
-    const nameRegex = /(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i;
-    const nameMatch = message.match(nameRegex);
-    if (nameMatch && nameMatch[1]) {
-      setExtractedInfo(prev => ({ ...prev, fullName: nameMatch[1] }));
-    }
-    
-    const addressRegex = /(?:my address is|I live at|address is) (.*?)(?:\.|$)/i;
-    const addressMatch = message.match(addressRegex);
-    if (addressMatch && addressMatch[1]) {
-      setExtractedInfo(prev => ({ ...prev, address: addressMatch[1] }));
-    }
-    
-    if (message.match(/single/i)) {
-      setExtractedInfo(prev => ({ ...prev, maritalStatus: "single" }));
-    } else if (message.match(/married/i)) {
-      setExtractedInfo(prev => ({ ...prev, maritalStatus: "married" }));
-    } else if (message.match(/divorced/i)) {
-      setExtractedInfo(prev => ({ ...prev, maritalStatus: "divorced" }));
-    } else if (message.match(/widowed/i)) {
-      setExtractedInfo(prev => ({ ...prev, maritalStatus: "widowed" }));
-    }
-    
-    const childrenRegex = /(?:I have |have )(\d+|one|two|three|four|five|six|seven|eight|nine|ten) (?:child|children|kids)/i;
-    const childrenMatch = message.match(childrenRegex);
-    if (childrenMatch) {
-      const childrenNames = message.match(/(?:named|called) ([A-Z][a-z]+(?: and [A-Z][a-z]+)*)/i);
-      if (childrenNames && childrenNames[1]) {
-        const names = childrenNames[1].split(/ and |, /);
-        setExtractedInfo(prev => ({ ...prev, children: names }));
-      }
-    }
-    
-    const executorRegex = /(?:executor|executrix) (?:is|should be|will be) ([A-Z][a-z]+(?: [A-Z][a-z]+)*)/i;
-    const executorMatch = message.match(executorRegex);
-    if (executorMatch && executorMatch[1]) {
-      setExtractedInfo(prev => ({ ...prev, executor: executorMatch[1] }));
-    }
-    
-    if (message.match(/(?:assets|possessions|property|own)/i)) {
-      const assetsInfo = message.replace(/.*(?:assets|possessions|property|own)/i, "");
-      const assetsList = assetsInfo.split(/,|and/).map(item => item.trim()).filter(item => item.length > 3);
-      if (assetsList.length > 0) {
-        setExtractedInfo(prev => ({ ...prev, assets: [...prev.assets, ...assetsList] }));
-      }
-    }
-    
-    if (message.match(/(?:leave|give|bequeath)/i)) {
-      const beneficiaryRegex = /(?:leave|give|bequeath) .* to ([A-Z][a-z]+(?: [A-Z][a-z]+)*)/i;
-      const beneficiaryMatch = message.match(beneficiaryRegex);
-      if (beneficiaryMatch && beneficiaryMatch[1]) {
-        setExtractedInfo(prev => ({ 
-          ...prev, 
-          beneficiaries: [...prev.beneficiaries, beneficiaryMatch[1]]
-        }));
-      }
-    }
-  };
-  
-  // Real-time document update based on extracted information
-  useEffect(() => {
-    updateWillContent();
-  }, [extractedInfo]);
-  
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
     
@@ -179,8 +97,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       content: inputValue,
       timestamp: new Date()
     };
-    
-    extractUserInformation(inputValue);
     
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
@@ -213,9 +129,11 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       
       setMessages(prev => [...prev, aiMessage]);
       
+      // Check for completion phrases to determine if we're done
       checkForCompletion(aiResponse);
       
-      setTimeout(updateWillContent, 500);
+      // Update the will content
+      updateWillContent();
       
     } catch (error) {
       console.error("Error processing message:", error);
@@ -231,102 +149,145 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   };
   
   const updateWillContent = () => {
+    // Extract information from the conversation to update the will
+    const fullNameMatch = messages.find(m => 
+      m.role === 'user' && /^(my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i.test(m.content)
+    );
+    
+    const maritalStatusMatch = messages.find(m => 
+      m.role === 'user' && /(single|married|divorced|widowed)/i.test(m.content)
+    );
+    
+    const childrenMatch = messages.find(m => 
+      m.role === 'user' && /(children|child|kids|kid)/i.test(m.content)
+    );
+    
+    const executorMatch = messages.find(m => 
+      m.role === 'user' && /(executor|executrix)/i.test(m.content)
+    );
+    
+    // Extract full name
+    let fullName = "[YOUR NAME]";
+    if (fullNameMatch) {
+      const nameRegex = /(?:my name is|I am|I'm) ([A-Z][a-z]+(?: [A-Z][a-z]+)+)/i;
+      const match = fullNameMatch.content.match(nameRegex);
+      if (match && match[1]) {
+        fullName = match[1];
+      }
+    }
+    
+    // Extract marital status
+    let maritalStatus = "";
+    if (maritalStatusMatch) {
+      if (maritalStatusMatch.content.match(/single/i)) maritalStatus = "single";
+      else if (maritalStatusMatch.content.match(/married/i)) maritalStatus = "married";
+      else if (maritalStatusMatch.content.match(/divorced/i)) maritalStatus = "divorced";
+      else if (maritalStatusMatch.content.match(/widowed/i)) maritalStatus = "widowed";
+    }
+    
+    // Generate will content based on template and user input
     let newContent = '';
     
     if (templateId === 'digital-assets') {
-      newContent = generateDigitalAssetsWill();
+      newContent = generateDigitalAssetsWill(fullName, maritalStatus);
     } else if (templateId === 'business') {
-      newContent = generateBusinessWill();
+      newContent = generateBusinessWill(fullName, maritalStatus);
     } else {
-      newContent = generateBasicWill();
+      newContent = generateBasicWill(fullName, maritalStatus);
     }
     
+    // Call the parent component's onContentUpdate with the new content
     onContentUpdate(newContent);
   };
   
-  const generateBasicWill = (): string => {
+  const generateBasicWill = (fullName: string, maritalStatus: string): string => {
     return `LAST WILL AND TESTAMENT
 
-I, ${extractedInfo.fullName || "[YOUR NAME]"}, ${extractedInfo.address ? `of ${extractedInfo.address}, ` : ""}being of sound mind, declare this to be my Last Will and Testament.
+I, ${fullName}, being of sound mind, declare this to be my Last Will and Testament.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
 
 ARTICLE II: FAMILY INFORMATION
-I am ${extractedInfo.maritalStatus || "[MARITAL STATUS]"}.
-${extractedInfo.children.length > 0 ? 
-  `I have ${extractedInfo.children.length} ${extractedInfo.children.length === 1 ? 'child' : 'children'}: ${extractedInfo.children.join(', ')}.` : 
+I am ${maritalStatus || "[MARITAL STATUS]"}.
+${messages.some(m => m.content.toLowerCase().includes('child')) ? 
+  "I have children as named below." : 
   "I have no children."}
 
 ARTICLE III: EXECUTOR
-${extractedInfo.executor ? 
-  `I appoint ${extractedInfo.executor} as the Executor of this Will.` : 
+${messages.some(m => m.content.toLowerCase().includes('executor')) ? 
+  `I appoint ${messages.find(m => m.content.toLowerCase().includes('executor'))?.content.match(/name is ([A-Za-z ]+)/i)?.[1] || "[EXECUTOR NAME]"} as the Executor of this Will.` : 
   "I appoint [EXECUTOR NAME] as the Executor of this Will."}
 
 ARTICLE IV: DISTRIBUTION OF ESTATE
-${extractedInfo.assets.length > 0 ? 
-  `My assets include: ${extractedInfo.assets.join(', ')}.` : 
+${messages.some(m => m.content.toLowerCase().includes('distribution') || m.content.toLowerCase().includes('asset')) ? 
+  "I direct that my assets be distributed as detailed in our conversation." : 
   "I direct that my assets be distributed as follows:"}
-
-${extractedInfo.beneficiaries.length > 0 ?
-  `My beneficiaries are: ${extractedInfo.beneficiaries.join(', ')}.` :
-  ""}
 
 ${messages.length > 5 ? "Additional details will be incorporated as we continue our conversation." : ""}`;
   };
   
-  const generateDigitalAssetsWill = (): string => {
+  const generateDigitalAssetsWill = (fullName: string, maritalStatus: string): string => {
     return `DIGITAL ASSET WILL AND TESTAMENT
 
-I, ${extractedInfo.fullName || "[YOUR NAME]"}, ${extractedInfo.address ? `of ${extractedInfo.address}, ` : ""}being of sound mind, declare this to be my Digital Asset Will and Testament.
+I, ${fullName}, being of sound mind, declare this to be my Digital Asset Will and Testament.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils relating to digital assets.
 
 ARTICLE II: DIGITAL EXECUTOR
-${extractedInfo.executor ? 
-  `I appoint ${extractedInfo.executor} as the Digital Executor of this Will.` : 
+${messages.some(m => m.content.toLowerCase().includes('executor')) ? 
+  `I appoint ${messages.find(m => m.content.toLowerCase().includes('executor'))?.content.match(/name is ([A-Za-z ]+)/i)?.[1] || "[DIGITAL EXECUTOR NAME]"} as the Digital Executor of this Will.` : 
   "I appoint [DIGITAL EXECUTOR NAME] as the Digital Executor of this Will."}
 
 ARTICLE III: DIGITAL ASSETS
 My digital assets include:
-${extractedInfo.assets.length > 0 ? 
-  extractedInfo.assets.map(asset => `- ${asset}`).join('\n') : 
-  "- [CRYPTOCURRENCY]\n- [SOCIAL MEDIA ACCOUNTS]\n- [EMAIL ACCOUNTS]"}
+${messages.some(m => m.content.toLowerCase().includes('crypto') || m.content.toLowerCase().includes('bitcoin')) ? 
+  "- Cryptocurrency assets as detailed in our conversation" : 
+  "- [CRYPTOCURRENCY]"}
+${messages.some(m => m.content.toLowerCase().includes('social') || m.content.toLowerCase().includes('facebook') || m.content.toLowerCase().includes('instagram')) ? 
+  "- Social media accounts as detailed in our conversation" : 
+  "- [SOCIAL MEDIA ACCOUNTS]"}
+${messages.some(m => m.content.toLowerCase().includes('email')) ? 
+  "- Email accounts as detailed in our conversation" : 
+  "- [EMAIL ACCOUNTS]"}
 
 ARTICLE IV: ACCESS INSTRUCTIONS
-Access instructions will be securely stored with my Digital Executor.
+${messages.some(m => m.content.toLowerCase().includes('password') || m.content.toLowerCase().includes('access')) ? 
+  "Access instructions as discussed in our conversation will be securely stored." : 
+  "Access instructions will be securely stored with my Digital Executor."}
 
 ${messages.length > 5 ? "Additional details will be incorporated as we continue our conversation." : ""}`;
   };
   
-  const generateBusinessWill = (): string => {
+  const generateBusinessWill = (fullName: string, maritalStatus: string): string => {
     return `BUSINESS OWNER WILL AND TESTAMENT
 
-I, ${extractedInfo.fullName || "[YOUR NAME]"}, ${extractedInfo.address ? `of ${extractedInfo.address}, ` : ""}being of sound mind, declare this to be my Last Will and Testament with special provisions for my business interests.
+I, ${fullName}, being of sound mind, declare this to be my Last Will and Testament with special provisions for my business interests.
 
 ARTICLE I: REVOCATION
 I revoke all previous wills and codicils.
 
 ARTICLE II: EXECUTOR
-${extractedInfo.executor ? 
-  `I appoint ${extractedInfo.executor} as the Executor of this Will.` : 
+${messages.some(m => m.content.toLowerCase().includes('executor')) ? 
+  `I appoint ${messages.find(m => m.content.toLowerCase().includes('executor'))?.content.match(/name is ([A-Za-z ]+)/i)?.[1] || "[EXECUTOR NAME]"} as the Executor of this Will.` : 
   "I appoint [EXECUTOR NAME] as the Executor of this Will."}
 
 ARTICLE III: BUSINESS INTERESTS
-${extractedInfo.assets.length > 0 ? 
-  `My business interests include: ${extractedInfo.assets.join(', ')}.` : 
+${messages.some(m => m.content.toLowerCase().includes('business') || m.content.toLowerCase().includes('company')) ? 
+  "My business interests are to be handled as detailed in our conversation." : 
   "My business interests are to be handled as follows:"}
 
 ARTICLE IV: SUCCESSION PLAN
-${extractedInfo.beneficiaries.length > 0 ?
-  `I wish for my business interests to be transferred to: ${extractedInfo.beneficiaries.join(', ')}.` :
+${messages.some(m => m.content.toLowerCase().includes('successor') || m.content.toLowerCase().includes('succession')) ? 
+  "Business succession details as discussed in our conversation." : 
   "My business succession plan is as follows:"}
 
 ${messages.length > 5 ? "Additional details will be incorporated as we continue our conversation." : ""}`;
   };
   
   const checkForCompletion = (aiResponse: string) => {
+    // Check if the AI response contains completion indicators
     const completionPhrases = [
       "we have all the information",
       "we've collected all the necessary information",
@@ -337,11 +298,13 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
       "that covers all the essential information"
     ];
     
+    // Check for completion phrases and message count threshold
     const isComplete = completionPhrases.some(phrase => 
       aiResponse.toLowerCase().includes(phrase.toLowerCase())
     ) || messages.length >= 20;
     
     if (isComplete && !isComplete) {
+      // Show completion message and button
       setTimeout(() => {
         const completionMessage: Message = {
           id: `completion-${Date.now()}`,
@@ -406,17 +369,20 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
   };
   
   const handleProceed = () => {
+    // Save progress and navigate to the next stage
     toast({
       title: "Will Draft Complete",
       description: "Your will draft has been saved. You're ready to move to the next stage.",
       variant: "default",
     });
     
+    // Navigate to wills page
     navigate('/wills');
   };
   
   return (
     <div className="flex flex-col h-full">
+      {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           {messages.map((message) => (
@@ -446,6 +412,7 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
           ))}
           <div ref={messagesEndRef} />
           
+          {/* Show proceed button when complete */}
           {isComplete && (
             <div className="flex justify-center mt-4">
               <Button onClick={handleProceed} className="bg-green-600 hover:bg-green-700">
@@ -456,6 +423,7 @@ ${messages.length > 5 ? "Additional details will be incorporated as we continue 
         </div>
       </div>
       
+      {/* Input area */}
       <div className="border-t p-4 bg-background">
         <div className="flex gap-2">
           <Input
