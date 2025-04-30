@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -47,11 +48,17 @@ import Wills from './pages/wills/Wills';
 import WillCreatePage from './pages/will/WillCreatePage';
 import WillChatCreation from './pages/will/WillChatCreation';
 import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
+import linkWillVideo from './pages/api/link-will-video';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
+
+// Register API routes
+Deno.serve({
+  '/api/link-will-video': linkWillVideo
+});
 
 // Create a unified router configuration
 const router = createBrowserRouter([

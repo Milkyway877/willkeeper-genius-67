@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,8 @@ import {
   X, 
   Check,
   User,
-  FileText
+  FileText,
+  Link
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -34,6 +34,8 @@ interface TankVideoCreatorProps {
   onRecipientChange: (recipient: string) => void;
   onCategoryChange: (category: MessageCategory) => void;
   onVideoUrlChange?: (url: string | null) => void;
+  willId?: string | null; // Added for will integration
+  isForWill?: boolean;    // Added to indicate if this is for a will
 }
 
 export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({ 
@@ -41,12 +43,14 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   onTitleChange,
   onRecipientChange,
   onCategoryChange,
-  onVideoUrlChange
+  onVideoUrlChange,
+  willId,
+  isForWill = false
 }) => {
   const { toast } = useToast();
   const { enhanceVideo, isEnhancing } = useMessageEnhancer();
-  const [title, setTitle] = useState<string>('');
-  const [recipient, setRecipient] = useState<string>('');
+  const [title, setTitle] = useState<string>(isForWill ? "Video Testament for Will" : "");
+  const [recipient, setRecipient] = useState<string>(isForWill ? "Will Beneficiaries" : "");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
@@ -62,10 +66,15 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isApplyingEnhancements, setIsApplyingEnhancements] = useState(false);
   const [enhancedVideoBlob, setEnhancedVideoBlob] = useState<Blob | null>(null);
+  const [videoAttached, setVideoAttached] = useState(false);
   
   useEffect(() => {
-    onCategoryChange('story');
-  }, [onCategoryChange]);
+    if (isForWill) {
+      onCategoryChange('important');
+    } else {
+      onCategoryChange('story');
+    }
+  }, [onCategoryChange, isForWill]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -84,11 +93,11 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   
   useEffect(() => {
     if (videoBlob) {
-      onContentChange('Video recorded and ready for delivery');
+      onContentChange(isForWill ? 'Video testament recorded for will' : 'Video recorded and ready for delivery');
     } else {
       onContentChange('');
     }
-  }, [videoBlob, onContentChange]);
+  }, [videoBlob, onContentChange, isForWill]);
   
   const initCamera = async () => {
     try {
@@ -229,6 +238,48 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     });
   };
 
+  const attachVideoToWill = async (filePath: string) => {
+    if (!willId || !filePath) return false;
+    
+    try {
+      // Create a record in the will_videos table
+      const { error } = await supabase
+        .from('will_videos')
+        .insert({
+          will_id: willId,
+          file_path: filePath,
+          duration: 0, // Could calculate this later
+        });
+
+      if (error) {
+        console.error('Error attaching video to will:', error);
+        toast({
+          title: "Attachment Error",
+          description: "Video was created but couldn't be attached to your will",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      setVideoAttached(true);
+      
+      toast({
+        title: "Video Attached",
+        description: "Your video testament has been attached to your will"
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error('Error in video attachment process:', error);
+      toast({
+        title: "Attachment Error",
+        description: error.message || "An unexpected error occurred during attachment",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   const uploadVideoToSupabase = async () => {
     // Use the enhanced video if available, otherwise use the original
     const blobToUpload = enhancedVideoBlob || videoBlob;
@@ -250,8 +301,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
       
-      // Upload the file directly to the bucket we created via SQL
-      // No need to check or create the bucket as it's now guaranteed to exist
+      // Upload the file directly to the bucket
       const { error: uploadError, data } = await supabase.storage
         .from('future-videos')
         .upload(filePath, blobToUpload, {
@@ -285,6 +335,11 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       
       if (onVideoUrlChange) {
         onVideoUrlChange(filePath);
+      }
+      
+      // If this is for a will, attach the video to the will
+      if (willId) {
+        await attachVideoToWill(filePath);
       }
       
       return filePath;
@@ -416,8 +471,10 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     const filePath = await uploadVideoToSupabase();
     if (filePath) {
       toast({
-        title: "Video Ready",
-        description: "Your video is ready to be delivered."
+        title: isForWill ? "Video Testament Ready" : "Video Ready",
+        description: isForWill 
+          ? "Your video testament has been saved and attached to your will" 
+          : "Your video is ready to be delivered."
       });
     }
   };
@@ -431,6 +488,21 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
 
   return (
     <div className="space-y-6">
+      {isForWill && (
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+          <div className="flex items-start">
+            <Link className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-blue-700 font-medium">Creating Video Testament for Will</h3>
+              <p className="text-sm text-blue-600">
+                This video will be attached to your will and can be viewed by your beneficiaries.
+                It's a great way to provide personal context to your written will.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
           <label htmlFor="videoTitle" className="block text-sm font-medium text-gray-700 mb-1">Video Title</label>
@@ -438,7 +510,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
             <Video className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <Input 
               id="videoTitle"
-              placeholder="e.g. Wedding Day Message" 
+              placeholder={isForWill ? "Video Testament for Will" : "e.g. Wedding Day Message"} 
               className="pl-10"
               value={title}
               onChange={handleTitleChange}
@@ -452,7 +524,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <Input 
               id="videoRecipient"
-              placeholder="e.g. Michael Johnson" 
+              placeholder={isForWill ? "Will Beneficiaries" : "e.g. Michael Johnson"} 
               className="pl-10"
               value={recipient}
               onChange={handleRecipientChange}
@@ -535,12 +607,17 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       
                       <Button 
                         onClick={handleUseVideo}
-                        disabled={isUploading}
+                        disabled={isUploading || videoAttached}
                       >
                         {isUploading ? (
                           <>
                             <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                             Saving...
+                          </>
+                        ) : isForWill ? (
+                          <>
+                            <Link className="mr-2 h-4 w-4" />
+                            {videoAttached ? "Video Attached" : "Attach to Will"}
                           </>
                         ) : (
                           <>
@@ -772,12 +849,17 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                     
                     <Button
                       onClick={handleUseVideo}
-                      disabled={isUploading}
+                      disabled={isUploading || videoAttached}
                     >
                       {isUploading ? (
                         <>
                           <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                           Saving...
+                        </>
+                      ) : isForWill ? (
+                        <>
+                          <Link className="mr-2 h-4 w-4" />
+                          {videoAttached ? "Video Attached" : "Attach to Will"}
                         </>
                       ) : (
                         <>
@@ -806,55 +888,47 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
               <div>
                 <Label className="text-sm font-medium mb-1 block">Write a Script (Optional)</Label>
                 <Textarea 
-                  placeholder="Write your video script here to help you stay on track during recording..." 
-                  className="min-h-[200px]"
+                  placeholder={isForWill ? 
+                    "Hello to my loved ones. This video testament accompanies my will to explain my decisions and share personal messages..." :
+                    "Write a script for your video message here..."
+                  }
                   value={scriptContent}
                   onChange={handleScriptChange}
+                  rows={6}
+                  className="resize-y"
                 />
               </div>
               
-              <div className="bg-willtank-50 rounded-lg p-4 border border-willtank-100">
-                <h3 className="font-medium text-willtank-700 mb-2">Recording Tips</h3>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-willtank-600 mr-2 mt-0.5" />
-                    Start by introducing yourself and your relationship to the recipient
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-willtank-600 mr-2 mt-0.5" />
-                    Speak naturally and from the heart, as if the person is right in front of you
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-willtank-600 mr-2 mt-0.5" />
-                    Share specific memories, advice, or messages that are meaningful
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-willtank-600 mr-2 mt-0.5" />
-                    Find good lighting and a quiet environment for the best quality
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-4 w-4 text-willtank-600 mr-2 mt-0.5" />
-                    End with a heartfelt closing message
-                  </li>
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3 space-y-2">
+                <h4 className="text-sm font-medium">Tips for a good video {isForWill ? "testament" : "message"}</h4>
+                <ul className="text-xs text-gray-600 space-y-1">
+                  <li>• Find a quiet, well-lit location</li>
+                  <li>• Speak clearly and at a normal pace</li>
+                  <li>• Outline key points you want to cover</li>
+                  {isForWill && (
+                    <>
+                      <li>• Explain any specific decisions in your will</li>
+                      <li>• Share personal memories or messages for loved ones</li>
+                      <li>• Clearly state your intentions to reduce misunderstandings</li>
+                    </>
+                  )}
+                  <li>• Consider the emotional impact on your recipients</li>
                 </ul>
               </div>
               
-              <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-                <h3 className="font-medium text-amber-700 mb-2">AI Script Assistance</h3>
-                <p className="text-sm text-amber-700 mb-3">
-                  Let our AI help you craft a personalized script based on your relationship with {recipient || "the recipient"}.
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <Badge variant="outline" className="bg-white cursor-pointer hover:bg-amber-50 transition-colors px-3 py-1">Loving</Badge>
-                  <Badge variant="outline" className="bg-white cursor-pointer hover:bg-amber-50 transition-colors px-3 py-1">Inspiring</Badge>
-                  <Badge variant="outline" className="bg-white cursor-pointer hover:bg-amber-50 transition-colors px-3 py-1">Advice</Badge>
-                  <Badge variant="outline" className="bg-white cursor-pointer hover:bg-amber-50 transition-colors px-3 py-1">Memories</Badge>
+              {isForWill && (
+                <div className="bg-willtank-50 border border-willtank-100 rounded-md p-3">
+                  <h4 className="text-sm font-medium text-willtank-700">Will Testament Suggestions</h4>
+                  <p className="text-xs text-gray-600 mb-2 mt-1">Here are some topics you might want to include:</p>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    <li>• Personal explanations of your asset distributions</li>
+                    <li>• Messages to specific beneficiaries</li>
+                    <li>• Family history or traditions you want to preserve</li>
+                    <li>• Life lessons or values you wish to pass on</li>
+                    <li>• Explanation of any potentially surprising decisions</li>
+                  </ul>
                 </div>
-                <Button className="mt-3 w-full" size="sm">
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate AI Script
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
