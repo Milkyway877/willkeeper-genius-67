@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -54,11 +53,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
-
-// Register API routes
-Deno.serve({
-  '/api/link-will-video': linkWillVideo
-});
 
 // Create a unified router configuration
 const router = createBrowserRouter([
@@ -245,6 +239,8 @@ const router = createBrowserRouter([
     ],
   },
 ]);
+
+// We'll handle the API route through normal fetch requests instead of Deno
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

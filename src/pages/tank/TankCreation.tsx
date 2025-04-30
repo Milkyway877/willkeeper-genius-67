@@ -92,7 +92,8 @@ export default function TankCreation() {
         if (willId) {
           setRecipientName("Will Beneficiaries");
           setMessageTitle("Video Testament for Will");
-          setMessageCategory("important");
+          // Fix the type error by providing the correct MessageCategory type
+          setMessageCategory('important' as MessageCategory);
           
           // Auto advance to creation step
           if (currentStep === 0) {
@@ -151,10 +152,11 @@ export default function TankCreation() {
     if (willId && messageUrl) {
       try {
         // Create a record in will_videos table linking the video to the will
-        const { error } = await fetch(`/api/link-will-video?willId=${willId}&videoPath=${encodeURIComponent(messageUrl)}`).then(res => res.json());
+        const response = await fetch(`/api/link-will-video?willId=${willId}&videoPath=${encodeURIComponent(messageUrl)}`);
+        const result = await response.json();
         
-        if (error) {
-          throw new Error(error);
+        if (result.error) {
+          throw new Error(result.error);
         }
         
         toast({

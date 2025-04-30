@@ -1,6 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+// This is now a client-side function that makes a direct API call
+// instead of being served via Deno
 export default async function linkWillVideo(req: Request) {
   try {
     // Get query parameters

@@ -70,9 +70,9 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   
   useEffect(() => {
     if (isForWill) {
-      onCategoryChange('important');
+      onCategoryChange('important' as MessageCategory);
     } else {
-      onCategoryChange('story');
+      onCategoryChange('story' as MessageCategory);
     }
   }, [onCategoryChange, isForWill]);
   
