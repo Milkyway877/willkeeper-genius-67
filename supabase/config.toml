@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.get-function-logs]
 verify_jwt = false
+
+[functions.unified-will-assistant]
+verify_jwt = true
