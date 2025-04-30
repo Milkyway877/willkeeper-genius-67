@@ -238,6 +238,7 @@ export function DocumentsUploader({ contacts, responses, onComplete }: Documents
                       <Button
                         className="w-full h-full flex flex-col items-center justify-center p-6 gap-3"
                         variant="ghost"
+                        type="button"
                         onClick={() => {
                           setSelectedCategory(doc.category);
                           setDocumentName(doc.name);
@@ -313,6 +314,7 @@ export function DocumentsUploader({ contacts, responses, onComplete }: Documents
                     <Button 
                       variant="outline" 
                       className="w-full"
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className="mr-2 h-4 w-4" />
@@ -359,6 +361,7 @@ export function DocumentsUploader({ contacts, responses, onComplete }: Documents
                         <Button 
                           variant="ghost" 
                           size="sm" 
+                          type="button"
                           onClick={() => document.url && window.open(document.url, '_blank')}
                           disabled={!document.url}
                         >
@@ -367,6 +370,7 @@ export function DocumentsUploader({ contacts, responses, onComplete }: Documents
                         <Button 
                           variant="ghost" 
                           size="sm" 
+                          type="button"
                           className="text-red-500 hover:text-red-700"
                           onClick={() => removeDocument(document.id)}
                         >
@@ -402,7 +406,7 @@ export function DocumentsUploader({ contacts, responses, onComplete }: Documents
                   )}
                 </div>
                 
-                <Button onClick={handleComplete}>
+                <Button onClick={handleComplete} type="button">
                   Save & Continue
                 </Button>
               </div>

@@ -23,7 +23,40 @@ import { Loader2, Save, FileCheck } from 'lucide-react';
 const willSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
-  // Add more validation rules for other fields as needed
+  homeAddress: z.string().optional(),
+  email: z.string().email().optional().or(z.string().length(0)),
+  phoneNumber: z.string().optional(),
+  
+  // For executors
+  executors: z.array(
+    z.object({
+      name: z.string().optional(),
+      relationship: z.string().optional(),
+      email: z.string().optional(),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      isPrimary: z.boolean().optional(),
+    })
+  ).optional(),
+
+  // For beneficiaries
+  beneficiaries: z.array(
+    z.object({
+      name: z.string().optional(),
+      relationship: z.string().optional(),
+      email: z.string().optional(),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      percentage: z.number().optional().or(z.string().optional())
+    })
+  ).optional(),
+
+  // For final wishes
+  funeralPreferences: z.string().optional(),
+  memorialService: z.string().optional(),
+  obituary: z.string().optional(),
+  charitableDonations: z.string().optional(),
+  specialInstructions: z.string().optional(),
 });
 
 type WillFormValues = z.infer<typeof willSchema>;
@@ -72,7 +105,17 @@ Date: ${new Date().toLocaleDateString()}
     defaultValues: {
       fullName: initialData?.fullName || '',
       dateOfBirth: initialData?.dateOfBirth || '',
-      // Initialize other fields here
+      homeAddress: initialData?.homeAddress || '',
+      email: initialData?.email || '',
+      phoneNumber: initialData?.phoneNumber || '',
+      // Initialize other fields with empty arrays to prevent undefined errors
+      executors: initialData?.executors || [{ name: '', email: '', phone: '', address: '', isPrimary: true }],
+      beneficiaries: initialData?.beneficiaries || [{ name: '', relationship: '', email: '', phone: '', address: '', percentage: 0 }],
+      funeralPreferences: initialData?.funeralPreferences || '',
+      memorialService: initialData?.memorialService || '',
+      obituary: initialData?.obituary || '',
+      charitableDonations: initialData?.charitableDonations || '',
+      specialInstructions: initialData?.specialInstructions || '',
     }
   });
   
@@ -81,11 +124,12 @@ Date: ${new Date().toLocaleDateString()}
   
   // Generate will content when form values change
   useEffect(() => {
-    // This would be a more sophisticated template generation
-    // For now, we'll just update specific placeholders
+    // This is a more sophisticated template generation
     const formValues = form.getValues();
     
     let newContent = willContent;
+    
+    // Replace personal information
     if (formValues.fullName) {
       newContent = newContent.replace(/\[Full Name\]/g, formValues.fullName);
     }
@@ -94,7 +138,84 @@ Date: ${new Date().toLocaleDateString()}
       newContent = newContent.replace(/\[Date of Birth\]/g, formValues.dateOfBirth);
     }
     
-    // Update other placeholders based on form values
+    if (formValues.homeAddress) {
+      newContent = newContent.replace(/\[Address\]/g, formValues.homeAddress);
+    }
+    
+    // Replace executor information
+    const executors = formValues.executors || [];
+    const primaryExecutor = executors.find(e => e.isPrimary) || executors[0];
+    const alternateExecutor = executors.find(e => !e.isPrimary && e.name) || executors[1];
+    
+    if (primaryExecutor?.name) {
+      newContent = newContent.replace(/\[Executor Name\]/g, primaryExecutor.name);
+    }
+    
+    if (alternateExecutor?.name) {
+      newContent = newContent.replace(/\[Alternate Executor Name\]/g, alternateExecutor.name);
+    } else {
+      newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
+    }
+    
+    // Replace beneficiary information
+    const beneficiaries = formValues.beneficiaries || [];
+    let beneficiaryText = "";
+    
+    if (beneficiaries.length > 0) {
+      beneficiaryText = beneficiaries
+        .filter(b => b.name)
+        .map(b => `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${b.percentage || 0}% of the estate`)
+        .join('\n');
+        
+      if (beneficiaryText) {
+        newContent = newContent.replace(/\[Beneficiary details to be added\]/g, beneficiaryText);
+      }
+      
+      const beneficiaryDistribution = beneficiaries
+        .filter(b => b.name)
+        .map(b => `${b.name} (${b.percentage || 0}%)`)
+        .join(', ');
+        
+      if (beneficiaryDistribution) {
+        newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, beneficiaryDistribution);
+      }
+    }
+    
+    // Replace final arrangements
+    let finalArrangements = "";
+    
+    if (formValues.funeralPreferences) {
+      finalArrangements += `Funeral Preferences: ${formValues.funeralPreferences}\n\n`;
+    }
+    
+    if (formValues.memorialService) {
+      finalArrangements += `Memorial Service: ${formValues.memorialService}\n\n`;
+    }
+    
+    if (formValues.obituary) {
+      finalArrangements += `Obituary: ${formValues.obituary}\n\n`;
+    }
+    
+    if (formValues.charitableDonations) {
+      finalArrangements += `Charitable Donations: ${formValues.charitableDonations}\n\n`;
+    }
+    
+    if (formValues.specialInstructions) {
+      finalArrangements += `Special Instructions: ${formValues.specialInstructions}`;
+    }
+    
+    if (finalArrangements) {
+      newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements);
+    }
+    
+    // If there are no specific instructions for some sections, replace with generic text
+    newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
+    newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
+    newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
+    newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
+    newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
+    newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
+    newContent = newContent.replace(/\[Address\]/g, "my current legal address");
     
     setWillContent(newContent);
   }, [form.watch()]);
@@ -247,6 +368,7 @@ Date: ${new Date().toLocaleDateString()}
                       variant="outline" 
                       className="w-full"
                       disabled={saving}
+                      type="button"
                     >
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       Save Draft
@@ -256,6 +378,7 @@ Date: ${new Date().toLocaleDateString()}
                       onClick={handleFinalize} 
                       className="w-full"
                       disabled={saving}
+                      type="button"
                     >
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
                       Finalize Will
