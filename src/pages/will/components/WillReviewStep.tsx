@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -38,19 +38,27 @@ export const WillReviewStep = ({
   progress,
   handleFinalizeWill,
 }: WillReviewStepProps) => {
+  const [localSplitView, setLocalSplitView] = useState(splitView);
+
+  const handleToggleSplitView = () => {
+    const newValue = !localSplitView;
+    setLocalSplitView(newValue);
+    setSplitView(newValue);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Will Preview</CardTitle>
+            <CardTitle>Will Review</CardTitle>
             <div className="flex items-center space-x-2">
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => setSplitView(!splitView)}
+                onClick={handleToggleSplitView}
               >
-                {splitView ? "Single View" : "Split View"}
+                {localSplitView ? "Single View" : "Split View"}
               </Button>
               
               <Button
@@ -64,19 +72,19 @@ export const WillReviewStep = ({
             </div>
           </div>
           <CardDescription>
-            Review your will document before finalizing it.
+            Review your will document before finalizing it. You can make edits if needed.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className={`${splitView ? 'flex flex-col md:flex-row gap-6' : 'space-y-6'}`}>
-            <div className={`${splitView ? 'w-full md:w-1/2' : ''} border rounded-md p-6 bg-gray-50`}>
+          <div className={`${localSplitView ? 'flex flex-col md:flex-row gap-6' : 'space-y-6'}`}>
+            <div className={`${localSplitView ? 'w-full md:w-1/2' : ''} border rounded-md p-6 bg-gray-50`}>
               <h3 className="font-medium mb-4">Document Preview</h3>
               <div className="max-h-[50vh] overflow-y-auto">
                 <WillPreview content={editableContent} />
               </div>
             </div>
             
-            {splitView && (
+            {localSplitView && (
               <div className="w-full md:w-1/2 border rounded-md p-6">
                 <h3 className="font-medium mb-4">Edit Document</h3>
                 <textarea
@@ -121,6 +129,13 @@ export const WillReviewStep = ({
                   </div>
                 </div>
               )}
+              
+              {responses.executor && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Executor</h4>
+                  <p className="mt-1">{responses.executor}</p>
+                </div>
+              )}
             </div>
             
             <div className="space-y-4">
@@ -151,8 +166,22 @@ export const WillReviewStep = ({
               
               <div>
                 <h4 className="text-sm font-medium text-gray-500">Template</h4>
-                <p className="mt-1">{selectedTemplate?.title}</p>
+                <p className="mt-1">{selectedTemplate?.name}</p>
               </div>
+              
+              {responses.assets && responses.assets.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Assets</h4>
+                  <div className="mt-1 space-y-1">
+                    {responses.assets.map((asset: any, i: number) => (
+                      <div key={i}>
+                        <Badge variant="outline" className="mr-2">{asset.name}</Badge>
+                        <span className="text-sm">{asset.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

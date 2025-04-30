@@ -3,10 +3,10 @@ import React, { useEffect, useRef, useState } from 'react';
 
 interface WillPreviewProps {
   content: string;
+  showHighlights?: boolean;
 }
 
-export function WillPreview({ content }: WillPreviewProps) {
-  const prevContentRef = useRef<string>('');
+export function WillPreview({ content, showHighlights = false }: WillPreviewProps) {
   const contentDivRef = useRef<HTMLDivElement>(null);
   const [lastUpdatedField, setLastUpdatedField] = useState<string | null>(null);
   const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -17,87 +17,6 @@ export function WillPreview({ content }: WillPreviewProps) {
     console.log("[WillPreview] Content updated:", content ? content.substring(0, 50) + "..." : "empty");
   }, [content]);
   
-  // Effect to highlight changes and scroll when content updates
-  useEffect(() => {
-    if (prevContentRef.current !== content && contentDivRef.current) {
-      console.log("[WillPreview] Content changed, applying highlight");
-      
-      // Find the elements that might have changed
-      const newContentLines = content.split('\n');
-      const oldContentLines = prevContentRef.current.split('\n');
-      
-      // Find which section was updated
-      let updatedSection: string | null = null;
-      
-      // Check for changes in sections
-      for (let i = 0; i < newContentLines.length; i++) {
-        const newLine = newContentLines[i];
-        const oldLine = i < oldContentLines.length ? oldContentLines[i] : '';
-        
-        if (newLine !== oldLine) {
-          // Check if this line is a heading
-          if (/^[A-Z\s]+:/.test(newLine) || /^ARTICLE [IVX]+:/.test(newLine) || /^ARTICLE [IVX]+/.test(newLine)) {
-            updatedSection = newLine.replace(/:/g, '').trim();
-          } 
-          // If it's not a heading but it changed, look for the nearest heading above
-          else {
-            for (let j = i; j >= 0; j--) {
-              const possibleHeading = newContentLines[j];
-              if (/^[A-Z\s]+:/.test(possibleHeading) || /^ARTICLE [IVX]+:/.test(possibleHeading) || /^ARTICLE [IVX]+/.test(possibleHeading)) {
-                updatedSection = possibleHeading.replace(/:/g, '').trim();
-                break;
-              }
-            }
-          }
-        }
-        
-        // Once we find an updated section, no need to continue
-        if (updatedSection) break;
-      }
-      
-      if (updatedSection) {
-        setLastUpdatedField(updatedSection);
-      }
-      
-      // Update the reference for next comparison
-      prevContentRef.current = content;
-      
-      // Apply subtle highlight animation to the content div
-      if (contentDivRef.current) {
-        contentDivRef.current.classList.add('preview-update-flash');
-        setTimeout(() => {
-          if (contentDivRef.current) {
-            contentDivRef.current.classList.remove('preview-update-flash');
-          }
-        }, 1000);
-      }
-    }
-  }, [content]);
-  
-  // Effect to scroll to the last updated field
-  useEffect(() => {
-    if (lastUpdatedField && fieldRefs.current.has(lastUpdatedField)) {
-      const element = fieldRefs.current.get(lastUpdatedField);
-      if (element) {
-        // Add highlight-section class to the element
-        element.classList.add('highlight-section');
-        
-        // Scroll the element into view
-        setTimeout(() => {
-          element.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          });
-          
-          // Remove highlight after animation completes
-          setTimeout(() => {
-            element.classList.remove('highlight-section');
-          }, 2000);
-        }, 100);
-      }
-    }
-  }, [lastUpdatedField]);
-
   // Function to add a ref to a field element
   const addFieldRef = (id: string, element: HTMLHeadingElement | HTMLParagraphElement | null) => {
     if (element) {
@@ -116,7 +35,7 @@ export function WillPreview({ content }: WillPreviewProps) {
       // Check if line is a heading (ALL CAPS)
       if (/^[A-Z\s]+:/.test(line) || /^ARTICLE [IVX]+:/.test(line) || /^ARTICLE [IVX]+/.test(line)) {
         currentSection = line.replace(/:/g, '').trim();
-        const isHighlighted = currentSection === lastUpdatedField;
+        const isHighlighted = currentSection === lastUpdatedField && showHighlights;
         
         return (
           <h3 
@@ -157,17 +76,17 @@ export function WillPreview({ content }: WillPreviewProps) {
         line.includes('children') || 
         line.includes('appoint')
       )) {
-        const isUpdated = currentSection === lastUpdatedField;
+        const isUpdated = currentSection === lastUpdatedField && showHighlights;
         
         return (
           <p 
             key={`info-${index}`}
             ref={(el) => addFieldRef(`info-${currentSection || index}`, el)}
-            className={`mb-3 font-medium updated-field ${isUpdated ? 'newly-updated' : ''}`}
+            className={`mb-3 font-medium ${isUpdated && showHighlights ? 'updated-field newly-updated' : ''}`}
             id={`field-${index}`}
           >
             {line}
-            {isUpdated && (
+            {isUpdated && showHighlights && (
               <span className="ml-2 text-amber-500 animate-pulse text-xs">• Updated</span>
             )}
           </p>

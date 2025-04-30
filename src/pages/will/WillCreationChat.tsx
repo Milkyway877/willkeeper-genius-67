@@ -2,14 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { WillPreview } from './components/WillPreview';
 import { createWill, updateWill } from '@/services/willService';
 import { WillChat } from './components/WillChat';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, ArrowRight, Check } from 'lucide-react';
+import { WillReviewStep } from './components/WillReviewStep';
 
 // Will template info type
 interface WillTemplate {
@@ -32,6 +31,10 @@ export default function WillCreationChat() {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [step, setStep] = useState<'chat' | 'review'>('chat');
+  const [extractedData, setExtractedData] = useState<Record<string, any>>({});
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize the will template info
@@ -106,9 +109,9 @@ export default function WillCreationChat() {
     }
   }, [willDraft.content]);
   
-  // Function to update will content from chat with debounce
+  // Function to update will content from chat
   const updateWillContent = async (newContent: string) => {
-    // Immediately update local state for real-time preview
+    // Update local state
     setWillDraft(prev => ({ ...prev, content: newContent }));
     
     if (willDraft.id) {
@@ -131,6 +134,25 @@ export default function WillCreationChat() {
         }
       }, 2000); // 2 second debounce
     }
+  };
+
+  // Method to handle completion of the chat phase
+  const handleChatComplete = (data: {
+    extractedData: Record<string, any>;
+    generatedContent: string;
+    contacts: any[];
+    documents: any[];
+  }) => {
+    setExtractedData(data.extractedData);
+    setContacts(data.contacts);
+    setDocuments(data.documents);
+    updateWillContent(data.generatedContent);
+    setStep('review');
+  };
+
+  // Method to handle going back to chat
+  const handleBackToChat = () => {
+    setStep('chat');
   };
   
   // Helper function to get template name by ID
@@ -188,6 +210,41 @@ export default function WillCreationChat() {
     }
   };
   
+  // Handle content change in the review step
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updateWillContent(e.target.value);
+  };
+
+  // Handle finalize will
+  const handleFinalizeWill = async () => {
+    if (!willDraft.id) return;
+    
+    try {
+      setIsSaving(true);
+      await updateWill(willDraft.id, {
+        ...willDraft,
+        status: 'completed'
+      });
+      
+      toast({
+        title: "Will finalized",
+        description: "Your will has been finalized successfully.",
+        variant: "default",
+      });
+      
+      navigate('/wills');
+    } catch (error) {
+      console.error('Error finalizing will:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem finalizing your will. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
   if (isLoading) {
     return (
       <Layout>
@@ -233,20 +290,21 @@ export default function WillCreationChat() {
               </span>
             </div>
             
-            <Button 
-              variant="outline" 
-              onClick={handleSaveAndExit}
-              disabled={isSaving}
-            >
-              <Save className="mr-1 h-4 w-4" />
-              Save & Exit
-            </Button>
+            {step === 'chat' && (
+              <Button 
+                variant="outline" 
+                onClick={handleSaveAndExit}
+                disabled={isSaving}
+              >
+                <Save className="mr-1 h-4 w-4" />
+                Save & Exit
+              </Button>
+            )}
           </div>
           
           <Progress value={progress} className="mb-4" />
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left Column: Chat Interface */}
+          {step === 'chat' && (
             <div className="border rounded-lg h-[calc(100vh-200px)] overflow-hidden">
               <div className="bg-slate-50 p-3 border-b">
                 <h2 className="font-medium">Chat with Skyler, Your AI Will Assistant</h2>
@@ -256,20 +314,48 @@ export default function WillCreationChat() {
                 templateName={template.name}
                 onContentUpdate={updateWillContent}
                 willContent={willDraft.content}
+                onComplete={handleChatComplete}
               />
             </div>
-            
-            {/* Right Column: Document Preview */}
-            <div className="border rounded-lg h-[calc(100vh-200px)] overflow-auto">
-              <div className="bg-slate-50 p-3 border-b flex justify-between items-center">
-                <h2 className="font-medium">Will Document Preview</h2>
-                <span className="text-xs text-gray-500">Updates in real-time as you chat</span>
-              </div>
-              <div className="p-1">
-                <WillPreview content={willDraft.content} />
-              </div>
+          )}
+
+          {step === 'review' && (
+            <WillReviewStep
+              editableContent={willDraft.content}
+              splitView={true}
+              setSplitView={() => {}}
+              handleContentChange={handleContentChange}
+              handleCopyToClipboard={() => {
+                navigator.clipboard.writeText(willDraft.content);
+                toast({
+                  title: "Copied",
+                  description: "Will content copied to clipboard",
+                  variant: "default",
+                });
+              }}
+              responses={extractedData}
+              contacts={contacts}
+              documents={documents}
+              videoBlob={null}
+              selectedTemplate={template}
+              isCreatingWill={isSaving}
+              progress={isSaving ? 50 : 0}
+              handleFinalizeWill={handleFinalizeWill}
+            />
+          )}
+
+          {step === 'review' && (
+            <div className="flex justify-between mt-6">
+              <Button variant="outline" onClick={handleBackToChat}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Chat
+              </Button>
+              <Button onClick={handleFinalizeWill} disabled={isSaving}>
+                {isSaving ? "Processing..." : "Finalize Will"}
+                {!isSaving && <Check className="ml-2 h-4 w-4" />}
+              </Button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </Layout>

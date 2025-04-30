@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,23 +18,30 @@ interface WillChatProps {
   templateName: string;
   onContentUpdate: (content: string) => void;
   willContent: string;
+  onComplete?: (data: {
+    extractedData: Record<string, any>;
+    generatedContent: string;
+    contacts: any[];
+    documents: any[];
+  }) => void;
 }
 
-export function WillChat({ templateId, templateName, onContentUpdate, willContent }: WillChatProps) {
+export function WillChat({ templateId, templateName, onContentUpdate, willContent, onComplete }: WillChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [isPendingExtraction, setIsPendingExtraction] = useState(false);
+  const [extractedData, setExtractedData] = useState<Record<string, any>>({});
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const recognitionRef = useRef<any>(null);
-  const extractionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Track user information for real-time updates with a more structured approach
+  // Track user information in a structured way
   const [userInfo, setUserInfo] = useState({
     fullName: "",
     maritalStatus: "",
@@ -49,7 +55,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     spouseName: "",
     assets: [] as {name: string, value: string, recipient?: string}[],
     digitalAssets: [] as {type: string, details: string, recipient?: string}[],
-    // Track which fields have been updated to maintain order
+    // Track which fields have been updated
     updatedFields: {} as Record<string, boolean>,
     lastUpdatedField: ""
   });
@@ -90,24 +96,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     scrollToBottom();
   }, [messages]);
   
-  // Effect to extract information from messages and update will content
-  // Now runs only after a message is sent, not continuously
-  useEffect(() => {
-    if (isPendingExtraction) {
-      // Add a small delay to ensure UI updates first
-      extractionTimeoutRef.current = setTimeout(() => {
-        extractAndUpdateInfo();
-        setIsPendingExtraction(false);
-      }, 500);
-    }
-    
-    return () => {
-      if (extractionTimeoutRef.current) {
-        clearTimeout(extractionTimeoutRef.current);
-      }
-    };
-  }, [isPendingExtraction, messages]);
-  
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -141,11 +129,10 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.';
   };
   
-  // Enhanced extraction function with better regex matching for various types of information
+  // Function to extract information from all messages - now runs only when requested, not after every message
   const extractAndUpdateInfo = () => {
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
-    let updatedField = "";
     
     console.log("[WillChat] Extracting info from all messages");
     
@@ -180,9 +167,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
             !updatedInfo.fullName) {
           updatedInfo.fullName = content.trim();
           updatedInfo.updatedFields.name = true;
-          updatedField = "PERSONAL INFORMATION";
           contentUpdated = true;
-          console.log("[WillChat] Found direct name input:", updatedInfo.fullName);
         }
         
         // Look for "my name is" patterns
@@ -202,9 +187,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
                 possibleName.split(' ').length >= 2) {
               updatedInfo.fullName = possibleName;
               updatedInfo.updatedFields.name = true;
-              updatedField = "PERSONAL INFORMATION";
               contentUpdated = true;
-              console.log("[WillChat] Found name:", updatedInfo.fullName);
               break;
             }
           }
@@ -223,9 +206,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         if (content.match(pattern) && updatedInfo.maritalStatus !== status) {
           updatedInfo.maritalStatus = status;
           updatedInfo.updatedFields.maritalStatus = true;
-          updatedField = "FAMILY INFORMATION";
           contentUpdated = true;
-          console.log(`[WillChat] Found marital status: ${status}`);
           break;
         }
       }
@@ -243,9 +224,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1].trim()) {
             updatedInfo.spouseName = spouseMatch[1].trim();
             updatedInfo.updatedFields.spouseName = true;
-            updatedField = "FAMILY INFORMATION";
             contentUpdated = true;
-            console.log("[WillChat] Found spouse name:", updatedInfo.spouseName);
             break;
           }
         }
@@ -267,9 +246,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
                 updatedInfo.executor !== possibleExecutor) {
               updatedInfo.executor = possibleExecutor;
               updatedInfo.updatedFields.executor = true;
-              updatedField = "EXECUTOR";
               contentUpdated = true;
-              console.log("[WillChat] Found executor:", updatedInfo.executor);
               break;
             }
           }
@@ -290,9 +267,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
             if (possibleAddress.length > 5 && updatedInfo.address !== possibleAddress) {
               updatedInfo.address = possibleAddress;
               updatedInfo.updatedFields.address = true;
-              updatedField = "RESIDENCE";
               contentUpdated = true;
-              console.log("[WillChat] Found address:", updatedInfo.address);
               
               // Extract city, state, zip if present in the address
               const cityStateZipPattern = /([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)/i;
@@ -302,7 +277,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
                 updatedInfo.state = cityStateMatch[2].trim();
                 updatedInfo.zipCode = cityStateMatch[3].trim();
                 updatedInfo.updatedFields.cityState = true;
-                console.log("[WillChat] Extracted city/state/zip:", updatedInfo.city, updatedInfo.state, updatedInfo.zipCode);
               }
               break;
             }
@@ -339,9 +313,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           if (childrenNames.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(childrenNames)) {
             updatedInfo.children = childrenNames;
             updatedInfo.updatedFields.children = true;
-            updatedField = "FAMILY INFORMATION";
             contentUpdated = true;
-            console.log("[WillChat] Found children:", updatedInfo.children);
           }
           break;
         }
@@ -372,16 +344,12 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
               // Add new asset
               updatedInfo.assets.push(newAsset);
               updatedInfo.updatedFields.assets = true;
-              updatedField = "DISTRIBUTION OF ESTATE";
               contentUpdated = true;
-              console.log(`[WillChat] Found asset: ${type} - ${assetDetails}`);
             } else if (updatedInfo.assets[existingAssetIndex].value !== assetDetails) {
               // Update existing asset
               updatedInfo.assets[existingAssetIndex].value = assetDetails;
               updatedInfo.updatedFields.assets = true;
-              updatedField = "DISTRIBUTION OF ESTATE";
               contentUpdated = true;
-              console.log(`[WillChat] Updated asset: ${type} - ${assetDetails}`);
             }
           }
         }
@@ -406,9 +374,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
               if (existingAssetIndex === -1) {
                 updatedInfo.digitalAssets.push(digitalAsset);
                 updatedInfo.updatedFields.digitalAssets = true;
-                updatedField = "DIGITAL ASSETS";
                 contentUpdated = true;
-                console.log(`[WillChat] Found digital asset: ${type} - ${assetDetails}`);
               }
             }
           }
@@ -416,17 +382,21 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       }
     }
     
-    // If we found new information, update state and generate new will content
+    // If we found new information, update state
     if (contentUpdated) {
-      updatedInfo.lastUpdatedField = updatedField;
       console.log("[WillChat] Content updated from message analysis, new info:", JSON.stringify(updatedInfo));
       setUserInfo(updatedInfo);
-      generateAndUpdateWillContent(updatedInfo);
     }
+
+    // Update the extracted data for later use
+    setExtractedData(updatedInfo);
+    
+    return updatedInfo;
   };
   
-  const generateAndUpdateWillContent = (info: typeof userInfo) => {
-    // Generate and update will content based on template and extracted info
+  // Function to generate will content based on extracted information
+  const generateWillContent = (info: typeof userInfo) => {
+    // Generate will content based on template and extracted info
     let newContent = '';
     console.log("[WillChat] Generating will content with info:", JSON.stringify(info));
     
@@ -438,9 +408,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       newContent = generateBasicWill(info);
     }
     
-    // Call the parent component's onContentUpdate with the new content
-    console.log("[WillChat] Updating will content, length:", newContent.length);
-    onContentUpdate(newContent);
+    return newContent;
   };
   
   const handleSendMessage = async () => {
@@ -460,9 +428,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsProcessing(true);
-    
-    // Indicate that we need to extract info after this message is sent
-    setIsPendingExtraction(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('gpt-will-assistant', {
@@ -493,10 +458,6 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       
       // Check for completion phrases to determine if we're done
       checkForCompletion(aiResponse);
-      
-      // Extract information from AI response, but only after the response is received
-      // This will be processed by the useEffect monitoring isPendingExtraction
-      setIsPendingExtraction(true);
       
     } catch (error) {
       console.error("[WillChat] Error processing message:", error);
@@ -584,6 +545,28 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           variant: "destructive"
         });
       }
+    }
+  };
+  
+  // NEW: Handle the completion process
+  const handleComplete = () => {
+    // Extract all information from the conversation
+    const updatedInfo = extractAndUpdateInfo();
+    
+    // Generate the final will content
+    const generatedContent = generateWillContent(updatedInfo);
+    
+    // Update the will content through the callback
+    onContentUpdate(generatedContent);
+    
+    // If the parent component provided a completion handler, call it
+    if (onComplete) {
+      onComplete({
+        extractedData: updatedInfo,
+        generatedContent: generatedContent,
+        contacts: contacts,
+        documents: documents
+      });
     }
   };
   
@@ -726,167 +709,4 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     willContent += `I explicitly authorize my Digital Executor to access, handle, distribute, and dispose of my digital assets. This includes accessing my computers, smartphones, tablets, storage devices, email accounts, social media accounts, financial accounts, cryptocurrency wallets, domain names, digital intellectual property, and other digital assets.\n\n`;
     
     // Password manager info if applicable
-    willContent += `PASSWORDS AND ACCESS INFORMATION\n\n`;
-    willContent += `Access information for my digital accounts can be found in [LOCATION OF PASSWORD MANAGER OR ACCESS INFORMATION].\n\n`;
-    
-    // Standard closing as in basic will
-    willContent += `IN WITNESS WHEREOF, I have signed this Will on this ____ day of ____________, 20____.\n\n`;
-    willContent += `____________________________\n${info.fullName || '[YOUR SIGNATURE]'}\n\n`;
-    
-    // Witnesses section
-    willContent += `The foregoing instrument was signed, published, and declared by ${info.fullName || '[NAME OF TESTATOR]'} as their Will in our presence, and we, at their request and in their presence, and in the presence of each other, have subscribed our names as witnesses thereto, believing said ${info.fullName || '[NAME OF TESTATOR]'} to be of sound mind and memory.\n\n`;
-    willContent += `____________________________\nWITNESS SIGNATURE\n\n`;
-    willContent += `____________________________\nWITNESS SIGNATURE\n`;
-    
-    return willContent;
-  };
-  
-  const generateBusinessWill = (info: typeof userInfo): string => {
-    let willContent = `BUSINESS OWNER'S LAST WILL AND TESTAMENT\n\n`;
-    
-    // Personal information section
-    willContent += `I, ${info.fullName || '[YOUR NAME]'}, being of sound mind, declare this to be my Last Will and Testament with specific provisions for my business interests. I revoke all wills and codicils previously made by me.\n\n`;
-    
-    // Residence information if available
-    if (info.address || info.city || info.state || info.zipCode) {
-      willContent += `RESIDENCE\n\n`;
-      willContent += `At the time of executing this Will, I reside at ${info.address || '[ADDRESS]'}, ${info.city || '[CITY]'}, ${info.state || '[STATE]'} ${info.zipCode || '[ZIP CODE]'}.\n\n`;
-    }
-    
-    // Family information if available
-    if (info.maritalStatus || info.spouseName || (info.children && info.children.length > 0)) {
-      willContent += `FAMILY INFORMATION\n\n`;
-      
-      // Add marital status info
-      if (info.maritalStatus === 'single') {
-        willContent += `I am currently single.\n\n`;
-      } else if (info.maritalStatus === 'married') {
-        willContent += `I am married to ${info.spouseName || '[SPOUSE NAME]'}.\n\n`;
-      } else if (info.maritalStatus === 'divorced') {
-        willContent += `I am divorced.\n\n`;
-      } else if (info.maritalStatus === 'widowed') {
-        willContent += `I am widowed.\n\n`;
-      }
-      
-      // Add children info if available
-      if (info.children && info.children.length > 0) {
-        if (info.children.length === 1) {
-          willContent += `I have one child, ${info.children[0]}.\n\n`;
-        } else {
-          willContent += `I have ${info.children.length} children: ${info.children.join(', ')}.\n\n`;
-        }
-      }
-    }
-    
-    // Executor section
-    willContent += `EXECUTOR\n\n`;
-    willContent += `I appoint ${info.executor || '[EXECUTOR NAME]'} as Executor of this Will. If ${info.executor || 'my named Executor'} is unwilling or unable to serve, I appoint [ALTERNATE EXECUTOR] to serve as my alternate Executor.\n\n`;
-    
-    // Business succession section
-    willContent += `BUSINESS INTERESTS\n\n`;
-    willContent += `I own the following business interests:\n\n`;
-    willContent += `1. [BUSINESS NAME]: [DESCRIPTION, OWNERSHIP PERCENTAGE, AND BUSINESS STRUCTURE]\n`;
-    willContent += `2. [BUSINESS NAME]: [DESCRIPTION, OWNERSHIP PERCENTAGE, AND BUSINESS STRUCTURE]\n\n`;
-    
-    willContent += `BUSINESS SUCCESSION\n\n`;
-    willContent += `I direct that my business interests be handled as follows:\n\n`;
-    willContent += `1. [BUSINESS NAME]: I give my ownership interest to [BENEFICIARY/SUCCESSOR].\n`;
-    willContent += `2. [BUSINESS NAME]: I direct my Executor to [SELL/TRANSFER] this business and distribute the proceeds to [BENEFICIARY].\n\n`;
-    
-    willContent += `If any business succession plan, buy-sell agreement, or other contractual arrangement exists that governs the disposition of my business interests, such agreement shall take precedence over the provisions in this Will.\n\n`;
-    
-    // Standard closing as in basic will
-    willContent += `IN WITNESS WHEREOF, I have signed this Will on this ____ day of ____________, 20____.\n\n`;
-    willContent += `____________________________\n${info.fullName || '[YOUR SIGNATURE]'}\n\n`;
-    
-    // Witnesses section
-    willContent += `The foregoing instrument was signed, published, and declared by ${info.fullName || '[NAME OF TESTATOR]'} as their Will in our presence, and we, at their request and in their presence, and in the presence of each other, have subscribed our names as witnesses thereto, believing said ${info.fullName || '[NAME OF TESTATOR]'} to be of sound mind and memory.\n\n`;
-    willContent += `____________________________\nWITNESS SIGNATURE\n\n`;
-    willContent += `____________________________\nWITNESS SIGNATURE\n`;
-    
-    return willContent;
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="overflow-auto p-4 flex-grow">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`mb-4 ${
-              message.role === 'assistant' ? 'bg-blue-50 p-3 rounded-lg' : ''
-            } ${message.role === 'user' ? 'bg-gray-50 p-3 rounded-lg' : ''}`}
-          >
-            {message.role === 'assistant' && <div className="font-semibold mb-1">Skyler</div>}
-            {message.role === 'user' && <div className="font-semibold mb-1">You</div>}
-            <div className="whitespace-pre-wrap">{message.content}</div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      
-      <div className="border-t p-4 bg-white">
-        {isComplete && (
-          <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-green-800">Your will has been completed!</p>
-              <p className="text-sm text-green-700">You can now save, print or make final adjustments.</p>
-            </div>
-            <Button variant="outline" onClick={() => navigate('/wills')}>
-              View All Wills
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        )}
-        
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendMessage();
-          }}
-          className="flex gap-2"
-        >
-          <Input
-            ref={inputRef}
-            type="text"
-            placeholder="Type your message..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            disabled={isProcessing}
-            className="flex-grow"
-            aria-label="Message input"
-          />
-          
-          {recordingSupported && (
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="icon" 
-              onClick={toggleVoiceInput} 
-              disabled={isProcessing}
-              className={isRecording ? "bg-red-100 text-red-700 border-red-300" : ""}
-              aria-label="Toggle voice input"
-            >
-              {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-            </Button>
-          )}
-          
-          <Button 
-            type="submit" 
-            disabled={!inputValue.trim() || isProcessing}
-            aria-label="Send message"
-          >
-            {isProcessing ? "Sending..." : "Send"}
-            <Send className="ml-2 h-4 w-4" />
-          </Button>
-        </form>
-        
-        {isRecording && (
-          <div className="mt-2 text-xs text-red-500 animate-pulse flex items-center">
-            <Mic className="h-3 w-3 mr-1" /> Recording... Speak clearly. Click the mic button again to stop.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+    willContent += `PASSWORDS
