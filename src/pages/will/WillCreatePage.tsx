@@ -10,11 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { templates } from './config/wizardSteps';
 import { motion } from 'framer-motion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function WillCreatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [creationMethod, setCreationMethod] = useState<'template' | 'chat'>('template');
 
   const handleTemplateSelect = (template: any) => {
     setSelectedTemplate(template);
@@ -30,13 +32,24 @@ export default function WillCreatePage() {
       return;
     }
     
-    // Navigate to the new AI chat will creation page with the selected template
-    navigate(`/will/chat-creation/${selectedTemplate.id}`);
-    
-    toast({
-      title: "Template Selected",
-      description: `You've selected the ${selectedTemplate.title} template.`,
-    });
+    // Navigate to the appropriate creation page based on selection
+    if (creationMethod === 'chat') {
+      // Navigate to the AI chat will creation page with the selected template
+      navigate(`/will/chat-creation/${selectedTemplate.id}`);
+      
+      toast({
+        title: "Template Selected",
+        description: `You've selected the ${selectedTemplate.title} template with AI assistance.`,
+      });
+    } else {
+      // Navigate to the new template-based will creation page
+      navigate(`/will/template-creation/${selectedTemplate.id}`);
+      
+      toast({
+        title: "Template Selected",
+        description: `You've selected the ${selectedTemplate.title} template for manual editing.`,
+      });
+    }
   };
 
   return (
@@ -44,20 +57,73 @@ export default function WillCreatePage() {
       <div className="container mx-auto px-4 py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Create Your Will</h1>
-          <p className="text-gray-500">Select a template that fits your needs to get started</p>
+          <p className="text-gray-500">Select a template and creation method that fits your needs</p>
         </div>
         
         <Card className="mb-8">
           <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Sparkles className="h-5 w-5 text-willtank-600" />
-              <CardTitle>AI-Assisted Will Creation</CardTitle>
-            </div>
+            <CardTitle>Will Creation Method</CardTitle>
             <CardDescription>
-              Our AI assistant will guide you through creating your will with personalized questions and suggestions.
+              Choose how you'd like to create your will
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <Tabs defaultValue="template" onValueChange={(value) => setCreationMethod(value as 'template' | 'chat')}>
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="template">Form-Based Editor</TabsTrigger>
+                <TabsTrigger value="chat">AI Chat Assistant</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="template">
+                <div className="bg-willtank-50 rounded-lg p-4 mb-6 border border-willtank-100">
+                  <h3 className="font-medium text-willtank-700 mb-1">Form-Based Will Editor</h3>
+                  <p className="text-sm text-willtank-600 mb-2">
+                    Complete a structured form with explanations for each field to create your will.
+                  </p>
+                  <ul className="text-sm space-y-1">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-willtank-600" />
+                      Fill in sections at your own pace
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-willtank-600" />
+                      See explanations for each field
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-willtank-600" />
+                      Preview your document as you work
+                    </li>
+                  </ul>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="chat">
+                <div className="bg-willtank-50 rounded-lg p-4 mb-6 border border-willtank-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="h-4 w-4 text-willtank-600" />
+                    <h3 className="font-medium text-willtank-700">AI-Assisted Will Creation</h3>
+                  </div>
+                  <p className="text-sm text-willtank-600 mb-2">
+                    Our AI assistant will guide you through creating your will with personalized questions.
+                  </p>
+                  <ul className="text-sm space-y-1">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-willtank-600" />
+                      Answer simple questions in a chat interface
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-willtank-600" />
+                      Get personalized guidance from AI
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-willtank-600" />
+                      Create a customized will automatically
+                    </li>
+                  </ul>
+                </div>
+              </TabsContent>
+            </Tabs>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {templates.map((template) => (
                 <motion.div
@@ -108,7 +174,8 @@ export default function WillCreatePage() {
                 disabled={!selectedTemplate}
                 className="px-6"
               >
-                Continue with AI Assistant <ArrowRight className="ml-2 h-4 w-4" />
+                Continue {creationMethod === 'chat' ? 'with AI Assistant' : 'to Editor'} 
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </CardContent>
