@@ -186,7 +186,8 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   };
 
   const handleComplete = () => {
-    // Enhanced validation before completing
+    // Manual completion - this is still available but no longer required
+    // due to automatic completion in useEffect
     if (!isComplete) {
       const missingRoles = requiredContacts.filter(role => 
         !contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())

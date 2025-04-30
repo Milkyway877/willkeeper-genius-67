@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -10,12 +9,22 @@ import { DocumentsUploader } from './components/DocumentsUploader';
 import { VideoRecorder } from './components/VideoRecorder';
 import { useToast } from '@/hooks/use-toast';
 import { createWill } from '@/services/willService';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useWillProgress, WillProgress } from '@/services/willProgressService';
 import { steps, templates } from './config/wizardSteps';
 import { WillWizardSteps } from './components/WillWizardSteps';
 import { WillTemplateSelection } from './components/WillTemplateSelection';
 import { WillReviewStep } from './components/WillReviewStep';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 export default function WillWizardPage() {
   const navigate = useNavigate();
@@ -35,6 +44,11 @@ export default function WillWizardPage() {
   const [editableContent, setEditableContent] = useState('');
   const [splitView, setSplitView] = useState(false);
   const [contactsComplete, setContactsComplete] = useState(false);
+  
+  // New states for the warning dialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [incompleteInfo, setIncompleteInfo] = useState<string[]>([]);
+  const [pendingStepChange, setPendingStepChange] = useState(false);
 
   const { progress: willProgress, saveProgress } = useWillProgress(willId);
 
@@ -363,7 +377,88 @@ export default function WillWizardPage() {
     }
   };
 
-  // Function to determine if the current step is completable
+  // Function to check for missing information based on current step
+  const checkMissingInfo = () => {
+    const missingInfo: string[] = [];
+    
+    switch (steps[currentStep].id) {
+      case 'template':
+        if (!selectedTemplate) {
+          missingInfo.push("You haven't selected a template yet");
+        }
+        break;
+      case 'ai-conversation':
+        if (Object.keys(responses).length === 0) {
+          missingInfo.push("You haven't provided any information yet");
+        }
+        break;
+      case 'contacts':
+        // Check if we have an executor
+        if (!contacts.some(contact => contact.role === 'Executor')) {
+          missingInfo.push("An Executor contact is required");
+        }
+        
+        // Check if required contacts have email or phone
+        const incompleteContacts = contacts.filter(contact => 
+          (contact.role === 'Executor' || contact.role === 'Alternate Executor') && 
+          !contact.email && !contact.phone
+        );
+        
+        if (incompleteContacts.length > 0) {
+          missingInfo.push(`${incompleteContacts.length} contact(s) are missing email or phone information`);
+        }
+        
+        if (!contactsComplete) {
+          missingInfo.push("Contact information is incomplete");
+        }
+        break;
+      case 'documents':
+        if (documents.length === 0) {
+          missingInfo.push("No supporting documents have been uploaded");
+        }
+        break;
+      case 'video':
+        if (!videoBlob) {
+          missingInfo.push("Video testament has not been recorded");
+        }
+        break;
+      default:
+        break;
+    }
+    
+    return missingInfo;
+  };
+
+  // Updated handle for proceeding to next step
+  const handleProceedToNextStep = () => {
+    const missingInfo = checkMissingInfo();
+    
+    if (missingInfo.length > 0) {
+      setIncompleteInfo(missingInfo);
+      setDialogOpen(true);
+      setPendingStepChange(true);
+    } else {
+      // If everything is complete, proceed directly
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+  
+  // Handle confirmation from dialog
+  const handleConfirmProceed = () => {
+    setDialogOpen(false);
+    if (pendingStepChange) {
+      setCurrentStep(prev => prev + 1);
+      setPendingStepChange(false);
+    }
+  };
+  
+  // Handle cancellation from dialog
+  const handleCancelProceed = () => {
+    setDialogOpen(false);
+    setPendingStepChange(false);
+  };
+
+  // Function to determine if the current step is completable (for visual indicators)
   const isStepCompletable = () => {
     switch (steps[currentStep].id) {
       case 'template':
@@ -492,8 +587,7 @@ export default function WillWizardPage() {
             
             {steps[currentStep].id !== 'ai-conversation' && (
               <Button
-                onClick={() => setCurrentStep(prev => prev + 1)}
-                disabled={!isStepCompletable()}
+                onClick={handleProceedToNextStep}
                 className={isStepCompletable() ? "bg-green-600 hover:bg-green-700" : ""}
               >
                 {isStepCompletable() ? (
@@ -510,6 +604,38 @@ export default function WillWizardPage() {
           </div>
         )}
       </div>
+      
+      {/* Warning Dialog */}
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
+              Incomplete Information
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>The following information is missing or incomplete:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {incompleteInfo.map((info, index) => (
+                  <li key={index} className="text-amber-700">{info}</li>
+                ))}
+              </ul>
+              <p className="pt-2">
+                You can proceed anyway, but this information may be important for your will.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelProceed}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmProceed}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Proceed Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
