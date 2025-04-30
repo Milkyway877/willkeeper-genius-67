@@ -50,7 +50,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       // Log available buckets for debugging
       console.log('Available buckets:', buckets?.map(b => b.name));
       
-      // Use "will_videos" bucket with underscore instead of hyphen
+      // Use "will_videos" bucket with underscore
       const bucketId = 'will_videos';
       const bucketExists = buckets?.some(b => b.id === bucketId || b.name === bucketId);
       
