@@ -303,7 +303,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       // Only extract name from user messages to avoid picking up "Skyler"
       if (message.role === 'user') {
         // Extract full name with improved matching
-        const nameMatch = content.match(/(?:my name is|I am|I'm|name|call me|I go by|named|me llamo|this is) ([A-Za-z\s.'-]+)/i);
+        const nameMatch = content.match(/(?:my name is|I am|I'm|name|call me) ([A-Za-z\s.'-]+)/i);
         if (nameMatch && nameMatch[1]) {
           const possibleName = nameMatch[1].trim();
           // Avoid extracting "Skyler" as the name (it's the AI assistant)
@@ -567,7 +567,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     const nameMatch = userMessage.content.match(/(?:my name is|I am|I'm|name|call me) ([A-Za-z\s.'-]+)/i);
     if (nameMatch && nameMatch[1]) {
       const possibleName = nameMatch[1].trim();
-      // Verify it's not extracting "Skyler" as the name
+      // Verify it's not extracting "Skyler"
       if (!possibleName.toLowerCase().includes("skyler") && 
           !possibleName.toLowerCase().includes("assistant") && 
           tempUpdatedInfo.fullName !== possibleName) {
@@ -713,4 +713,329 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     // Check for confirmation of marital status
     if (aiResponse.match(/you are single|you mentioned you're single|you mentioned being single/i) && !updatedInfo.maritalStatus) {
       updatedInfo.maritalStatus = "single";
-      updatedInfo.updatedFields
+      updatedInfo.updatedFields.maritalStatus = true;
+      updatedField = "FAMILY INFORMATION";
+      contentUpdated = true;
+      console.log("[WillChat] Found marital status confirmation in AI response: single");
+    } else if (aiResponse.match(/you are married|you mentioned you're married|your spouse/i) && !updatedInfo.maritalStatus) {
+      updatedInfo.maritalStatus = "married";
+      updatedInfo.updatedFields.maritalStatus = true;
+      updatedField = "FAMILY INFORMATION";
+      contentUpdated = true;
+      console.log("[WillChat] Found marital status confirmation in AI response: married");
+    }
+    
+    // Update state and generate new content if needed
+    if (contentUpdated) {
+      updatedInfo.lastUpdatedField = updatedField;
+      setUserInfo(updatedInfo);
+      generateAndUpdateWillContent(updatedInfo);
+      console.log("[WillChat] Content updated from AI response analysis");
+    }
+  };
+  
+  // Function to check for completion phrases to determine if we're done
+  const checkForCompletion = (aiResponse: string) => {
+    const completionPhrases = [
+      /your will is now complete/i,
+      /your will draft is ready/i,
+      /we've completed your will/i,
+      /all necessary information has been collected/i
+    ];
+    
+    for (const phrase of completionPhrases) {
+      if (aiResponse.match(phrase)) {
+        setIsComplete(true);
+        console.log("[WillChat] Will completion detected");
+        break;
+      }
+    }
+  };
+  
+  const toggleVoiceInput = () => {
+    if (!recordingSupported) {
+      toast({
+        title: "Voice Recording Not Supported",
+        description: "Your browser doesn't support voice recording. Please type your responses instead.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (isRecording) {
+      // Stop recording
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      setIsRecording(false);
+    } else {
+      // Start recording
+      try {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        recognition.lang = 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInputValue(prev => prev + ' ' + transcript);
+          setIsRecording(false);
+        };
+        
+        recognition.onerror = (event: any) => {
+          console.error('[WillChat] Speech recognition error', event.error);
+          setIsRecording(false);
+          toast({
+            title: "Voice Recognition Error",
+            description: `Error: ${event.error}. Please try again or type your response.`,
+            variant: "destructive"
+          });
+        };
+        
+        recognition.start();
+        recognitionRef.current = recognition;
+        setIsRecording(true);
+      } catch (error) {
+        console.error('[WillChat] Error setting up speech recognition', error);
+        setRecordingSupported(false);
+        toast({
+          title: "Voice Recording Error",
+          description: "There was a problem setting up voice recording. Please type your responses.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+  
+  // Generate will content based on template type and user information
+  const generateBasicWill = (info: typeof userInfo): string => {
+    let willContent = `LAST WILL AND TESTAMENT\n\n`;
+    
+    // Personal information section
+    willContent += `I, ${info.fullName || '[YOUR NAME]'}, being of sound mind, declare this to be my Last Will and Testament. I revoke all wills and codicils previously made by me.\n\n`;
+    
+    // Residence information if available
+    if (info.address || info.city || info.state || info.zipCode) {
+      willContent += `RESIDENCE\n\n`;
+      willContent += `At the time of executing this Will, I reside at ${info.address || '[ADDRESS]'}, ${info.city || '[CITY]'}, ${info.state || '[STATE]'} ${info.zipCode || '[ZIP CODE]'}.\n\n`;
+    }
+    
+    // Family information if available
+    if (info.maritalStatus || info.spouseName || (info.children && info.children.length > 0)) {
+      willContent += `FAMILY INFORMATION\n\n`;
+      
+      // Add marital status info
+      if (info.maritalStatus === 'single') {
+        willContent += `I am currently single.\n\n`;
+      } else if (info.maritalStatus === 'married') {
+        willContent += `I am married to ${info.spouseName || '[SPOUSE NAME]'}.\n\n`;
+      } else if (info.maritalStatus === 'divorced') {
+        willContent += `I am divorced.\n\n`;
+      } else if (info.maritalStatus === 'widowed') {
+        willContent += `I am widowed.\n\n`;
+      }
+      
+      // Add children info if available
+      if (info.children && info.children.length > 0) {
+        if (info.children.length === 1) {
+          willContent += `I have one child, ${info.children[0]}.\n\n`;
+        } else {
+          willContent += `I have ${info.children.length} children: ${info.children.join(', ')}.\n\n`;
+        }
+      }
+    }
+    
+    // Executor section
+    willContent += `EXECUTOR\n\n`;
+    willContent += `I appoint ${info.executor || '[EXECUTOR NAME]'} as Executor of this Will. If ${info.executor || 'my named Executor'} is unwilling or unable to serve, I appoint [ALTERNATE EXECUTOR] to serve as my alternate Executor.\n\n`;
+    
+    // Assets and distribution section
+    willContent += `DISTRIBUTION OF ESTATE\n\n`;
+    if (info.assets && info.assets.length > 0) {
+      info.assets.forEach(asset => {
+        willContent += `I give my ${asset.name} to ${asset.recipient || '[BENEFICIARY]'}.\n`;
+      });
+    } else {
+      willContent += `I give all the rest and remainder of my estate to [PRIMARY BENEFICIARY].\n`;
+    }
+    
+    willContent += `\nIf none of my named beneficiaries survive me, I give my estate to [CONTINGENT BENEFICIARY].\n\n`;
+    
+    // Digital assets section if specified
+    if (info.digitalAssets && info.digitalAssets.length > 0) {
+      willContent += `DIGITAL ASSETS\n\n`;
+      willContent += `I own the following digital assets:\n`;
+      
+      info.digitalAssets.forEach(asset => {
+        willContent += `- ${asset.type}: ${asset.details}${asset.recipient ? ` - I give this to ${asset.recipient}` : ''}\n`;
+      });
+      
+      willContent += `\n`;
+    }
+    
+    // Signature section
+    willContent += `IN WITNESS WHEREOF, I have signed this Will on this ____ day of ____________, 20____.\n\n`;
+    willContent += `____________________________\n${info.fullName || '[YOUR SIGNATURE]'}\n\n`;
+    
+    // Witnesses section
+    willContent += `The foregoing instrument was signed, published, and declared by ${info.fullName || '[NAME OF TESTATOR]'} as their Will in our presence, and we, at their request and in their presence, and in the presence of each other, have subscribed our names as witnesses thereto, believing said ${info.fullName || '[NAME OF TESTATOR]'} to be of sound mind and memory.\n\n`;
+    willContent += `____________________________\nWITNESS SIGNATURE\n\n`;
+    willContent += `____________________________\nWITNESS SIGNATURE\n`;
+    
+    return willContent;
+  };
+  
+  const generateDigitalAssetsWill = (info: typeof userInfo): string => {
+    let willContent = `DIGITAL ASSETS WILL AND TESTAMENT\n\n`;
+    
+    // Personal information section
+    willContent += `I, ${info.fullName || '[YOUR NAME]'}, being of sound mind, declare this to be my Last Will and Testament with specific provisions for my digital assets. I revoke all wills and codicils previously made by me.\n\n`;
+    
+    // Other standard sections as in basic will
+    // ... keep existing code (standard will sections)
+    
+    // Enhanced digital assets section
+    willContent += `DIGITAL ASSETS\n\n`;
+    willContent += `I own the following digital assets, online accounts, and digital property:\n\n`;
+    
+    if (info.digitalAssets && info.digitalAssets.length > 0) {
+      info.digitalAssets.forEach((asset, index) => {
+        willContent += `${index + 1}. ${asset.type}: ${asset.details}${asset.recipient ? ` - I give this to ${asset.recipient}` : ''}\n`;
+      });
+    } else {
+      willContent += `1. [DIGITAL ASSET TYPE]: [DESCRIPTION AND ACCESS INFORMATION]\n`;
+      willContent += `2. [DIGITAL ASSET TYPE]: [DESCRIPTION AND ACCESS INFORMATION]\n`;
+    }
+    
+    willContent += `\nI appoint ${info.executor || '[DIGITAL EXECUTOR NAME]'} as my Digital Executor to manage, access, control, and dispose of my digital assets according to this Will.\n\n`;
+    
+    // Authorization for digital access
+    willContent += `AUTHORIZATION FOR DIGITAL ACCESS\n\n`;
+    willContent += `I explicitly authorize my Digital Executor to access, handle, distribute, and dispose of my digital assets. This includes accessing my computers, smartphones, tablets, storage devices, email accounts, social media accounts, financial accounts, cryptocurrency wallets, domain names, digital intellectual property, and other digital assets.\n\n`;
+    
+    // Password manager info if applicable
+    willContent += `PASSWORDS AND ACCESS INFORMATION\n\n`;
+    willContent += `Access information for my digital accounts can be found in [LOCATION OF PASSWORD MANAGER OR ACCESS INFORMATION].\n\n`;
+    
+    // Standard closing as in basic will
+    willContent += `IN WITNESS WHEREOF, I have signed this Will on this ____ day of ____________, 20____.\n\n`;
+    willContent += `____________________________\n${info.fullName || '[YOUR SIGNATURE]'}\n\n`;
+    
+    return willContent;
+  };
+  
+  const generateBusinessWill = (info: typeof userInfo): string => {
+    let willContent = `BUSINESS OWNER'S LAST WILL AND TESTAMENT\n\n`;
+    
+    // Personal information section
+    willContent += `I, ${info.fullName || '[YOUR NAME]'}, being of sound mind, declare this to be my Last Will and Testament with specific provisions for my business interests. I revoke all wills and codicils previously made by me.\n\n`;
+    
+    // Other standard sections as in basic will
+    // ... keep existing code (standard will sections)
+    
+    // Business succession section
+    willContent += `BUSINESS INTERESTS\n\n`;
+    willContent += `I own the following business interests:\n\n`;
+    willContent += `1. [BUSINESS NAME]: [DESCRIPTION, OWNERSHIP PERCENTAGE, AND BUSINESS STRUCTURE]\n`;
+    willContent += `2. [BUSINESS NAME]: [DESCRIPTION, OWNERSHIP PERCENTAGE, AND BUSINESS STRUCTURE]\n\n`;
+    
+    willContent += `BUSINESS SUCCESSION\n\n`;
+    willContent += `I direct that my business interests be handled as follows:\n\n`;
+    willContent += `1. [BUSINESS NAME]: I give my ownership interest to [BENEFICIARY/SUCCESSOR].\n`;
+    willContent += `2. [BUSINESS NAME]: I direct my Executor to [SELL/TRANSFER] this business and distribute the proceeds to [BENEFICIARY].\n\n`;
+    
+    willContent += `If any business succession plan, buy-sell agreement, or other contractual arrangement exists that governs the disposition of my business interests, such agreement shall take precedence over the provisions in this Will.\n\n`;
+    
+    // Standard closing as in basic will
+    willContent += `IN WITNESS WHEREOF, I have signed this Will on this ____ day of ____________, 20____.\n\n`;
+    willContent += `____________________________\n${info.fullName || '[YOUR SIGNATURE]'}\n\n`;
+    
+    return willContent;
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="overflow-auto p-4 flex-grow">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`mb-4 ${
+              message.role === 'assistant' ? 'bg-blue-50 p-3 rounded-lg' : ''
+            } ${message.role === 'user' ? 'bg-gray-50 p-3 rounded-lg' : ''}`}
+          >
+            {message.role === 'assistant' && <div className="font-semibold mb-1">Skyler</div>}
+            {message.role === 'user' && <div className="font-semibold mb-1">You</div>}
+            <div className="whitespace-pre-wrap">{message.content}</div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      <div className="border-t p-4 bg-white">
+        {isComplete && (
+          <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-green-800">Your will has been completed!</p>
+              <p className="text-sm text-green-700">You can now save, print or make final adjustments.</p>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/wills')}>
+              View All Wills
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          className="flex gap-2"
+        >
+          <Input
+            ref={inputRef}
+            type="text"
+            placeholder="Type your message..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            disabled={isProcessing}
+            className="flex-grow"
+            aria-label="Message input"
+          />
+          
+          {recordingSupported && (
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="icon" 
+              onClick={toggleVoiceInput} 
+              disabled={isProcessing}
+              className={isRecording ? "bg-red-100 text-red-700 border-red-300" : ""}
+              aria-label="Toggle voice input"
+            >
+              {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            </Button>
+          )}
+          
+          <Button 
+            type="submit" 
+            disabled={!inputValue.trim() || isProcessing}
+            aria-label="Send message"
+          >
+            {isProcessing ? "Sending..." : "Send"}
+            <Send className="ml-2 h-4 w-4" />
+          </Button>
+        </form>
+        
+        {isRecording && (
+          <div className="mt-2 text-xs text-red-500 animate-pulse flex items-center">
+            <Mic className="h-3 w-3 mr-1" /> Recording... Speak clearly. Click the mic button again to stop.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
