@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy, Clipboard } from 'lucide-react';
 import { WillPreview } from './WillPreview';
+import { toast } from '@/hooks/use-toast';
 
 interface WillReviewStepProps {
   editableContent: string;
@@ -40,6 +41,28 @@ export function WillReviewStep({
   handleFinalizeWill,
   lastUpdatedField
 }: WillReviewStepProps) {
+  const copyToClipboard = () => {
+    try {
+      navigator.clipboard.writeText(editableContent);
+      toast({
+        title: "Copied to clipboard",
+        description: "The will content has been copied to clipboard",
+      });
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast({
+        title: "Copy failed",
+        description: "Could not copy content to clipboard",
+        variant: "destructive",
+      });
+    }
+    
+    // Call parent handler if provided
+    if (handleCopyToClipboard) {
+      handleCopyToClipboard();
+    }
+  };
+
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg border">
       <div className="flex justify-between items-center">
@@ -55,7 +78,7 @@ export function WillReviewStep({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleCopyToClipboard}
+            onClick={copyToClipboard}
           >
             <Copy className="h-4 w-4 mr-2" />
             Copy
