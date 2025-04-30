@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -186,8 +185,8 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
   };
 
   const handleComplete = () => {
-    // Manual completion - this is still available but no longer required
-    // due to automatic completion in useEffect
+    // We're keeping the validation logic, but removing the early returns
+    // that prevented completion when validation failed
     if (!isComplete) {
       const missingRoles = requiredContacts.filter(role => 
         !contacts.some(contact => contact.role.toLowerCase() === role.toLowerCase())
@@ -200,26 +199,16 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
         return false;
       });
       
-      if (missingRoles.length > 0) {
+      if (missingRoles.length > 0 || incompleteContacts.length > 0) {
         toast({
-          title: "Missing required contacts",
-          description: `Please add the following roles: ${missingRoles.join(', ')}`,
-          variant: "destructive"
+          title: "Missing or incomplete information",
+          description: "Some important contact information is missing, but you can continue anyway.",
+          variant: "default"
         });
-        return;
-      }
-      
-      if (incompleteContacts.length > 0) {
-        toast({
-          title: "Incomplete contact information",
-          description: `Please add email or phone for: ${incompleteContacts.map(c => c.name).join(', ')}`,
-          variant: "destructive"
-        });
-        return;
       }
     }
     
-    // Set that all contacts have been collected when explicitly completing
+    // Always set that contacts have been collected and call onComplete
     setAllContactsCollected(true);
     onComplete(contacts);
   };
@@ -392,7 +381,7 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
               </div>
             )}
             
-            {/* Completion status with improved success indicator */}
+            {/* Completion status with button that's always enabled */}
             <div className="border-t pt-4 mt-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
@@ -416,7 +405,6 @@ export function ContactsCollection({ contacts: initialContacts, onComplete }: Co
                 
                 <Button 
                   onClick={handleComplete}
-                  disabled={!isComplete}
                   className={allContactsCollected ? "bg-green-600 hover:bg-green-700" : ""}
                 >
                   {allContactsCollected ? (

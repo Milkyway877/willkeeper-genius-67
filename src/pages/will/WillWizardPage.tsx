@@ -429,7 +429,7 @@ export default function WillWizardPage() {
     return missingInfo;
   };
 
-  // Updated handle for proceeding to next step
+  // Modified function to remove the disabled state completely
   const handleProceedToNextStep = () => {
     const missingInfo = checkMissingInfo();
     
