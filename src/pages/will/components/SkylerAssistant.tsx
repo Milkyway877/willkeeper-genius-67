@@ -146,7 +146,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     }
   }, [isRecording, initSpeechRecognition]);
   
-  // Enhanced information extraction to handle all types of data
   const extractInformation = useCallback((messageContent: string) => {
     const updates: Record<string, any> = {};
     
@@ -245,7 +244,6 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
     return updates;
   }, [contacts]);
   
-  // Check if all required data has been collected
   useEffect(() => {
     const { personalInfo, contacts } = dataCollectionProgress;
     
@@ -580,7 +578,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
         />
       </div>
       
-      <style jsx>{`
+      <style>
+        {`
         .pulse-animation {
           animation: pulse 2s infinite;
         }
@@ -596,7 +595,8 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
             box-shadow: 0 0 0 0 rgba(155, 135, 245, 0);
           }
         }
-      `}</style>
+        `}
+      </style>
     </Card>
   );
 }
