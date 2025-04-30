@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider } from 'react-hook-form';
@@ -99,6 +98,7 @@ Date: ${new Date().toLocaleDateString()}
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+  const [videoData, setVideoData] = useState<{ path: string, url: string } | null>(null);
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -224,8 +224,9 @@ Date: ${new Date().toLocaleDateString()}
     setSignature(signatureData);
   };
   
-  const handleVideoRecording = (blob: Blob) => {
+  const handleVideoRecording = (blob: Blob, data: { path: string, url: string }) => {
     setVideoBlob(blob);
+    setVideoData(data);
   };
   
   const handleSaveDraft = async () => {
@@ -254,12 +255,29 @@ Date: ${new Date().toLocaleDateString()}
       
       const savedWill = await createWill(willData);
       
+      // Add video reference if we have one
+      if (savedWill?.id && videoData?.path) {
+        try {
+          const { error } = await supabase
+            .from('will_videos')
+            .insert({
+              will_id: savedWill.id,
+              file_path: videoData.path,
+              duration: 0, // We could calculate this
+            });
+            
+          if (error) {
+            console.error('Error saving video record:', error);
+          }
+        } catch (videoError) {
+          console.error('Error linking video to will:', videoError);
+        }
+      }
+      
       toast({
         title: "Draft Saved",
         description: "Your will has been saved as a draft.",
       });
-      
-      // You can do something with the savedWill.id if needed
       
     } catch (error) {
       console.error("Error saving will:", error);
@@ -310,11 +328,23 @@ Date: ${new Date().toLocaleDateString()}
       
       const savedWill = await createWill(willData);
       
-      // Upload video if present
-      if (videoBlob && savedWill?.id) {
-        // Video upload logic would go here
-        // This would typically involve uploading to storage
-        console.log('Would upload video for will:', savedWill.id);
+      // Add video reference if we have one
+      if (savedWill?.id && videoData?.path) {
+        try {
+          const { error } = await supabase
+            .from('will_videos')
+            .insert({
+              will_id: savedWill.id,
+              file_path: videoData.path,
+              duration: 0, // We could calculate this
+            });
+            
+          if (error) {
+            console.error('Error saving video record:', error);
+          }
+        } catch (videoError) {
+          console.error('Error linking video to will:', videoError);
+        }
       }
       
       toast({
@@ -348,7 +378,11 @@ Date: ${new Date().toLocaleDateString()}
               <ExecutorsSection defaultOpen={false} />
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
-              <VideoRecordingSection defaultOpen={false} onRecordingComplete={handleVideoRecording} />
+              <VideoRecordingSection 
+                defaultOpen={false} 
+                onRecordingComplete={handleVideoRecording} 
+                willId={!isNew && willId ? willId : undefined} 
+              />
               <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
             </div>
             

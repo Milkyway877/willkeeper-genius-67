@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -6,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 
 interface VideoRecorderProps {
-  onRecordingComplete: (blob: Blob) => void;
+  onRecordingComplete: (blob: Blob, filePath?: string) => void;
 }
 
 export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
@@ -115,6 +116,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     }
 
     setLoading(true);
+    setUploadError(null);
     
     try {
       // Get authenticated user session
@@ -165,7 +167,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       console.log('File URL:', urlData.publicUrl);
       
       return {
-        path: data.path,
+        path: filename,
         url: urlData.publicUrl
       };
     } catch (error: any) {
@@ -182,12 +184,16 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       try {
         setLoading(true);
         const result = await uploadToStorage(recordedBlob);
-        onRecordingComplete(recordedBlob);
-        toast({
-          title: "Video Saved",
-          description: "Your video testament has been saved successfully."
-        });
-        return result;
+        if (result) {
+          onRecordingComplete(recordedBlob, result.path);
+          toast({
+            title: "Video Saved",
+            description: "Your video testament has been saved successfully."
+          });
+          return result;
+        } else {
+          throw new Error("Failed to upload video");
+        }
       } catch (error: any) {
         console.error('Error saving video:', error);
         toast({
@@ -195,9 +201,17 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           description: error.message || "There was a problem saving your video. Please try again.",
           variant: "destructive"
         });
+        return null;
       } finally {
         setLoading(false);
       }
+    } else {
+      toast({
+        title: "No Video Recorded",
+        description: "Please record a video first before saving.",
+        variant: "destructive"
+      });
+      return null;
     }
   };
 
