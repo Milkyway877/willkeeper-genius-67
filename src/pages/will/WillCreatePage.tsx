@@ -30,8 +30,8 @@ export default function WillCreatePage() {
       return;
     }
     
-    // Navigate to the new template will creation page with the selected template
-    navigate(`/will/template-creation/${selectedTemplate.id}`);
+    // Navigate to the new AI chat will creation page with the selected template
+    navigate(`/will/chat-creation/${selectedTemplate.id}`);
     
     toast({
       title: "Template Selected",
@@ -51,10 +51,10 @@ export default function WillCreatePage() {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <Sparkles className="h-5 w-5 text-willtank-600" />
-              <CardTitle>Select a Will Template</CardTitle>
+              <CardTitle>AI-Assisted Will Creation</CardTitle>
             </div>
             <CardDescription>
-              Choose a template below that best matches your needs. You'll be able to customize all fields after selection.
+              Our AI assistant will guide you through creating your will with personalized questions and suggestions.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -108,7 +108,7 @@ export default function WillCreatePage() {
                 disabled={!selectedTemplate}
                 className="px-6"
               >
-                Continue with Template <ArrowRight className="ml-2 h-4 w-4" />
+                Continue with AI Assistant <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </CardContent>

@@ -1,40 +1,20 @@
 
-import { Routes, Route } from 'react-router-dom';
-import Home from '@/pages/Index';
-import WillCreatePage from '@/pages/will/WillCreatePage';
-import TemplateWillCreationPage from '@/pages/will/TemplateWillCreationPage';
-import SecureSignIn from '@/pages/auth/SecureSignIn';
-import SecureSignUp from '@/pages/auth/SecureSignUp';
-import SecureRecover from '@/pages/auth/SecureRecover';
-import AuthResetPassword from '@/pages/auth/ResetPassword';
-import AccountActivation from '@/pages/auth/AccountActivation';
-import EmailVerification from '@/pages/auth/EmailVerification';
-import VerifyEmailBanner from '@/pages/auth/VerifyEmailBanner';
-import AuthCallback from '@/pages/auth/AuthCallback';
-import Dashboard from '@/pages/Dashboard';
+import React from 'react';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Toaster } from '@/components/ui/toaster';
+import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
+import { Outlet } from 'react-router-dom';
 
-function App() {
+// Add global mobile responsive styles
+import './MobileStyles.css';
+
+export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/will/create" element={<WillCreatePage />} />
-      <Route path="/will/template-creation/:templateId" element={<TemplateWillCreationPage />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      
-      {/* Auth routes */}
-      <Route path="/auth/signin" element={<SecureSignIn />} />
-      <Route path="/auth/signup" element={<SecureSignUp />} />
-      <Route path="/auth/recover" element={<SecureRecover />} />
-      <Route path="/auth/reset-password" element={<AuthResetPassword />} />
-      <Route path="/auth/activate" element={<AccountActivation />} />
-      <Route path="/auth/verification" element={<EmailVerification />} />
-      <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      
-      {/* Add a fallback route to handle 404s */}
-      <Route path="*" element={<Home />} />
-    </Routes>
+    <>
+      <Outlet />
+      <Toaster />
+      <FloatingAssistant />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </>
   );
 }
-
-export default App;
