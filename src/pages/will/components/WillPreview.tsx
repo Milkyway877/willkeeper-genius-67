@@ -10,11 +10,43 @@ export function WillPreview({ content, showHighlights = false }: WillPreviewProp
   const contentDivRef = useRef<HTMLDivElement>(null);
   const [lastUpdatedField, setLastUpdatedField] = useState<string | null>(null);
   const fieldRefs = useRef<Map<string, HTMLElement>>(new Map());
-  const documentIdRef = useRef<string>(Math.random().toString(36).substring(2, 10).toUpperCase());
+  const [documentId, setDocumentId] = useState<string>('');
+  
+  // Initialize document ID once on first render
+  useEffect(() => {
+    // Try to get from localStorage first
+    let storedId = localStorage.getItem('currentWillDocumentId');
+    
+    if (!storedId) {
+      // Generate a new one if not found
+      storedId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      localStorage.setItem('currentWillDocumentId', storedId);
+    }
+    
+    setDocumentId(storedId);
+  }, []);
   
   // Log when content changes to help with debugging
   useEffect(() => {
     console.log("[WillPreview] Content updated:", content ? content.substring(0, 50) + "..." : "empty");
+    
+    // Extract last updated field from content if available
+    const match = content.match(/\s•\sUpdated$/m);
+    if (match) {
+      const lineIndex = content.substring(0, match.index).lastIndexOf('\n');
+      if (lineIndex >= 0) {
+        const line = content.substring(lineIndex, match.index || 0);
+        setLastUpdatedField(line.trim());
+        
+        // Highlight the section by scrolling to it
+        setTimeout(() => {
+          const elementToScrollTo = contentDivRef.current?.querySelector('.newly-updated');
+          if (elementToScrollTo) {
+            elementToScrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    }
   }, [content]);
   
   // Function to add a ref to a field element
@@ -74,7 +106,10 @@ export function WillPreview({ content, showHighlights = false }: WillPreviewProp
         line.includes('divorced') || 
         line.includes('widowed') || 
         line.includes('children') || 
-        line.includes('appoint')
+        line.includes('appoint') ||
+        // Add more patterns to highlight real information
+        line.match(/I have \d+ children/) ||
+        line.match(/I appoint .+ as (?:the )?Executor/)
       )) {
         const isUpdated = currentSection === lastUpdatedField && showHighlights;
         
@@ -157,7 +192,7 @@ export function WillPreview({ content, showHighlights = false }: WillPreviewProp
         </div>
         <div className="border-2 border-gray-300 rounded-lg p-2 text-center">
           <p className="text-xs text-gray-400">Document ID</p>
-          <p className="text-sm font-mono">{documentIdRef.current}</p>
+          <p className="text-sm font-mono">{documentId}</p>
         </div>
       </div>
       

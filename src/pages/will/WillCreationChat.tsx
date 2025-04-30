@@ -74,6 +74,21 @@ export default function WillCreationChat() {
         if (draftWillId) {
           // Load existing draft
           setWillDraft(prev => ({ ...prev, id: draftWillId }));
+          
+          // Try to load any saved information for this draft
+          const savedData = localStorage.getItem(`will_extracted_data_${draftWillId}`);
+          if (savedData) {
+            try {
+              const parsedData = JSON.parse(savedData);
+              setExtractedData(parsedData);
+              
+              // Update content with saved data
+              const updatedContent = getContentWithData(initialDraft.content, parsedData);
+              setWillDraft(prev => ({ ...prev, content: updatedContent }));
+            } catch (e) {
+              console.error("Error parsing saved extracted data:", e);
+            }
+          }
         } else {
           // Create a new draft
           const result = await createWill(initialDraft);
@@ -96,6 +111,32 @@ export default function WillCreationChat() {
     
     initializeTemplate();
   }, [templateId, navigate, toast]);
+  
+  // Helper function to pre-populate content with extracted data
+  const getContentWithData = (templateContent: string, data: Record<string, any>): string => {
+    let content = templateContent;
+    
+    if (data.fullName) {
+      content = content.replace(/\[YOUR NAME\]/g, data.fullName);
+    }
+    
+    if (data.maritalStatus === 'married' && data.spouseName) {
+      if (content.includes('FAMILY INFORMATION')) {
+        content = content.replace(/I am currently (?:single|married|divorced|widowed)\.?/g, 
+          `I am married to ${data.spouseName}.`);
+      } else {
+        // Add family information section if not present
+        const familySection = `\nFAMILY INFORMATION\n\nI am married to ${data.spouseName}.\n`;
+        content = content.replace(/\n\nI revoke all/, `\n\n${familySection}\nI revoke all`);
+      }
+    }
+    
+    if (data.executor) {
+      content = content.replace(/\[EXECUTOR NAME\]/g, data.executor);
+    }
+    
+    return content;
+  };
   
   // Update progress based on content
   useEffect(() => {
@@ -143,11 +184,17 @@ export default function WillCreationChat() {
     contacts: any[];
     documents: any[];
   }) => {
+    console.log("Chat complete with extracted data:", data.extractedData);
     setExtractedData(data.extractedData);
     setContacts(data.contacts);
     setDocuments(data.documents);
     updateWillContent(data.generatedContent);
     setStep('review');
+    
+    // Save extracted data to localStorage for persistence
+    if (willDraft.id) {
+      localStorage.setItem(`will_extracted_data_${willDraft.id}`, JSON.stringify(data.extractedData));
+    }
   };
 
   // Method to handle going back to chat
@@ -172,15 +219,15 @@ export default function WillCreationChat() {
   // Generate an initial placeholder content for the will template
   const getInitialContent = (templateId: string): string => {
     const placeholders: Record<string, string> = {
-      'basic': 'LAST WILL AND TESTAMENT\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament.',
-      'family': 'FAMILY PROTECTION WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, with special provisions for the care and protection of my family.',
-      'business': 'BUSINESS OWNER WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my business assets and succession planning.',
-      'complex': 'COMPLEX ESTATE WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, addressing my extensive holdings and complex distribution wishes.',
-      'living': 'LIVING WILL AND HEALTHCARE DIRECTIVES\n\nI, [Your Name], being of sound mind, declare these to be my Healthcare Directives and wishes regarding medical treatment.',
-      'digital-assets': 'DIGITAL ASSETS WILL\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my digital assets, accounts and properties.'
+      'basic': 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.',
+      'family': 'FAMILY PROTECTION WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for the care and protection of my family.',
+      'business': 'BUSINESS OWNER WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my business assets and succession planning.',
+      'complex': 'COMPLEX ESTATE WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, addressing my extensive holdings and complex distribution wishes.',
+      'living': 'LIVING WILL AND HEALTHCARE DIRECTIVES\n\nI, [YOUR NAME], being of sound mind, declare these to be my Healthcare Directives and wishes regarding medical treatment.',
+      'digital-assets': 'DIGITAL ASSETS WILL\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament, with special provisions for my digital assets, accounts and properties.'
     };
     
-    return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [Your Name], being of sound mind, declare this to be my Last Will and Testament.';
+    return placeholders[templateId] || 'LAST WILL AND TESTAMENT\n\nI, [YOUR NAME], being of sound mind, declare this to be my Last Will and Testament.';
   };
   
   const handleSaveAndExit = async () => {
