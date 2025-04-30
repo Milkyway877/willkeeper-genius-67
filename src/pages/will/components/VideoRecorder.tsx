@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +19,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [bucketStatus, setBucketStatus] = useState<{exists: boolean, name: string} | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -27,6 +27,35 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const timerIntervalRef = useRef<number | null>(null);
   
   const { toast } = useToast();
+  
+  // Check if buckets exist on component mount
+  useEffect(() => {
+    async function checkBuckets() {
+      try {
+        const { data: buckets, error } = await supabase.storage.listBuckets();
+        
+        if (error) {
+          console.error('Error checking buckets:', error);
+          return;
+        }
+        
+        const videoBucket = buckets?.find(b => b.id === 'will_videos' || b.name === 'will_videos');
+        
+        if (videoBucket) {
+          console.log('Found will_videos bucket:', videoBucket);
+          setBucketStatus({ exists: true, name: videoBucket.name });
+        } else {
+          console.error('will_videos bucket not found. Available buckets:', buckets?.map(b => b.name).join(', '));
+          setBucketStatus({ exists: false, name: 'will_videos' });
+          setUploadError('Storage not properly configured. Please contact support.');
+        }
+      } catch (err) {
+        console.error('Error in checkBuckets:', err);
+      }
+    }
+    
+    checkBuckets();
+  }, []);
 
   const uploadToStorage = async (blob: Blob) => {
     try {
@@ -36,9 +65,15 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         throw new Error('User not authenticated');
       }
 
+      // Check bucket status
+      if (bucketStatus && !bucketStatus.exists) {
+        throw new Error(`Bucket "${bucketStatus.name}" not found. Please contact support.`);
+      }
+
       const filename = `${session.user.id}/${Date.now()}.webm`;
+      const bucketId = 'will_videos';
       
-      // Check if the bucket exists before uploading
+      // Add client-side validation to confirm bucket exists
       const { data: buckets, error: bucketsError } = await supabase.storage
         .listBuckets();
       
@@ -46,18 +81,15 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         console.error('Error checking buckets:', bucketsError);
         throw new Error(`Storage error: ${bucketsError.message}`);
       }
-
+      
       // Log available buckets for debugging
-      console.log('Available buckets:', buckets?.map(b => b.name));
+      console.log('Available buckets for upload:', buckets?.map(b => b.name));
       
-      // Use "will_videos" bucket with underscore
-      const bucketId = 'will_videos';
-      const bucketExists = buckets?.some(b => b.id === bucketId || b.name === bucketId);
-      
-      if (!bucketExists) {
+      if (!buckets?.some(b => b.id === bucketId || b.name === bucketId)) {
         throw new Error(`Bucket "${bucketId}" not found. Available buckets: ${buckets?.map(b => b.id).join(', ')}`);
       }
 
+      // Proceed with upload
       const { data, error } = await supabase.storage
         .from(bucketId)
         .upload(filename, blob, {
@@ -71,6 +103,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         throw error;
       }
 
+      console.log('Upload successful:', data);
       return data.path;
     } catch (error: any) {
       console.error('Error uploading video:', error);
@@ -251,6 +284,13 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
       </div>
       
       <div className="p-4">
+        {bucketStatus && !bucketStatus.exists && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded mb-4 text-sm">
+            <p className="font-medium">Storage Configuration Issue</p>
+            <p>The video storage system is not properly configured. Your recording will work but uploading may fail.</p>
+          </div>
+        )}
+        
         <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden mb-4 relative">
           {cameraError ? (
             <div className="absolute inset-0 flex items-center justify-center text-white text-center p-4">
@@ -330,7 +370,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
               
               <Button 
                 onClick={saveRecording} 
-                disabled={loading}
+                disabled={loading || (bucketStatus && !bucketStatus.exists)}
               >
                 {loading ? (
                   <>
