@@ -19,6 +19,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const [timer, setTimer] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -29,6 +30,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
 
   const uploadToStorage = async (blob: Blob) => {
     try {
+      setUploadError(null);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         throw new Error('User not authenticated');
@@ -36,8 +38,28 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
 
       const filename = `${session.user.id}/${Date.now()}.webm`;
       
+      // Check if the bucket exists before uploading
+      const { data: buckets, error: bucketsError } = await supabase.storage
+        .listBuckets();
+      
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+        throw new Error(`Storage error: ${bucketsError.message}`);
+      }
+
+      // Log available buckets for debugging
+      console.log('Available buckets:', buckets?.map(b => b.name));
+      
+      // Use "will-videos" bucket as defined in storage.sql
+      const bucketId = 'will-videos';
+      const bucketExists = buckets?.some(b => b.id === bucketId);
+      
+      if (!bucketExists) {
+        throw new Error(`Bucket "${bucketId}" not found. Available buckets: ${buckets?.map(b => b.id).join(', ')}`);
+      }
+
       const { data, error } = await supabase.storage
-        .from('will-videos')
+        .from(bucketId)
         .upload(filename, blob, {
           contentType: 'video/webm',
           cacheControl: '3600',
@@ -45,12 +67,14 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
         });
 
       if (error) {
+        console.error('Upload error details:', error);
         throw error;
       }
 
       return data.path;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading video:', error);
+      setUploadError(error.message || 'Error uploading video');
       throw error;
     }
   };
@@ -58,19 +82,22 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
   const saveRecording = async () => {
     if (recordedBlob) {
       try {
+        setLoading(true);
         await uploadToStorage(recordedBlob);
         onRecordingComplete(recordedBlob);
         toast({
           title: "Video Saved",
           description: "Your video testament has been saved successfully."
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error saving video:', error);
         toast({
           title: "Error Saving Video",
-          description: "There was a problem saving your video. Please try again.",
+          description: error.message || "There was a problem saving your video. Please try again.",
           variant: "destructive"
         });
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -199,6 +226,7 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
     setRecordedBlob(null);
     setRecordingComplete(false);
     setTimer(0);
+    setUploadError(null);
   };
   
   const formatTime = (seconds: number): string => {
@@ -260,6 +288,13 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
           )}
         </div>
         
+        {uploadError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+            <p className="font-medium">Upload Error</p>
+            <p>{uploadError}</p>
+          </div>
+        )}
+        
         <div className="text-sm text-gray-600 mb-4">
           <p>Record a personal video message to accompany your will. This can help explain your intentions and provide a personal touch to your last wishes.</p>
         </div>
@@ -293,9 +328,21 @@ export function VideoRecorder({ onRecordingComplete }: VideoRecorderProps) {
                 Discard & Re-record
               </Button>
               
-              <Button onClick={saveRecording}>
-                <Save className="h-4 w-4 mr-2" />
-                Save Video Testament
+              <Button 
+                onClick={saveRecording} 
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Video Testament
+                  </>
+                )}
               </Button>
             </>
           )}

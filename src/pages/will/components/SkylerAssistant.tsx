@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Bot } from 'lucide-react';
@@ -425,20 +424,41 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       if (!userId) {
         throw new Error("User not authenticated");
       }
+
+      // Check if the bucket exists before uploading
+      const { data: buckets, error: bucketsError } = await supabase.storage
+        .listBuckets();
+      
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+        throw new Error(`Storage error: ${bucketsError.message}`);
+      }
+
+      // Log available buckets for debugging
+      console.log('Available buckets:', buckets?.map(b => b.id));
+      
+      // Use "will-documents" bucket as defined in storage.sql
+      const bucketId = 'will-documents';
+      const bucketExists = buckets?.some(b => b.id === bucketId);
+      
+      if (!bucketExists) {
+        throw new Error(`Bucket "${bucketId}" not found. Available buckets: ${buckets?.map(b => b.id).join(', ')}`);
+      }
       
       const fileExt = file.name.split('.').pop();
       const filePath = `${userId}/will-documents/${Date.now()}-${file.name}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('will-documents')
+        .from(bucketId)
         .upload(filePath, file);
       
       if (uploadError) {
+        console.error('Upload error details:', uploadError);
         throw new Error(`Error uploading file: ${uploadError.message}`);
       }
       
       const { data: { publicUrl } } = supabase.storage
-        .from('will-documents')
+        .from(bucketId)
         .getPublicUrl(filePath);
       
       const newDocument = {
@@ -464,12 +484,21 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       
       setMessages(prev => [...prev, assistantMessage]);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error handling file upload:", error);
+      
+      const errorMessage: MessageType = {
+        id: `error-upload-${Date.now()}`,
+        role: 'system',
+        content: `Error uploading file: ${error.message || "Unknown error"}. Please try again.`,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
       
       toast({
         title: "Upload Error",
-        description: "There was a problem uploading your document. Please try again.",
+        description: error.message || "There was a problem uploading your document. Please try again.",
         variant: "destructive"
       });
     }
