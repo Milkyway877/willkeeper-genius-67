@@ -76,7 +76,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     
     // Initialize the document with template content
     const initialContent = getInitialContent(templateId);
-    console.log("Initializing will content:", initialContent.substring(0, 50) + "...");
+    console.log("[WillChat] Initializing will content:", initialContent.substring(0, 50) + "...");
     onContentUpdate(initialContent);
   }, [templateId, templateName]);
   
@@ -136,33 +136,42 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
     
-    console.log("Extracting preview info from input:", inputValue);
+    console.log("[WillChat] Extracting preview info from input:", inputValue);
+    
+    // Check for direct name input (just a name with no other context)
+    // This handles the case where the user just types their name
+    if (inputValue.trim().split(' ').length >= 2 && 
+        /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(inputValue.trim())) {
+      updatedInfo.fullName = inputValue.trim();
+      contentUpdated = true;
+      console.log("[WillChat] Found direct name input:", updatedInfo.fullName);
+    }
     
     // Try to extract full name - more lenient regex
-    const nameMatch = inputValue.match(/(?:my name is|I am|I'm|name|call me|I go by|named) ([A-Za-z\s.'-]+)/i);
+    const nameMatch = inputValue.match(/(?:my name is|I am|I'm|name|call me|I go by|named|I'm called|this is) ([A-Za-z\s.'-]+)/i);
     if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1].trim()) {
       updatedInfo.fullName = nameMatch[1].trim();
       contentUpdated = true;
-      console.log("Found name in input:", updatedInfo.fullName);
+      console.log("[WillChat] Found name in input:", updatedInfo.fullName);
     }
     
     // Try to extract marital status - more lenient regex
     if (inputValue.match(/single|never married|not married/i) && updatedInfo.maritalStatus !== "single") {
       updatedInfo.maritalStatus = "single";
       contentUpdated = true;
-      console.log("Found marital status in input: single");
+      console.log("[WillChat] Found marital status in input: single");
     } else if (inputValue.match(/married|I have a (husband|wife|spouse)/i) && updatedInfo.maritalStatus !== "married") {
       updatedInfo.maritalStatus = "married";
       contentUpdated = true;
-      console.log("Found marital status in input: married");
+      console.log("[WillChat] Found marital status in input: married");
     } else if (inputValue.match(/divorced|separated/i) && updatedInfo.maritalStatus !== "divorced") {
       updatedInfo.maritalStatus = "divorced";
       contentUpdated = true;
-      console.log("Found marital status in input: divorced");
+      console.log("[WillChat] Found marital status in input: divorced");
     } else if (inputValue.match(/widowed|widow|widower/i) && updatedInfo.maritalStatus !== "widowed") {
       updatedInfo.maritalStatus = "widowed";
       contentUpdated = true;
-      console.log("Found marital status in input: widowed");
+      console.log("[WillChat] Found marital status in input: widowed");
     }
     
     // Try to extract address info - more lenient regex
@@ -173,7 +182,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       if (afterAddressMatch.length > 5 && updatedInfo.address !== afterAddressMatch.trim()) {
         updatedInfo.address = afterAddressMatch.trim();
         contentUpdated = true;
-        console.log("Found address in input:", updatedInfo.address);
+        console.log("[WillChat] Found address in input:", updatedInfo.address);
       }
     }
     
@@ -190,7 +199,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         if (names.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(names)) {
           updatedInfo.children = names;
           contentUpdated = true;
-          console.log("Found children in input:", updatedInfo.children);
+          console.log("[WillChat] Found children in input:", updatedInfo.children);
         }
       }
     }
@@ -199,7 +208,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     if (contentUpdated) {
       setUserInfo(updatedInfo); // Update the state
       generateAndUpdateWillContent(updatedInfo); // Generate new content with updated info
-      console.log("Content updated from user typing");
+      console.log("[WillChat] Content updated from user typing");
     }
   };
   
@@ -207,7 +216,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
     
-    console.log("Extracting info from all messages");
+    console.log("[WillChat] Extracting info from all messages");
     
     // Look through user messages to extract information
     for (const message of messages) {
@@ -218,31 +227,41 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       
       const content = message.content;
       
+      // Check for direct name input (just a name with no other context)
+      // This handles the case where the user sent just their name
+      if (message.role === 'user' && 
+          content.trim().split(' ').length >= 2 && 
+          /^[A-Za-z][a-z]+ [A-Za-z][a-z]+$/.test(content.trim())) {
+        updatedInfo.fullName = content.trim();
+        contentUpdated = true;
+        console.log("[WillChat] Found direct name input:", updatedInfo.fullName);
+      }
+      
       // Extract full name - more lenient regex
-      const nameMatch = content.match(/(?:my name is|I am|I'm|name|call me|I go by|named) ([A-Za-z\s.'-]+)/i);
+      const nameMatch = content.match(/(?:my name is|I am|I'm|name|call me|I go by|named|me llamo|this is) ([A-Za-z\s.'-]+)/i);
       if (nameMatch && nameMatch[1] && updatedInfo.fullName !== nameMatch[1].trim()) {
         updatedInfo.fullName = nameMatch[1].trim();
         contentUpdated = true;
-        console.log("Found name:", updatedInfo.fullName);
+        console.log("[WillChat] Found name:", updatedInfo.fullName);
       }
       
       // Extract marital status - more lenient regex
       if (content.match(/single|never married|not married/i) && updatedInfo.maritalStatus !== "single") {
         updatedInfo.maritalStatus = "single";
         contentUpdated = true;
-        console.log("Found marital status: single");
+        console.log("[WillChat] Found marital status: single");
       } else if (content.match(/married|I have a (husband|wife|spouse)/i) && updatedInfo.maritalStatus !== "married") {
         updatedInfo.maritalStatus = "married";
         contentUpdated = true;
-        console.log("Found marital status: married");
+        console.log("[WillChat] Found marital status: married");
       } else if (content.match(/divorced|separated/i) && updatedInfo.maritalStatus !== "divorced") {
         updatedInfo.maritalStatus = "divorced";
         contentUpdated = true;
-        console.log("Found marital status: divorced");
+        console.log("[WillChat] Found marital status: divorced");
       } else if (content.match(/widowed|widow|widower/i) && updatedInfo.maritalStatus !== "widowed") {
         updatedInfo.maritalStatus = "widowed";
         contentUpdated = true;
-        console.log("Found marital status: widowed");
+        console.log("[WillChat] Found marital status: widowed");
       }
       
       // Extract spouse name if married
@@ -251,7 +270,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         if (spouseMatch && spouseMatch[1] && updatedInfo.spouseName !== spouseMatch[1].trim()) {
           updatedInfo.spouseName = spouseMatch[1].trim();
           contentUpdated = true;
-          console.log("Found spouse name:", updatedInfo.spouseName);
+          console.log("[WillChat] Found spouse name:", updatedInfo.spouseName);
         }
       }
       
@@ -260,7 +279,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       if (executorMatch && executorMatch[1] && updatedInfo.executor !== executorMatch[1].trim()) {
         updatedInfo.executor = executorMatch[1].trim();
         contentUpdated = true;
-        console.log("Found executor:", updatedInfo.executor);
+        console.log("[WillChat] Found executor:", updatedInfo.executor);
       }
       
       // Extract address - more lenient regex
@@ -271,7 +290,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
         if (afterAddressMatch.length > 5 && updatedInfo.address !== afterAddressMatch.trim()) {
           updatedInfo.address = afterAddressMatch.trim();
           contentUpdated = true;
-          console.log("Found address:", updatedInfo.address);
+          console.log("[WillChat] Found address:", updatedInfo.address);
           
           // Try to extract city, state, zip from address
           const cityStateMatch = updatedInfo.address.match(/([^,]+),\s*([A-Z]{2})\s*(\d{5}(-\d{4})?)/i);
@@ -279,6 +298,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
             updatedInfo.city = cityStateMatch[1].trim();
             updatedInfo.state = cityStateMatch[2].trim();
             updatedInfo.zipCode = cityStateMatch[3].trim();
+            console.log("[WillChat] Extracted city/state/zip:", updatedInfo.city, updatedInfo.state, updatedInfo.zipCode);
           }
         }
       }
@@ -296,7 +316,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           if (names.length > 0 && JSON.stringify(updatedInfo.children) !== JSON.stringify(names)) {
             updatedInfo.children = names;
             contentUpdated = true;
-            console.log("Found children:", updatedInfo.children);
+            console.log("[WillChat] Found children:", updatedInfo.children);
           }
         }
       }
@@ -313,7 +333,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
             updatedInfo.assets.push(newAsset);
             contentUpdated = true;
-            console.log("Found asset: Real Estate");
+            console.log("[WillChat] Found asset: Real Estate");
           }
         } 
         
@@ -326,7 +346,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
             updatedInfo.assets.push(newAsset);
             contentUpdated = true;
-            console.log("Found asset: Vehicle");
+            console.log("[WillChat] Found asset: Vehicle");
           }
         }
         
@@ -339,7 +359,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           if (!updatedInfo.assets.some(a => a.name === newAsset.name)) {
             updatedInfo.assets.push(newAsset);
             contentUpdated = true;
-            console.log("Found asset: Financial Assets");
+            console.log("[WillChat] Found asset: Financial Assets");
           }
         }
       }
@@ -356,7 +376,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
           if (!updatedInfo.digitalAssets.some(a => a.type === newDigitalAsset.type)) {
             updatedInfo.digitalAssets.push(newDigitalAsset);
             contentUpdated = true;
-            console.log("Found digital asset:", assetType);
+            console.log("[WillChat] Found digital asset:", assetType);
           }
         }
       }
@@ -364,7 +384,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     
     // If we found new information, update state and generate new will content
     if (contentUpdated) {
-      console.log("Content updated from message analysis");
+      console.log("[WillChat] Content updated from message analysis, new info:", JSON.stringify(updatedInfo));
       setUserInfo(updatedInfo);
       generateAndUpdateWillContent(updatedInfo);
     }
@@ -373,7 +393,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
   const generateAndUpdateWillContent = (info: typeof userInfo) => {
     // Generate and update will content based on template and extracted info
     let newContent = '';
-    console.log("Generating will content with info:", JSON.stringify(info));
+    console.log("[WillChat] Generating will content with info:", JSON.stringify(info));
     
     if (templateId === 'digital-assets') {
       newContent = generateDigitalAssetsWill(info);
@@ -384,7 +404,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     }
     
     // Call the parent component's onContentUpdate with the new content
-    console.log("Updating will content, length:", newContent.length);
+    console.log("[WillChat] Updating will content, length:", newContent.length);
     onContentUpdate(newContent);
   };
   
@@ -406,6 +426,19 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     setInputValue('');
     setIsProcessing(true);
     
+    // Check if the user is directly inputting their name (first message)
+    if (messages.length === 1 && messages[0].role === 'assistant') {
+      const possibleName = userMessage.content.trim();
+      // If it looks like a name (2+ words, capitalized), use it directly
+      if (possibleName.split(' ').length >= 2 && 
+          /^[A-Za-z][a-z]+ [A-Za-z][a-z]+/.test(possibleName)) {
+        const tempUpdatedInfo = { ...userInfo, fullName: possibleName };
+        setUserInfo(tempUpdatedInfo);
+        generateAndUpdateWillContent(tempUpdatedInfo);
+        console.log("[WillChat] Direct name input detected and applied:", possibleName);
+      }
+    }
+    
     // Extract information immediately from the user's message
     // to update the preview without waiting for the AI response
     let tempUpdatedInfo = { ...userInfo };
@@ -416,7 +449,15 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     if (nameMatch && nameMatch[1] && tempUpdatedInfo.fullName !== nameMatch[1].trim()) {
       tempUpdatedInfo.fullName = nameMatch[1].trim();
       tempContentUpdated = true;
-      console.log("Found name in user message:", tempUpdatedInfo.fullName);
+      console.log("[WillChat] Found name in user message:", tempUpdatedInfo.fullName);
+    }
+    
+    // Check for direct name input (just a name)
+    else if (userMessage.content.trim().split(' ').length >= 2 && 
+             /^[A-Za-z][a-z]+ [A-Za-z][a-z]+$/.test(userMessage.content.trim())) {
+      tempUpdatedInfo.fullName = userMessage.content.trim();
+      tempContentUpdated = true;
+      console.log("[WillChat] Found direct name input in message:", tempUpdatedInfo.fullName);
     }
     
     // Extract marital status - more lenient regex
@@ -435,7 +476,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       // Update state and content immediately for responsive feedback
       setUserInfo(tempUpdatedInfo);
       generateAndUpdateWillContent(tempUpdatedInfo);
-      console.log("Content updated immediately after user message");
+      console.log("[WillChat] Content updated immediately after user message");
     }
     
     try {
@@ -472,7 +513,7 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
       extractInfoFromAIResponse(aiResponse);
       
     } catch (error) {
-      console.error("Error processing message:", error);
+      console.error("[WillChat] Error processing message:", error);
       
       toast({
         title: "Communication Error",
@@ -490,33 +531,43 @@ export function WillChat({ templateId, templateName, onContentUpdate, willConten
     let updatedInfo = { ...userInfo };
     let contentUpdated = false;
     
+    console.log("[WillChat] Extracting info from AI response:", aiResponse.substring(0, 50) + "...");
+    
     // Check for confirmation of user name - more lenient regex
     const nameConfirmMatch = aiResponse.match(/(?:Thank you|thanks|Hello),\s+([A-Za-z\s.'-]+)/i);
-    if (nameConfirmMatch && nameConfirmMatch[1] && !updatedInfo.fullName) {
+    if (nameConfirmMatch && nameConfirmMatch[1]) {
       const possibleName = nameConfirmMatch[1].trim();
       // Only use confirmed name if it's at least two words (first and last name)
-      if (possibleName.includes(" ") && possibleName.length > 3) {
+      if (possibleName.includes(" ") && possibleName.length > 3 && !updatedInfo.fullName) {
         updatedInfo.fullName = possibleName;
         contentUpdated = true;
-        console.log("Found name confirmation in AI response:", updatedInfo.fullName);
+        console.log("[WillChat] Found name confirmation in AI response:", updatedInfo.fullName);
       }
+    }
+    
+    // Look for direct name confirmation
+    const directNameMatch = aiResponse.match(/your name is ([A-Za-z\s.'-]+)/i);
+    if (directNameMatch && directNameMatch[1] && !updatedInfo.fullName) {
+      updatedInfo.fullName = directNameMatch[1].trim();
+      contentUpdated = true;
+      console.log("[WillChat] Found direct name confirmation in AI response:", updatedInfo.fullName);
     }
     
     // Check for confirmation of marital status
     if (aiResponse.match(/you are single|you mentioned you're single|you mentioned being single/i) && !updatedInfo.maritalStatus) {
       updatedInfo.maritalStatus = "single";
       contentUpdated = true;
-      console.log("Found marital status confirmation in AI response: single");
+      console.log("[WillChat] Found marital status confirmation in AI response: single");
     } else if (aiResponse.match(/you are married|you mentioned you're married|you mentioned being married/i) && !updatedInfo.maritalStatus) {
       updatedInfo.maritalStatus = "married";
       contentUpdated = true;
-      console.log("Found marital status confirmation in AI response: married");
+      console.log("[WillChat] Found marital status confirmation in AI response: married");
     }
     
     if (contentUpdated) {
+      console.log("[WillChat] Content updated from AI response, new info:", JSON.stringify(updatedInfo));
       setUserInfo(updatedInfo);
       generateAndUpdateWillContent(updatedInfo);
-      console.log("Content updated from AI response");
     }
   };
   
@@ -808,3 +859,4 @@ Additional details will be incorporated as we continue our conversation.`;
     </div>
   );
 }
+

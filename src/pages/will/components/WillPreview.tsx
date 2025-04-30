@@ -11,13 +11,13 @@ export function WillPreview({ content }: WillPreviewProps) {
   
   // Log when content changes to help with debugging
   useEffect(() => {
-    console.log("WillPreview content updated:", content ? content.substring(0, 50) + "..." : "empty");
+    console.log("[WillPreview] Content updated:", content ? content.substring(0, 50) + "..." : "empty");
   }, [content]);
   
   // Effect to highlight changes when content updates
   useEffect(() => {
     if (prevContentRef.current !== content && contentDivRef.current) {
-      console.log("Content changed, applying highlight");
+      console.log("[WillPreview] Content changed, applying highlight");
       
       // Find the elements that might have changed
       const newContentLines = content.split('\n');
@@ -92,11 +92,11 @@ export function WillPreview({ content }: WillPreviewProps) {
             else if (line.trim() === '') {
               return <div key={index} className="h-4"></div>;
             }
-            // Check if line contains user information (likely to change)
+            // Check if line contains placeholder information (likely to change)
             else if (line.includes('[') && line.includes(']')) {
               return <p key={index} className="mb-3 text-amber-700">{line}</p>;
             }
-            // Check if line has just been updated with real info (no placeholders)
+            // Check if line has real user information (no placeholders)
             else if (!/\[.*?\]/.test(line) && (
               line.includes('I, ') || 
               line.includes('married') || 
