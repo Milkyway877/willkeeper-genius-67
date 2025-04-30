@@ -11,6 +11,7 @@ import AccountActivation from '@/pages/auth/AccountActivation';
 import EmailVerification from '@/pages/auth/EmailVerification';
 import VerifyEmailBanner from '@/pages/auth/VerifyEmailBanner';
 import AuthCallback from '@/pages/auth/AuthCallback';
+import Dashboard from '@/pages/Dashboard';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/will/create" element={<WillCreatePage />} />
       <Route path="/will/template-creation/:templateId" element={<TemplateWillCreationPage />} />
+      <Route path="/dashboard" element={<Dashboard />} />
       
       {/* Auth routes */}
       <Route path="/auth/signin" element={<SecureSignIn />} />
