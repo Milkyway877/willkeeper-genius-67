@@ -17,7 +17,7 @@ export type EventType =
   | 'will_updated' | 'will_created' | 'will_deleted'
   | 'document_uploaded' | 'security_key_generated' 
   | 'beneficiary_added' | 'executor_added' 
-  | 'item_saved';
+  | 'item_saved' | 'will_media_attached';
 
 // Map specific event types to standard notification types
 export const mapEventTypeToNotificationType = (
@@ -36,6 +36,7 @@ export const mapEventTypeToNotificationType = (
     case 'beneficiary_added':
     case 'executor_added':
     case 'will_deleted':
+    case 'will_media_attached':
       return 'info';
     case 'security':
     case 'security_key_generated':
