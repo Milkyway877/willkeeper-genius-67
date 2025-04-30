@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -144,9 +143,10 @@ export default function TankCreation() {
     }
   };
 
-  const handleFinalization = async (data: any) => {
-    // Call the original finalize function
-    const result = await handleFinalize(data);
+  // Fix for error #1: Make sure this function doesn't pass data to handleFinalize if it doesn't accept args
+  const handleFinalization = async () => {
+    // Call the original finalize function with no arguments
+    const result = await handleFinalize();
     
     // If this was called from a will creation flow, redirect back
     if (willId && messageUrl) {
@@ -203,6 +203,7 @@ export default function TankCreation() {
                  recipientEmail={recipientEmail}
                  deliveryType={deliveryType as DeliveryTrigger}
                  deliveryDate={deliveryDate ? deliveryDate.toISOString() : ''}
+                 // Fix for error #2: Make sure this function accepts an argument if required by TankReview
                  onFinalize={willId ? handleFinalization : handleFinalize}
                  isGenerating={isGenerating}
                  progress={progress}
