@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
 import { DeliveryTrigger, MessageType } from '../../types';
-import { Check, Clock, Mail, FileCheck, Video, FileText } from 'lucide-react';
+import { Check, Clock, Mail, FileCheck, Video, FileText, UserRound } from 'lucide-react';
 
 interface TankReviewProps {
   messageType: MessageType;
@@ -84,7 +83,7 @@ export const TankReview: React.FC<TankReviewProps> = ({
               {isForWill ? (
                 <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
                   <div className="flex items-start">
-                    <User className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                    <UserRound className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
                     <div>
                       <p className="font-medium text-blue-800">Will Executors and Beneficiaries</p>
                       <p className="text-sm text-blue-700">
