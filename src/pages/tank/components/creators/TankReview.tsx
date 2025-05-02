@@ -64,10 +64,10 @@ export const TankReview: React.FC<TankReviewProps> = ({
                   <div className="flex items-center">
                     <FileCheck className="h-5 w-5 text-green-600 mr-2" />
                     <div>
-                      <p className="font-medium text-green-800">Will Attachment</p>
+                      <p className="font-medium text-green-800">Will Testament</p>
                       <p className="text-sm text-green-700">
                         This {messageType === 'video' ? 'video' : 'message'} will be attached to{' '}
-                        <span className="font-medium">{willTitle || "your will"}</span>
+                        <span className="font-medium">{willTitle || "your will"}</span> and will be available to your executors and beneficiaries.
                       </p>
                     </div>
                   </div>
@@ -77,16 +77,35 @@ export const TankReview: React.FC<TankReviewProps> = ({
           </div>
           
           <div>
-            <h3 className="font-medium text-gray-800">Recipient Information</h3>
+            <h3 className="font-medium text-gray-800">
+              {isForWill ? "Will Viewers" : "Recipient Information"}
+            </h3>
             <div className="mt-2 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Name:</span>
-                <span className="font-medium">{recipient}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Email:</span>
-                <span className="font-medium">{recipientEmail}</span>
-              </div>
+              {isForWill ? (
+                <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
+                  <div className="flex items-start">
+                    <User className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-blue-800">Will Executors and Beneficiaries</p>
+                      <p className="text-sm text-blue-700">
+                        This testament will be viewable by the executors and beneficiaries of your will after your passing. 
+                        {recipient && ` Your intended audience is: ${recipient}.`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Name:</span>
+                    <span className="font-medium">{recipient}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Email:</span>
+                    <span className="font-medium">{recipientEmail}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           
@@ -95,12 +114,22 @@ export const TankReview: React.FC<TankReviewProps> = ({
             <div className="mt-2 space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">Method:</span>
-                <span className="font-medium">{formatDeliveryType(deliveryType)}</span>
+                <span className="font-medium">{isForWill ? "Posthumous Delivery" : formatDeliveryType(deliveryType)}</span>
               </div>
-              {deliveryType === 'date' && deliveryDate && (
+              {deliveryType === 'date' && deliveryDate && !isForWill && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Scheduled For:</span>
                   <span className="font-medium">{new Date(deliveryDate).toLocaleDateString()}</span>
+                </div>
+              )}
+              {isForWill && (
+                <div className="bg-amber-50 border border-amber-100 rounded-md p-3">
+                  <div className="flex items-start">
+                    <Clock className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                    <p className="text-sm text-amber-700">
+                      This testament will be delivered to your will executors and beneficiaries upon confirmation of your passing, alongside your will document.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

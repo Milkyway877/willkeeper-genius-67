@@ -18,7 +18,8 @@ import {
   Check,
   User,
   FileText,
-  FileCheck
+  FileCheck,
+  Users
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -46,6 +47,8 @@ interface TankVideoCreatorProps {
   onRecipientChange: (recipient: string) => void;
   onCategoryChange: (category: MessageCategory) => void;
   onVideoUrlChange?: (url: string | null) => void;
+  selectedWillId?: string | null;
+  onWillTitleChange?: (title: string) => void;
 }
 
 export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({ 
@@ -53,7 +56,9 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   onTitleChange,
   onRecipientChange,
   onCategoryChange,
-  onVideoUrlChange
+  onVideoUrlChange,
+  selectedWillId = null,
+  onWillTitleChange
 }) => {
   const { toast } = useToast();
   const { enhanceVideo, isEnhancing } = useMessageEnhancer();
@@ -75,8 +80,9 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const [isApplyingEnhancements, setIsApplyingEnhancements] = useState(false);
   const [enhancedVideoBlob, setEnhancedVideoBlob] = useState<Blob | null>(null);
   const [wills, setWills] = useState<Will[]>([]);
-  const [selectedWillId, setSelectedWillId] = useState<string | null>(null);
+  const [internalSelectedWillId, setInternalSelectedWillId] = useState<string | null>(selectedWillId);
   const [loadingWills, setLoadingWills] = useState(false);
+  const [isForWill, setIsForWill] = useState<boolean>(!!selectedWillId);
   
   const queryParams = new URLSearchParams(window.location.search);
   const willIdFromUrl = queryParams.get('willId');
@@ -86,10 +92,20 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     fetchWills();
     
     // Set will ID from URL if available
-    if (willIdFromUrl) {
-      setSelectedWillId(willIdFromUrl);
+    if (willIdFromUrl || selectedWillId) {
+      const willId = willIdFromUrl || selectedWillId;
+      setInternalSelectedWillId(willId);
+      setIsForWill(true);
     }
-  }, [onCategoryChange]);
+  }, [onCategoryChange, willIdFromUrl, selectedWillId]);
+  
+  // When selected will changes from props
+  useEffect(() => {
+    if (selectedWillId) {
+      setInternalSelectedWillId(selectedWillId);
+      setIsForWill(true);
+    }
+  }, [selectedWillId]);
   
   const fetchWills = async () => {
     try {
@@ -103,6 +119,14 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       if (error) throw error;
       
       setWills(data || []);
+      
+      // If a will ID is selected, fetch its title
+      if (internalSelectedWillId) {
+        const selectedWill = data?.find(will => will.id === internalSelectedWillId);
+        if (selectedWill && onWillTitleChange) {
+          onWillTitleChange(selectedWill.title);
+        }
+      }
     } catch (err) {
       console.error('Error fetching wills:', err);
     } finally {
@@ -180,6 +204,19 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   
   const handleRecipientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setRecipient(e.target.value);
+  };
+  
+  const handleWillSelect = (willId: string) => {
+    setInternalSelectedWillId(willId);
+    setIsForWill(willId !== "");
+    
+    // Update parent component with will title if callback exists
+    if (willId && onWillTitleChange) {
+      const selectedWill = wills.find(will => will.id === willId);
+      if (selectedWill) {
+        onWillTitleChange(selectedWill.title);
+      }
+    }
   };
   
   const handleScriptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -314,11 +351,11 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       }
       
       // If a will is selected, link this video to it as well
-      if (selectedWillId) {
+      if (internalSelectedWillId) {
         const { error: willVideoError } = await supabase
           .from('will_videos')
           .insert({
-            will_id: selectedWillId,
+            will_id: internalSelectedWillId,
             file_path: filePath,
             duration: 0 // We could calculate this
           });
@@ -485,7 +522,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     if (filePath) {
       toast({
         title: "Video Ready",
-        description: selectedWillId ? 
+        description: internalSelectedWillId ? 
           "Your video testament has been successfully attached to your will and is ready for delivery." : 
           "Your video is ready to be delivered."
       });
@@ -517,17 +554,28 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         </div>
         
         <div>
-          <label htmlFor="videoRecipient" className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
+          <label htmlFor="videoRecipient" className="block text-sm font-medium text-gray-700 mb-1">
+            {isForWill ? "For (Executors/Beneficiaries)" : "Recipient"}
+          </label>
           <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            {isForWill ? (
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            ) : (
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            )}
             <Input 
               id="videoRecipient"
-              placeholder="e.g. Michael Johnson" 
+              placeholder={isForWill ? "e.g. For my children" : "e.g. Michael Johnson"} 
               className="pl-10"
               value={recipient}
               onChange={handleRecipientChange}
             />
           </div>
+          {isForWill && (
+            <p className="text-xs text-gray-500 mt-1">
+              Optional: add a note about who this video is specifically intended for
+            </p>
+          )}
         </div>
       </div>
       
@@ -541,12 +589,12 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         </CardHeader>
         <CardContent className="pt-4">
           <p className="text-sm text-gray-600 mb-3">
-            Attach this video to one of your wills as a video testament. Your loved ones will be able to view it along with your will.
+            Attach this video to one of your wills as a video testament. Your loved ones will be able to view it along with your will after your passing.
           </p>
           <div className="space-y-4">
             <Select
-              value={selectedWillId || ""}
-              onValueChange={(value) => setSelectedWillId(value || null)}
+              value={internalSelectedWillId || ""}
+              onValueChange={handleWillSelect}
               disabled={loadingWills}
             >
               <SelectTrigger className="w-full">
@@ -570,13 +618,16 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
               </SelectContent>
             </Select>
             
-            {selectedWillId && (
+            {isForWill && (
               <div className="p-3 bg-green-50 border border-green-100 rounded-md flex items-start">
                 <FileCheck className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                 <div>
-                  <p className="text-green-800 font-medium">Will attachment enabled</p>
+                  <p className="text-green-800 font-medium">Will Testament</p>
                   <p className="text-sm text-green-700">
-                    This video will be attached to your will and will be viewable alongside your will document.
+                    This video will be attached to your will and will be viewable by your executors and beneficiaries after your passing.
+                  </p>
+                  <p className="text-sm text-green-700 mt-1">
+                    <strong>Note:</strong> When attached to a will, delivery will automatically be set to posthumous.
                   </p>
                 </div>
               </div>

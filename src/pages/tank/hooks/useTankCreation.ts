@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
@@ -20,6 +19,7 @@ export const useTankCreation = () => {
   const [progress, setProgress] = useState(0);
   const [messageUrl, setMessageUrl] = useState<string | null>(null);
   const [selectedWillId, setSelectedWillId] = useState<string | null>(null);
+  const [willTitle, setWillTitle] = useState<string>("");
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -33,8 +33,38 @@ export const useTankCreation = () => {
       setSelectedWillId(willIdParam);
       // If coming from will page, default to video message type
       setCreationType('video');
+      // Set delivery type to posthumous when attaching to a will
+      setDeliveryType('posthumous');
+      
+      // Fetch the will title
+      fetchWillTitle(willIdParam);
     }
   }, []);
+  
+  const fetchWillTitle = async (willId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('wills')
+        .select('title')
+        .eq('id', willId)
+        .single();
+        
+      if (error) throw error;
+      
+      if (data?.title) {
+        setWillTitle(data.title);
+      }
+    } catch (err) {
+      console.error('Error fetching will title:', err);
+    }
+  };
+
+  // Set delivery type to posthumous when will is selected
+  useEffect(() => {
+    if (selectedWillId) {
+      setDeliveryType('posthumous');
+    }
+  }, [selectedWillId]);
 
   const handleNext = () => {
     if (currentStep === 0 && !creationType) {
@@ -63,11 +93,23 @@ export const useTankCreation = () => {
       }
     }
     
+    if (currentStep === 2 && selectedWillId) {
+      // Skip checking delivery type if it's a will testament
+      setCurrentStep(prev => prev + 1);
+      return;
+    }
+    
     if (currentStep === 2 && !deliveryType) {
       toast({
         title: 'Missing Selection',
         description: 'Please select a delivery method to continue.'
       });
+      return;
+    }
+    
+    // Skip delivery date validation for will testaments
+    if (currentStep === 3 && selectedWillId) {
+      setCurrentStep(prev => prev + 1);
       return;
     }
     
@@ -222,6 +264,7 @@ export const useTankCreation = () => {
     progress,
     messageUrl,
     selectedWillId,
+    willTitle,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -232,6 +275,7 @@ export const useTankCreation = () => {
     setDeliveryDate,
     setMessageUrl,
     setSelectedWillId,
+    setWillTitle,
     handleNext,
     handlePrev,
     handleCancel,
