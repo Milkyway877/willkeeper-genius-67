@@ -333,8 +333,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         } else {
           toast({
             title: "Video Testament Added",
-            description: "Your video testament has been successfully attached to your will.",
-            variant: "success"
+            description: "Your video testament has been successfully attached to your will."
           });
         }
       }
