@@ -56,7 +56,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [defaultValue]);
+  }, [defaultValue, hasSignature]);
 
   // Load default value if provided
   useEffect(() => {
