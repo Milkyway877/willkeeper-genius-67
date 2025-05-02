@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { TankDocumentCreator } from './components/creators/TankDocumentCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
 import { MessageCategory, DeliveryTrigger } from './types';
+import { supabase } from '@/integrations/supabase/client';
 
 const steps = [
   {
@@ -74,6 +75,27 @@ export default function TankCreation() {
     handleCancel,
     handleFinalize
   } = useTankCreation();
+
+  const [selectedWillTitle, setSelectedWillTitle] = useState<string>("");
+  
+  useEffect(() => {
+    // Fetch the will title if we have a will ID
+    if (selectedWillId) {
+      const fetchWillTitle = async () => {
+        const { data, error } = await supabase
+          .from('wills')
+          .select('title')
+          .eq('id', selectedWillId)
+          .single();
+          
+        if (!error && data) {
+          setSelectedWillTitle(data.title || "Your Will");
+        }
+      };
+      
+      fetchWillTitle();
+    }
+  }, [selectedWillId]);
 
   const renderCreationComponent = () => {
     switch (creationType) {
@@ -141,6 +163,7 @@ export default function TankCreation() {
                  isGenerating={isGenerating}
                  progress={progress}
                  isForWill={!!selectedWillId}
+                 willTitle={selectedWillTitle}
                />;
       default:
         return <div>Unknown step</div>;

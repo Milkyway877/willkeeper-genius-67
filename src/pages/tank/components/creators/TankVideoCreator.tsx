@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -334,7 +333,8 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         } else {
           toast({
             title: "Video Testament Added",
-            description: "Your video testament has been added to the selected will successfully."
+            description: "Your video testament has been successfully attached to your will.",
+            variant: "success"
           });
         }
       }
@@ -487,7 +487,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
       toast({
         title: "Video Ready",
         description: selectedWillId ? 
-          "Your video is ready to be delivered and has been attached to your will." : 
+          "Your video testament has been successfully attached to your will and is ready for delivery." : 
           "Your video is ready to be delivered."
       });
     }
@@ -532,46 +532,59 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         </div>
       </div>
       
-      {/* Will selection dropdown */}
-      <div>
-        <Label htmlFor="willSelect" className="block text-sm font-medium text-gray-700 mb-1">
-          Attach to Will (Optional)
-        </Label>
-        <Select
-          value={selectedWillId || ""}
-          onValueChange={(value) => setSelectedWillId(value || null)}
-          disabled={loadingWills}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a will to attach this video to" />
-          </SelectTrigger>
-          <SelectContent>
-            {loadingWills ? (
-              <SelectItem value="loading" disabled>Loading wills...</SelectItem>
-            ) : wills.length === 0 ? (
-              <SelectItem value="none" disabled>No wills available</SelectItem>
-            ) : (
-              <>
-                <SelectItem value="">Don't attach to a will</SelectItem>
-                {wills.map(will => (
-                  <SelectItem key={will.id} value={will.id}>
-                    {will.title}
-                  </SelectItem>
-                ))}
-              </>
+      {/* Attach to Will section - Enhanced with better UI */}
+      <Card className="border-2 border-willtank-100">
+        <CardHeader className="pb-2 bg-willtank-50">
+          <CardTitle className="text-lg flex items-center">
+            <FileCheck className="mr-2 h-5 w-5 text-willtank-600" />
+            Attach to Will
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <p className="text-sm text-gray-600 mb-3">
+            Attach this video to one of your wills as a video testament. Your loved ones will be able to view it along with your will.
+          </p>
+          <div className="space-y-4">
+            <Select
+              value={selectedWillId || ""}
+              onValueChange={(value) => setSelectedWillId(value || null)}
+              disabled={loadingWills}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a will to attach this video to" />
+              </SelectTrigger>
+              <SelectContent>
+                {loadingWills ? (
+                  <SelectItem value="loading" disabled>Loading wills...</SelectItem>
+                ) : wills.length === 0 ? (
+                  <SelectItem value="none" disabled>No wills available</SelectItem>
+                ) : (
+                  <>
+                    <SelectItem value="">Don't attach to a will</SelectItem>
+                    {wills.map(will => (
+                      <SelectItem key={will.id} value={will.id}>
+                        {will.title}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+            
+            {selectedWillId && (
+              <div className="p-3 bg-green-50 border border-green-100 rounded-md flex items-start">
+                <FileCheck className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
+                <div>
+                  <p className="text-green-800 font-medium">Will attachment enabled</p>
+                  <p className="text-sm text-green-700">
+                    This video will be attached to your will and will be viewable alongside your will document.
+                  </p>
+                </div>
+              </div>
             )}
-          </SelectContent>
-        </Select>
-        
-        {selectedWillId && (
-          <div className="mt-2">
-            <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-              <FileCheck className="mr-1 h-3 w-3" />
-              Will attachment enabled
-            </Badge>
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
       
       <Tabs defaultValue="record" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-3 mb-4">
