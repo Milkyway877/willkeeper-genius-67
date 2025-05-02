@@ -61,7 +61,8 @@ export const downloadDocument = (content: string, title: string, signatureData?:
           body { font-family: 'Times New Roman', Times, serif; margin: 3cm; }
           h1 { text-align: center; font-size: 24pt; margin-bottom: 24pt; }
           .content { line-height: 1.5; font-size: 12pt; }
-          .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; text-align: center; }
+          .signature-image { max-width: 250px; max-height: 100px; }
+          .signature { margin-top: 50pt; border-top: 1px solid #000; width: 250px; }
           .date { margin-top: 30pt; }
           .header { text-align: center; margin-bottom: 30pt; }
           .article-title { font-weight: bold; margin-top: 16px; margin-bottom: 8px; color: #1a4e71; }
@@ -83,7 +84,7 @@ export const downloadDocument = (content: string, title: string, signatureData?:
             <p>Dated: ${new Date().toLocaleDateString()}</p>
           </div>
           <div class="signature">
-            <img src="${signatureData}" width="250" />
+            <img src="${signatureData}" class="signature-image" />
             <p>Signature</p>
           </div>
         ` : ''}

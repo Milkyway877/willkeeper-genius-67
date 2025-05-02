@@ -54,6 +54,14 @@ export function WillPreviewSection({
       
       <div className={`bg-gray-50 border rounded-md p-4 mb-4 max-h-96 overflow-y-auto ${showFormatted ? 'font-serif' : 'font-mono'}`}>
         <WillPreview content={content} formatted={showFormatted} />
+        
+        {signature && showFormatted && (
+          <div className="mt-8 pt-4 border-t border-gray-300">
+            <p className="text-sm text-gray-600 mb-2">Signed:</p>
+            <img src={signature} alt="Signature" className="max-w-[200px] max-h-[80px]" />
+            <p className="text-sm mt-1 text-gray-500">Date: {new Date().toLocaleDateString()}</p>
+          </div>
+        )}
       </div>
       
       <Button onClick={handleDownload} className="w-full">

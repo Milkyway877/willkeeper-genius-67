@@ -4,9 +4,10 @@ import React from 'react';
 interface WillPreviewProps {
   content: string;
   formatted?: boolean;
+  signature?: string | null;
 }
 
-export function WillPreview({ content, formatted = true }: WillPreviewProps) {
+export function WillPreview({ content, formatted = true, signature = null }: WillPreviewProps) {
   if (!formatted) {
     // Plain text view with monospace font
     return <pre className="whitespace-pre-wrap text-sm">{content}</pre>;
