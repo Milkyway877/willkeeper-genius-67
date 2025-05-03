@@ -130,4 +130,5 @@ export interface WillContent {
   specificBequests?: string;
   residualEstate?: string;
   finalArrangements?: string;
+  [key: string]: any; // Add index signature to make it compatible with Record<string, any>
 }

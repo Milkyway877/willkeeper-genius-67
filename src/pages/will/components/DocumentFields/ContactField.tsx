@@ -16,6 +16,7 @@ interface ContactFieldProps {
   onAiHelp?: (position: { x: number, y: number }) => void;
   required?: boolean;
   error?: string;
+  className?: string; // Added className prop
 }
 
 export function ContactField({ 
@@ -27,7 +28,8 @@ export function ContactField({
   tooltipText,
   onAiHelp,
   required = false,
-  error 
+  error,
+  className
 }: ContactFieldProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -50,7 +52,7 @@ export function ContactField({
   };
 
   return (
-    <div className="relative space-y-1">
+    <div className={`relative space-y-1 ${className || ''}`}>
       <div className="flex justify-between items-center">
         <Label htmlFor={`contact-${label.replace(/\s+/g, '-').toLowerCase()}`} className="text-xs">
           {label}

@@ -324,7 +324,7 @@ ${finalArrangements || '[No specific final arrangements specified]'}
     
     // Update the appropriate state based on the field
     if (field.startsWith('personal_')) {
-      const personalField = field.replace('personal_', '');
+      const personalField = field.replace('personal_', '') as keyof typeof personalInfo;
       setPersonalInfo(prev => ({
         ...prev,
         [personalField]: extractedContent
