@@ -119,10 +119,12 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
                 How can I help you create your will today?
               </p>
               
-              <Badge className="bg-willtank-50 text-willtank-800 border-willtank-200 mb-3 inline-flex items-center">
-                <Sparkle className="h-3 w-3 mr-1 text-amber-500" />
-                AI-powered guidance
-              </Badge>
+              <span className="inline-block">
+                <Badge className="bg-willtank-50 text-willtank-800 border-willtank-200 mb-3 inline-flex items-center">
+                  <Sparkle className="h-3 w-3 mr-1 text-amber-500" />
+                  AI-powered guidance
+                </Badge>
+              </span>
             </div>
             
             <div className="space-y-2">
