@@ -16,6 +16,7 @@ export interface Contact {
   email: string;
   phone: string;
   address: string;
+  relationship?: string; // Added relationship field
 }
 
 export interface SkylerAssistantProps {
@@ -31,4 +32,72 @@ export interface SkylerAssistantProps {
     contacts: Contact[];
     partialWill: string;
   }) => void;
+}
+
+// Individual types for specific roles
+export interface Executor {
+  id: string;
+  name: string;
+  relationship: string;
+  email: string;
+  phone: string;
+  address: string;
+  isPrimary: boolean;
+}
+
+export interface Beneficiary {
+  id: string;
+  name: string;
+  relationship: string;
+  email: string;
+  phone: string;
+  address: string;
+  percentage: number;
+}
+
+export interface Guardian {
+  id: string;
+  name: string;
+  relationship: string;
+  email: string;
+  phone: string;
+  address: string;
+  forChildren: string[]; // Names of children this guardian is for
+}
+
+// Asset types
+export interface Property {
+  id: string;
+  description: string;
+  address: string;
+  ownershipType: string;
+  approximateValue: number;
+  mortgageDetails?: string;
+  insuranceInfo?: string;
+}
+
+export interface Vehicle {
+  id: string;
+  description: string;
+  registrationNumber: string;
+  approximateValue: number;
+  loanInfo?: string;
+  insuranceInfo?: string;
+}
+
+export interface FinancialAccount {
+  id: string;
+  accountType: string;
+  institution: string;
+  accountNumber: string;
+  approximateValue: number;
+  beneficiaryDesignation?: string;
+}
+
+export interface DigitalAsset {
+  id: string;
+  description: string;
+  accessInformation: string;
+  approximateValue?: number;
+  platform?: string;
 }
