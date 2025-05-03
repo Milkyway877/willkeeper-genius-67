@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -67,7 +66,7 @@ export default function Will() {
               setParsedWillContent(createWillContentFromText(will.content || ""));
             }
             
-            // If there's a signature stored (this would need to be implemented in your data model)
+            // If there's a signature stored, use it - but since it might be undefined, handle that case
             if (will.signature) {
               setSignature(will.signature);
             }
@@ -173,10 +172,11 @@ export default function Will() {
       
       setIsLoading(true);
       
-      // Update existing will with new content
+      // Update existing will with new content, including signature if present
       const updated = await updateWill(currentWill.id, { 
         content: willContent,
         title: willTitle,
+        signature: signature, // Include signature in the update
         updated_at: new Date().toISOString()
       });
       

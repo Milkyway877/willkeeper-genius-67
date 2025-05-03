@@ -11,6 +11,7 @@ export interface Will {
   template_type?: string;
   ai_generated?: boolean;
   content?: string;
+  signature?: string; // Added signature property
 }
 
 export interface WillExecutor {
