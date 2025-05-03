@@ -1,5 +1,4 @@
-
-import { createBrowserRouter, Outlet } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import Home from './pages/Index';
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -43,14 +42,13 @@ import TestDeathVerification from './pages/TestDeathVerification';
 import VerificationResponse from './pages/verify/VerificationResponse';
 import VerificationPortal from './pages/verify/VerificationPortal';
 import { Layout } from './components/layout/Layout';
+import { Outlet } from 'react-router-dom';
 
 // Create the router configuration
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout>
-      <Outlet />
-    </Layout>,
+    element: <Layout><Outlet /></Layout>,
     children: [
       {
         path: "/",
@@ -231,7 +229,7 @@ export const router = createBrowserRouter([
       {
         path: "*",
         element: <NotFound />,
-      },
+      }
     ],
   },
 ]);
