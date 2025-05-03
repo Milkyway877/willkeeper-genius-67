@@ -1,13 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2, Video } from 'lucide-react';
+import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2, Video, Eye, FileCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { getWill, getWills, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
+import { DocumentPreview } from './components/DocumentPreview';
+import { WillContent } from './components/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -19,10 +24,15 @@ export default function Will() {
   const [currentWill, setCurrentWill] = useState<WillType | null>(null);
   const [noWillsAvailable, setNoWillsAvailable] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'formatted' | 'raw'>('formatted');
+  const [signature, setSignature] = useState<string | null>(null);
+  const [parsedWillContent, setParsedWillContent] = useState<WillContent | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
   const { id } = useParams(); // Get will ID from URL params
+  const [searchParams] = useSearchParams();
+  const videoAdded = searchParams.get('videoAdded') === 'true';
 
   useEffect(() => {
     const fetchWillData = async () => {
@@ -41,6 +51,27 @@ export default function Will() {
             // Use actual content from the database
             setWillContent(will.content || "");
             
+            // Try to parse the content as JSON to create a structured WillContent object
+            try {
+              // Check if the content is a JSON string
+              if (will.content && will.content.trim().startsWith('{')) {
+                const parsedContent = JSON.parse(will.content);
+                setParsedWillContent(parsedContent);
+              } else {
+                // If not JSON, create a basic structure from the text content
+                setParsedWillContent(createWillContentFromText(will.content || ""));
+              }
+            } catch (parseError) {
+              console.error("Error parsing will content:", parseError);
+              // Create a basic structure from the text content
+              setParsedWillContent(createWillContentFromText(will.content || ""));
+            }
+            
+            // If there's a signature stored (this would need to be implemented in your data model)
+            if (will.signature) {
+              setSignature(will.signature);
+            }
+            
             // Set dates
             if (will.updated_at) {
               setLastSaved(format(new Date(will.updated_at), 'h:mm a'));
@@ -52,6 +83,14 @@ export default function Will() {
               setCreatedDate(format(new Date(will.created_at), 'MMMM dd, yyyy'));
             } else {
               setCreatedDate('N/A');
+            }
+
+            // If videoAdded is true, show success toast
+            if (videoAdded) {
+              toast({
+                title: "Video Added Successfully",
+                description: "Your video testament has been added to your will.",
+              });
             }
           } else {
             setLoadingError("Will not found");
@@ -92,7 +131,30 @@ export default function Will() {
     };
     
     fetchWillData();
-  }, [id, toast, navigate]);
+  }, [id, toast, navigate, videoAdded]);
+
+  // Create a WillContent object from text
+  const createWillContentFromText = (text: string): WillContent => {
+    // Try to extract basic information from the text to create a structured object
+    const fullNameMatch = text.match(/I,\s+([^,]+)/);
+    const addressMatch = text.match(/residing at\s+([^,\.]+)/);
+    const dobMatch = text.match(/born on\s+([^,\.]+)/);
+    
+    return {
+      personalInfo: {
+        fullName: fullNameMatch ? fullNameMatch[1].trim() : "Unknown",
+        address: addressMatch ? addressMatch[1].trim() : "",
+        dateOfBirth: dobMatch ? dobMatch[1].trim() : "",
+        email: "",
+        phone: ""
+      },
+      executors: [],
+      beneficiaries: [],
+      specificBequests: "",
+      residualEstate: "",
+      finalArrangements: ""
+    };
+  };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setWillContent(e.target.value);
@@ -124,6 +186,19 @@ export default function Will() {
       setIsEditing(false);
       setLastSaved(format(new Date(), 'h:mm a'));
       
+      // Also update the parsed content if in raw mode
+      if (activeView === 'raw') {
+        try {
+          if (willContent && willContent.trim().startsWith('{')) {
+            setParsedWillContent(JSON.parse(willContent));
+          } else {
+            setParsedWillContent(createWillContentFromText(willContent));
+          }
+        } catch (parseError) {
+          console.error("Error parsing updated will content:", parseError);
+        }
+      }
+      
       toast({
         title: "Will saved",
         description: "Your will has been saved successfully.",
@@ -154,6 +229,87 @@ export default function Will() {
 
   const handleViewAllWills = () => {
     navigate('/wills');
+  };
+
+  const handleDownloadProfessionalDocument = () => {
+    if (parsedWillContent) {
+      downloadProfessionalDocument(
+        parsedWillContent,
+        signature,
+        `${parsedWillContent.personalInfo?.fullName || 'My'}'s Will`
+      );
+    } else {
+      toast({
+        title: "Cannot download",
+        description: "Unable to generate professional document from this will.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Render the will content based on the active view
+  const renderWillContent = () => {
+    if (activeView === 'formatted' && parsedWillContent) {
+      return (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <div className="flex items-center">
+              <FileText className="text-willtank-700 mr-2" size={18} />
+              <h3 className="font-medium">{willTitle}</h3>
+            </div>
+            <div className="text-xs text-gray-500 flex items-center">
+              <Clock size={14} className="mr-1" />
+              Last saved at {lastSaved}
+            </div>
+          </div>
+          
+          <div className="p-6">
+            <DocumentPreview 
+              willContent={parsedWillContent} 
+              signature={signature}
+              documentText={willContent}
+            />
+          </div>
+        </div>
+      );
+    } else {
+      // Raw text view
+      return (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+        >
+          <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <div className="flex items-center">
+              <FileText className="text-willtank-700 mr-2" size={18} />
+              <h3 className="font-medium">{willTitle}</h3>
+            </div>
+            <div className="text-xs text-gray-500 flex items-center">
+              <Clock size={14} className="mr-1" />
+              Last saved at {lastSaved}
+            </div>
+          </div>
+          
+          <div className="p-6">
+            {isEditing ? (
+              <textarea 
+                className="w-full h-[500px] p-4 border border-gray-200 rounded-md font-mono text-sm"
+                value={willContent}
+                onChange={handleContentChange}
+              />
+            ) : (
+              <div className="prose max-w-none">
+                <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                  {willContent}
+                </pre>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      );
+    }
   };
 
   if (isLoading) {
@@ -268,57 +424,42 @@ export default function Will() {
                 Save Changes
               </Button>
             ) : (
-              <Button onClick={() => setIsEditing(true)} variant="outline">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Will
+              activeView === 'raw' && (
+                <Button onClick={() => setIsEditing(true)} variant="outline">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Will
+                </Button>
+              )
+            )}
+            {activeView === 'raw' && (
+              <Button variant="outline" onClick={copyToClipboard}>
+                <Copy className="mr-2 h-4 w-4" />
+                Copy
               </Button>
             )}
-            <Button variant="outline" onClick={copyToClipboard}>
-              <Copy className="mr-2 h-4 w-4" />
-              Copy
-            </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleDownloadProfessionalDocument}>
               <Download className="mr-2 h-4 w-4" />
               Download PDF
             </Button>
           </div>
         </div>
         
+        <Tabs defaultValue="formatted" className="mb-6" onValueChange={(value) => setActiveView(value as 'formatted' | 'raw')}>
+          <TabsList>
+            <TabsTrigger value="formatted">
+              <Eye className="h-4 w-4 mr-2" />
+              Professional View
+            </TabsTrigger>
+            <TabsTrigger value="raw">
+              <FileText className="h-4 w-4 mr-2" />
+              Raw Content
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-            >
-              <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                <div className="flex items-center">
-                  <FileText className="text-willtank-700 mr-2" size={18} />
-                  <h3 className="font-medium">{willTitle}</h3>
-                </div>
-                <div className="text-xs text-gray-500 flex items-center">
-                  <Clock size={14} className="mr-1" />
-                  Last saved at {lastSaved}
-                </div>
-              </div>
-              
-              <div className="p-6">
-                {isEditing ? (
-                  <textarea 
-                    className="w-full h-[500px] p-4 border border-gray-200 rounded-md font-mono text-sm"
-                    value={willContent}
-                    onChange={handleContentChange}
-                  />
-                ) : (
-                  <div className="prose max-w-none">
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                      {willContent}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </motion.div>
+            {renderWillContent()}
 
             {/* Add Video Testament Section */}
             {currentWill && !isLoading && (
@@ -381,6 +522,18 @@ export default function Will() {
                   </div>
                 </div>
               </div>
+              
+              {activeView === 'formatted' && parsedWillContent && (
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <Button 
+                    onClick={handleDownloadProfessionalDocument}
+                    className="w-full flex items-center gap-2 bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700"
+                  >
+                    <FileCheck className="h-4 w-4" />
+                    Download Official Will
+                  </Button>
+                </div>
+              )}
             </motion.div>
             
             <motion.div 
