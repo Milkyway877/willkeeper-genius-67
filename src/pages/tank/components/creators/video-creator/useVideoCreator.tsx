@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useMessageEnhancer } from '../../../hooks/useMessageEnhancer';
 import { MessageCategory } from '../../../types';
 
 interface UseVideoCreatorProps {
@@ -21,7 +20,6 @@ export const useVideoCreator = ({
   onVideoUrlChange
 }: UseVideoCreatorProps) => {
   const { toast } = useToast();
-  const { enhanceVideo, isEnhancing, enhancementProgress } = useMessageEnhancer();
   const [title, setTitle] = useState<string>('');
   const [recipient, setRecipient] = useState<string>('');
   const [isRecording, setIsRecording] = useState(false);
@@ -33,12 +31,7 @@ export const useVideoCreator = ({
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [activeTab, setActiveTab] = useState('record');
   const [scriptContent, setScriptContent] = useState<string>('');
-  const [musicVolume, setMusicVolume] = useState(50);
-  const [selectedMusic, setSelectedMusic] = useState<string | null>(null);
-  const [filters, setFilters] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [isApplyingEnhancements, setIsApplyingEnhancements] = useState(false);
-  const [enhancedVideoBlob, setEnhancedVideoBlob] = useState<Blob | null>(null);
   
   useEffect(() => {
     onCategoryChange('story');
@@ -191,9 +184,6 @@ export const useVideoCreator = ({
   const resetRecording = () => {
     setVideoBlob(null);
     setVideoPreviewUrl(null);
-    setEnhancedVideoBlob(null);
-    setSelectedMusic(null);
-    setFilters([]);
     
     if (videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -206,10 +196,7 @@ export const useVideoCreator = ({
   };
 
   const uploadVideoToSupabase = async () => {
-    // Use the enhanced video if available, otherwise use the original
-    const blobToUpload = enhancedVideoBlob || videoBlob;
-    
-    if (!blobToUpload) {
+    if (!videoBlob) {
       toast({
         title: "No Video Found",
         description: "Please record or upload a video first.",
@@ -229,7 +216,7 @@ export const useVideoCreator = ({
       // Upload the file directly to the bucket we created via SQL
       const { error: uploadError, data } = await supabase.storage
         .from('future-videos')
-        .upload(filePath, blobToUpload, {
+        .upload(filePath, videoBlob, {
           cacheControl: '3600',
           upsert: true
         });
@@ -304,86 +291,6 @@ export const useVideoCreator = ({
       description: `${file.name} has been successfully uploaded.`
     });
   };
-  
-  const handleMusicSelect = (music: string) => {
-    if (selectedMusic === music) {
-      setSelectedMusic(null);
-      toast({
-        title: "Music Removed",
-        description: `Background music has been removed.`
-      });
-    } else {
-      setSelectedMusic(music);
-      toast({
-        title: "Music Selected",
-        description: `"${music}" background music has been applied.`
-      });
-    }
-  };
-  
-  const toggleFilter = (filter: string) => {
-    if (filters.includes(filter)) {
-      setFilters(filters.filter(f => f !== filter));
-      toast({
-        title: "Filter Removed",
-        description: `"${filter}" filter has been removed.`
-      });
-    } else {
-      setFilters([...filters, filter]);
-      toast({
-        title: "Filter Applied",
-        description: `"${filter}" filter has been applied.`
-      });
-    }
-  };
-
-  // Function to apply selected enhancements to video using Gemini
-  const applyEnhancements = async () => {
-    if (!videoBlob) {
-      toast({
-        title: "No Video Found",
-        description: "Please record or upload a video first.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsApplyingEnhancements(true);
-    
-    try {
-      const enhancedBlob = await enhanceVideo(videoBlob, {
-        music: selectedMusic || undefined,
-        musicVolume: musicVolume,
-        filters: filters.length > 0 ? filters : undefined,
-        useAI: true
-      });
-      
-      if (enhancedBlob) {
-        const enhancedURL = URL.createObjectURL(enhancedBlob);
-        setEnhancedVideoBlob(enhancedBlob);
-        setVideoPreviewUrl(enhancedURL);
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-          videoRef.current.src = enhancedURL;
-        }
-        
-        toast({
-          title: "Enhancements Applied",
-          description: "Your video has been enhanced with your selected options"
-        });
-      }
-    } catch (error) {
-      console.error('Error applying enhancements:', error);
-      toast({
-        title: "Enhancement Failed",
-        description: "Could not apply enhancements to your video. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsApplyingEnhancements(false);
-    }
-  };
 
   // Use this video handler
   const handleUseVideo = async () => {
@@ -399,11 +306,6 @@ export const useVideoCreator = ({
   const handleRemoveVideo = () => {
     setVideoPreviewUrl(null);
     setVideoBlob(null);
-    setEnhancedVideoBlob(null);
-  };
-
-  const handleMusicVolumeChange = (volume: number) => {
-    setMusicVolume(volume);
   };
   
   return {
@@ -419,13 +321,7 @@ export const useVideoCreator = ({
     isCameraReady,
     activeTab,
     scriptContent,
-    musicVolume,
-    selectedMusic,
-    filters,
     isUploading,
-    isEnhancing,
-    enhancementProgress,
-    enhancedVideoBlob,
     
     // Refs
     videoRef,
@@ -439,12 +335,8 @@ export const useVideoCreator = ({
     handlePlayPause,
     resetRecording,
     handleFileUpload,
-    handleMusicSelect,
-    toggleFilter,
-    applyEnhancements,
     handleUseVideo,
     handleRemoveVideo,
-    handleMusicVolumeChange,
     setActiveTab
   };
 };

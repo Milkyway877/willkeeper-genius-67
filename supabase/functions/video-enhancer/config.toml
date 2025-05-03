@@ -1,7 +1,0 @@
-
-# Function configuration
-project_id = "ksiinmxsycosnpchutuw"
-verify_jwt = false # Set to true for production to require auth
-
-[global.env]
-GEMINI_API_KEY = "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"

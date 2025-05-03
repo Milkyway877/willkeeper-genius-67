@@ -41,13 +41,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     isCameraReady,
     activeTab,
     scriptContent,
-    musicVolume,
-    selectedMusic,
-    filters,
     isUploading,
-    isEnhancing,
-    enhancementProgress,
-    enhancedVideoBlob,
     
     // Refs
     videoRef,
@@ -61,12 +55,8 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     handlePlayPause,
     resetRecording,
     handleFileUpload,
-    handleMusicSelect,
-    toggleFilter,
-    applyEnhancements,
     handleUseVideo,
     handleRemoveVideo,
-    handleMusicVolumeChange,
     setActiveTab
   } = useVideoCreator({
     onContentChange,
@@ -111,16 +101,6 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
             />
             
             <VideoEnhancementPanel
-              selectedMusic={selectedMusic}
-              filters={filters}
-              isEnhancing={isEnhancing}
-              enhancementProgress={enhancementProgress}
-              musicVolume={musicVolume}
-              enhancedVideoBlob={enhancedVideoBlob}
-              onMusicSelect={handleMusicSelect}
-              onToggleFilter={toggleFilter}
-              onMusicVolumeChange={handleMusicVolumeChange}
-              onApplyEnhancements={applyEnhancements}
               videoBlob={videoBlob}
             />
           </div>
