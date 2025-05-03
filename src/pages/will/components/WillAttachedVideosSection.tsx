@@ -56,7 +56,7 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
   }, [willId]);
   
   const handleCreateVideo = () => {
-    navigate('/tank/create?willId=' + willId);
+    navigate(`/will/video-creation/${willId}`);
   };
 
   const getVideoUrl = async (filePath: string): Promise<string | null> => {
