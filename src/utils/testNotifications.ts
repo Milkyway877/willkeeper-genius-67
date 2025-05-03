@@ -34,3 +34,45 @@ export const createSuccessNotification = async () => {
     description: 'This is a test success notification to verify the system is working.'
   });
 };
+
+export const createWarningNotification = async () => {
+  return createSystemNotification('warning', {
+    title: 'Warning',
+    description: 'This is a test warning notification to verify the system is working.'
+  });
+};
+
+export const createWillCreatedNotification = async () => {
+  return createSystemNotification('will_created', {
+    title: 'Will Created',
+    description: 'This is a test will creation notification to verify the system is working.'
+  });
+};
+
+export const createWillUpdatedNotification = async () => {
+  return createSystemNotification('will_updated', {
+    title: 'Will Updated',
+    description: 'This is a test will update notification to verify the system is working.'
+  });
+};
+
+export const createBeneficiaryAddedNotification = async () => {
+  return createSystemNotification('beneficiary_added', {
+    title: 'Beneficiary Added',
+    description: 'This is a test beneficiary added notification to verify the system is working.'
+  });
+};
+
+export const createExecutorAddedNotification = async () => {
+  return createSystemNotification('executor_added', {
+    title: 'Executor Added',
+    description: 'This is a test executor added notification to verify the system is working.'
+  });
+};
+
+export const createDocumentUploadedNotification = async () => {
+  return createSystemNotification('document_uploaded', {
+    title: 'Document Uploaded',
+    description: 'This is a test document uploaded notification to verify the system is working.'
+  });
+};

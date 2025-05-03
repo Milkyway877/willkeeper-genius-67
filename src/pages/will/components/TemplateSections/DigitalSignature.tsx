@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { TemplateWillSection } from '@/components/will/TemplateWillSection';
 import { Pencil, Check } from 'lucide-react';
 import { SignatureCanvas } from '@/components/ui/signature-canvas';
+import { triggerWillSignedNotification } from '@/utils/notificationTriggers';
+import { toast } from '@/hooks/use-toast';
 
 interface DigitalSignatureProps {
   defaultOpen?: boolean;
@@ -11,11 +13,24 @@ interface DigitalSignatureProps {
 
 export function DigitalSignature({ defaultOpen = false, onSignatureChange }: DigitalSignatureProps) {
   const [signature, setSignature] = useState<string | null>(null);
+  const [hasNotified, setHasNotified] = useState(false);
 
-  const handleSignatureCapture = (signatureData: string | null) => {
+  const handleSignatureCapture = async (signatureData: string | null) => {
     setSignature(signatureData);
+    
     if (onSignatureChange) {
       onSignatureChange(signatureData);
+    }
+    
+    // Trigger notification only when signature is added (not when cleared)
+    // and only once per signature session
+    if (signatureData && !hasNotified) {
+      try {
+        await triggerWillSignedNotification();
+        setHasNotified(true);
+      } catch (error) {
+        console.error('Failed to send signature notification:', error);
+      }
     }
   };
 

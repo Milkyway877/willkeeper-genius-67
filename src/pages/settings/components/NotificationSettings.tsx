@@ -2,11 +2,24 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Switch } from "@/components/ui/switch";
-import { Bell, Mail, BadgeInfo } from 'lucide-react';
+import { Bell, Mail, BadgeInfo, Shield, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
-import { createTestNotification } from '@/utils/testNotifications';
+import { 
+  createTestNotification, 
+  createSecurityNotification, 
+  createSuccessNotification,
+  createWarningNotification,
+  createWillCreatedNotification,
+  createBeneficiaryAddedNotification
+} from '@/utils/testNotifications';
 import { toast } from '@/hooks/use-toast';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function NotificationSettings() {
   const { preferences, loading, updatePreference } = useNotificationPreferences();
@@ -26,6 +39,71 @@ export function NotificationSettings() {
       toast({
         title: "Error",
         description: "Failed to send test notification.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSecurityNotification = async () => {
+    try {
+      await createSecurityNotification();
+    } catch (error) {
+      console.error('Error creating security notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send security notification.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSuccessNotification = async () => {
+    try {
+      await createSuccessNotification();
+    } catch (error) {
+      console.error('Error creating success notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send success notification.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleWarningNotification = async () => {
+    try {
+      await createWarningNotification();
+    } catch (error) {
+      console.error('Error creating warning notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send warning notification.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleWillCreatedNotification = async () => {
+    try {
+      await createWillCreatedNotification();
+    } catch (error) {
+      console.error('Error creating will created notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send will created notification.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleBeneficiaryAddedNotification = async () => {
+    try {
+      await createBeneficiaryAddedNotification();
+    } catch (error) {
+      console.error('Error creating beneficiary added notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send beneficiary added notification.",
         variant: "destructive"
       });
     }
@@ -59,15 +137,44 @@ export function NotificationSettings() {
           <Bell className="text-willtank-700 mr-2" size={18} />
           <h3 className="font-medium">Notification Preferences</h3>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleTestNotification}
-          className="flex items-center gap-1"
-        >
-          <BadgeInfo className="h-3.5 w-3.5" />
-          Test Notification
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <BadgeInfo className="h-3.5 w-3.5" />
+              Test Notifications
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleTestNotification}>
+              <Bell className="mr-2 h-4 w-4 text-blue-500" />
+              <span>General Info</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSecurityNotification}>
+              <Shield className="mr-2 h-4 w-4 text-red-500" />
+              <span>Security Alert</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSuccessNotification}>
+              <Check className="mr-2 h-4 w-4 text-green-500" />
+              <span>Success Message</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleWarningNotification}>
+              <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
+              <span>Warning Message</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleWillCreatedNotification}>
+              <Bell className="mr-2 h-4 w-4 text-purple-500" />
+              <span>Will Created</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleBeneficiaryAddedNotification}>
+              <Bell className="mr-2 h-4 w-4 text-indigo-500" />
+              <span>Beneficiary Added</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       <div className="p-6">
