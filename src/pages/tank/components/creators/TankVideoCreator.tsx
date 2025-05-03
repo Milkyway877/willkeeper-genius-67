@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,13 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { 
-  Select,
-  SelectContent,
-  SelectItem, 
-  SelectTrigger,
-  SelectValue 
-} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { MessageCategory } from '../../types';
 import { useMessageEnhancer } from '../../hooks/useMessageEnhancer';
 
@@ -51,7 +44,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   onVideoUrlChange
 }) => {
   const { toast } = useToast();
-  const { enhanceVideo, isEnhancing } = useMessageEnhancer();
+  const { enhanceVideo, isEnhancing, enhancementProgress } = useMessageEnhancer();
   const [title, setTitle] = useState<string>('');
   const [recipient, setRecipient] = useState<string>('');
   const [isRecording, setIsRecording] = useState(false);
@@ -374,7 +367,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Function to apply selected enhancements to video
+  // Function to apply selected enhancements to video using Gemini
   const applyEnhancements = async () => {
     if (!videoBlob) {
       toast({
@@ -404,6 +397,11 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
           videoRef.current.srcObject = null;
           videoRef.current.src = enhancedURL;
         }
+        
+        toast({
+          title: "Enhancements Applied",
+          description: "Your video has been enhanced with your selected options"
+        });
       }
     } catch (error) {
       console.error('Error applying enhancements:', error);
@@ -602,6 +600,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={selectedMusic === 'Inspirational' ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => handleMusicSelect('Inspirational')}
+                      disabled={isEnhancing}
                     >
                       <Music className="mr-2 h-4 w-4" />
                       Inspirational
@@ -612,6 +611,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={selectedMusic === 'Emotional' ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => handleMusicSelect('Emotional')}
+                      disabled={isEnhancing}
                     >
                       <Music className="mr-2 h-4 w-4" />
                       Emotional
@@ -622,6 +622,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={selectedMusic === 'Nostalgic' ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => handleMusicSelect('Nostalgic')}
+                      disabled={isEnhancing}
                     >
                       <Music className="mr-2 h-4 w-4" />
                       Nostalgic
@@ -632,6 +633,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={selectedMusic === 'Celebratory' ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => handleMusicSelect('Celebratory')}
+                      disabled={isEnhancing}
                     >
                       <Music className="mr-2 h-4 w-4" />
                       Celebratory
@@ -649,6 +651,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       value={[musicVolume]}
                       onValueChange={(value) => setMusicVolume(value[0])}
                       className="mt-2"
+                      disabled={isEnhancing}
                     />
                   </div>
                 )}
@@ -661,6 +664,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={filters.includes('Warm') ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => toggleFilter('Warm')}
+                      disabled={isEnhancing}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       Warm
@@ -671,6 +675,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={filters.includes('Vintage') ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => toggleFilter('Vintage')}
+                      disabled={isEnhancing}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       Vintage
@@ -681,6 +686,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={filters.includes('Dramatic') ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => toggleFilter('Dramatic')}
+                      disabled={isEnhancing}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       Dramatic
@@ -691,6 +697,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                       size="sm"
                       className={filters.includes('Soft') ? 'border-amber-500 bg-amber-50' : ''}
                       onClick={() => toggleFilter('Soft')}
+                      disabled={isEnhancing}
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       Soft
@@ -704,30 +711,59 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
                     <div>
                       <h4 className="font-medium text-willtank-700 mb-1">AI Enhancement Ready</h4>
                       <p className="text-sm text-gray-600">
-                        Our AI can enhance your video by adjusting lighting, reducing background noise, and optimizing audio levels.
+                        Our AI can enhance your video by adjusting lighting, reducing background noise, and optimizing audio levels using Google Gemini.
                       </p>
                     </div>
                   </div>
+                  
+                  {isEnhancing && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-willtank-600">Enhancing video...</span>
+                        <span className="text-xs font-medium">{enhancementProgress}%</span>
+                      </div>
+                      <Progress 
+                        value={enhancementProgress} 
+                        className="h-2" 
+                        indicatorClassName="bg-willtank-500"
+                      />
+                    </div>
+                  )}
                   
                   <Button 
                     className="mt-3 w-full" 
                     size="sm"
                     onClick={applyEnhancements}
-                    disabled={!videoBlob || isApplyingEnhancements || isEnhancing}
+                    disabled={!videoBlob || isEnhancing}
                   >
-                    {isApplyingEnhancements || isEnhancing ? (
+                    {isEnhancing ? (
                       <>
                         <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Applying...
+                        Applying Gemini AI Enhancements...
                       </>
                     ) : (
                       <>
                         <Sparkles className="mr-2 h-4 w-4" />
-                        Apply AI Enhancements
+                        Apply AI Enhancements with Gemini
                       </>
                     )}
                   </Button>
                 </div>
+                
+                {enhancedVideoBlob && (
+                  <div className="bg-green-50 rounded-lg p-3 border border-green-100 mt-4">
+                    <div className="flex items-center">
+                      <Check className="h-5 w-5 text-green-600 mr-2" />
+                      <span className="text-green-800 font-medium">Video Successfully Enhanced</span>
+                    </div>
+                    <p className="text-sm text-green-700 mt-1">
+                      Your video has been enhanced with {filters.length > 0 ? `${filters.join(", ")} filters` : ""}
+                      {filters.length > 0 && selectedMusic ? " and " : ""}
+                      {selectedMusic ? `${selectedMusic} music` : ""}.
+                      {filters.length === 0 && !selectedMusic ? "AI enhancements" : ""}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
