@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Download, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock } from 'lucide-react';
+import { Check, Download, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { DigitalSignature } from './DigitalSignature';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -341,6 +340,73 @@ ${finalArrangements || '[No specific final arrangements specified]'}
       title: "AI Suggestion Applied",
       description: `Updated ${field.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()} with the AI suggestion.`
     });
+  };
+
+  // Handle generating the official document
+  const handleGenerateOfficialWill = () => {
+    try {
+      if (!isComplete) {
+        toast({
+          title: "Document Incomplete",
+          description: "Please complete all required sections before generating the official will.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!signature) {
+        toast({
+          title: "Signature Required",
+          description: "Please add your digital signature before generating the official will.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Generate a professional document
+      const title = `${personalInfo.fullName}'s Will`;
+      
+      // Import here to avoid circular dependency
+      import('@/utils/professionalDocumentUtils').then(({ downloadProfessionalDocument }) => {
+        downloadProfessionalDocument(willContent, signature, title);
+        
+        toast({
+          title: "Official Will Generated",
+          description: "Your official will document has been generated with letterhead and watermark.",
+        });
+      });
+      
+      // Save the will as active if not already saved
+      if (willId) {
+        updateWill(willId, {
+          status: 'active',
+          content: JSON.stringify(willContent),
+          title: title
+        });
+      } else if (onSave) {
+        const documentData = {
+          title: title,
+          content: JSON.stringify(willContent),
+          status: 'active',
+          template_type: templateId,
+          document_url: '',
+        };
+        
+        createWill(documentData).then(newWill => {
+          if (newWill && onSave) {
+            onSave({ ...willContent, id: newWill.id });
+          }
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error generating official will:", error);
+      toast({
+        title: "Generation Error",
+        description: "There was an error generating your official will. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -784,6 +850,35 @@ ${finalArrangements || '[No specific final arrangements specified]'}
                 <li>Include your wishes for funeral arrangements</li>
               </ul>
             </Card>
+          </div>
+        </div>
+        
+        {/* Official Will Generation Button - Full width at the bottom */}
+        <div className="col-span-12 mt-8">
+          <div className="bg-gradient-to-r from-willtank-50 to-willtank-100 p-6 rounded-lg border border-willtank-200 shadow-sm">
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <div className="mb-4 md:mb-0 md:mr-6">
+                <h3 className="text-xl font-bold text-willtank-800">Ready to Finalize Your Will?</h3>
+                <p className="text-willtank-600 mt-1">
+                  Generate your official will document with professional letterhead and formatting.
+                </p>
+              </div>
+              <Button
+                onClick={handleGenerateOfficialWill}
+                disabled={!isComplete || !signature}
+                className="bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-3 px-6 rounded-md shadow-md hover:shadow-lg transition-all duration-200 w-full md:w-auto"
+              >
+                <FileCheck className="h-5 w-5 mr-2" />
+                Generate Official Will
+              </Button>
+            </div>
+            {(!isComplete || !signature) && (
+              <p className="text-amber-600 text-sm mt-3">
+                {!isComplete && "Complete all required sections and "}
+                {!signature && "add your digital signature "}
+                before generating the official will.
+              </p>
+            )}
           </div>
         </div>
         

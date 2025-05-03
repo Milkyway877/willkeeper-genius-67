@@ -1,185 +1,158 @@
 
 import React, { useState, useEffect } from 'react';
 import { TemplateWillSection } from '@/components/will/TemplateWillSection';
-import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion } from 'lucide-react';
+import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion, FileCheck } from 'lucide-react';
 import { WillPreview } from '@/pages/will/components/WillPreview';
 import { Button } from '@/components/ui/button';
 import { downloadDocument } from '@/utils/documentUtils';
+import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { InfoTooltip } from '@/components/ui/info-tooltip';
-import { validateWillContent } from '@/utils/willTemplateUtils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { WillContent } from './types';
 
 interface WillPreviewSectionProps {
-  defaultOpen?: boolean;
   content: string;
   signature?: string | null;
   title?: string;
+  defaultOpen?: boolean;
   onRefresh?: () => void;
-  liveUpdate?: boolean;
-  onSectionClick?: (section: string) => void;
-  interactive?: boolean;
+  onHelp?: () => void;
 }
 
 export function WillPreviewSection({ 
-  defaultOpen = true, 
-  content,
+  content, 
   signature = null,
-  title = "My Last Will and Testament",
+  title = "Last Will and Testament",
+  defaultOpen = false,
   onRefresh,
-  liveUpdate = false,
-  onSectionClick,
-  interactive = false,
+  onHelp
 }: WillPreviewSectionProps) {
-  const [showFormatted, setShowFormatted] = useState(true);
-  const [isComplete, setIsComplete] = useState(true);
-  const [userHasInteracted, setUserHasInteracted] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [showAiHint, setShowAiHint] = useState(false);
+  const [isFormatted, setIsFormatted] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
   
-  // Detect when the user has interacted with the form
-  useEffect(() => {
-    const handleInteraction = () => {
-      if (isInitialLoad) setIsInitialLoad(false);
-      setUserHasInteracted(true);
-    };
-    
-    document.addEventListener('input', handleInteraction);
-    document.addEventListener('change', handleInteraction);
-    
-    // After 5 seconds, we'll consider that the initial load phase is over
-    const timer = setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 5000);
-    
-    return () => {
-      document.removeEventListener('input', handleInteraction);
-      document.removeEventListener('change', handleInteraction);
-      clearTimeout(timer);
-    };
-  }, [isInitialLoad]);
-  
-  // Check if will content is complete, but only if content is not an initial placeholder
-  useEffect(() => {
-    if (content && 
-        !content.includes('Start chatting') && 
-        !content.includes('Your will document will appear here') &&
-        // Only validate after user interaction or after initial load phase
-        (userHasInteracted || !isInitialLoad)) {
-      setIsComplete(validateWillContent(content));
-    } else {
-      // Don't show incomplete state for initial/placeholder content
-      setIsComplete(true);
-    }
-  }, [content, userHasInteracted, isInitialLoad]);
-  
+  // Function to download the draft document
   const handleDownload = () => {
+    if (!content) {
+      console.error("No content to download");
+      return;
+    }
+    
     downloadDocument(content, title, signature);
   };
-
-  const handleSectionClick = (section: string) => {
-    if (onSectionClick) {
-      onSectionClick(section);
-    } else {
-      setShowAiHint(true);
-      setTimeout(() => setShowAiHint(false), 3000);
+  
+  // Function to generate official will document
+  const handleGenerateOfficialWill = () => {
+    try {
+      // Create a mock WillContent object from the text content
+      // This is just a basic implementation - in reality you'd want proper parsing
+      const mockWillContent: WillContent = {
+        personalInfo: {
+          fullName: title.replace(/'s Will$/, '') || "Unknown",
+          dateOfBirth: "",
+          address: "",
+          email: "",
+          phone: ""
+        },
+        executors: [{ id: "exec-1", name: "", relationship: "", email: "", phone: "", address: "", isPrimary: true }],
+        beneficiaries: [{ id: "ben-1", name: "", relationship: "", email: "", phone: "", address: "", percentage: 0 }],
+        specificBequests: "",
+        residualEstate: "",
+        finalArrangements: ""
+      };
+      
+      // Try to extract some basic information from the content
+      const fullNameMatch = content.match(/I,\s+([^,]+)/);
+      if (fullNameMatch && fullNameMatch[1]) {
+        mockWillContent.personalInfo.fullName = fullNameMatch[1].trim();
+      }
+      
+      const addressMatch = content.match(/residing at\s+([^,]+)/);
+      if (addressMatch && addressMatch[1]) {
+        mockWillContent.personalInfo.address = addressMatch[1].trim();
+      }
+      
+      downloadProfessionalDocument(mockWillContent, signature, title);
+    } catch (error) {
+      console.error("Error generating official will:", error);
     }
   };
 
-  const hasRealContent = content && 
-    !content.includes('Start chatting') && 
-    !content.includes('Your will document will appear here');
-  
-  // Determine if we should show warning (only after user has interacted and content is incomplete)
-  const shouldShowWarning = hasRealContent && !isComplete && (userHasInteracted || !isInitialLoad);
-  
+  // Toggle formatting option
+  const toggleFormatting = () => {
+    setIsFormatted(!isFormatted);
+  };
+
   return (
     <TemplateWillSection 
-      title={liveUpdate ? "Live Preview" : "Will Preview"} 
-      description={liveUpdate ? "Real-time preview of your will document" : "Preview how your will document will look"}
-      defaultOpen={defaultOpen}
+      title="Document Preview" 
       icon={<FileText className="h-5 w-5" />}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="preview-format"
-            checked={showFormatted}
-            onCheckedChange={setShowFormatted}
-          />
-          <Label htmlFor="preview-format">Formatted View</Label>
-          <InfoTooltip text="Toggle between formatted document view and plain text view" />
-        </div>
-        
+      defaultOpen={defaultOpen}
+      actions={
         <div className="flex items-center space-x-2">
           {onRefresh && (
-            <Button onClick={onRefresh} size="sm" variant="ghost">
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Refresh
+            <Button variant="ghost" size="sm" onClick={onRefresh} title="Refresh Preview">
+              <RefreshCw className="h-4 w-4" />
             </Button>
           )}
-          
-          {hasRealContent && (
-            <Button onClick={handleDownload} size="sm" variant="outline" className="flex items-center">
-              <Download className="h-4 w-4 mr-2" />
-              Download Draft
-            </Button>
-          )}
-        </div>
-      </div>
-      
-      <div className={`bg-gray-50 border rounded-md p-4 mb-4 max-h-96 overflow-y-auto ${showFormatted ? 'font-serif' : 'font-mono'} relative`}>
-        {liveUpdate && hasRealContent && (
-          <div className="bg-willtank-50 text-willtank-700 text-xs px-2 py-1 mb-3 rounded-sm inline-block">
-            Live updating as you chat
-          </div>
-        )}
-        
-        {/* AI assistance hint for interactive mode */}
-        {interactive && showAiHint && (
-          <div className="absolute top-2 right-2 bg-willtank-100 text-willtank-800 text-xs px-3 py-2 rounded-md flex items-center animate-fade-in">
-            <MessageCircleQuestion className="h-4 w-4 mr-1 text-willtank-600" />
-            Click on a section title to get AI assistance
-            <button 
-              className="ml-2 text-willtank-600 hover:text-willtank-800" 
-              onClick={() => setShowAiHint(false)}
+          {onHelp && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                setShowHelp(!showHelp);
+                onHelp();
+              }} 
+              title="Get Help"
+              className={showHelp ? 'text-willtank-600' : ''}
             >
-              ×
-            </button>
-          </div>
-        )}
-        
-        <WillPreview 
-          content={content} 
-          formatted={showFormatted} 
-          signature={signature} 
-          interactive={interactive}
-          onSectionClick={handleSectionClick}
-        />
-      </div>
-      
-      {shouldShowWarning && (
-        <div className="bg-amber-50 border border-amber-200 p-3 rounded-md mb-4 text-sm text-amber-800">
-          Your will has incomplete information. Please continue filling out the form to complete all sections.
+              <MessageCircleQuestion className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-      )}
-      
-      {hasRealContent && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button onClick={handleDownload} className="w-full">
-                <Download className="h-4 w-4 mr-2" />
-                Download Draft Will
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Download a copy of your will document in its current state</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Switch id="format-toggle" checked={isFormatted} onCheckedChange={toggleFormatting} />
+          <Label htmlFor="format-toggle">Show formatted preview</Label>
+        </div>
+        
+        <div className="border rounded-md p-4 bg-white">
+          <WillPreview 
+            content={content} 
+            formatted={isFormatted} 
+            signature={signature}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center gap-2"
+            onClick={handleDownload}
+          >
+            <Download className="h-4 w-4" />
+            Download Draft
+          </Button>
+          
+          <Button 
+            className="w-full bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-2 px-4 rounded shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+            onClick={handleGenerateOfficialWill}
+          >
+            <FileCheck className="h-5 w-5" />
+            Generate Official Will
+          </Button>
+          
+          {showHelp && (
+            <div className="bg-willtank-50 p-3 text-sm rounded border border-willtank-100 text-willtank-700">
+              <p className="flex items-start gap-2">
+                <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-willtank-500" />
+                Want to improve your will? Ask our AI assistant for help with specific sections.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </TemplateWillSection>
   );
 }

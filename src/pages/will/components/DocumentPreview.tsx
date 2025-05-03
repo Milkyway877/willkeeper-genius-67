@@ -3,6 +3,9 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { WillContent } from './types';
 import { WillPreview } from './WillPreview';
+import { FileCheck, Download } from 'lucide-react';
+import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils';
+import { downloadDocument } from '@/utils/documentUtils';
 
 interface DocumentPreviewProps {
   willContent: WillContent;
@@ -58,6 +61,24 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
   
   const formattedContent = generateFormattedContent();
   
+  // Handle generating professional document
+  const handleGenerateWill = () => {
+    const title = willContent?.personalInfo?.fullName 
+      ? `${willContent.personalInfo.fullName}'s Will` 
+      : "Last Will and Testament";
+      
+    downloadProfessionalDocument(willContent, signature, title);
+  };
+  
+  // Handle downloading draft document
+  const handleDownloadDraft = () => {
+    const title = willContent?.personalInfo?.fullName 
+      ? `${willContent.personalInfo.fullName}'s Will - Draft` 
+      : "Last Will and Testament - Draft";
+      
+    downloadDocument(formattedContent, title, signature);
+  };
+  
   return (
     <div className="p-6 bg-white rounded-lg border border-gray-200">
       <WillPreview 
@@ -66,9 +87,22 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
         formatted={true}
       />
       
-      <div className="mt-6">
-        <Button variant="outline" className="w-full">
+      <div className="mt-6 space-y-3">
+        <Button 
+          variant="outline" 
+          className="w-full flex items-center justify-center gap-2"
+          onClick={handleDownloadDraft}
+        >
+          <Download className="h-4 w-4" />
           Download Draft
+        </Button>
+        
+        <Button 
+          className="w-full bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-2 px-4 rounded shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+          onClick={handleGenerateWill}
+        >
+          <FileCheck className="h-5 w-5" />
+          Generate Official Will
         </Button>
       </div>
     </div>
