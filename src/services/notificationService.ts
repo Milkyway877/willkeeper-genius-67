@@ -57,6 +57,7 @@ export const getNotifications = async (): Promise<Notification[]> => {
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
+      .eq('user_id', session.user.id)
       .order('created_at', { ascending: false });
       
     if (error) {
@@ -90,7 +91,6 @@ export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   }
 };
 
-// Add the missing function for marking all notifications as read
 export const markAllNotificationsAsRead = async (): Promise<boolean> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -133,6 +133,40 @@ export const createSystemNotification = async (
     // Map the event type to a standard notification type
     const type = mapEventTypeToNotificationType(eventType);
     
+    // First try to use the edge function for better reliability
+    try {
+      const response = await fetch('/api/create-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          title: details.title,
+          description: details.description,
+          type
+        })
+      });
+      
+      if (response.ok) {
+        // Fetch the most recent notification to return it
+        const { data } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('title', details.title)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        return data;
+      }
+    } catch (error) {
+      console.error('Edge function failed, falling back to direct DB insert:', error);
+      // Fall back to direct insert
+    }
+    
+    // Fallback: Direct insert to the database
     const { data, error } = await supabase
       .from('notifications')
       .insert({

@@ -36,6 +36,7 @@ export function NotificationDropdown() {
   
   const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // Prevent dropdown from closing
     try {
       const success = await markAsRead(id);
       if (!success) {
@@ -70,7 +71,7 @@ export function NotificationDropdown() {
       <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-medium">Notifications</h3>
-          <Link to="/notifications" className="text-sm text-willtank-600 hover:underline">
+          <Link to="/notifications" className="text-sm text-willtank-600 hover:underline" onClick={() => setIsOpen(false)}>
             View all
           </Link>
         </div>

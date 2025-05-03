@@ -79,81 +79,91 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     // Initial fetch
     fetchNotifications();
 
-    // Set up real-time subscription for new notifications
-    const channel = supabase
-      .channel('notification_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications'
-        },
-        (payload) => {
-          const newNotification = payload.new as Notification;
-          // Make sure we validate the type
-          const validatedType = validateNotificationType(newNotification.type);
-          
-          setNotifications(prev => [
-            { ...newNotification, type: validatedType },
-            ...prev
-          ]);
-          
-          toast({
-            title: newNotification.title,
-            description: newNotification.description,
-            // Map notification types to valid toast variants
-            variant: getToastVariant(validatedType)
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications'
-        },
-        (payload) => {
-          const updatedNotification = payload.new as Notification;
-          setNotifications(prev => 
-            prev.map(notification => 
-              notification.id === updatedNotification.id
-                ? { ...updatedNotification, type: validateNotificationType(updatedNotification.type) }
-                : notification
-            )
-          );
-        }
-      )
-      .subscribe();
+    // Get the current user's session
+    const getUserSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session;
+    };
 
+    // Set up real-time subscription for notifications
+    const setupRealtimeSubscription = async () => {
+      const session = await getUserSession();
+      
+      if (!session?.user) {
+        console.warn('No authenticated user found for realtime notifications');
+        return;
+      }
+
+      const channel = supabase
+        .channel('notifications-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${session.user.id}`
+          },
+          (payload) => {
+            const newNotification = payload.new as Notification;
+            
+            // Add to our state
+            setNotifications(prev => [newNotification, ...prev]);
+            
+            // Show a toast
+            toast({
+              title: newNotification.title,
+              description: newNotification.description,
+              variant: newNotification.type === 'security' ? 'destructive' : 'default',
+            });
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${session.user.id}`
+          },
+          (payload) => {
+            const updatedNotification = payload.new as Notification;
+            
+            // Update in our state
+            setNotifications(prev => 
+              prev.map(notification => 
+                notification.id === updatedNotification.id ? updatedNotification : notification
+              )
+            );
+          }
+        )
+        .subscribe((status, err) => {
+          if (status !== 'SUBSCRIBED') {
+            console.error('Failed to subscribe to notifications:', status, err);
+          } else {
+            console.log('Successfully subscribed to notifications');
+          }
+        });
+
+      // Return cleanup function
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    // Set up the subscription
+    const cleanup = setupRealtimeSubscription();
+    
+    // Clean up on component unmount
     return () => {
-      supabase.removeChannel(channel);
+      cleanup.then(cleanupFn => {
+        if (cleanupFn) cleanupFn();
+      });
     };
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const hasUnread = unreadCount > 0;
-
-  // Helper function to validate notification types
-  function validateNotificationType(type: string): 'success' | 'warning' | 'info' | 'security' {
-    const validTypes = ['success', 'warning', 'info', 'security'];
-    return validTypes.includes(type) ? type as 'success' | 'warning' | 'info' | 'security' : 'info';
-  }
-  
-  // Helper to determine toast variant based on notification type
-  function getToastVariant(type: 'success' | 'warning' | 'info' | 'security'): 'default' | 'destructive' {
-    switch (type) {
-      case 'warning':
-      case 'info':
-      case 'success':
-        return 'default';
-      case 'security':
-        return 'destructive';
-      default:
-        return 'default';
-    }
-  }
 
   return (
     <NotificationsContext.Provider 

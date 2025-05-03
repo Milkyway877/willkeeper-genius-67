@@ -2,11 +2,34 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Switch } from "@/components/ui/switch";
-import { Bell, Mail } from 'lucide-react';
+import { Bell, Mail, BadgeInfo } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
+import { createTestNotification } from '@/utils/testNotifications';
+import { toast } from '@/hooks/use-toast';
 
 export function NotificationSettings() {
   const { preferences, loading, updatePreference } = useNotificationPreferences();
+
+  const handleTestNotification = async () => {
+    try {
+      const result = await createTestNotification();
+      if (!result) {
+        toast({
+          title: "Test notification failed",
+          description: "There was an issue creating the test notification.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error creating test notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send test notification.",
+        variant: "destructive"
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -31,9 +54,20 @@ export function NotificationSettings() {
       transition={{ duration: 0.3 }}
       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
     >
-      <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center">
-        <Bell className="text-willtank-700 mr-2" size={18} />
-        <h3 className="font-medium">Notification Preferences</h3>
+      <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+        <div className="flex items-center">
+          <Bell className="text-willtank-700 mr-2" size={18} />
+          <h3 className="font-medium">Notification Preferences</h3>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleTestNotification}
+          className="flex items-center gap-1"
+        >
+          <BadgeInfo className="h-3.5 w-3.5" />
+          Test Notification
+        </Button>
       </div>
       
       <div className="p-6">
