@@ -65,6 +65,10 @@ export const generateProfessionalDocument = (
           border-bottom: 2px solid #8B5CF6;
           padding-bottom: 20px;
           margin-bottom: 40px;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
         .letterhead-logo {
           font-family: 'Playfair Display', serif;
@@ -73,6 +77,14 @@ export const generateProfessionalDocument = (
           color: #8B5CF6;
           margin: 0;
           letter-spacing: 1px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+        }
+        .logo-image {
+          height: 48px;
+          width: auto;
         }
         .letterhead-tagline {
           font-size: 14px;
@@ -123,6 +135,17 @@ export const generateProfessionalDocument = (
           white-space: nowrap;
           font-family: 'Playfair Display', serif;
         }
+        .watermark-image {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-30deg);
+          opacity: 0.04;
+          width: 80%;
+          height: auto;
+          z-index: 0;
+          pointer-events: none;
+        }
         .signature-section {
           margin-top: 60px;
         }
@@ -155,13 +178,16 @@ export const generateProfessionalDocument = (
     <body>
       <!-- Watermark -->
       <div class="watermark">
-        <div class="watermark-text">WILLTANK</div>
+        <img src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" class="watermark-image" alt="WillTank Watermark" />
       </div>
       
       <div class="container">
         <!-- Letterhead -->
         <div class="letterhead">
-          <div class="letterhead-logo">WILLTANK</div>
+          <div class="letterhead-logo">
+            <img src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" class="logo-image" alt="WillTank Logo" />
+            WILLTANK
+          </div>
           <div class="letterhead-tagline">Secure Your Legacy</div>
           <div class="letterhead-details">
             Official Legal Document | Generated on ${today}
@@ -244,60 +270,70 @@ export const generateProfessionalDocumentPreview = (
 
   // Creates a preview version with simplified CSS that works within the app's UI
   return `
-    <div class="professional-preview" style="font-family: 'Times New Roman', serif; color: #333; max-width: 100%; overflow-x: hidden;">
-      <div style="text-align: center; border-bottom: 2px solid #8B5CF6; padding-bottom: 10px; margin-bottom: 20px;">
-        <div style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #8B5CF6;">WILLTANK</div>
-        <div style="font-size: 12px; color: #555;">Secure Your Legacy</div>
-        <div style="font-size: 10px; color: #777; margin-top: 5px;">
-          Official Legal Document | Generated on ${today}
+    <div class="professional-preview" style="font-family: 'Times New Roman', serif; color: #333; max-width: 100%; overflow-x: hidden; position: relative;">
+      <!-- Watermark for preview -->
+      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 0; pointer-events: none;">
+        <img src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" style="position: absolute; opacity: 0.04; width: 80%; transform: rotate(-30deg);" alt="WillTank Watermark" />
+      </div>
+      
+      <div style="position: relative; z-index: 1;">
+        <div style="text-align: center; border-bottom: 2px solid #8B5CF6; padding-bottom: 10px; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 8px; font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #8B5CF6;">
+            <img src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" style="height: 32px; width: auto;" alt="WillTank Logo" />
+            WILLTANK
+          </div>
+          <div style="font-size: 12px; color: #555;">Secure Your Legacy</div>
+          <div style="font-size: 10px; color: #777; margin-top: 5px;">
+            Official Legal Document | Generated on ${today}
+          </div>
         </div>
-      </div>
-      
-      <div style="text-align: right; margin-bottom: 15px; font-size: 12px;">
-        <div>${today}</div>
-      </div>
-      
-      <h1 style="font-family: 'Playfair Display', serif; text-align: center; font-size: 20px; font-weight: 700; margin: 15px 0;">LAST WILL AND TESTAMENT</h1>
-      
-      <p style="font-size: 13px; margin-bottom: 10px;">
-        I, ${personalInfo?.fullName || '[Full Name]'}, residing at ${personalInfo?.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-      </p>
-      
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE I: PERSONAL INFORMATION</h2>
-      <p style="font-size: 13px;">
-        I declare that I was born on ${personalInfo?.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
-      </p>
-      
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
-      <p style="font-size: 13px;">
-        I appoint ${primaryExecutor?.name || '[Executor Name]'} to serve as the Executor of my estate.
-      </p>
-      
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE III: BENEFICIARIES</h2>
-      <p style="font-size: 13px;">I bequeath my assets to the following beneficiaries:</p>
-      <ul style="font-size: 13px; padding-left: 20px;">
-        ${beneficiaries?.map(b => `<li>${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate</li>`).join('') || '<li>[No beneficiaries specified]</li>'}
-      </ul>
-      
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE IV: SPECIFIC BEQUESTS</h2>
-      <p style="font-size: 13px;">${willContent.specificBequests || '[No specific bequests specified]'}</p>
-      
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE V: RESIDUAL ESTATE</h2>
-      <p style="font-size: 13px;">${willContent.residualEstate || 'I give all the rest and residue of my estate to my beneficiaries in the proportions specified above.'}</p>
-      
-      <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE VI: FINAL ARRANGEMENTS</h2>
-      <p style="font-size: 13px;">${willContent.finalArrangements || '[No specific final arrangements specified]'}</p>
-      
-      <!-- Signature Section -->
-      <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-        ${signature 
-          ? `<img src="${signature}" alt="Digital Signature" style="max-width: 150px; max-height: 60px;" />`
-          : `<div style="border-top: 1px solid #000; width: 200px; margin-top: 30px; text-align: center; padding-top: 5px;">Signature</div>`}
-        <p style="font-size: 12px;">Dated: ${today}</p>
-      </div>
-      
-      <div style="text-align: center; margin-top: 30px; font-size: 10px; color: #999;">
-        <p>This document was generated by WillTank | All rights reserved © ${new Date().getFullYear()}</p>
+        
+        <div style="text-align: right; margin-bottom: 15px; font-size: 12px;">
+          <div>${today}</div>
+        </div>
+        
+        <h1 style="font-family: 'Playfair Display', serif; text-align: center; font-size: 20px; font-weight: 700; margin: 15px 0;">LAST WILL AND TESTAMENT</h1>
+        
+        <p style="font-size: 13px; margin-bottom: 10px;">
+          I, ${personalInfo?.fullName || '[Full Name]'}, residing at ${personalInfo?.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+        </p>
+        
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE I: PERSONAL INFORMATION</h2>
+        <p style="font-size: 13px;">
+          I declare that I was born on ${personalInfo?.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
+        </p>
+        
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
+        <p style="font-size: 13px;">
+          I appoint ${primaryExecutor?.name || '[Executor Name]'} to serve as the Executor of my estate.
+        </p>
+        
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE III: BENEFICIARIES</h2>
+        <p style="font-size: 13px;">I bequeath my assets to the following beneficiaries:</p>
+        <ul style="font-size: 13px; padding-left: 20px;">
+          ${beneficiaries?.map(b => `<li>${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate</li>`).join('') || '<li>[No beneficiaries specified]</li>'}
+        </ul>
+        
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE IV: SPECIFIC BEQUESTS</h2>
+        <p style="font-size: 13px;">${willContent.specificBequests || '[No specific bequests specified]'}</p>
+        
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE V: RESIDUAL ESTATE</h2>
+        <p style="font-size: 13px;">${willContent.residualEstate || 'I give all the rest and residue of my estate to my beneficiaries in the proportions specified above.'}</p>
+        
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 16px; margin-top: 15px; margin-bottom: 10px; color: #444;">ARTICLE VI: FINAL ARRANGEMENTS</h2>
+        <p style="font-size: 13px;">${willContent.finalArrangements || '[No specific final arrangements specified]'}</p>
+        
+        <!-- Signature Section -->
+        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+          ${signature 
+            ? `<img src="${signature}" alt="Digital Signature" style="max-width: 150px; max-height: 60px;" />`
+            : `<div style="border-top: 1px solid #000; width: 200px; margin-top: 30px; text-align: center; padding-top: 5px;">Signature</div>`}
+          <p style="font-size: 12px;">Dated: ${today}</p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; font-size: 10px; color: #999;">
+          <p>This document was generated by WillTank | All rights reserved © ${new Date().getFullYear()}</p>
+        </div>
       </div>
     </div>
   `;
@@ -331,3 +367,4 @@ export const downloadProfessionalDocument = (
     URL.revokeObjectURL(url);
   }, 100);
 };
+
