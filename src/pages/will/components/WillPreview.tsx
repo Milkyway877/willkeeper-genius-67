@@ -50,7 +50,7 @@ export function WillPreview({
   }
   
   // Format content for better readability
-  const paragraphs = content.split('\n\n');
+  const paragraphs = typeof content === 'string' ? content.split('\n\n') : [];
   
   // Define section tooltips for additional context
   const sectionTooltips: Record<string, string> = {
