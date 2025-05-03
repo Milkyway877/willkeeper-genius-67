@@ -1,12 +1,20 @@
 
 import React from 'react';
-import { RouterProvider } from "react-router-dom";
-import { router } from "./router";
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Toaster } from '@/components/ui/toaster';
+import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
+import { Outlet } from 'react-router-dom';
 
-function App() {
+// Add global mobile responsive styles
+import './MobileStyles.css';
+
+export default function App() {
   return (
-    <RouterProvider router={router} />
+    <>
+      <Outlet />
+      <Toaster />
+      <FloatingAssistant />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </>
   );
 }
-
-export default App;
