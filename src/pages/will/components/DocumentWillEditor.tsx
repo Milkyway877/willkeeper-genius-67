@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { TextField } from './DocumentFields/TextField';
 import { DocumentPreview } from './DocumentPreview';
 import { createWill, updateWill } from '@/services/willService';
 import { useFormAutoSave } from '@/hooks/use-form-auto-save';
+import { AIFloatingIndicator } from './AIFloatingIndicator';
 import '../../../MobileStyles.css';
 
 interface DocumentWillEditorProps {
@@ -52,8 +54,10 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [beneficiariesList, setBeneficiariesList] = useState<any[]>([]);
   const [executorsList, setExecutorsList] = useState<any[]>([]);
   const [showBeneficiaryPrompt, setShowBeneficiaryPrompt] = useState<boolean>(false);
+  const [scrollBeforeEdit, setScrollBeforeEdit] = useState(0);
   
   const editFieldRef = useRef<HTMLTextAreaElement>(null);
+  const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Auto-save functionality
@@ -135,6 +139,51 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     setExecutorsList([primaryExecutor, alternateExecutor]);
   }, []);
   
+  // Listen for AI suggestion acceptance events
+  useEffect(() => {
+    const handleAISuggestionAccepted = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { field, value } = customEvent.detail;
+      
+      if (field && value) {
+        setWillContent(prev => ({
+          ...prev,
+          [field]: value
+        }));
+        
+        toast({
+          title: "AI Suggestion Applied",
+          description: `Updated ${field} with the AI suggestion.`
+        });
+      }
+    };
+    
+    document.addEventListener('ai-suggestion-accepted', handleAISuggestionAccepted);
+    
+    return () => {
+      document.removeEventListener('ai-suggestion-accepted', handleAISuggestionAccepted);
+    };
+  }, [toast]);
+  
+  // Store scroll position before opening edit dialog
+  useEffect(() => {
+    if (editingField) {
+      setScrollBeforeEdit(window.scrollY);
+    }
+  }, [editingField]);
+  
+  // Restore scroll position after closing edit dialog
+  useEffect(() => {
+    if (!editingField && scrollBeforeEdit > 0) {
+      setTimeout(() => {
+        window.scrollTo({
+          top: scrollBeforeEdit,
+          behavior: 'instant'
+        });
+      }, 50);
+    }
+  }, [editingField, scrollBeforeEdit]);
+  
   // Close edit field when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -176,6 +225,9 @@ ${willContent.finalArrangements}`;
 
   // Handle opening a field for editing
   const handleEditField = (field: string) => {
+    // Save current scroll position
+    setScrollBeforeEdit(window.scrollY);
+    
     setEditingField(field);
     setEditValue(willContent[field]);
     setTimeout(() => {
@@ -198,6 +250,14 @@ ${willContent.finalArrangements}`;
           setShowBeneficiaryPrompt(true);
         }, 500);
       }
+      
+      // Restore scroll position with a slight delay
+      setTimeout(() => {
+        window.scrollTo({
+          top: scrollBeforeEdit,
+          behavior: 'instant'
+        });
+      }, 50);
     }
   };
   
@@ -218,10 +278,13 @@ ${willContent.finalArrangements}`;
       finalArrangements: "Include any preferences for funeral services, burial or cremation, memorial requests, and any messages to loved ones."
     };
     
+    // Use an actual popup notification instead of toast
+    const fieldName = field.replace(/([A-Z])/g, ' $1').trim();
+    
+    // We'll use the toast only as a notification, our AIAssistantPopup provides the actual help
     toast({
-      title: `AI Assistance: ${field.replace(/([A-Z])/g, ' $1').trim()}`,
-      description: aiSuggestions[field] || "Let me help you complete this field with appropriate information.",
-      duration: 8000,
+      title: `AI Assistant activated for ${fieldName}`,
+      description: "Check out the suggestion that just appeared."
     });
   };
   
@@ -326,68 +389,73 @@ ${willContent.finalArrangements}`;
     }));
   };
   
-  // Render AI helper for the current field
-  const renderAIHelper = () => {
-    if (!showAIHelper) return null;
-    
-    const fieldHelpers: Record<string, string> = {
-      fullName: "Enter your full legal name as it appears on official documents.",
-      dateOfBirth: "Enter your date of birth in MM/DD/YYYY format.",
-      address: "Enter your current legal address including city, state and zip code.",
-      executorName: "An executor is responsible for carrying out the instructions in your will. Choose someone you trust.",
-      alternateExecutorName: "This person will be your executor if your first choice is unable or unwilling to serve.",
-      beneficiaries: "List each beneficiary with their name, relationship, and percentage of your estate they should receive.",
-      specificBequests: "List specific items or amounts you want to leave to particular people or organizations.",
-      residualEstate: "Specify who should receive whatever remains of your estate after specific bequests.",
-      finalArrangements: "Include any funeral preferences, burial instructions, or messages you want to leave."
-    };
-    
-    return (
-      <div className="bg-willtank-50 border border-willtank-100 p-4 rounded-md mb-4">
-        <h3 className="font-medium text-willtank-800 flex items-center gap-2">
-          <MessageCircleQuestion className="h-4 w-4" />
-          AI Assistance for {showAIHelper}
-        </h3>
-        <p className="text-sm mt-2">{fieldHelpers[showAIHelper]}</p>
-      </div>
-    );
+  // Handle AI assistance request from floating indicator
+  const handleAIAssistanceRequest = (field?: string) => {
+    if (field) {
+      // Scroll to the field
+      const fieldElement = document.querySelector(`[data-field="${field}"]`);
+      if (fieldElement) {
+        fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          handleShowAIHelper(field);
+        }, 300);
+      } else {
+        handleShowAIHelper('fullName'); // Fallback to the first field
+      }
+    } else {
+      // General advice
+      toast({
+        title: "AI Document Assistant",
+        description: "I can help you complete your will. Click on any field that needs assistance or on the question mark icon next to it.",
+        duration: 6000,
+      });
+    }
   };
   
-  // Render editable field
-  const renderEditableField = (field: string, value: string) => {
-    const isPlaceholder = value.includes('[') && value.includes(']');
+  // Position the editing overlay near the field being edited
+  const getEditOverlayPosition = () => {
+    if (!editingField) return {};
     
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span 
-              className={`cursor-pointer relative ${isPlaceholder ? 'bg-amber-50 text-amber-800 px-1 border border-amber-200 rounded' : 'border-b border-dashed border-gray-300 hover:border-willtank-400 px-1'} group`}
-              onClick={() => handleEditField(field)}
-            >
-              {value}
-              <span className="inline-block ml-1 opacity-50 group-hover:opacity-100">
-                <Pen className="h-3 w-3 inline" />
-              </span>
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 inline-flex ml-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleShowAIHelper(field);
-                }}
-              >
-                <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="text-xs">Click to edit or use AI assistance</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
+    // Default position in the middle for mobile
+    if (window.innerWidth < 768) {
+      return {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        maxWidth: '90%',
+        width: '100%',
+        zIndex: 50
+      };
+    }
+    
+    // For desktop, position near the field
+    const fieldElement = document.querySelector(`[data-field="${editingField}"]`);
+    if (!fieldElement) return {};
+    
+    const rect = (fieldElement as HTMLElement).getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    
+    // Position the overlay below or above the field based on available space
+    if (rect.bottom + 200 > viewportHeight) {
+      // Position above if not enough space below
+      return {
+        position: 'absolute',
+        bottom: `${document.documentElement.clientHeight - rect.top + 10}px`,
+        left: `${rect.left}px`,
+        zIndex: 50,
+        maxWidth: '400px'
+      };
+    }
+    
+    // Position below if there's enough space
+    return {
+      position: 'absolute',
+      top: `${rect.bottom + window.scrollY + 10}px`,
+      left: `${rect.left}px`,
+      zIndex: 50,
+      maxWidth: '400px'
+    };
   };
 
   return (
@@ -447,53 +515,110 @@ ${willContent.finalArrangements}`;
           </div>
           
           {/* Document content */}
-          <div className="font-serif space-y-6">
+          <div className="font-serif space-y-6" ref={documentRef}>
             <h1 className="text-3xl text-center font-bold mb-6">LAST WILL AND TESTAMENT</h1>
             
             <p className="text-lg">
-              I, {renderEditableField('fullName', willContent.fullName)}, residing at {renderEditableField('address', willContent.address)}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+              I, <span data-field="fullName">
+                <TextField 
+                  value={willContent.fullName} 
+                  label="fullName" 
+                  onEdit={() => handleEditField('fullName')}
+                  onAiHelp={() => handleShowAIHelper('fullName')}
+                />
+              </span>, residing at <span data-field="address">
+                <TextField 
+                  value={willContent.address} 
+                  label="address" 
+                  onEdit={() => handleEditField('address')}
+                  onAiHelp={() => handleShowAIHelper('address')}
+                />
+              </span>, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
             </p>
             
             <div>
               <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE I: PERSONAL INFORMATION</h2>
               <p>
-                I declare that I was born on {renderEditableField('dateOfBirth', willContent.dateOfBirth)} and that I am creating this will to ensure my wishes are carried out after my death.
+                I declare that I was born on <span data-field="dateOfBirth">
+                  <TextField 
+                    value={willContent.dateOfBirth} 
+                    label="dateOfBirth" 
+                    onEdit={() => handleEditField('dateOfBirth')}
+                    onAiHelp={() => handleShowAIHelper('dateOfBirth')}
+                  />
+                </span> and that I am creating this will to ensure my wishes are carried out after my death.
               </p>
             </div>
             
             <div>
               <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
               <p>
-                I appoint {renderEditableField('executorName', willContent.executorName)} to serve as the Executor of my estate. If they are unable or unwilling to serve, I appoint {renderEditableField('alternateExecutorName', willContent.alternateExecutorName)} to serve as alternate Executor.
+                I appoint <span data-field="executorName">
+                  <TextField 
+                    value={willContent.executorName} 
+                    label="executorName" 
+                    onEdit={() => handleEditField('executorName')}
+                    onAiHelp={() => handleShowAIHelper('executorName')}
+                  />
+                </span> to serve as the Executor of my estate. If they are unable or unwilling to serve, I appoint <span data-field="alternateExecutorName">
+                  <TextField 
+                    value={willContent.alternateExecutorName} 
+                    label="alternateExecutorName" 
+                    onEdit={() => handleEditField('alternateExecutorName')}
+                    onAiHelp={() => handleShowAIHelper('alternateExecutorName')}
+                  />
+                </span> to serve as alternate Executor.
               </p>
             </div>
             
             <div>
               <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE III: BENEFICIARIES</h2>
               <p className="mb-2">I bequeath my assets to the following beneficiaries:</p>
-              <div className="whitespace-pre-line pl-4">
-                {renderEditableField('beneficiaries', willContent.beneficiaries)}
+              <div className="whitespace-pre-line pl-4" data-field="beneficiaries">
+                <TextField 
+                  value={willContent.beneficiaries} 
+                  label="beneficiaries" 
+                  onEdit={() => handleEditField('beneficiaries')}
+                  onAiHelp={() => handleShowAIHelper('beneficiaries')}
+                />
               </div>
             </div>
             
             <div>
               <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE IV: SPECIFIC BEQUESTS</h2>
-              <div className="whitespace-pre-line">
-                {renderEditableField('specificBequests', willContent.specificBequests)}
+              <div className="whitespace-pre-line" data-field="specificBequests">
+                <TextField 
+                  value={willContent.specificBequests} 
+                  label="specificBequests" 
+                  onEdit={() => handleEditField('specificBequests')}
+                  onAiHelp={() => handleShowAIHelper('specificBequests')}
+                />
               </div>
             </div>
             
             <div>
               <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE V: RESIDUAL ESTATE</h2>
               <p>
-                I give all the rest and residue of my estate to {renderEditableField('residualEstate', willContent.residualEstate)}.
+                I give all the rest and residue of my estate to <span data-field="residualEstate">
+                  <TextField 
+                    value={willContent.residualEstate} 
+                    label="residualEstate" 
+                    onEdit={() => handleEditField('residualEstate')}
+                    onAiHelp={() => handleShowAIHelper('residualEstate')}
+                  />
+                </span>.
               </p>
             </div>
             
             <div>
               <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VI: FINAL ARRANGEMENTS</h2>
-              <div className="whitespace-pre-line">
-                {renderEditableField('finalArrangements', willContent.finalArrangements)}
+              <div className="whitespace-pre-line" data-field="finalArrangements">
+                <TextField 
+                  value={willContent.finalArrangements} 
+                  label="finalArrangements" 
+                  onEdit={() => handleEditField('finalArrangements')}
+                  onAiHelp={() => handleShowAIHelper('finalArrangements')}
+                />
               </div>
             </div>
             
@@ -512,7 +637,10 @@ ${willContent.finalArrangements}`;
         {/* Editing overlay - appears when a field is being edited */}
         {editingField && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="w-full max-w-lg p-6">
+            <Card 
+              className="w-full max-w-lg p-6" 
+              style={getEditOverlayPosition()}
+            >
               <h3 className="font-medium mb-2">Edit {editingField}</h3>
               <textarea
                 ref={editFieldRef}
@@ -528,9 +656,6 @@ ${willContent.finalArrangements}`;
             </Card>
           </div>
         )}
-        
-        {/* AI Helper */}
-        {renderAIHelper()}
         
         {/* Add Beneficiary Prompt */}
         {showBeneficiaryPrompt && (
@@ -563,6 +688,9 @@ ${willContent.finalArrangements}`;
             />
           </DialogContent>
         </Dialog>
+        
+        {/* Floating AI Assistant */}
+        <AIFloatingIndicator onRequestHelp={handleAIAssistanceRequest} />
       </div>
     </div>
   );
