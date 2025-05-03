@@ -17,6 +17,7 @@ import { DocumentPreview } from './DocumentPreview';
 import { createWill, updateWill } from '@/services/willService';
 import { useFormAutoSave } from '@/hooks/use-form-auto-save';
 import { AIFloatingIndicator } from './AIFloatingIndicator';
+import { AISuggestionsPanel } from './AISuggestionsPanel';
 import '../../../MobileStyles.css';
 
 interface DocumentWillEditorProps {
@@ -54,6 +55,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [executorsList, setExecutorsList] = useState<any[]>([]);
   const [showBeneficiaryPrompt, setShowBeneficiaryPrompt] = useState<boolean>(false);
   const [scrollBeforeEdit, setScrollBeforeEdit] = useState(0);
+  const [showAISuggestionsPanel, setShowAISuggestionsPanel] = useState(true);
   
   const editFieldRef = useRef<HTMLTextAreaElement>(null);
   const documentRef = useRef<HTMLDivElement>(null);
@@ -229,6 +231,7 @@ ${willContent.finalArrangements}`;
     
     setEditingField(field);
     setEditValue(willContent[field]);
+    setShowAIHelper(field);
     setTimeout(() => {
       editFieldRef.current?.focus();
     }, 100);
@@ -263,6 +266,7 @@ ${willContent.finalArrangements}`;
   // Handle AI Assistant for a field
   const handleShowAIHelper = (field: string) => {
     setShowAIHelper(field === showAIHelper ? null : field);
+    setShowAISuggestionsPanel(true);
     
     // Field-specific AI assistance
     const aiSuggestions: Record<string, string> = {
@@ -283,7 +287,7 @@ ${willContent.finalArrangements}`;
     // We'll use the toast only as a notification, our AIAssistantPopup provides the actual help
     toast({
       title: `AI Assistant activated for ${fieldName}`,
-      description: "Check out the suggestion that just appeared."
+      description: "Check the suggestions panel for help."
     });
   };
   
@@ -390,6 +394,8 @@ ${willContent.finalArrangements}`;
   
   // Handle AI assistance request from floating indicator
   const handleAIAssistanceRequest = (field?: string) => {
+    setShowAISuggestionsPanel(true);
+    
     if (field) {
       // Scroll to the field
       const fieldElement = document.querySelector(`[data-field="${field}"]`);
@@ -409,6 +415,36 @@ ${willContent.finalArrangements}`;
         duration: 6000,
       });
     }
+  };
+  
+  // Handle accepting an AI suggestion
+  const handleAcceptAISuggestion = (field: string, suggestion: string) => {
+    // Extract useful content from the suggestion
+    let extractedContent = suggestion;
+    
+    // For examples, extract just the example part
+    if (suggestion.includes('For example:')) {
+      const exampleMatch = suggestion.match(/For example:(.*?)(?:$|\n)/s);
+      if (exampleMatch && exampleMatch[1]) {
+        extractedContent = exampleMatch[1].trim();
+      }
+    }
+    
+    // For beneficiaries example, keep the format
+    if (field === 'beneficiaries' && suggestion.includes('\n-')) {
+      extractedContent = suggestion;
+    }
+    
+    // Update the willContent with the suggestion
+    setWillContent(prev => ({
+      ...prev,
+      [field]: extractedContent
+    }));
+    
+    toast({
+      title: "AI Suggestion Applied",
+      description: `Updated ${field.replace(/([A-Z])/g, ' $1').trim()} with the AI suggestion.`
+    });
   };
   
   // Position the editing overlay near the field being edited
@@ -459,9 +495,17 @@ ${willContent.finalArrangements}`;
 
   return (
     <div className="container mx-auto mb-16">
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* AI Suggestions Panel */}
+        <AISuggestionsPanel
+          isVisible={showAISuggestionsPanel}
+          activeField={showAIHelper}
+          onClose={() => setShowAISuggestionsPanel(false)}
+          onSuggestionAccept={handleAcceptAISuggestion}
+        />
+        
         {/* Control panel */}
-        <div className="flex justify-between items-center flex-wrap gap-2">
+        <div className="col-span-12 flex justify-between items-center flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
@@ -499,139 +543,197 @@ ${willContent.finalArrangements}`;
                 Fill in all highlighted fields
               </div>
             )}
+            
+            {/* AI Helper toggle button */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              className={`${showAISuggestionsPanel ? 'bg-willtank-50 text-willtank-800' : ''}`}
+              onClick={() => setShowAISuggestionsPanel(!showAISuggestionsPanel)}
+            >
+              <MessageCircleQuestion className="h-4 w-4 mr-2" />
+              AI Assistant
+            </Button>
           </div>
         </div>
         
         {/* Document with letterhead */}
-        <Card className="p-8 border-2 shadow-sm">
-          {/* Letterhead */}
-          <div className="flex justify-between items-center border-b border-gray-200 pb-6 mb-8">
-            <Logo size="lg" variant="default" showSlogan={true} />
-            <div className="text-right text-gray-500 text-sm">
-              <p>Official Legal Document</p>
-              <p>Generated on {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-          
-          {/* Document content */}
-          <div className="font-serif space-y-6" ref={documentRef}>
-            <h1 className="text-3xl text-center font-bold mb-6">LAST WILL AND TESTAMENT</h1>
-            
-            <p className="text-lg">
-              I, <span data-field="fullName">
-                <TextField 
-                  value={willContent.fullName} 
-                  label="fullName" 
-                  onEdit={() => handleEditField('fullName')}
-                  onAiHelp={() => handleShowAIHelper('fullName')}
-                />
-              </span>, residing at <span data-field="address">
-                <TextField 
-                  value={willContent.address} 
-                  label="address" 
-                  onEdit={() => handleEditField('address')}
-                  onAiHelp={() => handleShowAIHelper('address')}
-                />
-              </span>, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-            </p>
-            
-            <div>
-              <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE I: PERSONAL INFORMATION</h2>
-              <p>
-                I declare that I was born on <span data-field="dateOfBirth">
-                  <TextField 
-                    value={willContent.dateOfBirth} 
-                    label="dateOfBirth" 
-                    onEdit={() => handleEditField('dateOfBirth')}
-                    onAiHelp={() => handleShowAIHelper('dateOfBirth')}
-                  />
-                </span> and that I am creating this will to ensure my wishes are carried out after my death.
-              </p>
-            </div>
-            
-            <div>
-              <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
-              <p>
-                I appoint <span data-field="executorName">
-                  <TextField 
-                    value={willContent.executorName} 
-                    label="executorName" 
-                    onEdit={() => handleEditField('executorName')}
-                    onAiHelp={() => handleShowAIHelper('executorName')}
-                  />
-                </span> to serve as the Executor of my estate. If they are unable or unwilling to serve, I appoint <span data-field="alternateExecutorName">
-                  <TextField 
-                    value={willContent.alternateExecutorName} 
-                    label="alternateExecutorName" 
-                    onEdit={() => handleEditField('alternateExecutorName')}
-                    onAiHelp={() => handleShowAIHelper('alternateExecutorName')}
-                  />
-                </span> to serve as alternate Executor.
-              </p>
-            </div>
-            
-            <div>
-              <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE III: BENEFICIARIES</h2>
-              <p className="mb-2">I bequeath my assets to the following beneficiaries:</p>
-              <div className="whitespace-pre-line pl-4" data-field="beneficiaries">
-                <TextField 
-                  value={willContent.beneficiaries} 
-                  label="beneficiaries" 
-                  onEdit={() => handleEditField('beneficiaries')}
-                  onAiHelp={() => handleShowAIHelper('beneficiaries')}
-                />
+        <div className="col-span-12 md:col-span-8">
+          <Card className="p-8 border-2 shadow-sm">
+            {/* Letterhead */}
+            <div className="flex justify-between items-center border-b border-gray-200 pb-6 mb-8">
+              <Logo size="lg" variant="default" showSlogan={true} />
+              <div className="text-right text-gray-500 text-sm">
+                <p>Official Legal Document</p>
+                <p>Generated on {new Date().toLocaleDateString()}</p>
               </div>
             </div>
             
-            <div>
-              <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE IV: SPECIFIC BEQUESTS</h2>
-              <div className="whitespace-pre-line" data-field="specificBequests">
-                <TextField 
-                  value={willContent.specificBequests} 
-                  label="specificBequests" 
-                  onEdit={() => handleEditField('specificBequests')}
-                  onAiHelp={() => handleShowAIHelper('specificBequests')}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE V: RESIDUAL ESTATE</h2>
-              <p>
-                I give all the rest and residue of my estate to <span data-field="residualEstate">
+            {/* Document content */}
+            <div className="font-serif space-y-6" ref={documentRef}>
+              <h1 className="text-3xl text-center font-bold mb-6">LAST WILL AND TESTAMENT</h1>
+              
+              <p className="text-lg">
+                I, <span data-field="fullName">
                   <TextField 
-                    value={willContent.residualEstate} 
-                    label="residualEstate" 
-                    onEdit={() => handleEditField('residualEstate')}
-                    onAiHelp={() => handleShowAIHelper('residualEstate')}
+                    value={willContent.fullName} 
+                    label="fullName" 
+                    onEdit={() => handleEditField('fullName')}
+                    onAiHelp={() => handleShowAIHelper('fullName')}
                   />
-                </span>.
-              </p>
-            </div>
-            
-            <div>
-              <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VI: FINAL ARRANGEMENTS</h2>
-              <div className="whitespace-pre-line" data-field="finalArrangements">
-                <TextField 
-                  value={willContent.finalArrangements} 
-                  label="finalArrangements" 
-                  onEdit={() => handleEditField('finalArrangements')}
-                  onAiHelp={() => handleShowAIHelper('finalArrangements')}
-                />
-              </div>
-            </div>
-            
-            {/* Digital Signature Section */}
-            <div className="mt-12 pt-6 border-t border-gray-200">
-              <h2 className="text-xl font-bold mb-3">SIGNATURE</h2>
-              <p className="mb-4">
-                By signing below, I confirm this document represents my last will and testament.
+                </span>, residing at <span data-field="address">
+                  <TextField 
+                    value={willContent.address} 
+                    label="address" 
+                    onEdit={() => handleEditField('address')}
+                    onAiHelp={() => handleShowAIHelper('address')}
+                  />
+                </span>, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
               </p>
               
-              <DigitalSignature defaultOpen={true} onSignatureChange={handleSignatureChange} />
+              <div>
+                <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE I: PERSONAL INFORMATION</h2>
+                <p>
+                  I declare that I was born on <span data-field="dateOfBirth">
+                    <TextField 
+                      value={willContent.dateOfBirth} 
+                      label="dateOfBirth" 
+                      onEdit={() => handleEditField('dateOfBirth')}
+                      onAiHelp={() => handleShowAIHelper('dateOfBirth')}
+                    />
+                  </span> and that I am creating this will to ensure my wishes are carried out after my death.
+                </p>
+              </div>
+              
+              <div>
+                <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
+                <p>
+                  I appoint <span data-field="executorName">
+                    <TextField 
+                      value={willContent.executorName} 
+                      label="executorName" 
+                      onEdit={() => handleEditField('executorName')}
+                      onAiHelp={() => handleShowAIHelper('executorName')}
+                    />
+                  </span> to serve as the Executor of my estate. If they are unable or unwilling to serve, I appoint <span data-field="alternateExecutorName">
+                    <TextField 
+                      value={willContent.alternateExecutorName} 
+                      label="alternateExecutorName" 
+                      onEdit={() => handleEditField('alternateExecutorName')}
+                      onAiHelp={() => handleShowAIHelper('alternateExecutorName')}
+                    />
+                  </span> to serve as alternate Executor.
+                </p>
+              </div>
+              
+              <div>
+                <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE III: BENEFICIARIES</h2>
+                <p className="mb-2">I bequeath my assets to the following beneficiaries:</p>
+                <div className="whitespace-pre-line pl-4" data-field="beneficiaries">
+                  <TextField 
+                    value={willContent.beneficiaries} 
+                    label="beneficiaries" 
+                    onEdit={() => handleEditField('beneficiaries')}
+                    onAiHelp={() => handleShowAIHelper('beneficiaries')}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE IV: SPECIFIC BEQUESTS</h2>
+                <div className="whitespace-pre-line" data-field="specificBequests">
+                  <TextField 
+                    value={willContent.specificBequests} 
+                    label="specificBequests" 
+                    onEdit={() => handleEditField('specificBequests')}
+                    onAiHelp={() => handleShowAIHelper('specificBequests')}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE V: RESIDUAL ESTATE</h2>
+                <p>
+                  I give all the rest and residue of my estate to <span data-field="residualEstate">
+                    <TextField 
+                      value={willContent.residualEstate} 
+                      label="residualEstate" 
+                      onEdit={() => handleEditField('residualEstate')}
+                      onAiHelp={() => handleShowAIHelper('residualEstate')}
+                    />
+                  </span>.
+                </p>
+              </div>
+              
+              <div>
+                <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VI: FINAL ARRANGEMENTS</h2>
+                <div className="whitespace-pre-line" data-field="finalArrangements">
+                  <TextField 
+                    value={willContent.finalArrangements} 
+                    label="finalArrangements" 
+                    onEdit={() => handleEditField('finalArrangements')}
+                    onAiHelp={() => handleShowAIHelper('finalArrangements')}
+                  />
+                </div>
+              </div>
+              
+              {/* Digital Signature Section */}
+              <div className="mt-12 pt-6 border-t border-gray-200">
+                <h2 className="text-xl font-bold mb-3">SIGNATURE</h2>
+                <p className="mb-4">
+                  By signing below, I confirm this document represents my last will and testament.
+                </p>
+                
+                <DigitalSignature defaultOpen={true} onSignatureChange={handleSignatureChange} />
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
+        
+        {/* Document information sidebar */}
+        <div className="col-span-12 md:col-span-4 space-y-4">
+          <Card className="p-4">
+            <h3 className="font-medium mb-3">Document Progress</h3>
+            <ul className="space-y-2 text-sm">
+              {Object.entries(willContent).map(([key, value]) => {
+                const isComplete = !value.includes('[') && !value.includes(']');
+                const label = key.replace(/([A-Z])/g, ' $1').trim();
+                return (
+                  <li 
+                    key={key} 
+                    className="flex items-center justify-between"
+                    onClick={() => handleShowAIHelper(key)}
+                  >
+                    <span>{label}</span>
+                    {isComplete ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 text-amber-600"
+                        onClick={() => handleEditField(key)}
+                      >
+                        <Pen className="h-3 w-3 mr-1" /> Edit
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+          
+          <Card className="p-4">
+            <h3 className="font-medium mb-3">Tips for Completing Your Will</h3>
+            <ul className="space-y-2 text-sm list-disc pl-5">
+              <li>Use your full legal name as it appears on official documents</li>
+              <li>Select trusted individuals as your executors</li>
+              <li>Clearly identify your beneficiaries and what they should receive</li>
+              <li>Be specific about any special bequests</li>
+              <li>Include your wishes for funeral arrangements</li>
+            </ul>
+          </Card>
+        </div>
         
         {/* Editing overlay - appears when a field is being edited */}
         {editingField && (
@@ -640,7 +742,7 @@ ${willContent.finalArrangements}`;
               className="w-full max-w-lg p-6" 
               style={getEditOverlayPosition()}
             >
-              <h3 className="font-medium mb-2">Edit {editingField}</h3>
+              <h3 className="font-medium mb-2">Edit {editingField.replace(/([A-Z])/g, ' $1').trim()}</h3>
               <textarea
                 ref={editFieldRef}
                 value={editValue}
