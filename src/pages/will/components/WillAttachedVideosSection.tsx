@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Video, Eye, Calendar, Clock, ArrowRight, Plus, Trash2, AlertTriangle } from 'lucide-react';
@@ -84,11 +83,31 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
 
   const getVideoUrl = async (filePath: string): Promise<string | null> => {
     try {
+      // Check if the file exists first
+      const { data: fileExists, error: checkError } = await supabase.storage
+        .from('will_videos')
+        .list('', {
+          search: filePath
+        });
+      
+      if (checkError) {
+        console.error('Error checking if video exists:', checkError);
+      }
+      
+      // Get the public URL regardless of existence check (may fail silently)
       const { data } = supabase.storage
         .from('will_videos')
         .getPublicUrl(filePath);
-        
-      return data?.publicUrl || null;
+      
+      // Add a cache-busting parameter to avoid caching issues
+      const url = data?.publicUrl ? `${data.publicUrl}?t=${new Date().getTime()}` : null;
+      
+      if (!url) {
+        console.error('Failed to get video URL');
+        return null;
+      }
+      
+      return url;
     } catch (error) {
       console.error('Error getting video URL:', error);
       return null;
@@ -97,17 +116,24 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
   
   const handlePlayVideo = async (video: WillVideo) => {
     setSelectedVideo(video);
-    const url = await getVideoUrl(video.file_path);
+    setIsPreviewOpen(true);
     
-    if (url) {
+    try {
+      const url = await getVideoUrl(video.file_path);
+      
+      if (!url) {
+        throw new Error("Could not generate video URL");
+      }
+      
       setVideoUrl(url);
-      setIsPreviewOpen(true);
-    } else {
+    } catch (error) {
+      console.error('Error preparing video for playback:', error);
       toast({
         title: "Error",
         description: "Could not play the video. The file may no longer exist.",
         variant: "destructive"
       });
+      // Keep modal open but it will show error state
     }
   };
   
@@ -256,7 +282,11 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
       {selectedVideo && (
         <VideoPreviewModal
           isOpen={isPreviewOpen}
-          onClose={() => setIsPreviewOpen(false)}
+          onClose={() => {
+            setIsPreviewOpen(false);
+            // Short delay before clearing video URL to avoid UI flicker
+            setTimeout(() => setVideoUrl(null), 300);
+          }}
           videoUrl={videoUrl}
           videoTitle={getVideoTitle(selectedVideo)}
           createdAt={selectedVideo.created_at}
