@@ -22,6 +22,7 @@ import { useFormAutoSave } from '@/hooks/use-form-auto-save';
 import { AIFloatingIndicator } from './AIFloatingIndicator';
 import { AISuggestionsPanel } from './AISuggestionsPanel';
 import { ContactField } from './DocumentFields/ContactField';
+import { PostGenerationWizard } from './PostGenerationWizard';
 import '../../../MobileStyles.css';
 import { 
   Executor, 
@@ -342,8 +343,12 @@ ${finalArrangements || '[No specific final arrangements specified]'}
     });
   };
 
+  // New states for post-generation wizard
+  const [showPostGenerationWizard, setShowPostGenerationWizard] = useState<boolean>(false);
+  const [generatedWillId, setGeneratedWillId] = useState<string | undefined>(willId);
+  
   // Handle generating the official document
-  const handleGenerateOfficialWill = () => {
+  const handleGenerateOfficialWill = async () => {
     try {
       if (!isComplete) {
         toast({
@@ -366,24 +371,16 @@ ${finalArrangements || '[No specific final arrangements specified]'}
       // Generate a professional document
       const title = `${personalInfo.fullName}'s Will`;
       
-      // Import here to avoid circular dependency
-      import('@/utils/professionalDocumentUtils').then(({ downloadProfessionalDocument }) => {
-        downloadProfessionalDocument(willContent, signature, title);
-        
-        toast({
-          title: "Official Will Generated",
-          description: "Your official will document has been generated with letterhead and watermark.",
-        });
-      });
+      // Save the will as active
+      let savedWillId = willId;
       
-      // Save the will as active if not already saved
       if (willId) {
-        updateWill(willId, {
+        await updateWill(willId, {
           status: 'active',
           content: JSON.stringify(willContent),
           title: title
         });
-      } else if (onSave) {
+      } else {
         const documentData = {
           title: title,
           content: JSON.stringify(willContent),
@@ -392,12 +389,24 @@ ${finalArrangements || '[No specific final arrangements specified]'}
           document_url: '',
         };
         
-        createWill(documentData).then(newWill => {
-          if (newWill && onSave) {
+        const newWill = await createWill(documentData);
+        if (newWill) {
+          savedWillId = newWill.id;
+          setGeneratedWillId(newWill.id);
+          
+          if (onSave) {
             onSave({ ...willContent, id: newWill.id });
           }
-        });
+        }
       }
+      
+      toast({
+        title: "Will Generated Successfully",
+        description: "Your will has been created successfully.",
+      });
+      
+      // Show post-generation wizard
+      setShowPostGenerationWizard(true);
       
     } catch (error) {
       console.error("Error generating official will:", error);
@@ -407,6 +416,14 @@ ${finalArrangements || '[No specific final arrangements specified]'}
         variant: "destructive"
       });
     }
+  };
+  
+  // Handle wizard completion
+  const handleWizardComplete = () => {
+    toast({
+      title: "Will Package Completed",
+      description: "Your will package has been saved and can be accessed from the Wills page.",
+    });
   };
 
   return (
@@ -896,6 +913,16 @@ ${finalArrangements || '[No specific final arrangements specified]'}
         
         {/* Floating AI Assistant */}
         <AIFloatingIndicator onRequestHelp={handleAIAssistanceRequest} />
+        
+        {/* Post-generation wizard */}
+        <PostGenerationWizard
+          open={showPostGenerationWizard}
+          onClose={() => setShowPostGenerationWizard(false)}
+          willContent={willContent}
+          signature={signature}
+          willId={generatedWillId}
+          onComplete={handleWizardComplete}
+        />
       </div>
     </div>
   );

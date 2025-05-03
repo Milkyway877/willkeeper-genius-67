@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TemplateWillSection } from '@/components/will/TemplateWillSection';
-import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion, FileCheck } from 'lucide-react';
+import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion, FileCheck, Video } from 'lucide-react';
 import { WillPreview } from '@/pages/will/components/WillPreview';
 import { Button } from '@/components/ui/button';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WillContent } from './types';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNavigate } from 'react-router-dom';
 
 interface WillPreviewSectionProps {
   content: string;
@@ -18,7 +19,8 @@ interface WillPreviewSectionProps {
   defaultOpen?: boolean;
   onRefresh?: () => void;
   onHelp?: () => void;
-  liveUpdate?: boolean; // Added liveUpdate prop
+  liveUpdate?: boolean;
+  willId?: string;
 }
 
 export function WillPreviewSection({ 
@@ -28,10 +30,12 @@ export function WillPreviewSection({
   defaultOpen = false,
   onRefresh,
   onHelp,
-  liveUpdate = false // Added with default value
+  liveUpdate = false,
+  willId
 }: WillPreviewSectionProps) {
   const [isFormatted, setIsFormatted] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const navigate = useNavigate();
   
   // Function to download the draft document
   const handleDownload = () => {
@@ -83,6 +87,15 @@ export function WillPreviewSection({
   // Toggle formatting option
   const toggleFormatting = () => {
     setIsFormatted(!isFormatted);
+  };
+  
+  // Navigate to video recording
+  const handleRecordVideo = () => {
+    if (willId) {
+      navigate(`/will/${willId}/video-testament`);
+    } else {
+      console.error("Cannot record video: Missing will ID");
+    }
   };
 
   return (
@@ -147,6 +160,17 @@ export function WillPreviewSection({
             <FileCheck className="h-5 w-5" />
             Generate Official Will
           </Button>
+          
+          {willId && (
+            <Button 
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+              onClick={handleRecordVideo}
+            >
+              <Video className="h-4 w-4" />
+              Record Video Testament
+            </Button>
+          )}
           
           {showHelp && (
             <div className="bg-willtank-50 p-3 text-sm rounded border border-willtank-100 text-willtank-700">

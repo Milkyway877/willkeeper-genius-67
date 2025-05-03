@@ -162,6 +162,8 @@ input {
   [role="dialog"] {
     width: calc(100% - 2rem) !important;
     margin: 1rem !important;
+    max-height: calc(100vh - 2rem) !important;
+    overflow-y: auto !important;
   }
 }
 
@@ -183,6 +185,17 @@ input {
   /* Fix for bottom nav bar overlap */
   .pb-24 {
     padding-bottom: calc(6rem + env(safe-area-inset-bottom, 20px)) !important;
+  }
+  
+  /* Post-generation wizard mobile optimizations */
+  .post-generation-wizard .dialog-content {
+    padding: 1rem !important;
+    max-height: 85vh !important;
+  }
+  
+  .post-generation-wizard .badge {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.7rem !important;
   }
 }
 

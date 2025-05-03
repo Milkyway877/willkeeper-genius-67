@@ -101,6 +101,12 @@ export default function TemplateWillCreationPage() {
             will_id: savedWill.id,
             responses: data
           });
+          
+          // Update local state with will ID
+          setProgress(prev => prev ? {
+            ...prev,
+            will_id: savedWill.id
+          } : null);
         }
       }
     } catch (error) {
@@ -108,9 +114,14 @@ export default function TemplateWillCreationPage() {
     }
   };
   
+  const handleWillCompleted = () => {
+    // This function could be used for any additional actions needed when a will is completed
+    navigate('/wills');
+  };
+  
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4 min-h-[calc(100vh-64px)] flex flex-col pb-24">
+      <div className="container mx-auto px-4 py-4 min-h-screen flex flex-col pb-32">
         <div className="flex justify-between items-start mb-4">
           <div>
             <Button variant="ghost" onClick={handleBack} className="mb-2">
