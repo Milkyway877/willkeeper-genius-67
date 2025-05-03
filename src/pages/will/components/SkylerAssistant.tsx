@@ -23,7 +23,7 @@ export function SkylerAssistant({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isReadyToComplete, setIsReadyToComplete] = useState(false);
   const [exchangeCount, setExchangeCount] = useState(0);
-  const [dataCollectionProgress, setDataCollectionProgress({
+  const [dataCollectionProgress, setDataCollectionProgress] = useState({
     personalInfo: false,
     contacts: false,
     readyToComplete: false
@@ -749,4 +749,4 @@ export function SkylerAssistant({
       notifyInfo("Will Generated", "Your will has been generated successfully. You can now review and finalize it.");
       
       onComplete({
-        responses: finalResponses,
+        responses:
