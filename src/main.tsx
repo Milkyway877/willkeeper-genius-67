@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -45,6 +44,7 @@ import Tank from './pages/tank/Tank';
 import TankCreation from './pages/tank/TankCreation';
 import TankMessageDetail from './pages/tank/TankMessageDetail';
 import Wills from './pages/wills/Wills';
+import Will from './pages/will/Will';
 import WillCreatePage from './pages/will/WillCreatePage';
 import WillChatCreation from './pages/will/WillChatCreation';
 import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
@@ -220,6 +220,10 @@ const router = createBrowserRouter([
       {
         path: "/wills",
         element: <Wills />,
+      },
+      {
+        path: "/will/:id",
+        element: <Will />,
       },
       {
         path: "/will/create",
