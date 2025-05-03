@@ -188,22 +188,24 @@ ${willContent.finalArrangements}`;
     const isPlaceholder = value.includes('[') && value.includes(']');
     
     return (
-      <span 
-        className={`cursor-pointer relative ${isPlaceholder ? 'bg-amber-50 text-amber-800 px-1 border border-amber-200 rounded' : 'border-b border-dashed border-gray-300 hover:border-willtank-400 px-1'}`}
-        onClick={() => handleEditField(field)}
-      >
-        {value}
+      <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-block ml-1 opacity-50 hover:opacity-100">
-              <Pen className="h-3 w-3 inline" />
+            <span 
+              className={`cursor-pointer relative ${isPlaceholder ? 'bg-amber-50 text-amber-800 px-1 border border-amber-200 rounded' : 'border-b border-dashed border-gray-300 hover:border-willtank-400 px-1'}`}
+              onClick={() => handleEditField(field)}
+            >
+              {value}
+              <span className="inline-block ml-1 opacity-50 hover:opacity-100">
+                <Pen className="h-3 w-3 inline" />
+              </span>
             </span>
           </TooltipTrigger>
           <TooltipContent>
             <p className="text-xs">Click to edit</p>
           </TooltipContent>
         </Tooltip>
-      </span>
+      </TooltipProvider>
     );
   };
 
