@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2 } from 'lucide-react';
+import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2, Video } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { getWill, getWills, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
+import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -319,6 +319,13 @@ export default function Will() {
                 )}
               </div>
             </motion.div>
+
+            {/* Add Video Testament Section */}
+            {currentWill && !isLoading && (
+              <div className="mt-6">
+                <WillAttachedVideosSection willId={currentWill.id} />
+              </div>
+            )}
           </div>
           
           <div>
@@ -396,8 +403,8 @@ export default function Will() {
                 </div>
                 
                 <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Review executor contact details</p>
-                  <p className="text-gray-600">Ensure your executor's contact information is current.</p>
+                  <p className="text-willtank-800 font-medium mb-1">Add video testimony</p>
+                  <p className="text-gray-600">Recording a video testimony provides additional context to your will.</p>
                 </div>
               </div>
             </motion.div>
