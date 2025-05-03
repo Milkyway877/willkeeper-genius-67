@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { Bot } from 'lucide-react';
+import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
 
 interface WillPreviewProps {
   content: string;
@@ -9,6 +10,7 @@ interface WillPreviewProps {
   signature?: string | null;
   interactive?: boolean;
   onSectionClick?: (sectionName: string) => void;
+  useProfessionalFormat?: boolean; // New prop to control professional formatting
 }
 
 export function WillPreview({ 
@@ -16,7 +18,8 @@ export function WillPreview({
   formatted = true, 
   signature = null,
   interactive = false,
-  onSectionClick
+  onSectionClick,
+  useProfessionalFormat = false // Default to false for backward compatibility
 }: WillPreviewProps) {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   
@@ -42,6 +45,34 @@ export function WillPreview({
         Complete the form sections to generate your will preview
       </div>
     );
+  }
+
+  // Use professional format if requested
+  if (useProfessionalFormat && formatted) {
+    try {
+      // Try to parse content as JSON first
+      let willContentObj;
+      try {
+        if (typeof content === 'string' && content.trim().startsWith('{')) {
+          willContentObj = JSON.parse(content);
+        }
+      } catch (e) {
+        console.log('Content is not valid JSON, using text format');
+      }
+      
+      // Generate professional preview HTML
+      const professionalHtml = generateProfessionalDocumentPreview(willContentObj, signature);
+      
+      return (
+        <div 
+          className="professional-will-preview"
+          dangerouslySetInnerHTML={{ __html: professionalHtml }}
+        />
+      );
+    } catch (error) {
+      console.error('Error generating professional preview:', error);
+      // Fall back to regular preview if professional rendering fails
+    }
   }
   
   if (!formatted) {

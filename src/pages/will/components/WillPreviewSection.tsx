@@ -18,7 +18,8 @@ interface WillPreviewSectionProps {
   defaultOpen?: boolean;
   onRefresh?: () => void;
   onHelp?: () => void;
-  liveUpdate?: boolean; // Added liveUpdate prop
+  liveUpdate?: boolean;
+  useProfessionalFormat?: boolean; // Added prop for professional format
 }
 
 export function WillPreviewSection({ 
@@ -28,10 +29,12 @@ export function WillPreviewSection({
   defaultOpen = false,
   onRefresh,
   onHelp,
-  liveUpdate = false // Added with default value
+  liveUpdate = false,
+  useProfessionalFormat = true // Default to true for professional format
 }: WillPreviewSectionProps) {
   const [isFormatted, setIsFormatted] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // Function to download the draft document
   const handleDownload = () => {
@@ -40,12 +43,19 @@ export function WillPreviewSection({
       return;
     }
     
-    downloadDocument(content, title, signature);
+    setIsDownloading(true);
+    try {
+      downloadDocument(content, title, signature);
+    } finally {
+      setIsDownloading(false);
+    }
   };
   
   // Function to generate official will document
   const handleGenerateOfficialWill = () => {
     try {
+      setIsDownloading(true);
+      
       // Create a mock WillContent object from the text content
       // This is just a basic implementation - in reality you'd want proper parsing
       const mockWillContent: WillContent = {
@@ -77,6 +87,8 @@ export function WillPreviewSection({
       downloadProfessionalDocument(mockWillContent, signature, title);
     } catch (error) {
       console.error("Error generating official will:", error);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -126,6 +138,7 @@ export function WillPreviewSection({
               content={content} 
               formatted={isFormatted} 
               signature={signature}
+              useProfessionalFormat={useProfessionalFormat && isFormatted}
             />
           </ScrollArea>
         </div>
@@ -135,6 +148,7 @@ export function WillPreviewSection({
             variant="outline" 
             className="w-full flex items-center justify-center gap-2"
             onClick={handleDownload}
+            disabled={isDownloading}
           >
             <Download className="h-4 w-4" />
             Download Draft
@@ -143,6 +157,7 @@ export function WillPreviewSection({
           <Button 
             className="w-full bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-2 px-4 rounded shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
             onClick={handleGenerateOfficialWill}
+            disabled={isDownloading}
           >
             <FileCheck className="h-5 w-5" />
             Generate Official Will

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WillContent } from './types';
 import { WillPreview } from './WillPreview';
@@ -14,6 +14,8 @@ interface DocumentPreviewProps {
 }
 
 export function DocumentPreview({ willContent, signature, documentText }: DocumentPreviewProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  
   // Generate formatted content from willContent if documentText is empty
   const generateFormattedContent = () => {
     if (documentText) return documentText;
@@ -63,20 +65,30 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
   
   // Handle generating professional document
   const handleGenerateWill = () => {
-    const title = willContent?.personalInfo?.fullName 
-      ? `${willContent.personalInfo.fullName}'s Will` 
-      : "Last Will and Testament";
-      
-    downloadProfessionalDocument(willContent, signature, title);
+    setIsDownloading(true);
+    try {
+      const title = willContent?.personalInfo?.fullName 
+        ? `${willContent.personalInfo.fullName}'s Will` 
+        : "Last Will and Testament";
+        
+      downloadProfessionalDocument(willContent, signature, title);
+    } finally {
+      setIsDownloading(false);
+    }
   };
   
   // Handle downloading draft document
   const handleDownloadDraft = () => {
-    const title = willContent?.personalInfo?.fullName 
-      ? `${willContent.personalInfo.fullName}'s Will - Draft` 
-      : "Last Will and Testament - Draft";
-      
-    downloadDocument(formattedContent, title, signature);
+    setIsDownloading(true);
+    try {
+      const title = willContent?.personalInfo?.fullName 
+        ? `${willContent.personalInfo.fullName}'s Will - Draft` 
+        : "Last Will and Testament - Draft";
+        
+      downloadDocument(formattedContent, title, signature);
+    } finally {
+      setIsDownloading(false);
+    }
   };
   
   return (
@@ -85,6 +97,7 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
         content={formattedContent} 
         signature={signature}
         formatted={true}
+        useProfessionalFormat={true}
       />
       
       <div className="mt-6 space-y-3">
@@ -92,6 +105,7 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
           variant="outline" 
           className="w-full flex items-center justify-center gap-2"
           onClick={handleDownloadDraft}
+          disabled={isDownloading}
         >
           <Download className="h-4 w-4" />
           Download Draft
@@ -100,6 +114,7 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
         <Button 
           className="w-full bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-2 px-4 rounded shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
           onClick={handleGenerateWill}
+          disabled={isDownloading}
         >
           <FileCheck className="h-5 w-5" />
           Generate Official Will
