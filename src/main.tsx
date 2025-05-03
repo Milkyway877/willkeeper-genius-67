@@ -47,6 +47,7 @@ import Wills from './pages/wills/Wills';
 import Will from './pages/will/Will';
 import WillCreatePage from './pages/will/WillCreatePage';
 import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
+import WillVideoCreation from './pages/will/WillVideoCreation.tsx';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -230,6 +231,10 @@ const router = createBrowserRouter([
       {
         path: "/will/template-creation/:templateId",
         element: <TemplateWillCreationPage />,
+      },
+      {
+        path: "/will/:willId/video-testament",
+        element: <WillVideoCreation />,
       },
       {
         path: "*",

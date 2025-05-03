@@ -7,8 +7,9 @@ import { DocumentPreview } from './DocumentPreview';
 import { VideoRecordingSection } from './VideoRecordingSection';
 import { WillContent } from './types';
 import { Badge } from '@/components/ui/badge';
-import { Check, FileText, Video, Upload, ArrowRight, Save } from 'lucide-react';
+import { Check, FileText, Video, Upload, ArrowRight, Save, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
 interface PostGenerationWizardProps {
   open: boolean;
@@ -32,6 +33,8 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
   const [videoRecorded, setVideoRecorded] = useState<boolean>(false);
   const [videoData, setVideoData] = useState<{ path: string, url: string } | null>(null);
   const [documentsUploaded, setDocumentsUploaded] = useState<boolean>(false);
+  const [uploadedDocuments, setUploadedDocuments] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -51,15 +54,37 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
     });
   };
 
-  const handleDocumentUpload = () => {
-    // Simulate document upload for now
-    setTimeout(() => {
-      setDocumentsUploaded(true);
-      toast({
-        title: "Documents Uploaded",
-        description: "Your supporting documents have been uploaded successfully.",
-      });
-    }, 1000);
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    setIsUploading(true);
+    
+    const files = Array.from(e.target.files);
+    const newDocuments = files.map(file => ({
+      id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      url: URL.createObjectURL(file),
+      file: file,
+      category: getFileCategory(file.type)
+    }));
+    
+    setUploadedDocuments(prev => [...prev, ...newDocuments]);
+    setDocumentsUploaded(true);
+    setIsUploading(false);
+    
+    toast({
+      title: "Documents Uploaded",
+      description: `${files.length} document(s) have been uploaded successfully.`,
+    });
+  };
+  
+  const getFileCategory = (fileType: string) => {
+    if (fileType.includes('image')) return 'Image';
+    if (fileType.includes('pdf')) return 'PDF';
+    if (fileType.includes('word') || fileType.includes('document')) return 'Document';
+    return 'Other';
   };
 
   const handleComplete = () => {
@@ -76,6 +101,23 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
 
   const skipStep = () => {
     nextStep();
+  };
+  
+  const handleVideoNavigate = () => {
+    if (willId) {
+      onClose();
+      navigate(`/will/${willId}/video-testament`);
+    } else {
+      toast({
+        title: "Error",
+        description: "Could not navigate to video recording. Will ID is missing.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const handleViewDocument = (documentUrl: string) => {
+    window.open(documentUrl, '_blank');
   };
 
   return (
@@ -127,11 +169,20 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
                   protection by demonstrating your mental capacity and intentions.
                 </p>
               </div>
-              <VideoRecordingSection 
-                defaultOpen={true} 
-                onRecordingComplete={handleVideoRecordingComplete} 
-                willId={willId} 
-              />
+              
+              <div className="text-center space-y-4">
+                <Button 
+                  onClick={handleVideoNavigate}
+                  className="bg-amber-600 hover:bg-amber-700 flex items-center mx-auto"
+                >
+                  <Video className="mr-2 h-4 w-4" />
+                  Record Video Testament
+                </Button>
+                <p className="text-sm text-gray-500">
+                  This will open our comprehensive video recording interface in a new page.
+                  After recording, you'll be returned to continue the will creation process.
+                </p>
+              </div>
             </div>
           )}
 
@@ -151,10 +202,49 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
                 <p className="text-sm text-gray-500 mt-2 mb-4">
                   Drag and drop files here or click to select files
                 </p>
-                <Button onClick={handleDocumentUpload}>
-                  {documentsUploaded ? "Documents Uploaded" : "Select Files"}
+                <Input
+                  type="file"
+                  className="hidden"
+                  id="document-upload"
+                  multiple
+                  onChange={handleDocumentUpload}
+                />
+                <Button onClick={() => document.getElementById('document-upload')?.click()}>
+                  {isUploading ? "Uploading..." : "Select Files"}
                 </Button>
               </div>
+              
+              {uploadedDocuments.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-medium mb-3">Uploaded Documents ({uploadedDocuments.length})</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {uploadedDocuments.map((doc) => (
+                      <div key={doc.id} className="border rounded-md p-3 flex flex-col">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="truncate flex-1 font-medium text-sm">
+                            {doc.name}
+                          </div>
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            {doc.category}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-gray-500 mb-2">
+                          {(doc.size / 1024).toFixed(1)} KB
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-auto"
+                          onClick={() => handleViewDocument(doc.url)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Recommended Documents:</h4>
@@ -220,7 +310,7 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
                     <div>
                       <h4 className="font-medium">Supporting Documents</h4>
                       <p className="text-sm text-gray-500">
-                        {documentsUploaded ? "Uploaded and attached to your will" : "Not uploaded"}
+                        {documentsUploaded ? `${uploadedDocuments.length} documents uploaded` : "No documents uploaded"}
                       </p>
                     </div>
                     {documentsUploaded ? (
