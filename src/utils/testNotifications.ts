@@ -76,3 +76,38 @@ export const createDocumentUploadedNotification = async () => {
     description: 'This is a test document uploaded notification to verify the system is working.'
   });
 };
+
+// Function to create multiple notifications at once for testing the counter
+export const createMultipleNotifications = async (count: number) => {
+  const notificationTypes = [
+    { type: 'info', title: 'Test Info' },
+    { type: 'success', title: 'Test Success' },
+    { type: 'warning', title: 'Test Warning' },
+    { type: 'security', title: 'Test Security' },
+    { type: 'will_created', title: 'Test Will Created' },
+    { type: 'beneficiary_added', title: 'Test Beneficiary Added' }
+  ] as const;
+
+  const promises = [];
+  
+  // Create specified number of notifications with sequential numbering
+  for (let i = 1; i <= count; i++) {
+    const typeIndex = (i - 1) % notificationTypes.length;
+    const { type, title } = notificationTypes[typeIndex];
+    
+    promises.push(
+      createSystemNotification(type, {
+        title: `${title} #${i}`,
+        description: `This is test notification #${i} of ${count} created to test the counter.`
+      })
+    );
+    
+    // Small delay between notifications to avoid rate limiting
+    if (i < count) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+  
+  await Promise.all(promises);
+  return true;
+};

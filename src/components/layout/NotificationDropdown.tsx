@@ -17,6 +17,9 @@ import { toast } from '@/hooks/use-toast';
 export function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [lastFetched, setLastFetched] = useState(0);
+  const [isCounterVisible, setIsCounterVisible] = useState(true);
+  const [countdownValue, setCountdownValue] = useState(0);
+  const [isCountingDown, setIsCountingDown] = useState(false);
   
   const { 
     notifications, 
@@ -25,6 +28,43 @@ export function NotificationDropdown() {
     fetchNotifications, 
     loading 
   } = useNotifications();
+  
+  // Update countdown value when unreadCount changes
+  useEffect(() => {
+    setCountdownValue(unreadCount);
+    // Show counter when new notifications arrive
+    if (unreadCount > 0) {
+      setIsCounterVisible(true);
+    }
+  }, [unreadCount]);
+
+  // Start countdown when dropdown is opened with unread notifications
+  useEffect(() => {
+    let countdownTimer: NodeJS.Timeout;
+    
+    if (isOpen && unreadCount > 0 && !isCountingDown) {
+      setIsCountingDown(true);
+      setCountdownValue(unreadCount);
+      
+      // Animate the countdown effect
+      countdownTimer = setInterval(() => {
+        setCountdownValue(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownTimer);
+            setIsCountingDown(false);
+            setIsCounterVisible(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 800); // Speed of countdown
+    }
+    
+    // Clean up the interval when component unmounts or dropdown closes
+    return () => {
+      if (countdownTimer) clearInterval(countdownTimer);
+    };
+  }, [isOpen, unreadCount, isCountingDown]);
   
   // Refresh notifications when dropdown is opened
   useEffect(() => {
@@ -60,12 +100,23 @@ export function NotificationDropdown() {
           className="relative"
         >
           <BellRing className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-willtank-600 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-willtank-600"></span>
-            </span>
-          )}
+          <AnimatePresence>
+            {isCounterVisible && unreadCount > 0 && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                className="absolute -top-1 -right-1"
+              >
+                <Badge 
+                  variant="destructive" 
+                  className="flex items-center justify-center h-5 min-w-[20px] px-[5px] text-xs font-bold rounded-full"
+                >
+                  {isCountingDown ? countdownValue : unreadCount}
+                </Badge>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto">

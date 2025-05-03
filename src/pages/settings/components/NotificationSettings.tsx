@@ -1,9 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Switch } from "@/components/ui/switch";
 import { Bell, Mail, BadgeInfo, Shield, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
 import { 
   createTestNotification, 
@@ -11,7 +13,8 @@ import {
   createSuccessNotification,
   createWarningNotification,
   createWillCreatedNotification,
-  createBeneficiaryAddedNotification
+  createBeneficiaryAddedNotification,
+  createMultipleNotifications
 } from '@/utils/testNotifications';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -19,6 +22,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 export function NotificationSettings() {
