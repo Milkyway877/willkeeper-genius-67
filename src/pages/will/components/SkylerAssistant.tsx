@@ -5,20 +5,15 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
-import { Contact, Message as MessageType } from './types';
+import { Contact, Message as MessageType, SkylerAssistantProps } from './types';
 import { useSystemNotifications } from '@/hooks/use-system-notifications';
 
-interface SkylerAssistantProps {
-  templateId: string;
-  templateName: string;
-  onComplete: (data: {
-    responses: Record<string, any>;
-    contacts: Contact[];
-    generatedWill: string;
-  }) => void;
-}
-
-export function SkylerAssistant({ templateId, templateName, onComplete }: SkylerAssistantProps) {
+export function SkylerAssistant({ 
+  templateId, 
+  templateName, 
+  onComplete, 
+  onInputChange
+}: SkylerAssistantProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -151,6 +146,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       updates.fullName = nameMatch[1];
       setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
       console.log("Extracted name:", nameMatch[1]);
+      
+      // Call onInputChange if provided
+      if (onInputChange) {
+        onInputChange('fullName', nameMatch[1]);
+      }
     }
     
     // Name at beginning of sentence
@@ -159,6 +159,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       updates.fullName = nameMatchStart[1];
       setDataCollectionProgress(prev => ({ ...prev, personalInfo: true }));
       console.log("Extracted name from start:", nameMatchStart[1]);
+      
+      // Call onInputChange if provided
+      if (onInputChange) {
+        onInputChange('fullName', nameMatchStart[1]);
+      }
     }
     
     // Extract any name mentioned along with "my name"
@@ -175,6 +180,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
           }
           if (nameParts.length > 0) {
             updates.fullName = nameParts.join(' ');
+            
+            // Call onInputChange if provided
+            if (onInputChange) {
+              onInputChange('fullName', updates.fullName);
+            }
           }
           break;
         }
@@ -187,6 +197,11 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       if (statusMatch && statusMatch[1]) {
         updates.maritalStatus = statusMatch[1].charAt(0).toUpperCase() + statusMatch[1].slice(1).toLowerCase();
         console.log("Extracted marital status:", updates.maritalStatus);
+        
+        // Call onInputChange if provided
+        if (onInputChange) {
+          onInputChange('maritalStatus', updates.maritalStatus);
+        }
       }
     }
     
@@ -417,9 +432,34 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       console.log("Extracted general address:", updates.propertyAddress);
     }
     
+    // Whenever we update important fields, notify via onInputChange
+    if (updates.executorName && onInputChange) {
+      onInputChange('executorName', updates.executorName);
+    }
+    
+    if (updates.guardianName && onInputChange) {
+      onInputChange('guardianName', updates.guardianName);
+    }
+    
+    if (updates.propertyAddress && onInputChange) {
+      onInputChange('propertyAddress', updates.propertyAddress);
+    }
+    
+    if (updates.vehicle && onInputChange) {
+      onInputChange('vehicle', updates.vehicle);
+    }
+    
+    if (updates.spouseName && onInputChange) {
+      onInputChange('spouseName', updates.spouseName);
+    }
+    
+    if (updates.childrenNames && onInputChange) {
+      onInputChange('childrenNames', updates.childrenNames);
+    }
+    
     setExtractedResponses(prev => ({ ...prev, ...updates }));
     return updates;
-  }, [contacts, extractedResponses, exchangeCount, assetsList, beneficiaries]);
+  }, [contacts, extractedResponses, exchangeCount, assetsList, beneficiaries, onInputChange]);
   
   // Check if all required data has been collected
   useEffect(() => {
@@ -709,139 +749,4 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
       notifyInfo("Will Generated", "Your will has been generated successfully. You can now review and finalize it.");
       
       onComplete({
-        responses: finalResponses,
-        contacts,
-        generatedWill: generatedWillContent
-      });
-      
-    } catch (error) {
-      console.error("Error generating will:", error);
-      
-      toast({
-        title: "Generation Error",
-        description: "There was a problem generating your will. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-  
-  const generateWillContent = (templateId: string, responses: Record<string, any>) => {
-    const fullName = responses.fullName || 'Name not provided';
-    const executorName = responses.executorName || 'Executor not specified';
-    const executorEmail = responses.executorEmail ? `Email: ${responses.executorEmail}` : 'Email not provided';
-    const executorPhone = responses.executorPhone ? `Phone: ${responses.executorPhone}` : 'Phone not provided';
-    const maritalStatus = responses.maritalStatus || 'Marital status not specified';
-    const spouseInfo = responses.spouseName ? ` to ${responses.spouseName}` : '';
-    const hasChildren = responses.hasChildren || (responses.childrenNames ? true : false);
-    const childrenNames = responses.childrenNames || 'Children not specified';
-    const propertyAddress = responses.propertyAddress ? `${responses.propertyAddress}` : 'No property specified';
-    const vehicleDetails = responses.vehicle ? `${responses.vehicle}` : 'No vehicle specified';
-    const guardianName = responses.guardianName || 'Guardian not specified';
-    const bequestsDetails = responses.bequestsDetails || 'No specific bequests';
-    const residualEstate = responses.residualEstate || 'Not specified';
-    const currentDate = new Date().toLocaleDateString();
-    
-    if (templateId === 'digital-assets') {
-      return `DIGITAL ASSET WILL AND TESTAMENT OF ${fullName.toUpperCase()}
-
-I, ${fullName}, being of sound mind, declare this to be my Digital Asset Will and Testament.
-
-ARTICLE I: DIGITAL EXECUTOR
-I appoint ${executorName} as my Digital Executor with authority to manage all my digital assets.
-${executorEmail}
-${executorPhone}
-
-ARTICLE II: CRYPTOCURRENCY ASSETS
-${responses.digitalAssetsDetails?.includes('crypto') ? `My cryptocurrency assets include: ${responses.digitalAssetsDetails}` : 'I have no cryptocurrency assets.'}
-
-ARTICLE III: NFT ASSETS
-${responses.digitalAssetsDetails?.includes('nft') ? `My NFT holdings include: ${responses.digitalAssetsDetails}` : 'I have no NFT assets.'}
-
-ARTICLE IV: SOCIAL MEDIA ACCOUNTS
-${responses.digitalAssetsDetails?.includes('social') ? `My social media accounts include: ${responses.digitalAssetsDetails}` : 'My social media accounts should be handled according to the individual platform policies.'}
-
-ARTICLE V: EMAIL ACCOUNTS
-${responses.digitalAssetsDetails?.includes('email') ? `My email accounts include: ${responses.digitalAssetsDetails}` : 'My email accounts should be closed after important information is saved.'}
-
-ARTICLE VI: ACCESS INFORMATION
-${responses.digitalAssetsDetails?.includes('password') ? `My access information is stored in: ${responses.digitalAssetsDetails}` : 'I have provided separate secure instructions for accessing my digital accounts.'}
-
-ARTICLE VII: DIGITAL LEGACY PREFERENCES
-My preferences for my digital legacy are: ${responses.digitalLegacyPreferences || 'I wish for my digital assets to be preserved where possible and deleted where appropriate, at the discretion of my Digital Executor.'}
-
-Digitally signed by: ${fullName}
-Date: ${currentDate}`;
-    } else {
-      return `LAST WILL AND TESTAMENT OF ${fullName.toUpperCase()}
-
-I, ${fullName}, being of sound mind, declare this to be my Last Will and Testament.
-
-ARTICLE I: REVOCATION
-I revoke all previous wills and codicils.
-
-ARTICLE II: FAMILY INFORMATION
-I am ${maritalStatus}${spouseInfo}.
-${hasChildren ? `I have the following children: ${childrenNames}.` : 'I have no children.'}
-
-ARTICLE III: EXECUTOR
-I appoint ${executorName} as the Executor of this Will.
-${executorEmail}
-${executorPhone}
-${responses.alternateExecutor ? `If they are unable or unwilling to serve, I appoint ${responses.alternateExecutorName} as alternate Executor.` : ''}
-
-${responses.guardianNeeded ? `ARTICLE IV: GUARDIAN
-If needed, I appoint ${guardianName} as guardian of my minor children.` : ''}
-
-ARTICLE ${responses.guardianNeeded ? 'V' : 'IV'}: DISPOSITION OF PROPERTY
-${responses.specificBequests ? `I make the following specific bequests: ${bequestsDetails}` : ''}
-
-${responses.propertyAddress ? `I own a property located at ${propertyAddress}.` : ''}
-${responses.vehicle ? `I own a vehicle described as: ${vehicleDetails}.` : ''}
-
-I give all my remaining property to ${residualEstate}.
-
-ARTICLE ${responses.guardianNeeded ? 'VI' : 'V'}: DIGITAL ASSETS
-${responses.digitalAssets ? `I direct my Executor regarding my digital assets as follows: ${responses.digitalAssetsDetails}` : 'I authorize my Executor to access, modify, control, archive, transfer, and delete my digital assets.'}
-
-Digitally signed by: ${fullName}
-Date: ${currentDate}`;
-    }
-  };
-  
-  return (
-    <div className="flex flex-col h-[70vh]">
-      <Card className="flex-1 flex flex-col overflow-hidden h-full">
-        <CardHeader className="flex-shrink-0 border-b p-4">
-          <div className="flex items-center">
-            <div className="bg-willtank-50 p-1 rounded-full">
-              <Bot className="h-6 w-6 text-willtank-600" />
-            </div>
-            <div className="ml-3">
-              <h3 className="font-semibold">SKYLER - Will AI Assistant</h3>
-              <p className="text-xs text-gray-500">Creating your {templateName}</p>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0 flex-1 overflow-hidden">
-          <MessageList messages={messages} />
-        </CardContent>
-
-        <InputArea
-          inputValue={inputValue}
-          setInputValue={setInputValue}
-          isProcessing={isProcessing || isGenerating}
-          isRecording={isRecording}
-          recordingSupported={recordingSupported}
-          currentStage="unified"
-          onSendMessage={handleSendMessage}
-          onToggleVoiceInput={toggleVoiceInput}
-          onCompleteInfo={handleGenerateWill}
-          isReadyToComplete={isReadyToComplete && !isGenerating}
-        />
-      </Card>
-    </div>
-  );
-}
+        responses:
