@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -47,7 +48,7 @@ import Wills from './pages/wills/Wills';
 import WillCreatePage from './pages/will/WillCreatePage';
 import WillChatCreation from './pages/will/WillChatCreation';
 import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
-import WillVideoCreation from './pages/will/WillVideoCreation.tsx';
+import { WillVideoCreation } from './pages/will/WillVideoCreation.tsx';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
