@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -43,7 +43,8 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
     return () => clearTimeout(timer);
   }, []);
   
-  const handleQuestionClick = (field?: string) => {
+  // Use useCallback for handlers to prevent unnecessary re-renders
+  const handleQuestionClick = useCallback((field?: string) => {
     onRequestHelp(field);
     setExpanded(false);
     
@@ -51,17 +52,17 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
       title: "AI Assistant activated",
       description: field ? `I'll help you with the ${field.replace(/([A-Z])/g, ' $1').trim()} section` : "I'll guide you through your will creation"
     });
-  };
+  }, [onRequestHelp, toast]);
   
   // Stop pulsing animation after first expansion
-  const handleExpand = () => {
+  const handleExpand = useCallback(() => {
     setExpanded(true);
     setPulseAnimation(false);
     setShowWelcome(false);
-  };
+  }, []);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-6 z-40">
       <AnimatePresence>
         {showWelcome && (
           <motion.div
@@ -81,6 +82,7 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
                   size="sm" 
                   className="mt-2 w-full justify-center" 
                   onClick={handleExpand}
+                  type="button"
                 >
                   Get Started <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
@@ -106,6 +108,7 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
                 variant="ghost" 
                 className="h-8 w-8" 
                 onClick={() => setExpanded(false)}
+                type="button"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -116,7 +119,7 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
                 How can I help you create your will today?
               </p>
               
-              <Badge className="bg-willtank-50 text-willtank-800 border-willtank-200 mb-3">
+              <Badge className="bg-willtank-50 text-willtank-800 border-willtank-200 mb-3 inline-flex items-center">
                 <Sparkle className="h-3 w-3 mr-1 text-amber-500" />
                 AI-powered guidance
               </Badge>
@@ -131,6 +134,7 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
                     variant="ghost"
                     className="w-full justify-start text-left text-xs h-auto py-1.5 mb-0.5"
                     onClick={() => handleQuestionClick(q.field)}
+                    type="button"
                   >
                     <MessageCircleQuestion className="h-3 w-3 mr-2 text-willtank-500" />
                     {q.question}
@@ -146,6 +150,7 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
                     variant="ghost"
                     className="w-full justify-start text-left text-xs h-auto py-1.5 mb-0.5"
                     onClick={() => handleQuestionClick(q.field)}
+                    type="button"
                   >
                     <ArrowRight className="h-3 w-3 mr-2 text-willtank-500" />
                     {q.question}
@@ -158,6 +163,7 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
       </AnimatePresence>
       
       <motion.button
+        type="button"
         className={`bg-willtank-600 text-white rounded-full shadow-lg flex items-center gap-2 px-4 py-3 ${pulseAnimation ? 'animate-pulse' : ''}`}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}

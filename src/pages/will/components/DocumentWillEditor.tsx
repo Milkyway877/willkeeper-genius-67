@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -224,27 +224,35 @@ ARTICLE VI: FINAL ARRANGEMENTS
 ${willContent.finalArrangements}`;
   };
 
-  // Handle opening a field for editing
-  const handleEditField = (field: string) => {
+  // Handle opening a field for editing with improved scroll position management
+  const handleEditField = useCallback((field: string) => {
     // Save current scroll position
-    setScrollBeforeEdit(window.scrollY);
+    const currentScroll = window.scrollY;
+    setScrollBeforeEdit(currentScroll);
     
     setEditingField(field);
     setEditValue(willContent[field]);
     setShowAIHelper(field);
+    
+    // Prevent any scrolling when the edit dialog opens
+    document.body.style.overflow = 'hidden';
+    
     setTimeout(() => {
       editFieldRef.current?.focus();
     }, 100);
-  };
+  }, [willContent]);
   
-  // Handle saving an edited field
-  const saveAndCloseEditField = () => {
+  // Handle saving an edited field with improved scroll restoration
+  const saveAndCloseEditField = useCallback(() => {
     if (editingField) {
       setWillContent(prev => ({
         ...prev,
         [editingField]: editValue
       }));
       setEditingField(null);
+      
+      // Re-enable scrolling
+      document.body.style.overflow = '';
       
       // Check if user just finished adding beneficiaries and might want to add more
       if (editingField === 'beneficiaries' && !showBeneficiaryPrompt && editValue.split('\n').length <= 2) {
@@ -253,16 +261,16 @@ ${willContent.finalArrangements}`;
         }, 500);
       }
       
-      // Restore scroll position with a slight delay
+      // Restore scroll position with a slight delay to ensure the dialog is fully closed
       setTimeout(() => {
         window.scrollTo({
           top: scrollBeforeEdit,
-          behavior: 'instant'
+          behavior: 'auto' // Changed from 'instant' for better compatibility
         });
-      }, 50);
+      }, 100);
     }
-  };
-  
+  }, [editingField, editValue, showBeneficiaryPrompt, scrollBeforeEdit]);
+
   // Handle AI Assistant for a field
   const handleShowAIHelper = (field: string) => {
     setShowAIHelper(field === showAIHelper ? null : field);
@@ -447,51 +455,21 @@ ${willContent.finalArrangements}`;
     });
   };
   
-  // Position the editing overlay near the field being edited
-  const getEditOverlayPosition = () => {
+  // Position the editing overlay near the field being edited - improved to prevent flickering
+  const getEditOverlayPosition = useCallback(() => {
     if (!editingField) return {};
     
-    // Default position in the middle for mobile
-    if (window.innerWidth < 768) {
-      return {
-        position: 'fixed' as const,
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        maxWidth: '90%',
-        width: '100%',
-        zIndex: 50
-      };
-    }
-    
-    // For desktop, position near the field
-    const fieldElement = document.querySelector(`[data-field="${editingField}"]`);
-    if (!fieldElement) return {};
-    
-    const rect = (fieldElement as HTMLElement).getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    
-    // Position the overlay below or above the field based on available space
-    if (rect.bottom + 200 > viewportHeight) {
-      // Position above if not enough space below
-      return {
-        position: 'absolute' as const,
-        bottom: `${document.documentElement.clientHeight - rect.top + 10}px`,
-        left: `${rect.left}px`,
-        zIndex: 50,
-        maxWidth: '400px'
-      };
-    }
-    
-    // Position below if there's enough space
+    // Always use fixed positioning for more stable behavior
     return {
-      position: 'absolute' as const,
-      top: `${rect.bottom + window.scrollY + 10}px`,
-      left: `${rect.left}px`,
-      zIndex: 50,
-      maxWidth: '400px'
+      position: 'fixed' as const,
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      maxWidth: window.innerWidth < 768 ? '90%' : '500px',
+      width: '100%',
+      zIndex: 50
     };
-  };
+  }, [editingField]);
 
   return (
     <div className="container mx-auto mb-16">
@@ -738,8 +716,8 @@ ${willContent.finalArrangements}`;
         {/* Editing overlay - appears when a field is being edited */}
         {editingField && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card 
-              className="w-full max-w-lg p-6" 
+            <div 
+              className="w-full max-w-lg p-6 bg-white rounded-lg shadow-lg"
               style={getEditOverlayPosition()}
             >
               <h3 className="font-medium mb-2">Edit {editingField.replace(/([A-Z])/g, ' $1').trim()}</h3>
@@ -751,10 +729,26 @@ ${willContent.finalArrangements}`;
                 placeholder={`Enter ${editingField}...`}
               />
               <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setEditingField(null)}>Cancel</Button>
-                <Button onClick={saveAndCloseEditField}>Save Changes</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setEditingField(null);
+                    document.body.style.overflow = '';
+                    // Restore scroll position
+                    setTimeout(() => {
+                      window.scrollTo({
+                        top: scrollBeforeEdit,
+                        behavior: 'auto'
+                      });
+                    }, 100);
+                  }}
+                  type="button"
+                >
+                  Cancel
+                </Button>
+                <Button onClick={saveAndCloseEditField} type="button">Save Changes</Button>
               </div>
-            </Card>
+            </div>
           </div>
         )}
         

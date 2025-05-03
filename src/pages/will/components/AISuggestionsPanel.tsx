@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,8 +40,8 @@ export function AISuggestionsPanel({
     }
   }, [activeField]);
 
-  // Helper function to generate field-specific suggestions
-  const generateSuggestionsForField = (field: string): Suggestion[] => {
+  // Helper function to generate field-specific suggestions (memoized)
+  const generateSuggestionsForField = useCallback((field: string): Suggestion[] => {
     const fieldSuggestions: Record<string, Suggestion[]> = {
       'fullName': [
         {
@@ -173,10 +172,10 @@ export function AISuggestionsPanel({
     };
 
     return fieldSuggestions[field] || generateGeneralSuggestions();
-  };
+  }, []);
 
-  // Helper function to generate general suggestions
-  const generateGeneralSuggestions = (): Suggestion[] => {
+  // Helper function to generate general suggestions (memoized)
+  const generateGeneralSuggestions = useCallback((): Suggestion[] => {
     return [
       {
         id: 'gen-1',
@@ -197,35 +196,35 @@ export function AISuggestionsPanel({
         type: 'general'
       }
     ];
-  };
+  }, []);
 
   // Handle accepting a suggestion
-  const handleAcceptSuggestion = (suggestion: Suggestion) => {
+  const handleAcceptSuggestion = useCallback((suggestion: Suggestion) => {
     onSuggestionAccept(suggestion.field, suggestion.text);
-  };
+  }, [onSuggestionAccept]);
 
   // Handle showing next suggestion
-  const handleNextSuggestion = () => {
+  const handleNextSuggestion = useCallback(() => {
     setCurrentSuggestionIndex((prev) => 
       prev < suggestions.length - 1 ? prev + 1 : 0
     );
-  };
+  }, [suggestions.length]);
 
   // Handle animation before closing
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setAnimatingOut(true);
     setTimeout(() => {
       setAnimatingOut(false);
       onClose();
     }, 300);
-  };
+  }, [onClose]);
 
   if (!isVisible) return null;
 
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed right-4 top-24 w-80 z-50"
+        className="fixed right-4 top-24 w-80 z-40"
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 50 }}
@@ -243,6 +242,7 @@ export function AISuggestionsPanel({
                 variant="ghost" 
                 onClick={handleClose}
                 className="h-8 w-8"
+                type="button"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -273,6 +273,7 @@ export function AISuggestionsPanel({
                       variant="outline"
                       onClick={handleNextSuggestion}
                       className="text-xs"
+                      type="button"
                     >
                       Next Tip <ArrowRight className="ml-1 h-3 w-3" />
                     </Button>
@@ -280,6 +281,7 @@ export function AISuggestionsPanel({
                       size="sm"
                       onClick={() => handleAcceptSuggestion(suggestions[currentSuggestionIndex])}
                       className="text-xs"
+                      type="button"
                     >
                       <Check className="mr-1 h-3 w-3" /> Apply
                     </Button>
@@ -295,6 +297,7 @@ export function AISuggestionsPanel({
                 size="sm" 
                 className="w-full justify-start text-xs"
                 onClick={() => {}}
+                type="button"
               >
                 <MessageCircleQuestion className="mr-2 h-4 w-4 text-willtank-500" />
                 Ask for more detailed guidance
