@@ -3,12 +3,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Download, Save, Pen, MessageCircleQuestion, Eye } from 'lucide-react';
+import { Check, Download, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { DigitalSignature } from './DigitalSignature';
 import { downloadDocument } from '@/utils/documentUtils';
 import { validateWillContent, generateWillContent } from '@/utils/willTemplateUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { BeneficiaryField } from './DocumentFields/BeneficiaryField';
+import { ExecutorField } from './DocumentFields/ExecutorField';
+import { TextField } from './DocumentFields/TextField';
+import { DocumentPreview } from './DocumentPreview';
+import { createWill, updateWill } from '@/services/willService';
+import { useFormAutoSave } from '@/hooks/use-form-auto-save';
+import '../../../MobileStyles.css';
 
 interface DocumentWillEditorProps {
   templateId: string;
@@ -39,15 +48,93 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [showAIHelper, setShowAIHelper] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [isComplete, setIsComplete] = useState<boolean>(false);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
+  const [beneficiariesList, setBeneficiariesList] = useState<any[]>([]);
+  const [executorsList, setExecutorsList] = useState<any[]>([]);
+  const [showBeneficiaryPrompt, setShowBeneficiaryPrompt] = useState<boolean>(false);
   
   const editFieldRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
+
+  // Auto-save functionality
+  const { saving: autoSaving, lastSaved, saveError } = useFormAutoSave({
+    data: { willContent, signature },
+    onSave: async (data) => {
+      try {
+        if (!willId && onSave) {
+          onSave(data.willContent);
+        } else if (willId) {
+          await updateWill(willId, {
+            content: JSON.stringify(data.willContent),
+            title: `${data.willContent.fullName}'s Will`,
+            updated_at: new Date().toISOString()
+          });
+        }
+        setLastAutoSave(new Date());
+        return true;
+      } catch (error) {
+        console.error("Auto-save error:", error);
+        return false;
+      }
+    },
+    debounceMs: 2000,
+    enabled: true
+  });
 
   // Check if the document is complete
   useEffect(() => {
     const documentText = generateDocumentText();
     setIsComplete(!documentText.includes('[') && !documentText.includes(']'));
   }, [willContent]);
+  
+  // Initialize beneficiaries and executors from willContent
+  useEffect(() => {
+    // Extract beneficiaries from the text content
+    if (willContent.beneficiaries && willContent.beneficiaries !== '[Beneficiary details to be added]') {
+      try {
+        const lines = willContent.beneficiaries.split('\n');
+        const extractedBeneficiaries = lines.map((line, index) => {
+          const match = line.match(/- (.*?) \((.*?)\): ([\d.]+)%/);
+          if (match) {
+            return {
+              id: `ben-${index}`,
+              name: match[1],
+              relationship: match[2],
+              percentage: parseFloat(match[3])
+            };
+          }
+          return {
+            id: `ben-${index}`,
+            name: '[Beneficiary Name]',
+            relationship: 'Relationship',
+            percentage: 0
+          };
+        });
+        setBeneficiariesList(extractedBeneficiaries);
+      } catch (error) {
+        console.error("Error parsing beneficiaries:", error);
+        setBeneficiariesList([{ id: 'ben-1', name: '[Beneficiary Name]', relationship: 'Relationship', percentage: 0 }]);
+      }
+    } else {
+      setBeneficiariesList([{ id: 'ben-1', name: '[Beneficiary Name]', relationship: 'Relationship', percentage: 0 }]);
+    }
+
+    // Extract executors from content
+    const primaryExecutor = {
+      id: 'exec-1',
+      name: willContent.executorName,
+      isPrimary: true
+    };
+    
+    const alternateExecutor = {
+      id: 'exec-2',
+      name: willContent.alternateExecutorName,
+      isPrimary: false
+    };
+    
+    setExecutorsList([primaryExecutor, alternateExecutor]);
+  }, []);
   
   // Close edit field when clicking outside
   useEffect(() => {
@@ -105,6 +192,13 @@ ${willContent.finalArrangements}`;
         [editingField]: editValue
       }));
       setEditingField(null);
+      
+      // Check if user just finished adding beneficiaries and might want to add more
+      if (editingField === 'beneficiaries' && !showBeneficiaryPrompt && editValue.split('\n').length <= 2) {
+        setTimeout(() => {
+          setShowBeneficiaryPrompt(true);
+        }, 500);
+      }
     }
   };
   
@@ -112,10 +206,23 @@ ${willContent.finalArrangements}`;
   const handleShowAIHelper = (field: string) => {
     setShowAIHelper(field === showAIHelper ? null : field);
     
-    // In a real implementation, this would call an AI service
+    // Field-specific AI assistance
+    const aiSuggestions: Record<string, string> = {
+      fullName: "Enter your complete legal name as it appears on official documents. Don't use nicknames or abbreviations.",
+      dateOfBirth: "Enter your date of birth in MM/DD/YYYY format. This helps identify you as the testator.",
+      address: "Enter your current legal address, including city, state, and zip code. This should be your primary residence.",
+      executorName: "Select someone trustworthy who is willing and able to manage your estate. Common choices include spouses, adult children, or trusted friends.",
+      alternateExecutorName: "Choose a backup executor in case your first choice is unable or unwilling to serve.",
+      beneficiaries: "List each beneficiary's full name, their relationship to you, and the percentage of your estate they should receive. The total should equal 100%.",
+      specificBequests: "Detail any specific items or monetary amounts you want to leave to particular people or organizations. Be very specific about the item and recipient.",
+      residualEstate: "Specify who receives the remainder of your estate after specific bequests are distributed. This often goes to primary heirs like a spouse or children.",
+      finalArrangements: "Include any preferences for funeral services, burial or cremation, memorial requests, and any messages to loved ones."
+    };
+    
     toast({
-      title: "AI Assistant",
-      description: `Getting help with ${field}...`,
+      title: `AI Assistance: ${field.replace(/([A-Z])/g, ' $1').trim()}`,
+      description: aiSuggestions[field] || "Let me help you complete this field with appropriate information.",
+      duration: 8000,
     });
   };
   
@@ -129,15 +236,26 @@ ${willContent.finalArrangements}`;
     try {
       setSaving(true);
       
-      // In a real implementation, this would save to a database
+      const documentData = {
+        title: `${willContent.fullName}'s Will`,
+        content: JSON.stringify(willContent),
+        status: 'draft',
+        template_type: templateId,
+      };
+      
+      if (willId) {
+        await updateWill(willId, documentData);
+      } else {
+        const newWill = await createWill(documentData);
+        if (newWill && onSave) {
+          onSave({ ...willContent, id: newWill.id });
+        }
+      }
+      
       toast({
         title: "Draft Saved",
         description: "Your will document has been saved as a draft.",
       });
-      
-      if (onSave) {
-        onSave(willContent);
-      }
     } catch (error) {
       console.error("Error saving document:", error);
       toast({
@@ -154,6 +272,58 @@ ${willContent.finalArrangements}`;
   const handleDownload = () => {
     const documentText = generateDocumentText();
     downloadDocument(documentText, `${willContent.fullName}'s Will`, signature);
+  };
+  
+  // Handle adding a new beneficiary
+  const handleAddBeneficiary = () => {
+    const newBeneficiary = {
+      id: `ben-${Date.now()}`,
+      name: '[New Beneficiary]',
+      relationship: 'Relationship',
+      percentage: 0
+    };
+    
+    const updatedBeneficiaries = [...beneficiariesList, newBeneficiary];
+    setBeneficiariesList(updatedBeneficiaries);
+    
+    // Update the willContent.beneficiaries text
+    const beneficiariesText = updatedBeneficiaries.map(b => 
+      `- ${b.name} (${b.relationship}): ${b.percentage}% of the estate`
+    ).join('\n');
+    
+    setWillContent(prev => ({
+      ...prev,
+      beneficiaries: beneficiariesText
+    }));
+    
+    setShowBeneficiaryPrompt(false);
+    
+    toast({
+      title: "Beneficiary Added",
+      description: "You can now edit the beneficiary details.",
+    });
+  };
+  
+  // Handle updating a beneficiary
+  const handleUpdateBeneficiary = (id: string, field: string, value: string | number) => {
+    const updatedBeneficiaries = beneficiariesList.map(b => {
+      if (b.id === id) {
+        return { ...b, [field]: value };
+      }
+      return b;
+    });
+    
+    setBeneficiariesList(updatedBeneficiaries);
+    
+    // Update the willContent.beneficiaries text
+    const beneficiariesText = updatedBeneficiaries.map(b => 
+      `- ${b.name} (${b.relationship}): ${b.percentage}% of the estate`
+    ).join('\n');
+    
+    setWillContent(prev => ({
+      ...prev,
+      beneficiaries: beneficiariesText
+    }));
   };
   
   // Render AI helper for the current field
@@ -192,17 +362,28 @@ ${willContent.finalArrangements}`;
         <Tooltip>
           <TooltipTrigger asChild>
             <span 
-              className={`cursor-pointer relative ${isPlaceholder ? 'bg-amber-50 text-amber-800 px-1 border border-amber-200 rounded' : 'border-b border-dashed border-gray-300 hover:border-willtank-400 px-1'}`}
+              className={`cursor-pointer relative ${isPlaceholder ? 'bg-amber-50 text-amber-800 px-1 border border-amber-200 rounded' : 'border-b border-dashed border-gray-300 hover:border-willtank-400 px-1'} group`}
               onClick={() => handleEditField(field)}
             >
               {value}
-              <span className="inline-block ml-1 opacity-50 hover:opacity-100">
+              <span className="inline-block ml-1 opacity-50 group-hover:opacity-100">
                 <Pen className="h-3 w-3 inline" />
               </span>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 inline-flex ml-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShowAIHelper(field);
+                }}
+              >
+                <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
+              </Button>
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="text-xs">Click to edit</p>
+            <p className="text-xs">Click to edit or use AI assistance</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -213,25 +394,42 @@ ${willContent.finalArrangements}`;
     <div className="container mx-auto mb-16">
       <div className="grid grid-cols-1 gap-6">
         {/* Control panel */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <div className="flex justify-between items-center flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               Save Draft
+            </Button>
+            <Button onClick={() => setShowPreview(true)} variant="outline">
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
             </Button>
             <Button onClick={handleDownload} disabled={!isComplete}>
               <Download className="h-4 w-4 mr-2" />
               Download Will
             </Button>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
+            {autoSaving && (
+              <div className="text-gray-500 flex items-center text-sm">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" /> 
+                Saving...
+              </div>
+            )}
+            {lastSaved && !autoSaving && (
+              <div className="text-gray-500 flex items-center text-sm">
+                <Clock className="h-3 w-3 mr-1" /> 
+                Auto-saved {new Date(lastSaved).toLocaleTimeString()}
+              </div>
+            )}
             {isComplete ? (
               <div className="text-green-600 flex items-center text-sm">
                 <Check className="h-4 w-4 mr-1" /> Document Complete
               </div>
             ) : (
               <div className="text-amber-600 flex items-center text-sm">
-                Fill in all highlighted fields to complete your will
+                <AlertCircle className="h-4 w-4 mr-1" />
+                Fill in all highlighted fields
               </div>
             )}
           </div>
@@ -334,26 +532,37 @@ ${willContent.finalArrangements}`;
         {/* AI Helper */}
         {renderAIHelper()}
         
-        {/* AI Section Controls */}
-        <Card className="p-4">
-          <h3 className="font-medium mb-2">AI Assistance</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Get help with specific sections of your will by selecting them below.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {Object.keys(willContent).map(field => (
-              <Button 
-                key={field}
-                variant={showAIHelper === field ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleShowAIHelper(field)}
-              >
-                <MessageCircleQuestion className="h-4 w-4 mr-1" />
-                {field}
-              </Button>
-            ))}
-          </div>
-        </Card>
+        {/* Add Beneficiary Prompt */}
+        {showBeneficiaryPrompt && (
+          <Alert className="bg-willtank-50 border border-willtank-100">
+            <MessageCircleQuestion className="h-4 w-4 text-willtank-800" />
+            <AlertDescription className="text-willtank-800 flex justify-between items-center">
+              <span>Would you like to add another beneficiary to your will?</span>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" variant="outline" onClick={() => setShowBeneficiaryPrompt(false)}>
+                  No, Thanks
+                </Button>
+                <Button size="sm" onClick={handleAddBeneficiary}>
+                  Yes, Add Beneficiary
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Document Preview Dialog */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-3xl w-[90vw] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Will Document Preview</DialogTitle>
+            </DialogHeader>
+            <DocumentPreview 
+              willContent={willContent} 
+              signature={signature} 
+              documentText={generateDocumentText()}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
