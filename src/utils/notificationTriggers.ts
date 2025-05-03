@@ -1,6 +1,29 @@
 
 import { createSystemNotification } from '@/services/notificationService';
 
+// Define valid event types for type safety
+export type EventType = 
+  | 'will_created' 
+  | 'will_updated' 
+  | 'document_uploaded' 
+  | 'beneficiary_added' 
+  | 'executor_added'
+  | 'security'
+  | 'subscription_update'
+  | 'account_update'
+  | 'will_signed'
+  | 'will_deleted'
+  | 'document_deleted'
+  | 'document_shared'
+  | 'contact_verified'
+  | 'trusted_contact_added'
+  | 'trusted_contact_verified'
+  | 'security_key_generated'
+  | 'subscription_changed'
+  | 'subscription_renewal'
+  | 'payment_failed'
+  | 'system';
+
 // Will-related notifications
 export const triggerWillCreatedNotification = async () => {
   return await createSystemNotification('will_created', {
