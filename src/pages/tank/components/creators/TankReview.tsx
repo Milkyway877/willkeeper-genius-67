@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
 import { DeliveryTrigger, MessageType } from '../../types';
-import { Check, Clock, Mail, FileCheck, Video, FileText, UserRound } from 'lucide-react';
+import { Check, Clock, Mail, FileCheck, Video, FileText, UserRound, Info } from 'lucide-react';
 
 interface TankReviewProps {
   messageType: MessageType;
@@ -112,10 +112,13 @@ export const TankReview: React.FC<TankReviewProps> = ({
           <div>
             <h3 className="font-medium text-gray-800">Delivery Information</h3>
             <div className="mt-2 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Method:</span>
-                <span className="font-medium">{isForWill ? "Posthumous Delivery" : formatDeliveryType(deliveryType)}</span>
-              </div>
+              {!isForWill && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Method:</span>
+                  <span className="font-medium">{formatDeliveryType(deliveryType)}</span>
+                </div>
+              )}
+              
               {/* Only show delivery date for non-will videos with date-based delivery */}
               {deliveryType === 'date' && deliveryDate && !isForWill && (
                 <div className="flex justify-between">
@@ -123,13 +126,17 @@ export const TankReview: React.FC<TankReviewProps> = ({
                   <span className="font-medium">{new Date(deliveryDate).toLocaleDateString()}</span>
                 </div>
               )}
+              
               {isForWill && (
                 <div className="bg-amber-50 border border-amber-100 rounded-md p-3">
                   <div className="flex items-start">
                     <Clock className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
-                    <p className="text-sm text-amber-700">
-                      This testament will be delivered to your will executors and beneficiaries upon confirmation of your passing, alongside your will document.
-                    </p>
+                    <div>
+                      <p className="font-medium text-amber-700">Posthumous Delivery</p>
+                      <p className="text-sm text-amber-700">
+                        This testament will be delivered to your will executors and beneficiaries upon confirmation of your passing, alongside your will document.
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}

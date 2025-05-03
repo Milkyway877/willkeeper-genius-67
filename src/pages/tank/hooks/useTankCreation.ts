@@ -36,11 +36,18 @@ export const useTankCreation = () => {
       setCreationType('video');
       // Set delivery type to posthumous when attaching to a will
       setDeliveryType('posthumous');
+      // Set recipient to "All Beneficiaries" by default for will videos
+      setRecipientName("All Beneficiaries");
       // Skip to the creation step when coming from a will
       setCurrentStep(1);
       
       // Fetch the will title
       fetchWillTitle(willIdParam);
+      
+      // Set a far future date for will videos (avoids date validation issues)
+      const farFutureDate = new Date();
+      farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
+      setDeliveryDate(farFutureDate);
     }
   }, []);
   
@@ -65,7 +72,13 @@ export const useTankCreation = () => {
   // Set delivery type to posthumous when will is selected
   useEffect(() => {
     if (selectedWillId) {
+      // Always enforce posthumous delivery for will videos
       setDeliveryType('posthumous');
+      
+      // Set recipient to "All Beneficiaries" if not already set
+      if (!recipientName) {
+        setRecipientName("All Beneficiaries");
+      }
       
       // For will videos, set a placeholder date far in the future
       // This avoids date validation issues entirely
@@ -190,6 +203,11 @@ export const useTankCreation = () => {
 
     // For will videos, ensure we have the necessary data set
     if (selectedWillId) {
+      // Set recipient to "All Beneficiaries" if not already set
+      if (!recipientName) {
+        setRecipientName("All Beneficiaries");
+      }
+      
       if (!deliveryDate) {
         // Set a default far future date for will videos
         const farFutureDate = new Date();
@@ -228,9 +246,12 @@ export const useTankCreation = () => {
       // Ensure we have a valid delivery date
       const effectiveDeliveryDate = deliveryDate || new Date(Date.now() + 31536000000); // Default to 1 year in future
       
+      // Ensure we have a valid recipient name
+      const effectiveRecipientName = selectedWillId && !recipientName ? "All Beneficiaries" : recipientName;
+      
       const message = {
         title: messageTitle,
-        recipient_name: recipientName || "All Beneficiaries", // Default for will videos
+        recipient_name: effectiveRecipientName,
         recipient_email: recipientEmail,
         message_type: creationType,
         preview: messageContent,

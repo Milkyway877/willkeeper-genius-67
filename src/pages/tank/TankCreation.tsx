@@ -3,7 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from 'framer-motion';
-import { MessageSquare, FileText, Sparkles, Clock, Calendar, Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import { MessageSquare, FileText, Sparkles, Clock, Calendar, Check, ArrowRight, ArrowLeft, Info } from 'lucide-react';
 import { MessageTypeSelector } from './components/steps/MessageTypeSelector';
 import { DeliveryMethodSelector } from './components/steps/DeliveryMethodSelector';
 import { StepProgress } from './components/StepProgress';
@@ -16,6 +16,7 @@ import { TankDeliverySettings } from './components/creators/TankDeliverySettings
 import { TankReview } from './components/creators/TankReview';
 import { MessageCategory, DeliveryTrigger } from './types';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 // Define steps for regular future messages
 const standardSteps = [
@@ -93,6 +94,7 @@ export default function TankCreation() {
   } = useTankCreation();
 
   const [selectedWillTitle, setSelectedWillTitle] = useState<string>("");
+  const { toast } = useToast();
   
   // Determine if we're in will video mode or standard mode
   const isWillVideoMode = !!selectedWillId;
@@ -116,6 +118,26 @@ export default function TankCreation() {
       };
       
       fetchWillTitle();
+
+      // Notify user about posthumous delivery for will videos
+      toast({
+        title: "Will Video Testament",
+        description: "Your video will be automatically set for posthumous delivery and attached to your will.",
+      });
+      
+      // Force video type and posthumous delivery for will videos
+      if (creationType !== 'video') {
+        setCreationType('video');
+      }
+      
+      if (deliveryType !== 'posthumous') {
+        setDeliveryType('posthumous');
+      }
+      
+      // Set recipient to "All Beneficiaries" if not already set
+      if (!recipientName) {
+        setRecipientName("All Beneficiaries");
+      }
     }
   }, [selectedWillId]);
 
@@ -195,15 +217,15 @@ export default function TankCreation() {
       // In will video mode, we only have two meaningful steps:
       // 1. Create the video (corresponds to currentStep 1)
       // 2. Review and attach (corresponds to currentStep 4)
-      if (currentStep <= 1) {
+      if (currentStep === 1) {
         // Video creation step
         return renderCreationComponent();
-      } else {
+      } else if (currentStep === 4) {
         // Review step - always the last step in will mode
         return <TankReview 
                  messageType={creationType!} 
                  title={messageTitle}
-                 recipient={recipientName}
+                 recipient={recipientName || "All Beneficiaries"}
                  recipientEmail={recipientEmail}
                  deliveryType={'posthumous'}
                  deliveryDate={deliveryDate ? deliveryDate.toISOString() : ''}
@@ -213,6 +235,10 @@ export default function TankCreation() {
                  isForWill={true}
                  willTitle={selectedWillTitle}
                />;
+      } else {
+        // If we're in any other step, redirect to the appropriate step
+        setCurrentStep(1); // Default to creation step
+        return <div>Redirecting...</div>;
       }
     }
     
@@ -268,11 +294,26 @@ export default function TankCreation() {
     }
   };
 
-  // Handle navigation for will video mode - UPDATED FOR DIRECT JUMP TO REVIEW
+  // Handle navigation for will video mode - COMPLETELY SKIP delivery steps
   const handleWillVideoNext = () => {
     if (currentStep === 1) {
-      // Skip directly to review step (step 4)
+      // Skip directly to review step (step 4) - completely bypassing delivery steps
       setCurrentStep(4);
+      
+      // Ensure posthumous delivery is set
+      setDeliveryType('posthumous');
+      
+      // Set recipient to "All Beneficiaries" if not already set
+      if (!recipientName) {
+        setRecipientName("All Beneficiaries");
+      }
+      
+      // Set a placeholder future date for delivery
+      if (!deliveryDate) {
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
+        setDeliveryDate(farFutureDate);
+      }
     } else {
       handleFinalize();
     }
@@ -300,9 +341,18 @@ export default function TankCreation() {
           </h1>
           <p className="text-gray-600">
             {isWillVideoMode 
-              ? 'Record a video that will be attached to your will and can be delivered at your chosen time'
+              ? 'Record a video that will be attached to your will and can be delivered posthumously'
               : 'Craft a message that will be delivered at your chosen time in the future'}
           </p>
+          
+          {isWillVideoMode && (
+            <div className="mt-2 bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center">
+              <Info className="h-5 w-5 text-amber-600 mr-2" />
+              <p className="text-sm text-amber-700">
+                Video testaments are automatically set for posthumous delivery and will be available to your will executors and beneficiaries.
+              </p>
+            </div>
+          )}
           
           <StepProgress 
             steps={steps} 
@@ -360,7 +410,7 @@ export default function TankCreation() {
             )}
             
             {isWillVideoMode && currentStep === 1 && (
-              <Button onClick={handleWillVideoNext}>
+              <Button onClick={handleWillVideoNext} className="bg-willtank-600 hover:bg-willtank-700 text-white">
                 Review Testament
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
