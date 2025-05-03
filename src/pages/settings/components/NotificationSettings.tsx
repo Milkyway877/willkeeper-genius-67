@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Switch } from "@/components/ui/switch";
-import { Bell, Mail, BadgeInfo, Shield, AlertTriangle } from 'lucide-react';
+import { Bell, Mail, BadgeInfo, Shield, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences';
 import { 
