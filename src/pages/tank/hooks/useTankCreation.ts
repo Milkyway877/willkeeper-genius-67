@@ -67,10 +67,10 @@ export const useTankCreation = () => {
     if (selectedWillId) {
       setDeliveryType('posthumous');
       
-      // For will videos, we don't need a delivery date as they're delivered posthumously
-      // Just set a placeholder date far in the future for database requirements
+      // For will videos, set a placeholder date far in the future
+      // This avoids date validation issues entirely
       const farFutureDate = new Date();
-      farFutureDate.setFullYear(farFutureDate.getFullYear() + 50);
+      farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
       setDeliveryDate(farFutureDate);
     }
   }, [selectedWillId]);
@@ -102,7 +102,8 @@ export const useTankCreation = () => {
         return;
       }
       
-      if (!recipientName.trim()) {
+      // Don't validate recipient name for will videos as it has default value
+      if (!selectedWillId && !recipientName.trim()) {
         toast({
           title: 'Missing Recipient',
           description: 'Please specify who this message is for.'
@@ -111,7 +112,7 @@ export const useTankCreation = () => {
       }
     }
     
-    if (currentStep === 2 && !deliveryType) {
+    if (currentStep === 2 && !deliveryType && !selectedWillId) {
       toast({
         title: 'Missing Selection',
         description: 'Please select a delivery method to continue.'
@@ -119,8 +120,8 @@ export const useTankCreation = () => {
       return;
     }
     
-    // Skip delivery settings validation completely for will testaments
-    if (currentStep === 3 && selectedWillId) {
+    // Skip all validation for will videos - they should always proceed
+    if (selectedWillId) {
       setCurrentStep(prev => prev + 1);
       return;
     }
@@ -178,10 +179,33 @@ export const useTankCreation = () => {
   };
 
   const handleFinalize = async () => {
-    if (!creationType || (!deliveryType && !selectedWillId)) {
+    if (!creationType) {
       toast({
         title: 'Missing Information',
         description: 'Please ensure all required fields are filled out.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // For will videos, ensure we have the necessary data set
+    if (selectedWillId) {
+      if (!deliveryDate) {
+        // Set a default far future date for will videos
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
+        setDeliveryDate(farFutureDate);
+      }
+      
+      // Force posthumous delivery type for will videos
+      if (deliveryType !== 'posthumous') {
+        setDeliveryType('posthumous');
+      }
+    } else if (!deliveryType) {
+      // Only check delivery type for non-will videos
+      toast({
+        title: 'Missing Information',
+        description: 'Please select a delivery method.',
         variant: 'destructive'
       });
       return;
@@ -201,9 +225,12 @@ export const useTankCreation = () => {
       // For will videos, ensure delivery type is set to posthumous
       const effectiveDeliveryType = selectedWillId ? 'posthumous' as DeliveryTrigger : deliveryType;
       
+      // Ensure we have a valid delivery date
+      const effectiveDeliveryDate = deliveryDate || new Date(Date.now() + 31536000000); // Default to 1 year in future
+      
       const message = {
         title: messageTitle,
-        recipient_name: recipientName,
+        recipient_name: recipientName || "All Beneficiaries", // Default for will videos
         recipient_email: recipientEmail,
         message_type: creationType,
         preview: messageContent,
@@ -211,7 +238,7 @@ export const useTankCreation = () => {
         message_url: messageUrl || null,
         status: 'scheduled' as 'draft' | 'scheduled' | 'processing' | 'delivered' | 'failed',
         delivery_type: effectiveDeliveryType,
-        delivery_date: deliveryDate ? deliveryDate.toISOString() : new Date().toISOString(),
+        delivery_date: effectiveDeliveryDate.toISOString(),
         delivery_event: null,
         category: messageCategory,
         user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context

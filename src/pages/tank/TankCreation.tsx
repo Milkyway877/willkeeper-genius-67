@@ -268,10 +268,10 @@ export default function TankCreation() {
     }
   };
 
-  // Handle navigation for will video mode
+  // Handle navigation for will video mode - UPDATED FOR DIRECT JUMP TO REVIEW
   const handleWillVideoNext = () => {
     if (currentStep === 1) {
-      // Skip to review step
+      // Skip directly to review step (step 4)
       setCurrentStep(4);
     } else {
       handleFinalize();

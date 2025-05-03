@@ -116,6 +116,7 @@ export const TankReview: React.FC<TankReviewProps> = ({
                 <span className="text-gray-600">Method:</span>
                 <span className="font-medium">{isForWill ? "Posthumous Delivery" : formatDeliveryType(deliveryType)}</span>
               </div>
+              {/* Only show delivery date for non-will videos with date-based delivery */}
               {deliveryType === 'date' && deliveryDate && !isForWill && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Scheduled For:</span>
