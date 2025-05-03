@@ -8,6 +8,15 @@ interface WillPreviewProps {
 }
 
 export function WillPreview({ content, formatted = true, signature = null }: WillPreviewProps) {
+  // Handle empty or placeholder content
+  if (!content || content === 'Your will document will appear here as you chat with Skyler...') {
+    return (
+      <div className="text-gray-500 italic text-center">
+        {content || "Start chatting to see your will document preview"}
+      </div>
+    );
+  }
+  
   if (!formatted) {
     // Plain text view with monospace font
     return <pre className="whitespace-pre-wrap text-sm">{content}</pre>;

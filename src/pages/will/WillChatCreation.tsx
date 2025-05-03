@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -11,6 +10,7 @@ import { templates } from './config/wizardSteps';
 import { createWill } from '@/services/willService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { generateWillContent } from '@/utils/willTemplateUtils';
+import { WillPreviewSection } from './components/WillPreviewSection';
 
 export default function WillChatCreation() {
   const navigate = useNavigate();
@@ -48,8 +48,36 @@ export default function WillChatCreation() {
       if (template) {
         setSelectedTemplate(template);
         
-        // Initialize preview content with template
-        setLivePreviewContent(`
+        // Initialize with an empty placeholder rather than a fully-formed document with errors
+        setLivePreviewContent('Your will document will appear here as you chat with Skyler...');
+      } else {
+        toast({
+          title: "Template Not Found",
+          description: "The requested template could not be found. Redirecting to template selection.",
+          variant: "destructive"
+        });
+        navigate('/will/create');
+      }
+    }
+  }, [templateId, navigate, toast]);
+  
+  // Handle real-time input changes from the assistant
+  const handleInputChange = (data: { 
+    responses: Record<string, any>; 
+    contacts: any[]; 
+    partialWill: string 
+  }) => {
+    setCurrentResponses(data.responses);
+    setCurrentContacts(data.contacts);
+    
+    // Only update preview content if we have enough meaningful data
+    if (Object.keys(data.responses).length > 0) {
+      // Use the partialWill directly from the assistant if provided
+      if (data.partialWill && data.partialWill.trim()) {
+        setLivePreviewContent(data.partialWill);
+      } else {
+        // Otherwise generate from template and responses
+        const templateContent = `
 LAST WILL AND TESTAMENT
 
 I, [Full Name], residing at [Address], being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
@@ -75,30 +103,13 @@ ARTICLE VI: FINAL ARRANGEMENTS
 
 Digitally signed by: [Full Name]
 Date: ${new Date().toLocaleDateString()}
-        `);
-      } else {
-        toast({
-          title: "Template Not Found",
-          description: "The requested template could not be found. Redirecting to template selection.",
-          variant: "destructive"
-        });
-        navigate('/will/create');
+        `;
+        
+        // Only generate content if we have meaningful responses
+        const updatedContent = generateWillContent(data.responses, templateContent);
+        setLivePreviewContent(updatedContent);
       }
     }
-  }, [templateId, navigate, toast]);
-  
-  // Handle real-time input changes from the assistant
-  const handleInputChange = (data: { 
-    responses: Record<string, any>; 
-    contacts: any[]; 
-    partialWill: string 
-  }) => {
-    setCurrentResponses(data.responses);
-    setCurrentContacts(data.contacts);
-    
-    // Generate updated will content based on the current inputs
-    const updatedContent = generateWillContent(data.responses, livePreviewContent);
-    setLivePreviewContent(updatedContent);
   };
   
   // When the AI assistant completes all questions, this function will be called
@@ -243,8 +254,16 @@ Date: ${new Date().toLocaleDateString()}
                         This preview updates as you chat with Skyler
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="bg-gray-50 border rounded-md p-4 max-h-[60vh] overflow-y-auto font-serif">
-                      <WillPreview content={livePreviewContent} />
+                    <CardContent>
+                      {livePreviewContent && Object.keys(currentResponses).length > 0 ? (
+                        <div className="bg-gray-50 border rounded-md p-4 max-h-[60vh] overflow-y-auto font-serif">
+                          <WillPreview content={livePreviewContent} />
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 border rounded-md p-4 text-center text-gray-500 italic">
+                          Start chatting with Skyler to see your will document preview
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -261,17 +280,44 @@ Date: ${new Date().toLocaleDateString()}
                 />
               </div>
               <div className="md:col-span-1">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Live Document Preview</CardTitle>
-                    <CardDescription>
-                      This preview updates as you chat with Skyler
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="bg-gray-50 border rounded-md p-4 max-h-[70vh] overflow-y-auto font-serif">
-                    <WillPreview content={livePreviewContent} />
-                  </CardContent>
-                </Card>
+                <WillPreviewSection 
+                  content={livePreviewContent}
+                  liveUpdate={true}
+                  onRefresh={() => {
+                    // Refresh the preview with the latest data
+                    if (Object.keys(currentResponses).length > 0) {
+                      const templateContent = `
+LAST WILL AND TESTAMENT
+
+I, [Full Name], residing at [Address], being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on [Date of Birth] and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint [Executor Name] to serve as the Executor of my estate. If they are unable or unwilling to serve, I appoint [Alternate Executor Name] to serve as alternate Executor.
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+[Beneficiary details to be added]
+
+ARTICLE IV: SPECIFIC BEQUESTS
+[Specific bequests to be added]
+
+ARTICLE V: RESIDUAL ESTATE
+I give all the rest and residue of my estate to [Beneficiary names and distribution details].
+
+ARTICLE VI: FINAL ARRANGEMENTS
+[Final arrangements to be added]
+
+Digitally signed by: [Full Name]
+Date: ${new Date().toLocaleDateString()}
+                      `;
+                      const updatedContent = generateWillContent(currentResponses, templateContent);
+                      setLivePreviewContent(updatedContent);
+                    }
+                  }}
+                />
               </div>
             </div>
           )

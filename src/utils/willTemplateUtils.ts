@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 // Type for will form values (imported from your schema)
@@ -40,6 +39,11 @@ type WillFormValues = {
  */
 export const generateWillContent = (formValues: WillFormValues, templateContent: string): string => {
   console.log("Generating will content from form values:", formValues);
+  
+  // If no meaningful inputs yet, return a placeholder message
+  if (!formValues || Object.keys(formValues).length === 0) {
+    return "Start chatting with Skyler to generate your will document...";
+  }
   
   let newContent = templateContent;
   
@@ -143,16 +147,20 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
     newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements);
   }
   
-  // If there are no specific instructions for some sections, replace with generic text
-  newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
-  newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
-  newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
-  newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
-  newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
-  newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
-  newContent = newContent.replace(/\[Address\]/g, "my current legal address");
-  newContent = newContent.replace(/\[Full Name\]/g, "the testator");
-  newContent = newContent.replace(/\[Date of Birth\]/g, "the testator's date of birth");
+  // If we have meaningful data, replace generic placeholders with better placeholders
+  // Otherwise, don't replace them yet to avoid showing error/warning states prematurely
+  if (Object.keys(formValues).length > 2) {
+    // If there are no specific instructions for some sections, replace with generic text
+    newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
+    newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
+    newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
+    newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
+    newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
+    newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
+    newContent = newContent.replace(/\[Address\]/g, "my current legal address");
+    newContent = newContent.replace(/\[Full Name\]/g, "the testator");
+    newContent = newContent.replace(/\[Date of Birth\]/g, "the testator's date of birth");
+  }
   
   console.log("Generated will content:", newContent);
   return newContent;
@@ -162,6 +170,13 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
  * Check if will content is complete with all required information
  */
 export const validateWillContent = (content: string): boolean => {
+  // If no real content yet, don't show it as invalid
+  if (!content || 
+      content.includes('Start chatting') || 
+      content.includes('Your will document will appear here')) {
+    return true;
+  }
+  
   const placeholders = [
     "[Full Name]",
     "[Address]",
