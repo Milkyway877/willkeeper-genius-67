@@ -119,8 +119,8 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose} className="post-generation-wizard">
-      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto dialog-content">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
             {step === 'preview' && "Review Your Generated Will"}
