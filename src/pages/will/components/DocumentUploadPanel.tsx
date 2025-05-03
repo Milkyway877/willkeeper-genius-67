@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
@@ -40,10 +41,33 @@ export function DocumentUploadPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useUserProfile();
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  // Add an effect to check auth status directly from Supabase if context doesn't provide it
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!user) {
+        // Try to get session directly from Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setIsAuthChecked(true);
+        }
+      } else {
+        setIsAuthChecked(true);
+      }
+    };
+    
+    checkAuth();
+  }, [user]);
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    if (!user) {
+    
+    // Get auth session directly 
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    
+    if (!userId) {
       toast({
         title: "Authentication Error",
         description: "You must be logged in to upload documents.",
@@ -74,8 +98,7 @@ export function DocumentUploadPanel({
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
         
         // Include user ID in the path as required by storage policies
-        // The format must be: userId/filename
-        const filePath = `${user.id}/${fileName}`;
+        const filePath = `${userId}/${fileName}`;
         
         console.log('Uploading to bucket: will_documents, path:', filePath);
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,7 @@ import { Progress } from '@/components/ui/progress';
 import { MessageCategory } from '../../types';
 import { useMessageAI } from '../../hooks/useMessageAI';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DocumentPreview } from '../preview/DocumentPreview';
 
 const documentTemplates = [
   { 
@@ -87,6 +87,10 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   const [isEncrypting, setIsEncrypting] = useState<boolean>(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('standard');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // New state for document preview
+  const [previewOpen, setPreviewOpen] = useState<boolean>(false);
+  const [currentPreviewFile, setCurrentPreviewFile] = useState<{url: string, name: string} | null>(null);
   
   useEffect(() => {
     onCategoryChange('story');
@@ -153,46 +157,32 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
   
-  const uploadDocumentToSupabase = async (fileBlob: Blob, fileName: string) => {
+  const handlePreviewFile = async (file: FileItem) => {
     try {
-      const filePath = `${Date.now()}_${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('future-documents')
-        .upload(filePath, fileBlob, {
-          cacheControl: '3600',
-          upsert: true
-        });
-        
-      if (uploadError) {
-        console.error('Error uploading document:', uploadError);
-        toast({
-          title: "Upload Failed",
-          description: "Could not upload document. Please try again.",
-          variant: "destructive"
-        });
-        return null;
-      }
-      
       const { data } = supabase.storage
         .from('future-documents')
-        .getPublicUrl(filePath);
+        .getPublicUrl(file.id);
         
-      console.log("Document uploaded, path:", filePath);
-      
-      if (onDocumentUrlChange) {
-        onDocumentUrlChange(filePath);
+      if (data?.publicUrl) {
+        setCurrentPreviewFile({
+          url: data.publicUrl,
+          name: file.name
+        });
+        setPreviewOpen(true);
+      } else {
+        toast({
+          title: "Preview Failed",
+          description: "Could not generate a preview URL for this document.",
+          variant: "destructive"
+        });
       }
-      
-      return filePath;
     } catch (error) {
-      console.error('Error in document upload process:', error);
+      console.error('Error generating preview URL:', error);
       toast({
-        title: "Upload Error",
-        description: "An unexpected error occurred during upload.",
+        title: "Preview Error",
+        description: "An error occurred while trying to preview this document.",
         variant: "destructive"
       });
-      return null;
     }
   };
 
@@ -379,10 +369,7 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-gray-500 hover:text-gray-700"
-                            onClick={() => toast({
-                              title: "Preview Unavailable",
-                              description: "File preview is only available for subscribed users."
-                            })}
+                            onClick={() => handlePreviewFile(file)}
                           >
                             <Eye size={16} />
                           </Button>
@@ -630,6 +617,16 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
           {isGenerating ? 'Generating...' : 'AI Assist'}
         </Button>
       </div>
+
+      {/* Add the document preview dialog */}
+      {currentPreviewFile && (
+        <DocumentPreview
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          documentUrl={currentPreviewFile.url}
+          fileName={currentPreviewFile.name}
+        />
+      )}
     </div>
   );
 };
