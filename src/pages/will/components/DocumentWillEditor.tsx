@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
@@ -419,6 +418,45 @@ ${finalArrangements || '[No specific final arrangements specified]'}
     }
   };
 
+  // Function to generate document text from willContent
+  const generateDocumentText = (): string => {
+    const primaryExecutor = executors.find(e => e.isPrimary);
+    const alternateExecutors = executors.filter(e => !e.isPrimary);
+    
+    const beneficiariesText = beneficiaries.map(b => 
+      `- ${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate`
+    ).join('\n');
+    
+    return `
+LAST WILL AND TESTAMENT
+
+I, ${personalInfo.fullName || '[Full Name]'}, residing at ${personalInfo.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on ${personalInfo.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint ${primaryExecutor?.name || '[Primary Executor]'} to serve as the Executor of my estate. ${
+alternateExecutors.length > 0 
+  ? `If they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} to serve as alternate Executor.` 
+  : ''
+}
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+${beneficiariesText}
+
+ARTICLE IV: SPECIFIC BEQUESTS
+${specificBequests || '[No specific bequests specified]'}
+
+ARTICLE V: RESIDUAL ESTATE
+I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
+
+ARTICLE VI: FINAL ARRANGEMENTS
+${finalArrangements || '[No specific final arrangements specified]'}
+    `;
+  };
+
   return (
     <div className="container mx-auto mb-28">
       {showSuccessScreen && generatedWill && (
@@ -828,88 +866,4 @@ ${finalArrangements || '[No specific final arrangements specified]'}
                 </div>
                 
                 <div className="space-y-1">
-                  <h4 className="font-medium">Signature</h4>
-                  <ul className="ml-2 space-y-1">
-                    <li className="flex items-center justify-between">
-                      <span>Digital Signature</span>
-                      {signature ? (
-                        <Check className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-6 text-amber-600"
-                          onClick={() => {
-                            // Scroll to signature section
-                            const signatureSection = documentRef.current?.querySelector('h2:last-of-type');
-                            if (signatureSection) {
-                              signatureSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                          }}
-                        >
-                          <Pen className="h-3 w-3 mr-1" /> Sign
-                        </Button>
-                      )}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </Card>
-            
-            <Card className="p-4 mt-4">
-              <h3 className="font-medium mb-3">Tips for Completing Your Will</h3>
-              <ul className="space-y-2 text-sm list-disc pl-5">
-                <li>Use your full legal name as it appears on official documents</li>
-                <li>Select trusted individuals as your executors</li>
-                <li>Clearly identify your beneficiaries and what they should receive</li>
-                <li>Be specific about any special bequests</li>
-                <li>Include your wishes for funeral arrangements</li>
-              </ul>
-            </Card>
-          </div>
-        </div>
-        
-        {/* Official Will Generation Button - Full width at the bottom */}
-        <div className="col-span-12 mt-8 pb-12">
-          <div className="bg-gradient-to-r from-willtank-50 to-willtank-100 p-6 rounded-lg border border-willtank-200 shadow-sm">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-willtank-800">Generate Your Official Will</h2>
-                <p className="text-willtank-600">Once you've completed all required sections and added your signature, generate your official legal document.</p>
-              </div>
-              <Button 
-                size="lg"
-                onClick={handleGenerateOfficialWill}
-                disabled={!isComplete || !signature}
-                className="bg-willtank-600 hover:bg-willtank-700 text-white px-8"
-              >
-                <FileCheck className="mr-2 h-5 w-5" />
-                Generate Official Will
-              </Button>
-            </div>
-            {(!isComplete || !signature) && (
-              <div className="mt-4 text-sm text-amber-600 flex items-center gap-1">
-                <AlertCircle className="h-4 w-4" />
-                <span>
-                  {!isComplete 
-                    ? "Please complete all required fields before generating your official will." 
-                    : "Please add your digital signature before generating your official will."}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-6xl max-h-screen overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Document Preview</DialogTitle>
-          </DialogHeader>
-          <DocumentPreview willContent={willContent} signature={signature} />
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+                  <h4
