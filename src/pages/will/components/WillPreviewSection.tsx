@@ -16,6 +16,7 @@ interface WillPreviewSectionProps {
   signature?: string | null;
   title?: string;
   onRefresh?: () => void;
+  liveUpdate?: boolean;
 }
 
 export function WillPreviewSection({ 
@@ -23,7 +24,8 @@ export function WillPreviewSection({
   content,
   signature = null,
   title = "My Last Will and Testament",
-  onRefresh
+  onRefresh,
+  liveUpdate = false,
 }: WillPreviewSectionProps) {
   const [showFormatted, setShowFormatted] = useState(true);
   const [isComplete, setIsComplete] = useState(true);
@@ -39,8 +41,8 @@ export function WillPreviewSection({
   
   return (
     <TemplateWillSection 
-      title="Will Preview" 
-      description="Preview how your will document will look"
+      title={liveUpdate ? "Live Preview" : "Will Preview"} 
+      description={liveUpdate ? "Real-time preview of your will document" : "Preview how your will document will look"}
       defaultOpen={defaultOpen}
       icon={<FileText className="h-5 w-5" />}
     >
@@ -71,6 +73,11 @@ export function WillPreviewSection({
       </div>
       
       <div className={`bg-gray-50 border rounded-md p-4 mb-4 max-h-96 overflow-y-auto ${showFormatted ? 'font-serif' : 'font-mono'}`}>
+        {liveUpdate && (
+          <div className="bg-willtank-50 text-willtank-700 text-xs px-2 py-1 mb-3 rounded-sm inline-block">
+            Live updating as you chat
+          </div>
+        )}
         <WillPreview content={content} formatted={showFormatted} signature={signature} />
       </div>
       

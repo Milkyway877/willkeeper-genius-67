@@ -9,6 +9,8 @@ import { SkylerAssistant } from './components/SkylerAssistant';
 import { WillPreview } from './components/WillPreview';
 import { templates } from './config/wizardSteps';
 import { createWill } from '@/services/willService';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { generateWillContent } from '@/utils/willTemplateUtils';
 
 export default function WillChatCreation() {
   const navigate = useNavigate();
@@ -21,12 +23,59 @@ export default function WillChatCreation() {
   const [editableContent, setEditableContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
+  // New state for real-time preview
+  const [activeTab, setActiveTab] = useState<'chat' | 'preview'>('chat');
+  const [currentResponses, setCurrentResponses] = useState<Record<string, any>>({});
+  const [currentContacts, setCurrentContacts] = useState<any[]>([]);
+  const [livePreviewContent, setLivePreviewContent] = useState<string>('');
+  const [isMobileView, setIsMobileView] = useState<boolean>(window.innerWidth < 768);
+  
+  // Effect to handle window resize for responsive layout
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+  
   // Find the template based on the URL parameter
   useEffect(() => {
     if (templateId) {
       const template = templates.find(t => t.id === templateId);
       if (template) {
         setSelectedTemplate(template);
+        
+        // Initialize preview content with template
+        setLivePreviewContent(`
+LAST WILL AND TESTAMENT
+
+I, [Full Name], residing at [Address], being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on [Date of Birth] and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint [Executor Name] to serve as the Executor of my estate. If they are unable or unwilling to serve, I appoint [Alternate Executor Name] to serve as alternate Executor.
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+[Beneficiary details to be added]
+
+ARTICLE IV: SPECIFIC BEQUESTS
+[Specific bequests to be added]
+
+ARTICLE V: RESIDUAL ESTATE
+I give all the rest and residue of my estate to [Beneficiary names and distribution details].
+
+ARTICLE VI: FINAL ARRANGEMENTS
+[Final arrangements to be added]
+
+Digitally signed by: [Full Name]
+Date: ${new Date().toLocaleDateString()}
+        `);
       } else {
         toast({
           title: "Template Not Found",
@@ -37,6 +86,20 @@ export default function WillChatCreation() {
       }
     }
   }, [templateId, navigate, toast]);
+  
+  // Handle real-time input changes from the assistant
+  const handleInputChange = (data: { 
+    responses: Record<string, any>; 
+    contacts: any[]; 
+    partialWill: string 
+  }) => {
+    setCurrentResponses(data.responses);
+    setCurrentContacts(data.contacts);
+    
+    // Generate updated will content based on the current inputs
+    const updatedContent = generateWillContent(data.responses, livePreviewContent);
+    setLivePreviewContent(updatedContent);
+  };
   
   // When the AI assistant completes all questions, this function will be called
   const handleAssistantComplete = async (data: any) => {
@@ -157,11 +220,61 @@ export default function WillChatCreation() {
         </div>
         
         {stage === 'chat' && (
-          <SkylerAssistant 
-            templateId={selectedTemplate.id}
-            templateName={selectedTemplate.title}
-            onComplete={handleAssistantComplete}
-          />
+          isMobileView ? (
+            <div className="space-y-4">
+              <Tabs defaultValue="chat" onValueChange={(value) => setActiveTab(value as 'chat' | 'preview')}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="chat" className="flex-1">Chat</TabsTrigger>
+                  <TabsTrigger value="preview" className="flex-1">Live Preview</TabsTrigger>
+                </TabsList>
+                <TabsContent value="chat" className="mt-2">
+                  <SkylerAssistant 
+                    templateId={selectedTemplate.id}
+                    templateName={selectedTemplate.title}
+                    onComplete={handleAssistantComplete}
+                    onInputChange={handleInputChange}
+                  />
+                </TabsContent>
+                <TabsContent value="preview" className="mt-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Live Document Preview</CardTitle>
+                      <CardDescription>
+                        This preview updates as you chat with Skyler
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="bg-gray-50 border rounded-md p-4 max-h-[60vh] overflow-y-auto font-serif">
+                      <WillPreview content={livePreviewContent} />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-1">
+                <SkylerAssistant 
+                  templateId={selectedTemplate.id}
+                  templateName={selectedTemplate.title}
+                  onComplete={handleAssistantComplete}
+                  onInputChange={handleInputChange}
+                />
+              </div>
+              <div className="md:col-span-1">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Live Document Preview</CardTitle>
+                    <CardDescription>
+                      This preview updates as you chat with Skyler
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="bg-gray-50 border rounded-md p-4 max-h-[70vh] overflow-y-auto font-serif">
+                    <WillPreview content={livePreviewContent} />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )
         )}
         
         {stage === 'review' && (

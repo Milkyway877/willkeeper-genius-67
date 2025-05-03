@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Bot } from 'lucide-react';
@@ -5,20 +6,10 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageList } from './chat/MessageList';
 import { InputArea } from './chat/InputArea';
-import { Contact, Message as MessageType } from './types';
+import { Contact, Message as MessageType, SkylerAssistantProps } from './types';
 import { useSystemNotifications } from '@/hooks/use-system-notifications';
 
-interface SkylerAssistantProps {
-  templateId: string;
-  templateName: string;
-  onComplete: (data: {
-    responses: Record<string, any>;
-    contacts: Contact[];
-    generatedWill: string;
-  }) => void;
-}
-
-export function SkylerAssistant({ templateId, templateName, onComplete }: SkylerAssistantProps) {
+export function SkylerAssistant({ templateId, templateName, onComplete, onInputChange }: SkylerAssistantProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -42,6 +33,18 @@ export function SkylerAssistant({ templateId, templateName, onComplete }: Skyler
   
   const { toast } = useToast();
   const { notifyInfo } = useSystemNotifications();
+  
+  // Add effect to trigger onInputChange when responses or contacts change
+  useEffect(() => {
+    if (onInputChange && messages.length > 1) {
+      const preliminaryWillContent = generateWillContent(templateId, extractedResponses);
+      onInputChange({
+        responses: extractedResponses,
+        contacts: contacts,
+        partialWill: preliminaryWillContent
+      });
+    }
+  }, [extractedResponses, contacts, onInputChange, templateId, messages.length]);
   
   useEffect(() => {
     const welcomeMessage = getWelcomeMessage(templateId, templateName);
