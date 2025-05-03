@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Video, FileCheck, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface WillInfo {
   id: string;
@@ -18,6 +19,7 @@ export function WillVideoCreation() {
   const { willId } = useParams<{ willId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [willInfo, setWillInfo] = useState<WillInfo | null>(null);
   const [currentStep, setCurrentStep] = useState<'record' | 'review' | 'documents'>('record');
@@ -90,7 +92,7 @@ export function WillVideoCreation() {
   };
   
   const handleFinalizeVideo = async () => {
-    if (!willId || !recordedVideoPath) {
+    if (!willId || !recordedVideoPath || !user) {
       toast({
         title: 'Error',
         description: 'Missing required information. Please try again.',
@@ -125,7 +127,7 @@ export function WillVideoCreation() {
         delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
         delivery_event: null,
         category: 'story' as const,
-        user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
+        user_id: user.id, // Use authenticated user ID
       };
       
       setProgress(50);
@@ -141,12 +143,28 @@ export function WillVideoCreation() {
       
       setProgress(80);
       
+      // Update will_progress table to mark video testament as completed
+      const { error: progressError } = await supabase
+        .from('will_progress')
+        .upsert({
+          will_id: willId,
+          user_id: user.id,
+          has_video_testament: true,
+          video_path: recordedVideoPath,
+          updated_at: new Date().toISOString()
+        });
+        
+      if (progressError) {
+        console.error('Error updating will progress:', progressError);
+      }
+      
       // Ensure this video is linked to the will in the will_videos table
       const { error: willVideoError } = await supabase
         .from('will_videos')
         .insert({
           will_id: willId,
           file_path: recordedVideoPath,
+          user_id: user.id,
           duration: 0 // Could be calculated
         });
       
@@ -169,6 +187,7 @@ export function WillVideoCreation() {
         const documentEntries = uploadedDocuments.map(doc => ({
           will_id: willId,
           file_path: doc,
+          user_id: user.id,
           type: 'supporting_document'
         }));
         
@@ -263,7 +282,7 @@ export function WillVideoCreation() {
           </Button>
           
           <div className="text-sm bg-willtank-50 px-3 py-1 rounded-full border border-willtank-100 text-willtank-700">
-            <span className="font-medium">Will:</span> {willInfo.title}
+            <span className="font-medium">Will:</span> {willInfo?.title}
           </div>
         </div>
         
@@ -287,7 +306,7 @@ export function WillVideoCreation() {
         <WillVideoReview
           videoTitle={videoTitle}
           recipient={recipient}
-          willTitle={willInfo.title}
+          willTitle={willInfo?.title || ''}
           isProcessing={false}
           progress={0}
           onFinalize={handleContinueToDocuments}
@@ -296,7 +315,7 @@ export function WillVideoCreation() {
         />
       ) : (
         <DocumentUploadPanel 
-          willId={willId}
+          willId={willId || ''}
           onDocumentsUploaded={handleDocumentsUploaded}
           onFinalize={handleFinalizeVideo}
           isProcessing={isProcessing}

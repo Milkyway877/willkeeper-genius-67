@@ -1,8 +1,8 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageCategory } from '../../../types';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UseVideoCreatorProps {
   onContentChange: (content: string) => void;
@@ -20,6 +20,7 @@ export const useVideoCreator = ({
   onVideoUrlChange
 }: UseVideoCreatorProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [title, setTitle] = useState<string>('');
   const [recipient, setRecipient] = useState<string>('');
   const [isRecording, setIsRecording] = useState(false);
@@ -205,17 +206,26 @@ export const useVideoCreator = ({
       return null;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You need to be logged in to upload videos.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
     setIsUploading(true);
     
     try {
-      // Create a unique filename
+      // Create a unique filename with user ID as folder
       const fileExt = 'webm';
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
       
-      // Upload the file directly to the bucket we created via SQL
+      // Upload the file directly to the correct bucket
       const { error: uploadError, data } = await supabase.storage
-        .from('future-videos')
+        .from('will_videos')
         .upload(filePath, videoBlob, {
           cacheControl: '3600',
           upsert: true
@@ -234,11 +244,11 @@ export const useVideoCreator = ({
       
       // Get and set the public URL
       const { data: urlData } = supabase.storage
-        .from('future-videos')
+        .from('will_videos')
         .getPublicUrl(filePath);
         
       const publicUrl = urlData?.publicUrl;
-      console.log("Video uploaded, URL:", filePath);
+      console.log("Video uploaded, path:", filePath);
       
       toast({
         title: "Video Uploaded",

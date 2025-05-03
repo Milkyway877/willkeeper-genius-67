@@ -1,20 +1,23 @@
 
 import React from 'react';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Toaster } from '@/components/ui/toaster';
-import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
-import { Outlet } from 'react-router-dom';
+import { RouterProvider } from "react-router-dom";
+import { router } from "./router";
+import { AuthProvider } from './hooks/useAuth';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 
-// Add global mobile responsive styles
-import './MobileStyles.css';
+const queryClient = new QueryClient();
 
-export default function App() {
+function App() {
   return (
-    <>
-      <Outlet />
-      <Toaster />
-      <FloatingAssistant />
-      <ReactQueryDevtools initialIsOpen={false} />
-    </>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <NotificationsProvider>
+          <RouterProvider router={router} />
+        </NotificationsProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
+
+export default App;

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DocumentUploadPanelProps {
   willId: string;
@@ -39,9 +40,18 @@ export function DocumentUploadPanel({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You need to be logged in to upload documents.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const files = Array.from(e.target.files);
     setIsUploading(true);
@@ -60,14 +70,14 @@ export function DocumentUploadPanel({
           continue;
         }
         
-        // Create a unique filename
+        // Create a unique filename with user ID as folder
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const filePath = `${user.id}/${fileName}`;
         
-        // Upload to Supabase
+        // Upload to Supabase using correct bucket name
         const { error: uploadError } = await supabase.storage
-          .from('will-documents')
+          .from('will_documents')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: true
@@ -92,6 +102,9 @@ export function DocumentUploadPanel({
         } else {
           formattedSize = `${(sizeInKB / 1024).toFixed(1)} MB`;
         }
+        
+        // Log successful upload
+        console.log("Document uploaded, path:", filePath);
         
         // Add to documents list
         newDocuments.push({
