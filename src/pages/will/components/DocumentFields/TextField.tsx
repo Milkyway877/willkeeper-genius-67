@@ -19,7 +19,7 @@ interface TextFieldProps {
   value: string;
   label: string;
   onEdit: () => void;
-  onAiHelp: () => void;
+  onAiHelp: (position: { x: number, y: number }) => void;
 }
 
 export function TextField({ value, label, onEdit, onAiHelp }: TextFieldProps) {
@@ -48,7 +48,12 @@ export function TextField({ value, label, onEdit, onAiHelp }: TextFieldProps) {
   // Use useCallback to prevent recreation on every render
   const handleAIHelp = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onAiHelp();
+    // Calculate position for the AI helper popup
+    const clickX = e.clientX;
+    const clickY = e.clientY;
+    
+    // Pass position to parent component
+    onAiHelp({ x: clickX, y: clickY });
   }, [onAiHelp]);
   
   // Use useCallback for the click handler too

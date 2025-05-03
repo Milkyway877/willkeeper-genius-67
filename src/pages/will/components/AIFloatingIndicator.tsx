@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
 interface AIFloatingIndicatorProps {
-  onRequestHelp: (field?: string) => void;
+  onRequestHelp: (field?: string, position?: { x: number, y: number }) => void;
 }
 
 export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps) {
@@ -45,7 +45,12 @@ export function AIFloatingIndicator({ onRequestHelp }: AIFloatingIndicatorProps)
   
   // Use useCallback for handlers to prevent unnecessary re-renders
   const handleQuestionClick = useCallback((field?: string) => {
-    onRequestHelp(field);
+    const buttonPosition = { 
+      x: window.innerWidth - 300, 
+      y: Math.min(300, window.innerHeight / 3) 
+    };
+    
+    onRequestHelp(field, buttonPosition);
     setExpanded(false);
     
     toast({

@@ -17,7 +17,7 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
   const [currentSuggestions, setCurrentSuggestions] = useState<string[]>([]);
   const [animationComplete, setAnimationComplete] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
-
+  
   // Field-specific AI assistance
   useEffect(() => {
     if (isVisible) {
@@ -71,19 +71,35 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       
+      // Default positioning - start at the click coordinates
+      let newTop = position.y;
+      let newLeft = position.x;
+      
+      // Add a small offset from the cursor
+      const offsetY = 10;
+      const offsetX = 10;
+      
       // Check if the popup would go off the bottom of the screen
-      if (position.y + rect.height > viewportHeight - 50) {
-        popupRef.current.style.top = `${viewportHeight - rect.height - 50}px`;
+      if (position.y + rect.height + offsetY > viewportHeight) {
+        // Place it above the click position
+        newTop = Math.max(10, position.y - rect.height - offsetY);
       } else {
-        popupRef.current.style.top = `${position.y}px`;
+        // Place it below the click position with offset
+        newTop = position.y + offsetY;
       }
       
       // Check if the popup would go off the right of the screen
-      if (position.x + rect.width > viewportWidth - 20) {
-        popupRef.current.style.left = `${viewportWidth - rect.width - 20}px`;
+      if (position.x + rect.width + offsetX > viewportWidth) {
+        // Place it to the left of the click position
+        newLeft = Math.max(10, viewportWidth - rect.width - offsetX);
       } else {
-        popupRef.current.style.left = `${position.x}px`;
+        // Place it to the right of the click position with offset
+        newLeft = position.x + offsetX;
       }
+      
+      // Apply the calculated position
+      popupRef.current.style.top = `${newTop}px`;
+      popupRef.current.style.left = `${newLeft}px`;
     }
   }, [position, isVisible, animationComplete]);
 
