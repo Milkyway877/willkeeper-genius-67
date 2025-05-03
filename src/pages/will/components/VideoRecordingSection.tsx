@@ -56,9 +56,10 @@ export function VideoRecordingSection({
       }
       
       if (onRecordingComplete) {
+        // Use future-videos bucket for public URL
         onRecordingComplete(blob, { 
           path: filePath, 
-          url: `${supabase.storage.from('future-videos').getPublicUrl(filePath).data.publicUrl}` // Changed from 'will_videos' to 'future-videos'
+          url: `${supabase.storage.from('future-videos').getPublicUrl(filePath).data.publicUrl}`
         });
       }
     } catch (error: any) {
