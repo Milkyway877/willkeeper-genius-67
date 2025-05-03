@@ -59,17 +59,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     <div className="relative z-10">
       <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
         <div className="flex h-16 items-center px-4">
-          {isAuthenticated && (
-            <Button 
-              variant="ghost"
-              size="icon"
-              onClick={onMenuToggle}
-              className="mr-2"
-              aria-label="Toggle sidebar menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
+          {/* Removed the hamburger menu button that was here */}
           
           {(!isAuthenticated || isMobile) && (
             <Link to="/" className="flex items-center">
