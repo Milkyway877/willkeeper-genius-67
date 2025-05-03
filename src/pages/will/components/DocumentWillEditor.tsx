@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
@@ -241,6 +240,7 @@ ${willContent.finalArrangements}`;
         content: JSON.stringify(willContent),
         status: 'draft',
         template_type: templateId,
+        document_url: '', // Add the missing document_url property
       };
       
       if (willId) {
