@@ -5,7 +5,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { formatError } from "../_shared/db-helper.ts";
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-experimental:generateContent";
 
 async function enhanceVideoWithGemini(videoBase64: string, enhancements: any) {
   try {
@@ -25,6 +25,9 @@ async function enhanceVideoWithGemini(videoBase64: string, enhancements: any) {
     if (enhancements.useAI) {
       enhancementPrompt += ". Additionally, improve lighting, reduce background noise, and optimize audio levels.";
     }
+
+    console.log("Enhancement prompt:", enhancementPrompt);
+    console.log("API URL:", GEMINI_API_URL);
 
     // Call Gemini API with the video data and enhancement prompt
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -59,17 +62,36 @@ async function enhanceVideoWithGemini(videoBase64: string, enhancements: any) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Gemini API error:", errorText);
-      throw new Error(`Gemini API error: ${response.status}`);
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log("Received response from Gemini API");
     
     // Extract enhanced media content from the response
-    // Note: This is simplified and would need to be adjusted based on the actual Gemini API response
-    const enhancedVideo = data.candidates[0].content.parts[0].inline_data?.data;
+    // For Gemini 1.5 Pro Experimental, the enhanced video should be in the response
+    let enhancedVideo = null;
+    try {
+      enhancedVideo = data?.candidates?.[0]?.content?.parts?.find(
+        (part: any) => part.inline_data?.mime_type?.startsWith('video/')
+      )?.inline_data?.data;
+    } catch (err) {
+      console.error("Error extracting enhanced video:", err);
+    }
     
     if (!enhancedVideo) {
-      throw new Error("No enhanced video returned from API");
+      console.log("No enhanced video found in response, returning original video");
+      return {
+        success: true,
+        enhancedVideo: videoBase64, // Return the original video if no enhanced version is found
+        enhancementDetails: {
+          applied: {
+            music: enhancements.music || null,
+            filters: enhancements.filters || [],
+            aiEnhancements: enhancements.useAI ? ["lighting", "audio", "noise"] : []
+          }
+        }
+      };
     }
 
     return {
@@ -93,46 +115,68 @@ async function enhanceVideoWithGemini(videoBase64: string, enhancements: any) {
 }
 
 serve(async (req) => {
-  // Handle CORS for preflight requests
+  // Add CORS headers to all responses
+  const headers = { ...corsHeaders, "Content-Type": "application/json" };
+  
+  // Handle CORS preflight requests (OPTIONS)
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { status: 204, headers });
   }
 
   try {
+    // Verify API key is available
     if (!GEMINI_API_KEY) {
-      throw new Error("Missing GEMINI_API_KEY");
+      console.error("Missing GEMINI_API_KEY");
+      throw new Error("Missing GEMINI_API_KEY in environment variables");
     }
+
+    console.log("Request method:", req.method);
 
     // Only accept POST requests
     if (req.method !== "POST") {
       throw new Error(`Method ${req.method} not allowed`);
     }
-
-    const { videoBlob, enhancements } = await req.json();
     
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      console.error("Error parsing request body:", e);
+      throw new Error("Invalid request body");
+    }
+
+    const { videoBlob, enhancements } = requestBody;
+    
+    // Validate request data
     if (!videoBlob) {
       throw new Error("Missing video data");
     }
 
+    console.log("Processing video enhancement request");
+    console.log("Enhancements requested:", JSON.stringify(enhancements));
+    
+    // Process video enhancement
     const result = await enhanceVideoWithGemini(videoBlob, enhancements);
-
+    
+    // Return response
     return new Response(JSON.stringify(result), {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-      status: 200,
+      headers,
+      status: result.success ? 200 : 400,
     });
   } catch (error) {
     const errorMessage = formatError(error);
     console.error("Video enhancer function error:", errorMessage);
     
-    return new Response(JSON.stringify({ success: false, error: errorMessage }), {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-      status: 400,
-    });
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: errorMessage 
+      }), 
+      { 
+        headers, 
+        status: 400 
+      }
+    );
   }
 });

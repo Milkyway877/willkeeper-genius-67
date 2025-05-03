@@ -92,6 +92,8 @@ export const useMessageEnhancer = () => {
       // Convert video blob to base64 for API call
       const base64Video = await blobToBase64(videoBlob);
       
+      console.log("Calling video-enhancer function...");
+      
       // Call our Supabase Edge Function for video enhancement
       const { data, error } = await supabase.functions.invoke('video-enhancer', {
         body: {
@@ -106,22 +108,22 @@ export const useMessageEnhancer = () => {
       });
       
       clearInterval(progressInterval);
-      setEnhancementProgress(100);
       
-      if (error || !data.success) {
-        console.error('Video enhancement error:', error || data.error);
-        toast({
-          title: "Enhancement Failed",
-          description: "Could not apply enhancements to your video. Please try again.",
-          variant: "destructive",
-        });
-        setIsEnhancing(false);
-        return null;
+      if (error) {
+        console.error('Video enhancement error from Supabase function:', error);
+        throw new Error(`Function error: ${error.message}`);
       }
       
-      // For now, until the full Gemini integration is complete, we'll
-      // simulate the enhanced video by returning the original
-      // In a production implementation, we would convert the enhanced base64 back to a blob
+      if (!data || !data.success) {
+        console.error('Video enhancement failed:', data?.error || 'Unknown error');
+        throw new Error(data?.error || 'Enhancement failed');
+      }
+      
+      console.log("Enhancement successful:", data);
+      setEnhancementProgress(100);
+      
+      // Convert the enhanced base64 video back to a blob
+      const enhancedBlob = base64ToBlob(data.enhancedVideo, 'video/mp4');
       
       toast({
         title: "Enhancements Applied",
@@ -129,14 +131,17 @@ export const useMessageEnhancer = () => {
       });
       
       setIsEnhancing(false);
-      return videoBlob; // Return original blob for now
+      return enhancedBlob;
     } catch (error) {
       console.error('Error enhancing video:', error);
+      
       toast({
         title: "Enhancement Failed",
-        description: "Could not apply enhancements to your video. Please try again.",
+        description: error instanceof Error ? error.message : "Could not apply enhancements to your video. Please try again.",
         variant: "destructive",
       });
+      
+      setEnhancementProgress(0);
       setIsEnhancing(false);
       return null;
     }
@@ -155,6 +160,26 @@ export const useMessageEnhancer = () => {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+  };
+  
+  // Helper function to convert base64 to Blob
+  const base64ToBlob = (base64: string, mimeType: string): Blob => {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
+      const slice = byteCharacters.slice(offset, offset + 1024);
+      
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    
+    return new Blob(byteArrays, { type: mimeType });
   };
   
   // New function for enhancing documents
