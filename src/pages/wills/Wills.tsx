@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -18,6 +17,53 @@ import { getWills, Will, deleteWill } from '@/services/willService';
 import { templates } from '../will/config/wizardSteps';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/utils';
+import { HighlightedWillCard } from './components/HighlightedWillCard';
+
+// WillCard component remains the same
+const WillCard = ({ will, onDelete, onView, onEdit }: { will: Will, onDelete: () => void, onView: () => void, onEdit: () => void }) => (
+  <Card>
+    <CardContent className="pt-6">
+      <div className="flex justify-between items-start">
+        <div className="flex items-start gap-2">
+          <FileText className="h-8 w-8 text-willtank-600 mt-1" />
+          <div>
+            <h3 className="font-bold">{will.title}</h3>
+            <p className="text-sm text-gray-500">Created: {formatDate(will.created_at)}</p>
+            <Badge variant="outline" className="mt-2 capitalize">
+              {will.status}
+            </Badge>
+          </div>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onView}>
+              <Eye className="mr-2 h-4 w-4" />
+              View
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onEdit}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} className="text-red-600">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardContent>
+    <CardFooter className="bg-gray-50 flex justify-end">
+      <Button variant="outline" size="sm" onClick={onView}>
+        View Will
+      </Button>
+    </CardFooter>
+  </Card>
+);
 
 export default function Wills() {
   const [wills, setWills] = useState<Will[]>([]);
@@ -25,11 +71,20 @@ export default function Wills() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [willToDelete, setWillToDelete] = useState<Will | null>(null);
   const [currentTab, setCurrentTab] = useState('active');
+  const [newlyCreatedWillId, setNewlyCreatedWillId] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Check if there's a newly created will from session storage
+    const newWillId = sessionStorage.getItem('newlyCreatedWill');
+    if (newWillId) {
+      setNewlyCreatedWillId(newWillId);
+      // Clear it after retrieving
+      sessionStorage.removeItem('newlyCreatedWill');
+    }
+    
     loadWills();
   }, []);
 
@@ -83,7 +138,6 @@ export default function Wills() {
   });
 
   const navigateToCreateWill = () => {
-    // Direct users to the template selection page for our new AI chat creation experience
     navigate('/will/create');
   };
 
@@ -119,27 +173,30 @@ export default function Wills() {
             ) : filteredWills.length > 0 ? (
               <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {filteredWills.map((will) => (
-                  <WillCard 
-                    key={will.id} 
-                    will={will} 
-                    onDelete={() => handleDelete(will)}
-                    onView={() => navigate(`/will/${will.id}`)}
-                    onEdit={() => navigate(`/will/edit/${will.id}`)}
-                  />
+                  will.id === newlyCreatedWillId ? (
+                    <HighlightedWillCard 
+                      key={will.id} 
+                      will={will}
+                      hasVideo={false} 
+                      hasDocuments={false} 
+                    />
+                  ) : (
+                    <WillCard 
+                      key={will.id} 
+                      will={will} 
+                      onDelete={() => handleDelete(will)}
+                      onView={() => navigate(`/will/${will.id}`)}
+                      onEdit={() => navigate(`/will/edit/${will.id}`)}
+                    />
+                  )
                 ))}
               </div>
             ) : (
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-semibold">No wills found</h3>
-                  <p className="text-gray-500 mb-6">
-                    {currentTab === 'active' 
-                      ? "You don't have any active wills yet." 
-                      : currentTab === 'draft' 
-                      ? "You don't have any draft wills." 
-                      : "You haven't created any wills yet."}
-                  </p>
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-xl font-medium mb-2">No Active Wills</h3>
+                  <p className="text-gray-500 mb-4">You haven't created any active wills yet.</p>
                   <Button onClick={navigateToCreateWill}>Create Your First Will</Button>
                 </CardContent>
               </Card>
@@ -158,22 +215,31 @@ export default function Wills() {
             ) : filteredWills.length > 0 ? (
               <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {filteredWills.map((will) => (
-                  <WillCard 
-                    key={will.id} 
-                    will={will} 
-                    onDelete={() => handleDelete(will)}
-                    onView={() => navigate(`/will/${will.id}`)}
-                    onEdit={() => navigate(`/will/edit/${will.id}`)}
-                  />
+                  will.id === newlyCreatedWillId ? (
+                    <HighlightedWillCard 
+                      key={will.id} 
+                      will={will}
+                      hasVideo={false} 
+                      hasDocuments={false} 
+                    />
+                  ) : (
+                    <WillCard 
+                      key={will.id} 
+                      will={will} 
+                      onDelete={() => handleDelete(will)}
+                      onView={() => navigate(`/will/${will.id}`)}
+                      onEdit={() => navigate(`/will/edit/${will.id}`)}
+                    />
+                  )
                 ))}
               </div>
             ) : (
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-semibold">No draft wills</h3>
-                  <p className="text-gray-500 mb-6">You don't have any wills in draft status.</p>
-                  <Button onClick={navigateToCreateWill}>Create a New Will</Button>
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-xl font-medium mb-2">No Draft Wills</h3>
+                  <p className="text-gray-500 mb-4">You haven't created any draft wills yet.</p>
+                  <Button onClick={navigateToCreateWill}>Create Your First Will</Button>
                 </CardContent>
               </Card>
             )}
@@ -191,21 +257,30 @@ export default function Wills() {
             ) : filteredWills.length > 0 ? (
               <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {filteredWills.map((will) => (
-                  <WillCard 
-                    key={will.id} 
-                    will={will} 
-                    onDelete={() => handleDelete(will)}
-                    onView={() => navigate(`/will/${will.id}`)}
-                    onEdit={() => navigate(`/will/edit/${will.id}`)}
-                  />
+                  will.id === newlyCreatedWillId ? (
+                    <HighlightedWillCard 
+                      key={will.id} 
+                      will={will}
+                      hasVideo={false} 
+                      hasDocuments={false} 
+                    />
+                  ) : (
+                    <WillCard 
+                      key={will.id} 
+                      will={will} 
+                      onDelete={() => handleDelete(will)}
+                      onView={() => navigate(`/will/${will.id}`)}
+                      onEdit={() => navigate(`/will/edit/${will.id}`)}
+                    />
+                  )
                 ))}
               </div>
             ) : (
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-semibold">No wills yet</h3>
-                  <p className="text-gray-500 mb-6">You haven't created any wills yet.</p>
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-xl font-medium mb-2">No Wills Yet</h3>
+                  <p className="text-gray-500 mb-4">You haven't created any wills yet.</p>
                   <Button onClick={navigateToCreateWill}>Create Your First Will</Button>
                 </CardContent>
               </Card>
@@ -216,93 +291,18 @@ export default function Wills() {
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
+              <DialogTitle>Delete Will</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete this will? This action cannot be undone.
+                Are you sure you want to delete "{willToDelete?.title}"? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={confirmDelete}>
-                Delete
-              </Button>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
     </Layout>
-  );
-}
-
-interface WillCardProps {
-  will: Will;
-  onDelete: () => void;
-  onView: () => void;
-  onEdit: () => void;
-}
-
-function WillCard({ will, onDelete, onView, onEdit }: WillCardProps) {
-  const templateInfo = templates.find(t => t.id === will.template_type) || {
-    title: 'Standard Will',
-    description: 'A standard legal will document'
-  };
-  
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-lg">{will.title}</CardTitle>
-            <CardDescription>{templateInfo.title}</CardDescription>
-          </div>
-          <div className="flex items-center">
-            <Badge variant={will.status === 'active' ? 'default' : 'secondary'}>
-              {will.status === 'active' ? (
-                <><Check className="mr-1 h-3 w-3" /> Active</>
-              ) : (
-                <><Clock className="mr-1 h-3 w-3" /> Draft</>
-              )}
-            </Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onView}>
-                  <Eye className="mr-2 h-4 w-4" /> View
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onEdit}>
-                  <Edit className="mr-2 h-4 w-4" /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} className="text-red-600">
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm truncate">
-          {will.content ? (
-            will.content.substring(0, 100) + '...'
-          ) : (
-            'No content available'
-          )}
-        </p>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <div className="text-xs text-gray-500">
-          Updated {formatDate(will.updated_at)}
-        </div>
-        <Button variant="outline" size="sm" onClick={onView}>
-          View Details
-        </Button>
-      </CardFooter>
-    </Card>
   );
 }

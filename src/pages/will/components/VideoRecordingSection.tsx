@@ -5,21 +5,25 @@ import { Video } from 'lucide-react';
 import { VideoRecorder } from '@/pages/will/components/VideoRecorder';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface VideoRecordingSectionProps {
   defaultOpen?: boolean;
   onRecordingComplete?: (blob: Blob, videoData: { path: string, url: string }) => void;
   willId?: string;
+  autoRedirect?: boolean;
 }
 
 export function VideoRecordingSection({ 
   defaultOpen = false,
   onRecordingComplete,
-  willId
+  willId,
+  autoRedirect = false
 }: VideoRecordingSectionProps) {
   const [recordingCompleted, setRecordingCompleted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const handleRecordingComplete = async (blob: Blob, filePath?: string) => {
     setIsProcessing(true);
@@ -52,13 +56,20 @@ export function VideoRecordingSection({
             title: "Video Testament Added",
             description: "Your video has been added to your will successfully",
           });
+          
+          // If autoRedirect is true, redirect back to the will detail page or wills page
+          if (autoRedirect && willId) {
+            setTimeout(() => {
+              navigate(`/will/${willId}?videoAdded=true`);
+            }, 2000);
+          }
         }
       }
       
       if (onRecordingComplete) {
         onRecordingComplete(blob, { 
           path: filePath, 
-          url: `${supabase.storage.from('future-videos').getPublicUrl(filePath).data.publicUrl}` // Changed from 'will_videos' to 'future-videos'
+          url: `${supabase.storage.from('future-videos').getPublicUrl(filePath).data.publicUrl}` 
         });
       }
     } catch (error: any) {

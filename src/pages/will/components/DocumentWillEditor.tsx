@@ -17,11 +17,12 @@ import { AssetField } from './DocumentFields/AssetField';
 import { TextField } from './DocumentFields/TextField';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DocumentPreview } from './DocumentPreview';
-import { createWill, updateWill } from '@/services/willService';
+import { createWill, updateWill, Will } from '@/services/willService';
 import { useFormAutoSave } from '@/hooks/use-form-auto-save';
 import { AIFloatingIndicator } from './AIFloatingIndicator';
 import { AISuggestionsPanel } from './AISuggestionsPanel';
 import { ContactField } from './DocumentFields/ContactField';
+import { WillCreationSuccess } from './WillCreationSuccess';
 import '../../../MobileStyles.css';
 import { 
   Executor, 
@@ -108,7 +109,9 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
   const [showBeneficiaryPrompt, setShowBeneficiaryPrompt] = useState<boolean>(false);
-  const [showAISuggestionsPanel, setShowAISuggestionsPanel] = useState(true);
+  const [showAISuggestionsPanel, setShowAISuggestionsPanel = useState(true);
+  const [showSuccessScreen, setShowSuccessScreen] = useState<boolean>(false);
+  const [generatedWill, setGeneratedWill] = useState<Will | null>(null);
   
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -343,7 +346,7 @@ ${finalArrangements || '[No specific final arrangements specified]'}
   };
 
   // Handle generating the official document
-  const handleGenerateOfficialWill = () => {
+  const handleGenerateOfficialWill = async () => {
     try {
       if (!isComplete) {
         toast({
@@ -378,11 +381,16 @@ ${finalArrangements || '[No specific final arrangements specified]'}
       
       // Save the will as active if not already saved
       if (willId) {
-        updateWill(willId, {
+        const updatedWill = await updateWill(willId, {
           status: 'active',
           content: JSON.stringify(willContent),
           title: title
         });
+        
+        if (updatedWill) {
+          setGeneratedWill(updatedWill);
+          setShowSuccessScreen(true);
+        }
       } else if (onSave) {
         const documentData = {
           title: title,
@@ -392,11 +400,12 @@ ${finalArrangements || '[No specific final arrangements specified]'}
           document_url: '',
         };
         
-        createWill(documentData).then(newWill => {
-          if (newWill && onSave) {
-            onSave({ ...willContent, id: newWill.id });
-          }
-        });
+        const newWill = await createWill(documentData);
+        if (newWill && onSave) {
+          onSave({ ...willContent, id: newWill.id });
+          setGeneratedWill(newWill);
+          setShowSuccessScreen(true);
+        }
       }
       
     } catch (error) {
@@ -411,6 +420,14 @@ ${finalArrangements || '[No specific final arrangements specified]'}
 
   return (
     <div className="container mx-auto mb-28">
+      {showSuccessScreen && generatedWill && (
+        <WillCreationSuccess 
+          will={generatedWill} 
+          onClose={() => setShowSuccessScreen(false)} 
+        />
+      )}
+      
+      {/* Main document area with scrolling */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* AI Suggestions Panel */}
         <AISuggestionsPanel
@@ -853,50 +870,4 @@ ${finalArrangements || '[No specific final arrangements specified]'}
         
         {/* Official Will Generation Button - Full width at the bottom */}
         <div className="col-span-12 mt-8 pb-12">
-          <div className="bg-gradient-to-r from-willtank-50 to-willtank-100 p-6 rounded-lg border border-willtank-200 shadow-sm">
-            <div className="flex flex-col md:flex-row items-center justify-between">
-              <div className="mb-4 md:mb-0 md:mr-6">
-                <h3 className="text-xl font-bold text-willtank-800">Ready to Finalize Your Will?</h3>
-                <p className="text-willtank-600 mt-1">
-                  Generate your official will document with professional letterhead and formatting.
-                </p>
-              </div>
-              <Button
-                onClick={handleGenerateOfficialWill}
-                disabled={!isComplete || !signature}
-                className="bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-3 px-6 rounded-md shadow-md hover:shadow-lg transition-all duration-200 w-full md:w-auto"
-              >
-                <FileCheck className="h-5 w-5 mr-2" />
-                Generate Official Will
-              </Button>
-            </div>
-            {(!isComplete || !signature) && (
-              <p className="text-amber-600 text-sm mt-3">
-                {!isComplete && "Complete all required sections and "}
-                {!signature && "add your digital signature "}
-                before generating the official will.
-              </p>
-            )}
-          </div>
-        </div>
-        
-        {/* Document Preview Dialog */}
-        <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-3xl w-[90vw] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Will Document Preview</DialogTitle>
-            </DialogHeader>
-            <DocumentPreview 
-              willContent={willContent}
-              signature={signature}
-              documentText=""
-            />
-          </DialogContent>
-        </Dialog>
-        
-        {/* Floating AI Assistant */}
-        <AIFloatingIndicator onRequestHelp={handleAIAssistanceRequest} />
-      </div>
-    </div>
-  );
-}
+          <div className="bg-gradient-to-r from-willtank-50 to-willtank-100 p-6 rounded-lg border border
