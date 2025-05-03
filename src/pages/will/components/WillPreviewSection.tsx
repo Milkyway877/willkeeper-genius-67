@@ -9,6 +9,7 @@ import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils'
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WillContent } from './types';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface WillPreviewSectionProps {
   content: string;
@@ -113,18 +114,20 @@ export function WillPreviewSection({
         </div>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-4 pb-4">
         <div className="flex items-center space-x-2">
           <Switch id="format-toggle" checked={isFormatted} onCheckedChange={toggleFormatting} />
           <Label htmlFor="format-toggle">Show formatted preview</Label>
         </div>
         
         <div className="border rounded-md p-4 bg-white">
-          <WillPreview 
-            content={content} 
-            formatted={isFormatted} 
-            signature={signature}
-          />
+          <ScrollArea className="max-h-[50vh]">
+            <WillPreview 
+              content={content} 
+              formatted={isFormatted} 
+              signature={signature}
+            />
+          </ScrollArea>
         </div>
         
         <div className="space-y-2">

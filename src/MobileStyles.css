@@ -164,3 +164,42 @@ input {
     margin: 1rem !important;
   }
 }
+
+/* Improve bottom spacing for will editor and templates */
+@media (max-width: 768px) {
+  .container.mx-auto {
+    padding-bottom: 6rem !important;
+  }
+  
+  .col-span-12.mt-8 {
+    margin-bottom: 5rem !important;
+  }
+  
+  /* Ensure content has enough bottom space to prevent button overlap */
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  
+  /* Fix for bottom nav bar overlap */
+  .pb-24 {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 20px)) !important;
+  }
+}
+
+/* Add visible "scroll bounce" indicator for content that scrolls */
+.scroll-indicator::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 16px;
+  background: linear-gradient(to top, rgba(0,0,0,0.05), transparent);
+  pointer-events: none;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}

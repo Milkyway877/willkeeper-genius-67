@@ -110,7 +110,7 @@ export default function TemplateWillCreationPage() {
   
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4 h-[calc(100vh-64px)] flex flex-col">
+      <div className="container mx-auto px-4 py-4 min-h-[calc(100vh-64px)] flex flex-col pb-24">
         <div className="flex justify-between items-start mb-4">
           <div>
             <Button variant="ghost" onClick={handleBack} className="mb-2">
@@ -129,7 +129,7 @@ export default function TemplateWillCreationPage() {
             <Loader2 className="h-8 w-8 animate-spin text-willtank-600" />
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1">
             <DocumentWillEditor 
               templateId={templateId || ''} 
               initialData={progress?.responses} 

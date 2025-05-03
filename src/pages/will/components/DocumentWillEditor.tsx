@@ -410,7 +410,7 @@ ${finalArrangements || '[No specific final arrangements specified]'}
   };
 
   return (
-    <div className="container mx-auto mb-16">
+    <div className="container mx-auto mb-28">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* AI Suggestions Panel */}
         <AISuggestionsPanel
@@ -475,204 +475,202 @@ ${finalArrangements || '[No specific final arrangements specified]'}
         
         {/* Main document area with scrolling */}
         <div className="col-span-12 md:col-span-8 relative">
-          <div className="max-h-[calc(100vh-180px)] overflow-hidden">
-            <ScrollArea className="h-[calc(100vh-180px)]">
-              <Card className="p-8 border-2 shadow-sm">
-                {/* Letterhead */}
-                <div className="flex justify-between items-center border-b border-gray-200 pb-6 mb-8">
-                  <Logo size="lg" variant="default" showSlogan={true} />
-                  <div className="text-right text-gray-500 text-sm">
-                    <p>Official Legal Document</p>
-                    <p>Generated on {new Date().toLocaleDateString()}</p>
+          <ScrollArea className="h-auto max-h-[80vh]">
+            <Card className="p-8 border-2 shadow-sm">
+              {/* Letterhead */}
+              <div className="flex justify-between items-center border-b border-gray-200 pb-6 mb-8">
+                <Logo size="lg" variant="default" showSlogan={true} />
+                <div className="text-right text-gray-500 text-sm">
+                  <p>Official Legal Document</p>
+                  <p>Generated on {new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+              
+              {/* Document content */}
+              <div className="font-serif space-y-6" ref={documentRef}>
+                <h1 className="text-3xl text-center font-bold mb-6">LAST WILL AND TESTAMENT</h1>
+                
+                <p className="text-lg">
+                  I, {' '}
+                  <span className="inline-block">
+                    <ContactField 
+                      label="Full Name"
+                      value={personalInfo.fullName}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, fullName: value }))}
+                      placeholder="Enter your full legal name"
+                      required={true}
+                      onAiHelp={(position) => handleShowAIHelper('personal_fullName', position)}
+                    />
+                  </span>
+                  , residing at {' '}
+                  <span className="inline-block">
+                    <ContactField 
+                      label="Address"
+                      value={personalInfo.address}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, address: value }))}
+                      placeholder="Enter your full address"
+                      required={true}
+                      onAiHelp={(position) => handleShowAIHelper('personal_address', position)}
+                    />
+                  </span>
+                  , being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+                </p>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE I: PERSONAL INFORMATION</h2>
+                  <p>
+                    I declare that I was born on {' '}
+                    <span className="inline-block">
+                      <ContactField 
+                        label="Date of Birth" 
+                        value={personalInfo.dateOfBirth}
+                        onChange={(value) => setPersonalInfo(prev => ({ ...prev, dateOfBirth: value }))}
+                        placeholder="MM/DD/YYYY"
+                        required={true}
+                        onAiHelp={(position) => handleShowAIHelper('personal_dateOfBirth', position)}
+                      />
+                    </span>
+                    {' '} and that I am creating this will to ensure my wishes are carried out after my death.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <ContactField 
+                      label="Email Address"
+                      value={personalInfo.email}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, email: value }))}
+                      type="email"
+                      placeholder="your@email.com"
+                      onAiHelp={(position) => handleShowAIHelper('personal_email', position)}
+                    />
+                    
+                    <ContactField 
+                      label="Phone Number"
+                      value={personalInfo.phone}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, phone: value }))}
+                      type="tel"
+                      placeholder="(123) 456-7890"
+                      onAiHelp={(position) => handleShowAIHelper('personal_phone', position)}
+                    />
                   </div>
                 </div>
                 
-                {/* Document content */}
-                <div className="font-serif space-y-6" ref={documentRef}>
-                  <h1 className="text-3xl text-center font-bold mb-6">LAST WILL AND TESTAMENT</h1>
-                  
-                  <p className="text-lg">
-                    I, {' '}
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
+                  <p>
+                    I appoint {' '}
                     <span className="inline-block">
-                      <ContactField 
-                        label="Full Name"
-                        value={personalInfo.fullName}
-                        onChange={(value) => setPersonalInfo(prev => ({ ...prev, fullName: value }))}
-                        placeholder="Enter your full legal name"
-                        required={true}
-                        onAiHelp={(position) => handleShowAIHelper('personal_fullName', position)}
-                      />
-                    </span>
-                    , residing at {' '}
-                    <span className="inline-block">
-                      <ContactField 
-                        label="Address"
-                        value={personalInfo.address}
-                        onChange={(value) => setPersonalInfo(prev => ({ ...prev, address: value }))}
-                        placeholder="Enter your full address"
-                        required={true}
-                        onAiHelp={(position) => handleShowAIHelper('personal_address', position)}
-                      />
-                    </span>
-                    , being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-                  </p>
-                  
-                  <div>
-                    <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE I: PERSONAL INFORMATION</h2>
-                    <p>
-                      I declare that I was born on {' '}
-                      <span className="inline-block">
-                        <ContactField 
-                          label="Date of Birth" 
-                          value={personalInfo.dateOfBirth}
-                          onChange={(value) => setPersonalInfo(prev => ({ ...prev, dateOfBirth: value }))}
-                          placeholder="MM/DD/YYYY"
-                          required={true}
-                          onAiHelp={(position) => handleShowAIHelper('personal_dateOfBirth', position)}
-                        />
-                      </span>
-                      {' '} and that I am creating this will to ensure my wishes are carried out after my death.
-                    </p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      <ContactField 
-                        label="Email Address"
-                        value={personalInfo.email}
-                        onChange={(value) => setPersonalInfo(prev => ({ ...prev, email: value }))}
-                        type="email"
-                        placeholder="your@email.com"
-                        onAiHelp={(position) => handleShowAIHelper('personal_email', position)}
-                      />
-                      
-                      <ContactField 
-                        label="Phone Number"
-                        value={personalInfo.phone}
-                        onChange={(value) => setPersonalInfo(prev => ({ ...prev, phone: value }))}
-                        type="tel"
-                        placeholder="(123) 456-7890"
-                        onAiHelp={(position) => handleShowAIHelper('personal_phone', position)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
-                    <p>
-                      I appoint {' '}
-                      <span className="inline-block">
-                        <ExecutorField
-                          executors={executors}
-                          onUpdate={setExecutors}
-                          onAiHelp={handleShowAIHelper}
-                        />
-                      </span>
-                      {' '} to serve as the Executor of my estate.
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE III: BENEFICIARIES</h2>
-                    <p className="mb-2">I bequeath my assets to the following beneficiaries:</p>
-                    <div className="pl-4">
-                      <BeneficiaryField
-                        beneficiaries={beneficiaries}
-                        onUpdate={setBeneficiaries}
+                      <ExecutorField
+                        executors={executors}
+                        onUpdate={setExecutors}
                         onAiHelp={handleShowAIHelper}
                       />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE IV: ASSETS & SPECIFIC BEQUESTS</h2>
-                    <p className="mb-4">I own the following assets:</p>
-                    
-                    <AssetField
-                      properties={properties}
-                      vehicles={vehicles}
-                      financialAccounts={financialAccounts}
-                      digitalAssets={digitalAssets}
-                      onUpdateProperties={setProperties}
-                      onUpdateVehicles={setVehicles}
-                      onUpdateFinancialAccounts={setFinancialAccounts}
-                      onUpdateDigitalAssets={setDigitalAssets}
+                    </span>
+                    {' '} to serve as the Executor of my estate.
+                  </p>
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE III: BENEFICIARIES</h2>
+                  <p className="mb-2">I bequeath my assets to the following beneficiaries:</p>
+                  <div className="pl-4">
+                    <BeneficiaryField
+                      beneficiaries={beneficiaries}
+                      onUpdate={setBeneficiaries}
                       onAiHelp={handleShowAIHelper}
                     />
-                    
-                    <h3 className="font-medium mt-6 mb-2">Specific Bequests</h3>
-                    <p className="mb-2">I make the following specific gifts:</p>
-                    <TextField 
-                      value={specificBequests} 
-                      multiline={true}
-                      label="specificBequests" 
-                      onEdit={(value) => setSpecificBequests(value)}
-                      onAiHelp={() => handleShowAIHelper('specificBequests')}
-                    />
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE V: RESIDUAL ESTATE</h2>
-                    <p>
-                      I give all the rest and residue of my estate to {' '}
-                      <TextField 
-                        value={residualEstate} 
-                        label="residualEstate" 
-                        onEdit={(value) => setResidualEstate(value)}
-                        onAiHelp={() => handleShowAIHelper('residualEstate')}
-                      />
-                      .
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VI: GUARDIANSHIP</h2>
-                    {guardians.length > 0 ? (
-                      <div>
-                        <p className="mb-2">I appoint the following guardian(s) for my minor children:</p>
-                        <GuardianField
-                          guardians={guardians}
-                          onUpdate={setGuardians}
-                          onAiHelp={handleShowAIHelper}
-                          children={['Child 1', 'Child 2']} // Example - would be dynamic in real use
-                        />
-                      </div>
-                    ) : (
-                      <p>
-                        I do not have minor children at this time. If I should have children in the future, I appoint {' '}
-                        <span 
-                          className="cursor-pointer border-b border-dashed border-gray-300 hover:border-willtank-400 px-1"
-                          onClick={() => setGuardians([{ id: 'guard-1', name: '', relationship: '', email: '', phone: '', address: '', forChildren: [] }])}
-                        >
-                          [Click to add guardians]
-                        </span>
-                        {' '} as their guardian.
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VII: FINAL ARRANGEMENTS</h2>
-                    <TextField 
-                      value={finalArrangements} 
-                      multiline={true}
-                      label="finalArrangements" 
-                      onEdit={(value) => setFinalArrangements(value)}
-                      onAiHelp={() => handleShowAIHelper('finalArrangements')}
-                    />
-                  </div>
-                  
-                  {/* Digital Signature Section */}
-                  <div className="mt-12 pt-6 border-t border-gray-200">
-                    <h2 className="text-xl font-bold mb-3">SIGNATURE</h2>
-                    <p className="mb-4">
-                      By signing below, I confirm this document represents my last will and testament.
-                    </p>
-                    
-                    <DigitalSignature defaultOpen={true} onSignatureChange={handleSignatureChange} />
                   </div>
                 </div>
-              </Card>
-            </ScrollArea>
-          </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE IV: ASSETS & SPECIFIC BEQUESTS</h2>
+                  <p className="mb-4">I own the following assets:</p>
+                  
+                  <AssetField
+                    properties={properties}
+                    vehicles={vehicles}
+                    financialAccounts={financialAccounts}
+                    digitalAssets={digitalAssets}
+                    onUpdateProperties={setProperties}
+                    onUpdateVehicles={setVehicles}
+                    onUpdateFinancialAccounts={setFinancialAccounts}
+                    onUpdateDigitalAssets={setDigitalAssets}
+                    onAiHelp={handleShowAIHelper}
+                  />
+                  
+                  <h3 className="font-medium mt-6 mb-2">Specific Bequests</h3>
+                  <p className="mb-2">I make the following specific gifts:</p>
+                  <TextField 
+                    value={specificBequests} 
+                    multiline={true}
+                    label="specificBequests" 
+                    onEdit={(value) => setSpecificBequests(value)}
+                    onAiHelp={() => handleShowAIHelper('specificBequests')}
+                  />
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE V: RESIDUAL ESTATE</h2>
+                  <p>
+                    I give all the rest and residue of my estate to {' '}
+                    <TextField 
+                      value={residualEstate} 
+                      label="residualEstate" 
+                      onEdit={(value) => setResidualEstate(value)}
+                      onAiHelp={() => handleShowAIHelper('residualEstate')}
+                    />
+                    .
+                  </p>
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VI: GUARDIANSHIP</h2>
+                  {guardians.length > 0 ? (
+                    <div>
+                      <p className="mb-2">I appoint the following guardian(s) for my minor children:</p>
+                      <GuardianField
+                        guardians={guardians}
+                        onUpdate={setGuardians}
+                        onAiHelp={handleShowAIHelper}
+                        children={['Child 1', 'Child 2']} // Example - would be dynamic in real use
+                      />
+                    </div>
+                  ) : (
+                    <p>
+                      I do not have minor children at this time. If I should have children in the future, I appoint {' '}
+                      <span 
+                        className="cursor-pointer border-b border-dashed border-gray-300 hover:border-willtank-400 px-1"
+                        onClick={() => setGuardians([{ id: 'guard-1', name: '', relationship: '', email: '', phone: '', address: '', forChildren: [] }])}
+                      >
+                        [Click to add guardians]
+                      </span>
+                      {' '} as their guardian.
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VII: FINAL ARRANGEMENTS</h2>
+                  <TextField 
+                    value={finalArrangements} 
+                    multiline={true}
+                    label="finalArrangements" 
+                    onEdit={(value) => setFinalArrangements(value)}
+                    onAiHelp={() => handleShowAIHelper('finalArrangements')}
+                  />
+                </div>
+                
+                {/* Digital Signature Section */}
+                <div className="mt-12 pt-6 border-t border-gray-200">
+                  <h2 className="text-xl font-bold mb-3">SIGNATURE</h2>
+                  <p className="mb-4">
+                    By signing below, I confirm this document represents my last will and testament.
+                  </p>
+                  
+                  <DigitalSignature defaultOpen={true} onSignatureChange={handleSignatureChange} />
+                </div>
+              </div>
+            </Card>
+          </ScrollArea>
         </div>
         
         {/* Document information sidebar - with sticky positioning */}
@@ -854,7 +852,7 @@ ${finalArrangements || '[No specific final arrangements specified]'}
         </div>
         
         {/* Official Will Generation Button - Full width at the bottom */}
-        <div className="col-span-12 mt-8">
+        <div className="col-span-12 mt-8 pb-12">
           <div className="bg-gradient-to-r from-willtank-50 to-willtank-100 p-6 rounded-lg border border-willtank-200 shadow-sm">
             <div className="flex flex-col md:flex-row items-center justify-between">
               <div className="mb-4 md:mb-0 md:mr-6">
