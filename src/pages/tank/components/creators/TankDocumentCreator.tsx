@@ -286,6 +286,49 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
     }
   };
 
+  const uploadDocumentToSupabase = async (file: File, fileName: string): Promise<string | null> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      
+      if (!userId) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to upload documents.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      // Create a unique filename to avoid collisions
+      const fileExt = fileName.split('.').pop();
+      const uniqueFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `${userId}/${uniqueFileName}`;
+      
+      const { error, data } = await supabase.storage
+        .from('future-documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+        
+      if (error) {
+        console.error('Error uploading document:', error);
+        toast({
+          title: "Upload Failed",
+          description: `Could not upload ${fileName}. Please try again.`,
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      return filePath;
+    } catch (error) {
+      console.error('Error in uploadDocumentToSupabase:', error);
+      return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
