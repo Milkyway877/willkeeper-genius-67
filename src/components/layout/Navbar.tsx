@@ -8,11 +8,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Menu,
   Search,
-  Bell,
   LogOut,
   Settings,
+  Menu,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
