@@ -1,9 +1,14 @@
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
-import { Check, Clock, FileCheck, Video, UserRound } from 'lucide-react';
+import { 
+  Video,
+  Check,
+  RefreshCw,
+  ChevronRight
+} from 'lucide-react';
 
 interface WillVideoReviewProps {
   videoTitle: string;
@@ -12,111 +17,78 @@ interface WillVideoReviewProps {
   isProcessing: boolean;
   progress: number;
   onFinalize: () => void;
+  finalizeButtonText?: string;
+  finalizeButtonIcon?: React.ReactNode;
 }
 
-export const WillVideoReview: React.FC<WillVideoReviewProps> = ({
-  videoTitle,
-  recipient,
+export function WillVideoReview({ 
+  videoTitle, 
+  recipient, 
   willTitle,
   isProcessing,
   progress,
-  onFinalize
-}) => {
+  onFinalize,
+  finalizeButtonText = "Finalize Video",
+  finalizeButtonIcon = <Check className="mr-2 h-4 w-4" />
+}: WillVideoReviewProps) {
   return (
-    <div className="space-y-6">
-      <h2 className="text-lg font-medium">Review Your Video Testament</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center">
+          <Video className="mr-2 h-5 w-5 text-willtank-600" />
+          Review Video Testament
+        </CardTitle>
+      </CardHeader>
       
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div>
-            <h3 className="font-medium text-gray-800">Video Details</h3>
-            <div className="mt-2 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Title:</span>
-                <span className="font-medium">{videoTitle}</span>
-              </div>
-              <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
-                <div className="flex items-center">
-                  <FileCheck className="h-5 w-5 text-green-600 mr-2" />
-                  <div>
-                    <p className="font-medium text-green-800">Will Testament</p>
-                    <p className="text-sm text-green-700">
-                      This video will be attached to <span className="font-medium">{willTitle}</span> and will be 
-                      available to your executors and beneficiaries after your passing.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="text-sm font-medium text-gray-700 mb-1">Video Title</p>
+            <p className="text-base">{videoTitle}</p>
           </div>
           
-          <div>
-            <h3 className="font-medium text-gray-800">Intended Audience</h3>
-            <div className="mt-2 space-y-2">
-              <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
-                <div className="flex items-start">
-                  <UserRound className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-blue-800">
-                      {recipient === "All Beneficiaries" ? "All Beneficiaries" : "Specific Recipients"}
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      This testament will be viewable by {recipient === "All Beneficiaries" ? 
-                        "the executors and all beneficiaries of your will after your passing." :
-                        `${recipient} after your passing.`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p className="text-sm font-medium text-gray-700 mb-1">For</p>
+            <p className="text-base">{recipient}</p>
           </div>
           
-          <div>
-            <h3 className="font-medium text-gray-800">Delivery Information</h3>
-            <div className="mt-2 space-y-2">
-              <div className="bg-amber-50 border border-amber-100 rounded-md p-3">
-                <div className="flex items-start">
-                  <Clock className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-700">Posthumous Delivery</p>
-                    <p className="text-sm text-amber-700">
-                      This testament will be delivered to {recipient} upon confirmation of your passing, 
-                      alongside your will document.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="bg-gray-50 p-4 rounded-lg col-span-1 md:col-span-2">
+            <p className="text-sm font-medium text-gray-700 mb-1">Will</p>
+            <p className="text-base">{willTitle}</p>
           </div>
-        </CardContent>
-      </Card>
-      
-      <div className="flex flex-col items-center justify-center pt-4">
-        {!isProcessing && (
-          <Button 
-            onClick={onFinalize}
-            className="w-full md:w-auto md:min-w-[200px] bg-willtank-600 hover:bg-willtank-700 text-white"
-          >
-            <FileCheck className="mr-2 h-4 w-4" />
-            Finalize and Attach to Will
-          </Button>
-        )}
+        </div>
         
-        {isProcessing && (
-          <div className="w-full space-y-4 text-center">
-            <Progress value={progress} className="w-full" />
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-              {progress < 50 && <Clock className="animate-pulse h-4 w-4" />}
-              {progress >= 50 && progress < 100 && <Video className="animate-bounce h-4 w-4" />}
-              {progress === 100 && <Check className="text-green-500 h-4 w-4" />}
-              
-              {progress < 50 && "Preparing your video testament..."}
-              {progress >= 50 && progress < 100 && "Attaching to will..."}
-              {progress === 100 && "Video testament attached successfully!"}
+        <div className="bg-green-50 p-4 rounded-md border border-green-100">
+          <div className="flex">
+            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center mr-4">
+              <Check className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-green-800">Video Recorded Successfully</h3>
+              <p className="text-sm text-green-700 mt-1">
+                Your video testament has been recorded and is ready to be attached to your will.
+              </p>
             </div>
           </div>
+        </div>
+        
+        {isProcessing ? (
+          <div>
+            <div className="mb-2 flex justify-between text-sm">
+              <span>Finalizing your video testament...</span>
+              <span>{progress}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <Button onClick={onFinalize}>
+              {finalizeButtonIcon}
+              {finalizeButtonText}
+            </Button>
+          </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
-};
+}

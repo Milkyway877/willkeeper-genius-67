@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { WillVideoRecorder } from '@/pages/will/components/WillVideoRecorder';
 import { WillVideoReview } from '@/pages/will/components/WillVideoReview';
+import { DocumentUploadPanel } from '@/pages/will/components/DocumentUploadPanel';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Video, FileCheck } from 'lucide-react';
+import { ArrowLeft, Video, FileCheck, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,12 +20,13 @@ export function WillVideoCreation() {
   const { toast } = useToast();
   
   const [willInfo, setWillInfo] = useState<WillInfo | null>(null);
-  const [currentStep, setCurrentStep] = useState<'record' | 'review'>('record');
+  const [currentStep, setCurrentStep] = useState<'record' | 'review' | 'documents'>('record');
   const [recordedVideoPath, setRecordedVideoPath] = useState<string | null>(null);
   const [videoTitle, setVideoTitle] = useState<string>('Video Testament');
   const [recipient, setRecipient] = useState<string>('All Beneficiaries');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
+  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
   
   // Fetch will information on component mount
   useEffect(() => {
@@ -69,12 +71,22 @@ export function WillVideoCreation() {
     setCurrentStep('review');
   };
   
+  const handleDocumentsUploaded = (documents: string[]) => {
+    setUploadedDocuments(documents);
+  };
+  
   const handleBack = () => {
     if (currentStep === 'review') {
       setCurrentStep('record');
+    } else if (currentStep === 'documents') {
+      setCurrentStep('review');
     } else {
       navigate(`/wills`);
     }
+  };
+  
+  const handleContinueToDocuments = () => {
+    setCurrentStep('documents');
   };
   
   const handleFinalizeVideo = async () => {
@@ -151,17 +163,35 @@ export function WillVideoCreation() {
         if (!existingEntry) throw willVideoError;
       }
       
+      // If documents were uploaded, link them to the will
+      if (uploadedDocuments.length > 0) {
+        // Save document references to a will_documents table
+        const documentEntries = uploadedDocuments.map(doc => ({
+          will_id: willId,
+          file_path: doc,
+          type: 'supporting_document'
+        }));
+        
+        const { error: docsError } = await supabase
+          .from('will_documents')
+          .insert(documentEntries);
+          
+        if (docsError) {
+          console.error('Error saving document references:', docsError);
+        }
+      }
+      
       clearInterval(progressInterval);
       setProgress(100);
       
       toast({
         title: 'Success',
-        description: 'Your video testament has been successfully attached to your will.',
+        description: 'Your video testament and supporting documents have been successfully attached to your will.',
       });
       
       // Navigate back to the will page after a short delay
       setTimeout(() => {
-        navigate(`/wills`);
+        navigate(`/will/${willId}?videoAdded=true&docsAdded=${uploadedDocuments.length > 0}`);
       }, 1500);
       
     } catch (error) {
@@ -186,13 +216,50 @@ export function WillVideoCreation() {
     );
   }
   
+  const renderStepIndicator = () => {
+    const steps = [
+      { id: 'record', label: 'Record Video' },
+      { id: 'review', label: 'Review Video' },
+      { id: 'documents', label: 'Upload Documents' }
+    ];
+    
+    return (
+      <div className="flex items-center justify-center mb-8">
+        {steps.map((step, index) => (
+          <React.Fragment key={step.id}>
+            <div className="flex flex-col items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                currentStep === step.id 
+                  ? 'bg-willtank-600 text-white' 
+                  : 'bg-gray-200 text-gray-600'
+              }`}>
+                {index + 1}
+              </div>
+              <div className="text-xs mt-1 text-gray-600">{step.label}</div>
+            </div>
+            
+            {index < steps.length - 1 && (
+              <div className="w-16 h-0.5 bg-gray-200 mx-2" />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
+  
   return (
     <div className="container max-w-4xl mx-auto py-8">
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={handleBack} className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {currentStep === 'record' ? 'Back to Wills' : 'Back to Recording'}
+            {
+              currentStep === 'record' 
+                ? 'Back to Wills' 
+                : currentStep === 'review' 
+                  ? 'Back to Recording' 
+                  : 'Back to Review'
+            }
           </Button>
           
           <div className="text-sm bg-willtank-50 px-3 py-1 rounded-full border border-willtank-100 text-willtank-700">
@@ -202,23 +269,11 @@ export function WillVideoCreation() {
         
         <h1 className="text-2xl font-bold mb-2">Create Video Testament</h1>
         <p className="text-gray-600">
-          Record a video message that will be delivered to your beneficiaries after your passing,
-          providing personal context to your will.
+          Record a video message and upload supporting documents that will be delivered to your beneficiaries.
         </p>
       </div>
       
-      <div className="bg-amber-50 border border-amber-100 rounded-md p-4 mb-6">
-        <div className="flex items-start">
-          <Video className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
-          <div>
-            <p className="font-medium text-amber-800">Will Video Testament</p>
-            <p className="text-sm text-amber-700">
-              This video will be attached to your will "{willInfo.title}" and will be viewable by your
-              executors and beneficiaries after your passing.
-            </p>
-          </div>
-        </div>
-      </div>
+      {renderStepIndicator()}
       
       {currentStep === 'record' ? (
         <WillVideoRecorder 
@@ -228,14 +283,24 @@ export function WillVideoCreation() {
           initialTitle={videoTitle}
           initialRecipient={recipient}
         />
-      ) : (
+      ) : currentStep === 'review' ? (
         <WillVideoReview
           videoTitle={videoTitle}
           recipient={recipient}
           willTitle={willInfo.title}
+          isProcessing={false}
+          progress={0}
+          onFinalize={handleContinueToDocuments}
+          finalizeButtonText="Continue to Documents"
+          finalizeButtonIcon={<ChevronRight className="ml-2 h-4 w-4" />}
+        />
+      ) : (
+        <DocumentUploadPanel 
+          willId={willId}
+          onDocumentsUploaded={handleDocumentsUploaded}
+          onFinalize={handleFinalizeVideo}
           isProcessing={isProcessing}
           progress={progress}
-          onFinalize={handleFinalizeVideo}
         />
       )}
     </div>

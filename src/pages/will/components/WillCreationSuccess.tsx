@@ -64,7 +64,7 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
           </div>
           
           <div className="space-y-4 mt-6">
-            <h3 className="font-medium text-lg">Next Steps</h3>
+            <h3 className="font-medium text-lg">Complete Your Will Package</h3>
             
             <Button 
               onClick={handleNavigateToVideo} 
@@ -72,7 +72,7 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
             >
               <div className="flex items-center">
                 <FileVideo className="mr-2 h-5 w-5" />
-                <span>Record Video Testament</span>
+                <span>Record Video Testament & Upload Documents</span>
               </div>
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
@@ -83,8 +83,8 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
               className="w-full flex items-center justify-between"
             >
               <div className="flex items-center">
-                <Upload className="mr-2 h-5 w-5" />
-                <span>Upload Supporting Documents</span>
+                <Eye className="mr-2 h-5 w-5" />
+                <span>View Your Will</span>
               </div>
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>

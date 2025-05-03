@@ -32,6 +32,7 @@ export default function Will() {
   const { id } = useParams(); // Get will ID from URL params
   const [searchParams] = useSearchParams();
   const videoAdded = searchParams.get('videoAdded') === 'true';
+  const docsAdded = searchParams.get('docsAdded') === 'true';
 
   useEffect(() => {
     const fetchWillData = async () => {
@@ -84,11 +85,21 @@ export default function Will() {
               setCreatedDate('N/A');
             }
 
-            // If videoAdded is true, show success toast
-            if (videoAdded) {
+            // If videoAdded or docsAdded is true, show success toast
+            if (videoAdded && docsAdded) {
+              toast({
+                title: "Video and Documents Added",
+                description: "Your video testament and supporting documents have been added to your will.",
+              });
+            } else if (videoAdded) {
               toast({
                 title: "Video Added Successfully",
                 description: "Your video testament has been added to your will.",
+              });
+            } else if (docsAdded) {
+              toast({
+                title: "Documents Added Successfully",
+                description: "Your supporting documents have been added to your will.",
               });
             }
           } else {
@@ -130,7 +141,7 @@ export default function Will() {
     };
     
     fetchWillData();
-  }, [id, toast, navigate, videoAdded]);
+  }, [id, toast, navigate, videoAdded, docsAdded]);
 
   // Create a WillContent object from text
   const createWillContentFromText = (text: string): WillContent => {
