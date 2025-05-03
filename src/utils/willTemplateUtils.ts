@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 // Type for will form values (imported from your schema)
@@ -31,6 +32,29 @@ type WillFormValues = {
 };
 
 /**
+ * Check if form values contain meaningful user data beyond default empty values
+ */
+const hasValidUserData = (formValues: WillFormValues): boolean => {
+  // If no form values at all, there's definitely no valid data
+  if (!formValues) return false;
+  
+  // Check if user has entered basic personal details
+  const hasPersonalInfo = formValues.fullName && formValues.fullName.trim().length > 0;
+  
+  // Check if executors have been defined with names
+  const hasExecutorInfo = formValues.executors && 
+    Array.isArray(formValues.executors) && 
+    formValues.executors.some(e => e?.name && e.name.trim().length > 0);
+  
+  // Check if beneficiaries have been defined with names
+  const hasBeneficiaryInfo = formValues.beneficiaries && 
+    Array.isArray(formValues.beneficiaries) && 
+    formValues.beneficiaries.some(b => b?.name && b.name.trim().length > 0);
+  
+  return hasPersonalInfo || hasExecutorInfo || hasBeneficiaryInfo;
+};
+
+/**
  * Generate will content based on form values and template
  * 
  * @param formValues Form values from user input
@@ -40,9 +64,10 @@ type WillFormValues = {
 export const generateWillContent = (formValues: WillFormValues, templateContent: string): string => {
   console.log("Generating will content from form values:", formValues);
   
-  // If no meaningful inputs yet, return a placeholder message
-  if (!formValues || Object.keys(formValues).length === 0) {
-    return "Start chatting with Skyler to generate your will document...";
+  // If no meaningful inputs yet, return the original template or placeholder
+  if (!hasValidUserData(formValues)) {
+    console.log("No valid user data found, returning original template");
+    return templateContent;
   }
   
   let newContent = templateContent;
@@ -147,9 +172,9 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
     newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements);
   }
   
-  // If we have meaningful data, replace generic placeholders with better placeholders
-  // Otherwise, don't replace them yet to avoid showing error/warning states prematurely
-  if (Object.keys(formValues).length > 2) {
+  // Only replace generic placeholders if we have meaningful data and the user has started filling out sections
+  // This prevents showing incomplete/error warnings prematurely
+  if (hasValidUserData(formValues) && Object.keys(formValues).length > 2) {
     // If there are no specific instructions for some sections, replace with generic text
     newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
     newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");

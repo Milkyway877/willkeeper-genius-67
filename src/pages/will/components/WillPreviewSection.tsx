@@ -29,15 +29,44 @@ export function WillPreviewSection({
 }: WillPreviewSectionProps) {
   const [showFormatted, setShowFormatted] = useState(true);
   const [isComplete, setIsComplete] = useState(true);
+  const [userHasInteracted, setUserHasInteracted] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Detect when the user has interacted with the form
+  useEffect(() => {
+    const handleInteraction = () => {
+      if (isInitialLoad) setIsInitialLoad(false);
+      setUserHasInteracted(true);
+    };
+    
+    document.addEventListener('input', handleInteraction);
+    document.addEventListener('change', handleInteraction);
+    
+    // After 5 seconds, we'll consider that the initial load phase is over
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 5000);
+    
+    return () => {
+      document.removeEventListener('input', handleInteraction);
+      document.removeEventListener('change', handleInteraction);
+      clearTimeout(timer);
+    };
+  }, [isInitialLoad]);
   
   // Check if will content is complete, but only if content is not an initial placeholder
   useEffect(() => {
-    if (content && !content.includes('Start chatting') && !content.includes('Your will document will appear here')) {
+    if (content && 
+        !content.includes('Start chatting') && 
+        !content.includes('Your will document will appear here') &&
+        // Only validate after user interaction or after initial load phase
+        (userHasInteracted || !isInitialLoad)) {
       setIsComplete(validateWillContent(content));
     } else {
-      setIsComplete(false);
+      // Don't show incomplete state for initial/placeholder content
+      setIsComplete(true);
     }
-  }, [content]);
+  }, [content, userHasInteracted, isInitialLoad]);
   
   const handleDownload = () => {
     downloadDocument(content, title, signature);
@@ -46,6 +75,9 @@ export function WillPreviewSection({
   const hasRealContent = content && 
     !content.includes('Start chatting') && 
     !content.includes('Your will document will appear here');
+  
+  // Determine if we should show warning (only after user has interacted and content is incomplete)
+  const shouldShowWarning = hasRealContent && !isComplete && (userHasInteracted || !isInitialLoad);
   
   return (
     <TemplateWillSection 
@@ -91,7 +123,7 @@ export function WillPreviewSection({
         <WillPreview content={content} formatted={showFormatted} signature={signature} />
       </div>
       
-      {hasRealContent && !isComplete && (
+      {shouldShowWarning && (
         <div className="bg-amber-50 border border-amber-200 p-3 rounded-md mb-4 text-sm text-amber-800">
           Your will has incomplete information. Please continue filling out the form to complete all sections.
         </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -64,13 +63,59 @@ const willSchema = z.object({
 
 type WillFormValues = z.infer<typeof willSchema>;
 
-// Create a FormWatcher component to handle form updates
+// Create a FormWatcher component to handle form updates with improved initial state handling
 const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void }) => {
   const formValues = useWatch();
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  
+  // Track user interaction with the form
+  useEffect(() => {
+    const handleUserInteraction = () => setHasUserInteracted(true);
+    
+    // Listen for user interaction events on the form
+    const formElement = document.querySelector('form');
+    if (formElement) {
+      formElement.addEventListener('input', handleUserInteraction);
+      formElement.addEventListener('change', handleUserInteraction);
+    }
+    
+    return () => {
+      if (formElement) {
+        formElement.removeEventListener('input', handleUserInteraction);
+        formElement.removeEventListener('change', handleUserInteraction);
+      }
+    };
+  }, []);
   
   useEffect(() => {
-    onChange(formValues as WillFormValues);
-  }, [formValues, onChange]);
+    // Only trigger onChange if user has interacted with the form or if we have meaningful data
+    if (hasUserInteracted || hasValidFormData(formValues)) {
+      onChange(formValues as WillFormValues);
+    }
+  }, [formValues, onChange, hasUserInteracted]);
+  
+  // Helper to check if form has any meaningful data beyond defaults
+  const hasValidFormData = (values: any): boolean => {
+    if (!values) return false;
+    
+    // Check if user has entered a name (most basic thing they'd enter)
+    if (values.fullName && values.fullName.trim().length > 0) return true;
+    
+    // Check if user has entered a date of birth
+    if (values.dateOfBirth && values.dateOfBirth.trim().length > 0) return true;
+    
+    // Check if any executor has a name
+    if (values.executors && Array.isArray(values.executors)) {
+      if (values.executors.some(exec => exec.name && exec.name.trim().length > 0)) return true;
+    }
+    
+    // Check if any beneficiary has a name
+    if (values.beneficiaries && Array.isArray(values.beneficiaries)) {
+      if (values.beneficiaries.some(ben => ben.name && ben.name.trim().length > 0)) return true;
+    }
+    
+    return false;
+  };
   
   return null;
 };
@@ -147,7 +192,7 @@ Date: ${new Date().toLocaleDateString()}
     
     if (!values) return;
     
-    // Generate content based on form values
+    // Only generate content if we have meaningful data
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
   };

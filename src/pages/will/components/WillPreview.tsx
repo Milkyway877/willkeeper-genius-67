@@ -12,7 +12,22 @@ export function WillPreview({ content, formatted = true, signature = null }: Wil
   if (!content || content === 'Your will document will appear here as you chat with Skyler...') {
     return (
       <div className="text-gray-500 italic text-center">
-        {content || "Start chatting to see your will document preview"}
+        {content || "Start completing the form to see your will document preview"}
+      </div>
+    );
+  }
+  
+  // Check if content has any of the template placeholders but no real content
+  const hasOnlyPlaceholders = content.includes('[Full Name]') && 
+    content.includes('[Address]') && 
+    content.includes('[Date of Birth]') &&
+    !content.includes('Digitally signed by:') && 
+    !content.match(/[A-Z][a-z]+ [A-Z][a-z]+/); // No proper names entered yet
+  
+  if (hasOnlyPlaceholders) {
+    return (
+      <div className="text-gray-500 italic text-center">
+        Complete the form sections to generate your will preview
       </div>
     );
   }
