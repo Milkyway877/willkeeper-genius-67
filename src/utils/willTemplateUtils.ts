@@ -39,11 +39,12 @@ type WillFormValues = {
  * @returns Updated will content
  */
 export const generateWillContent = (formValues: WillFormValues, templateContent: string): string => {
-  console.log("Generating will content from form values:", formValues);
-  
   let newContent = templateContent;
   
-  // Replace personal information
+  // Create a deep copy to avoid mutations
+  newContent = String(newContent);
+  
+  // Replace personal information with immediate updates
   if (formValues.fullName) {
     newContent = newContent.replace(/\[Full Name\]/g, formValues.fullName);
   }
@@ -63,16 +64,53 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
   
   if (primaryExecutor?.name) {
     newContent = newContent.replace(/\[Executor Name\]/g, primaryExecutor.name);
+    
+    // Add more detailed executor information if available
+    if (primaryExecutor.relationship || primaryExecutor.address) {
+      let executorDetails = `${primaryExecutor.name}`;
+      if (primaryExecutor.relationship) {
+        executorDetails += ` (${primaryExecutor.relationship})`;
+      }
+      if (primaryExecutor.address) {
+        executorDetails += `, residing at ${primaryExecutor.address}`;
+      }
+      
+      // Add this information to the executor section
+      const executorPattern = /ARTICLE II: APPOINTMENT OF EXECUTOR\s*I appoint (.*?) to serve as/;
+      if (executorPattern.test(newContent)) {
+        newContent = newContent.replace(
+          executorPattern,
+          `ARTICLE II: APPOINTMENT OF EXECUTOR\nI appoint ${executorDetails} to serve as`
+        );
+      }
+    }
   }
   
   if (alternateExecutor?.name) {
     newContent = newContent.replace(/\[Alternate Executor Name\]/g, alternateExecutor.name);
-  } else if (executors.length > 1 && executors[1]?.name) {
-    // Try to use the second executor as alternate if not explicitly marked
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, executors[1].name);
+    
+    // Add more detailed alternate executor information
+    if (alternateExecutor.relationship || alternateExecutor.address) {
+      let altExecutorDetails = `${alternateExecutor.name}`;
+      if (alternateExecutor.relationship) {
+        altExecutorDetails += ` (${alternateExecutor.relationship})`;
+      }
+      if (alternateExecutor.address) {
+        altExecutorDetails += `, residing at ${alternateExecutor.address}`;
+      }
+      
+      // Add alternate executor details
+      const altPattern = /I appoint \[Alternate Executor Name\] to serve as alternate Executor/;
+      if (altPattern.test(newContent)) {
+        newContent = newContent.replace(
+          altPattern,
+          `I appoint ${altExecutorDetails} to serve as alternate Executor`
+        );
+      }
+    }
   }
   
-  // Replace beneficiary information
+  // Replace beneficiary information with richer content
   const beneficiaries = formValues.beneficiaries || [];
   
   if (beneficiaries.length > 0) {
@@ -90,9 +128,21 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
             ? b.percentage 
             : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
           
-          return `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${percentage || 0}% of the estate`;
+          let beneficiaryLine = `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${percentage || 0}% of the estate`;
+          
+          // Add more details if available
+          if (b.address || b.email || b.phone) {
+            beneficiaryLine += "\n  Contact: ";
+            let contactDetails = [];
+            if (b.address) contactDetails.push(`Address: ${b.address}`);
+            if (b.email) contactDetails.push(`Email: ${b.email}`);
+            if (b.phone) contactDetails.push(`Phone: ${b.phone}`);
+            beneficiaryLine += contactDetails.join(", ");
+          }
+          
+          return beneficiaryLine;
         })
-        .join('\n');
+        .join('\n\n');
       
       // Create distribution summary
       beneficiaryDistribution = validBeneficiaries
@@ -116,7 +166,7 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
     }
   }
   
-  // Replace final arrangements
+  // Replace final arrangements with comprehensive information
   let finalArrangements = "";
   
   if (formValues.funeralPreferences) {
@@ -144,17 +194,43 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
   }
   
   // If there are no specific instructions for some sections, replace with generic text
-  newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
-  newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
-  newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
-  newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
-  newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
-  newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
-  newContent = newContent.replace(/\[Address\]/g, "my current legal address");
-  newContent = newContent.replace(/\[Full Name\]/g, "the testator");
-  newContent = newContent.replace(/\[Date of Birth\]/g, "the testator's date of birth");
+  // but only if the original placeholder still exists (prevents repeated replacements)
+  if (newContent.includes('[Beneficiary details to be added]')) {
+    newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
+  }
   
-  console.log("Generated will content:", newContent);
+  if (newContent.includes('[Beneficiary names and distribution details]')) {
+    newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
+  }
+  
+  if (newContent.includes('[Specific bequests to be added]')) {
+    newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
+  }
+  
+  if (newContent.includes('[Final arrangements to be added]')) {
+    newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
+  }
+  
+  if (newContent.includes('[Executor Name]')) {
+    newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
+  }
+  
+  if (newContent.includes('[Alternate Executor Name]')) {
+    newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
+  }
+  
+  if (newContent.includes('[Address]')) {
+    newContent = newContent.replace(/\[Address\]/g, "my current legal address");
+  }
+  
+  if (newContent.includes('[Full Name]')) {
+    newContent = newContent.replace(/\[Full Name\]/g, "the testator");
+  }
+  
+  if (newContent.includes('[Date of Birth]')) {
+    newContent = newContent.replace(/\[Date of Birth\]/g, "the testator's date of birth");
+  }
+  
   return newContent;
 };
 
@@ -200,4 +276,30 @@ export const detectCompletedSections = (content: string): string[] => {
   }
   
   return completedSections;
+};
+
+/**
+ * Check for specific section content to highlight changes
+ */
+export const detectSectionFromContent = (content: string, fieldName: string): string | null => {
+  // Map field names to sections in the will
+  const fieldToSectionMap: Record<string, string> = {
+    'fullName': 'personal_info',
+    'dateOfBirth': 'personal_info',
+    'homeAddress': 'personal_info',
+    'email': 'personal_info',
+    'phoneNumber': 'personal_info',
+    
+    'executors': 'executor',
+    
+    'beneficiaries': 'beneficiaries',
+    
+    'funeralPreferences': 'final_wishes',
+    'memorialService': 'final_wishes',
+    'obituary': 'final_wishes',
+    'charitableDonations': 'final_wishes',
+    'specialInstructions': 'final_wishes',
+  };
+  
+  return fieldToSectionMap[fieldName] || null;
 };

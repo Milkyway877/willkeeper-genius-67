@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, createContext } from 'react';
 import { z } from 'zod';
-import { useForm, FormProvider, useWatch } from 'react-hook-form';
+import { useForm, FormProvider, useWatch, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -64,13 +64,119 @@ const willSchema = z.object({
 
 type WillFormValues = z.infer<typeof willSchema>;
 
+// Create context for will data
+interface WillContextType {
+  willContent: string;
+  setWillContent: React.Dispatch<React.SetStateAction<string>>;
+  lastEditedSection: string | null;
+  setLastEditedSection: React.Dispatch<React.SetStateAction<string | null>>;
+  signature: string | null;
+  setSignature: React.Dispatch<React.SetStateAction<string | null>>;
+  form?: UseFormReturn<WillFormValues>;
+}
+
+const WillContext = createContext<WillContextType>({
+  willContent: '',
+  setWillContent: () => {},
+  lastEditedSection: null,
+  setLastEditedSection: () => {},
+  signature: null,
+  setSignature: () => {},
+});
+
 // Create a FormWatcher component to handle form updates
 const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void }) => {
-  const formValues = useWatch();
+  const methods = useContext(WillContext).form;
+  const formValues = useWatch({ control: methods?.control });
+  const { setLastEditedSection } = useContext(WillContext);
+  
+  // Track which field was last changed
+  const prevValuesRef = React.useRef<any>(null);
   
   useEffect(() => {
+    if (!formValues || !prevValuesRef.current) {
+      prevValuesRef.current = formValues;
+      return;
+    }
+    
+    // Find which field changed
+    const currentVals = formValues as any;
+    const prevVals = prevValuesRef.current as any;
+    
+    let changedSection = null;
+    
+    // Check top-level fields
+    for (const key in currentVals) {
+      if (typeof currentVals[key] !== 'object' && currentVals[key] !== prevVals[key]) {
+        changedSection = key;
+        break;
+      }
+    }
+    
+    // Check executor fields
+    if (!changedSection && currentVals.executors && prevVals.executors) {
+      for (let i = 0; i < currentVals.executors.length; i++) {
+        if (i >= prevVals.executors.length) {
+          changedSection = 'executors';
+          break;
+        }
+        
+        const currExec = currentVals.executors[i];
+        const prevExec = prevVals.executors[i];
+        
+        for (const key in currExec) {
+          if (currExec[key] !== prevExec?.[key]) {
+            changedSection = 'executors';
+            break;
+          }
+        }
+        
+        if (changedSection) break;
+      }
+    }
+    
+    // Check beneficiary fields
+    if (!changedSection && currentVals.beneficiaries && prevVals.beneficiaries) {
+      for (let i = 0; i < currentVals.beneficiaries.length; i++) {
+        if (i >= prevVals.beneficiaries.length) {
+          changedSection = 'beneficiaries';
+          break;
+        }
+        
+        const currBene = currentVals.beneficiaries[i];
+        const prevBene = prevVals.beneficiaries[i];
+        
+        for (const key in currBene) {
+          if (currBene[key] !== prevBene?.[key]) {
+            changedSection = 'beneficiaries';
+            break;
+          }
+        }
+        
+        if (changedSection) break;
+      }
+    }
+    
+    // Map field names to section names
+    if (changedSection) {
+      let sectionName = changedSection;
+      
+      if (['fullName', 'dateOfBirth', 'homeAddress', 'email', 'phoneNumber'].includes(changedSection)) {
+        sectionName = 'personal_info';
+      } else if (changedSection === 'executors') {
+        sectionName = 'executor';
+      } else if (changedSection === 'beneficiaries') {
+        sectionName = 'beneficiaries';
+      } else if (['funeralPreferences', 'memorialService', 'obituary', 'charitableDonations', 'specialInstructions'].includes(changedSection)) {
+        sectionName = 'funeral_wishes';
+      }
+      
+      setLastEditedSection(sectionName);
+    }
+    
+    prevValuesRef.current = formValues;
     onChange(formValues as WillFormValues);
-  }, [formValues, onChange]);
+  }, [formValues, onChange, setLastEditedSection]);
   
   return null;
 };
@@ -117,6 +223,7 @@ Date: ${new Date().toLocaleDateString()}
   `);
   
   const [signature, setSignature] = useState<string | null>(null);
+  const [lastEditedSection, setLastEditedSection] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   
   const form = useForm<WillFormValues>({
@@ -141,10 +248,15 @@ Date: ${new Date().toLocaleDateString()}
   const { toast } = useToast();
   const navigate = useNavigate();
   
+  // Initialize will content based on form values on component mount
+  useEffect(() => {
+    const formValues = form.getValues();
+    const initialContent = generateWillContent(formValues, willContent);
+    setWillContent(initialContent);
+  }, []);
+  
   // Form watcher to update content as user types
   const handleFormChange = (values: WillFormValues) => {
-    console.log("Form values updated:", values);
-    
     if (!values) return;
     
     // Generate content based on form values
@@ -165,6 +277,7 @@ Date: ${new Date().toLocaleDateString()}
       
       // Update will content one more time to ensure latest changes
       const finalWillContent = generateWillContent(formValues, willContent);
+      setWillContent(finalWillContent);
       
       // Save progress
       await saveWillProgress({
@@ -233,6 +346,7 @@ Date: ${new Date().toLocaleDateString()}
       
       // Generate final content based on form values
       const finalWillContent = generateWillContent(formValues, willContent);
+      setWillContent(finalWillContent);
       
       // Save as finalized will
       const willData = {
@@ -266,75 +380,89 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
 
+  // Value for the context provider
+  const contextValue = {
+    willContent,
+    setWillContent,
+    lastEditedSection,
+    setLastEditedSection,
+    signature,
+    setSignature,
+    form
+  };
+
   return (
-    <div className="container mx-auto mb-16">
-      <FormProvider {...form}>
-        <form>
-          {/* Add form watcher to track changes */}
-          <FormWatcher onChange={handleFormChange} />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <PersonalInfoSection defaultOpen={true} />
-              <BeneficiariesSection defaultOpen={false} />
-              <ExecutorsSection defaultOpen={false} />
-              <AssetsSection defaultOpen={false} />
-              <FinalWishesSection defaultOpen={false} />
-              
-              {!isNew && willId && (
-                <Alert className="bg-blue-50 border border-blue-100">
-                  <Video className="h-4 w-4 text-blue-500" />
-                  <AlertDescription className="text-blue-700">
-                    After finalizing your will, you can create video testimonies in the Tank section and attach them to this will.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
-            </div>
+    <WillContext.Provider value={contextValue}>
+      <div className="container mx-auto mb-16">
+        <FormProvider {...form}>
+          <form>
+            {/* Add form watcher to track changes */}
+            <FormWatcher onChange={handleFormChange} />
             
-            <div className="lg:col-span-1">
-              <div className="lg:sticky lg:top-24">
-                <WillPreviewSection 
-                  defaultOpen={true} 
-                  content={willContent}
-                  signature={signature}
-                  title={`${form.getValues().fullName || 'My'}'s Will`}
-                />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <PersonalInfoSection defaultOpen={true} />
+                <BeneficiariesSection defaultOpen={false} />
+                <ExecutorsSection defaultOpen={false} />
+                <AssetsSection defaultOpen={false} />
+                <FinalWishesSection defaultOpen={false} />
                 
                 {!isNew && willId && (
-                  <WillAttachedVideosSection willId={willId} />
+                  <Alert className="bg-blue-50 border border-blue-100">
+                    <Video className="h-4 w-4 text-blue-500" />
+                    <AlertDescription className="text-blue-700">
+                      After finalizing your will, you can create video testimonies in the Tank section and attach them to this will.
+                    </AlertDescription>
+                  </Alert>
                 )}
                 
-                <Card className="mt-6 p-4">
-                  <div className="space-y-4">
-                    <Button 
-                      onClick={handleSaveDraft} 
-                      variant="outline" 
-                      className="w-full"
-                      disabled={saving}
-                      type="button"
-                    >
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      Save Draft
-                    </Button>
-                    
-                    <Button 
-                      onClick={handleFinalize} 
-                      className="w-full"
-                      disabled={saving}
-                      type="button"
-                    >
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
-                      Finalize Will
-                    </Button>
-                  </div>
-                </Card>
+                <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
+              </div>
+              
+              <div className="lg:col-span-1">
+                <div className="lg:sticky lg:top-24">
+                  <WillPreviewSection 
+                    defaultOpen={true} 
+                    content={willContent}
+                    signature={signature}
+                    title={`${form.getValues().fullName || 'My'}'s Will`}
+                    lastEditedSection={lastEditedSection}
+                  />
+                  
+                  {!isNew && willId && (
+                    <WillAttachedVideosSection willId={willId} />
+                  )}
+                  
+                  <Card className="mt-6 p-4">
+                    <div className="space-y-4">
+                      <Button 
+                        onClick={handleSaveDraft} 
+                        variant="outline" 
+                        className="w-full"
+                        disabled={saving}
+                        type="button"
+                      >
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Draft
+                      </Button>
+                      
+                      <Button 
+                        onClick={handleFinalize} 
+                        className="w-full"
+                        disabled={saving}
+                        type="button"
+                      >
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
+                        Finalize Will
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
               </div>
             </div>
-          </div>
-        </form>
-      </FormProvider>
-    </div>
+          </form>
+        </FormProvider>
+      </div>
+    </WillContext.Provider>
   );
 }

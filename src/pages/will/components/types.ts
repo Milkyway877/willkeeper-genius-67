@@ -26,4 +26,5 @@ export interface SkylerAssistantProps {
     contacts: Contact[];
     generatedWill: string;
   }) => void;
+  onInputChange?: (field: string, value: any) => void;
 }

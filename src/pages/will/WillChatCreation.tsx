@@ -20,6 +20,22 @@ export default function WillChatCreation() {
   const [willData, setWillData] = useState<any>(null);
   const [editableContent, setEditableContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
+  const [currentlyUpdatingField, setCurrentlyUpdatingField] = useState<string | null>(null);
+  
+  // Track content changes to highlight updated sections
+  useEffect(() => {
+    if (currentlyUpdatingField) {
+      setHighlightedSection(currentlyUpdatingField);
+      
+      // Clear the highlight after 2 seconds
+      const timer = setTimeout(() => {
+        setHighlightedSection(null);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [editableContent, currentlyUpdatingField]);
   
   // Find the template based on the URL parameter
   useEffect(() => {
@@ -73,6 +89,40 @@ export default function WillChatCreation() {
     }
   };
   
+  // Handle real-time updates to chat inputs
+  const handleChatInputChange = (field: string, value: any) => {
+    // Update the willData structure
+    setWillData((prev: any) => ({
+      ...prev,
+      responses: {
+        ...prev.responses,
+        [field]: value
+      }
+    }));
+    
+    // Mark this field as currently updating for highlighting
+    setCurrentlyUpdatingField(field);
+    
+    // Update the content with the new value
+    // In a real implementation, this would use your generateWillContent function
+    // For now, we'll do a simple string replacement
+    setEditableContent((prev) => {
+      let updated = prev;
+      
+      // Handle different field types
+      if (field === 'fullName') {
+        updated = updated.replace(/Full Name: .*$/m, `Full Name: ${value}`);
+      } else if (field === 'executorName') {
+        updated = updated.replace(/Executor: .*$/m, `Executor: ${value}`);
+      } else if (field === 'beneficiaries') {
+        // This would be more complex in reality
+        updated = updated.replace(/Beneficiaries: .*$/m, `Beneficiaries: ${Array.isArray(value) ? value.join(', ') : value}`);
+      }
+      
+      return updated;
+    });
+  };
+  
   // Handle the finalization of the will after review
   const handleSaveWill = async () => {
     if (!willData) return;
@@ -123,6 +173,11 @@ export default function WillChatCreation() {
       description: "Will content copied to clipboard.",
     });
   };
+  
+  // Handle text changes in the editable area
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditableContent(e.target.value);
+  };
 
   if (!selectedTemplate) {
     return (
@@ -161,6 +216,7 @@ export default function WillChatCreation() {
             templateId={selectedTemplate.id}
             templateName={selectedTemplate.title}
             onComplete={handleAssistantComplete}
+            onInputChange={handleChatInputChange}
           />
         )}
         
@@ -187,13 +243,16 @@ export default function WillChatCreation() {
               <CardContent>
                 <div className="border rounded-md p-6 bg-white">
                   <h3 className="font-medium mb-4">Document Preview</h3>
-                  <WillPreview content={editableContent} />
+                  <WillPreview 
+                    content={editableContent} 
+                    highlightSection={highlightedSection}
+                  />
                   
                   <div className="mt-6 border-t pt-6">
                     <h3 className="font-medium mb-4">Edit Content</h3>
                     <textarea
                       value={editableContent}
-                      onChange={(e) => setEditableContent(e.target.value)}
+                      onChange={handleContentChange}
                       className="w-full min-h-[300px] p-4 border rounded-md text-sm font-mono"
                     ></textarea>
                   </div>
