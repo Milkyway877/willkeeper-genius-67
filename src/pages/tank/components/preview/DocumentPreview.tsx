@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { File, FileText, Image as ImageIcon, AlertTriangle } from 'lucide-react';
+import { File, FileText, Image as ImageIcon, AlertTriangle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -55,6 +55,10 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   const handleLoadSuccess = () => {
     setLoading(false);
   };
+
+  const handleDownload = () => {
+    window.open(documentUrl, '_blank', 'noopener,noreferrer');
+  };
   
   const renderPreview = () => {
     if (loading) {
@@ -106,9 +110,10 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             <File className="h-16 w-16 text-willtank-600 mb-4" />
             <p className="mb-4">This document type cannot be previewed directly.</p>
             <Button
-              onClick={() => window.open(documentUrl, '_blank', 'noopener,noreferrer')}
+              onClick={handleDownload}
               variant="outline"
             >
+              <Download className="h-4 w-4 mr-2" />
               Open Document
             </Button>
           </div>
@@ -130,6 +135,12 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
         <div className="mt-4">
           <div className="bg-gray-50 p-4 rounded-lg">
             {renderPreview()}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button variant="outline" onClick={handleDownload} className="flex items-center">
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
           </div>
         </div>
       </DialogContent>

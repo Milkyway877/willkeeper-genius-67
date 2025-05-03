@@ -7,7 +7,7 @@ import { DeathVerificationWidget } from '@/components/death-verification/DeathVe
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History } from 'lucide-react';
+import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ import {
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
 import { Executor, Beneficiary, getExecutors, getBeneficiaries } from '@/services/executorService';
+import { TrustedContacts } from '@/components/death-verification/TrustedContacts';
 
 export default function CheckIns() {
   const { toast } = useToast();
@@ -93,7 +94,7 @@ export default function CheckIns() {
               <p className="text-sm text-willtank-700 mb-4">
                 The Check-in System ensures your will is only accessible upon verified absence.
                 Regular check-ins confirm you're still alive, and if you stop responding,
-                your contacts will be asked to verify your status.
+                your trusted contacts will be asked to verify your status.
               </p>
               <h3 className="text-md font-medium text-willtank-800 mb-1">Key Features:</h3>
               <ul className="text-sm text-willtank-700 space-y-1 list-disc pl-5 mb-2">
@@ -109,12 +110,20 @@ export default function CheckIns() {
         <Tabs defaultValue="settings">
           <TabsList className="mb-6 border-b w-full justify-start rounded-none pb-0">
             <TabsTrigger value="settings" className="rounded-t-lg rounded-b-none border-b-0">Settings</TabsTrigger>
+            <TabsTrigger value="trusted" className="rounded-t-lg rounded-b-none border-b-0">
+              <Shield className="h-4 w-4 mr-2" />
+              Trusted Verifiers
+            </TabsTrigger>
             <TabsTrigger value="contacts" className="rounded-t-lg rounded-b-none border-b-0">Manage Contacts</TabsTrigger>
             <TabsTrigger value="history" className="rounded-t-lg rounded-b-none border-b-0">Check-in History</TabsTrigger>
           </TabsList>
           
           <TabsContent value="settings">
             <DeathVerification onSettingsChange={handleSettingsChange} />
+          </TabsContent>
+
+          <TabsContent value="trusted">
+            <TrustedContacts onContactsChange={handleSettingsChange} />
           </TabsContent>
 
           <TabsContent value="contacts">
