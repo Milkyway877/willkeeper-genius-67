@@ -27,10 +27,14 @@ export const useTankCreation = () => {
 
   // Check for willId in URL params
   useEffect(() => {
+    console.log("useTankCreation hook mounted, checking for willId");
     const queryParams = new URLSearchParams(window.location.search);
     const willIdParam = queryParams.get('willId');
     
+    console.log("URL willId param:", willIdParam);
+    
     if (willIdParam) {
+      console.log("Will ID detected, setting up for will testament");
       setSelectedWillId(willIdParam);
       // If coming from will page, default to video message type
       setCreationType('video');
@@ -48,11 +52,38 @@ export const useTankCreation = () => {
       const farFutureDate = new Date();
       farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
       setDeliveryDate(farFutureDate);
+      
+      // Store willId in sessionStorage for persistence
+      sessionStorage.setItem('currentWillId', willIdParam);
+      
+      // Notify user
+      toast({
+        title: "Will Video Testament Mode",
+        description: "Creating a video testament for your will. This will be delivered posthumously."
+      });
+    } else {
+      // Check if we have a willId in session storage
+      const sessionWillId = sessionStorage.getItem('currentWillId');
+      if (sessionWillId) {
+        console.log("Found willId in sessionStorage:", sessionWillId);
+        setSelectedWillId(sessionWillId);
+        setCreationType('video');
+        setDeliveryType('posthumous');
+        setRecipientName("All Beneficiaries");
+        setCurrentStep(1);
+        
+        fetchWillTitle(sessionWillId);
+        
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
+        setDeliveryDate(farFutureDate);
+      }
     }
   }, []);
   
   const fetchWillTitle = async (willId: string) => {
     try {
+      console.log("Fetching will title for ID:", willId);
       const { data, error } = await supabase
         .from('wills')
         .select('title')
@@ -62,6 +93,7 @@ export const useTankCreation = () => {
       if (error) throw error;
       
       if (data?.title) {
+        console.log("Setting will title to:", data.title);
         setWillTitle(data.title);
       }
     } catch (err) {
@@ -72,6 +104,7 @@ export const useTankCreation = () => {
   // Set delivery type to posthumous when will is selected
   useEffect(() => {
     if (selectedWillId) {
+      console.log("Will ID detected or changed, enforcing will testament settings");
       // Always enforce posthumous delivery for will videos
       setDeliveryType('posthumous');
       
@@ -85,14 +118,20 @@ export const useTankCreation = () => {
       const farFutureDate = new Date();
       farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
       setDeliveryDate(farFutureDate);
+      
+      // Store in session storage for persistence
+      sessionStorage.setItem('currentWillId', selectedWillId);
     }
   }, [selectedWillId]);
 
   const handleNext = () => {
+    console.log("handleNext called, currentStep:", currentStep, "selectedWillId:", selectedWillId);
+    
     // Special handling for will videos - simplified flow
     if (selectedWillId) {
       if (currentStep === 1) {
         // Skip directly to review step
+        console.log("Will video - skipping to review step");
         setCurrentStep(4);
         return;
       }
@@ -135,6 +174,7 @@ export const useTankCreation = () => {
     
     // Skip all validation for will videos - they should always proceed
     if (selectedWillId) {
+      console.log("Will video - skipping validation");
       setCurrentStep(prev => prev + 1);
       return;
     }
@@ -170,10 +210,13 @@ export const useTankCreation = () => {
   };
 
   const handlePrev = () => {
+    console.log("handlePrev called, currentStep:", currentStep, "selectedWillId:", selectedWillId);
+    
     // Special handling for will videos - simplified flow
     if (selectedWillId) {
       if (currentStep === 4) {
         // Go back to creation step
+        console.log("Will video - going back to creation step");
         setCurrentStep(1);
         return;
       }
@@ -183,15 +226,24 @@ export const useTankCreation = () => {
   };
 
   const handleCancel = () => {
+    console.log("handleCancel called");
+    
+    // Clear any will session data
+    sessionStorage.removeItem('currentWillId');
+    
     // If coming from a will, redirect back to wills page
     if (selectedWillId) {
+      console.log("Redirecting back to wills page");
       navigate('/wills');
     } else {
+      console.log("Redirecting back to tank page");
       navigate('/tank');
     }
   };
 
   const handleFinalize = async () => {
+    console.log("handleFinalize called, selectedWillId:", selectedWillId);
+    
     if (!creationType) {
       toast({
         title: 'Missing Information',
@@ -203,9 +255,12 @@ export const useTankCreation = () => {
 
     // For will videos, ensure we have the necessary data set
     if (selectedWillId) {
+      console.log("Finalizing will testament, enforcing required fields");
+      
       // Set recipient to "All Beneficiaries" if not already set
       if (!recipientName) {
         setRecipientName("All Beneficiaries");
+        console.log("Set default recipient to 'All Beneficiaries'");
       }
       
       if (!deliveryDate) {
@@ -213,11 +268,13 @@ export const useTankCreation = () => {
         const farFutureDate = new Date();
         farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
         setDeliveryDate(farFutureDate);
+        console.log("Set placeholder future date:", farFutureDate);
       }
       
       // Force posthumous delivery type for will videos
       if (deliveryType !== 'posthumous') {
         setDeliveryType('posthumous');
+        console.log("Forced posthumous delivery");
       }
     } else if (!deliveryType) {
       // Only check delivery type for non-will videos
@@ -265,12 +322,15 @@ export const useTankCreation = () => {
         user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
       };
 
+      console.log("Creating message with data:", message);
       setProgress(60);
 
       const createdMessage = await createFutureMessage(message);
       
       // If video was created and a will ID was provided, make sure to connect them
       if (createdMessage && messageUrl && creationType === 'video' && selectedWillId) {
+        console.log("Linking video to will:", selectedWillId, messageUrl);
+        
         // Check if this video is already linked to the will
         const { data: existingLink } = await supabase
           .from('will_videos')
@@ -281,16 +341,22 @@ export const useTankCreation = () => {
           
         // If not already linked, create the link
         if (!existingLink) {
+          console.log("Creating new link between video and will");
           await supabase.from('will_videos').insert({
             will_id: selectedWillId,
             file_path: messageUrl,
             duration: 0 // Could be calculated
           });
+        } else {
+          console.log("Video already linked to will");
         }
       }
       
       clearInterval(progressInterval);
       setProgress(100);
+      
+      // Clear will session data
+      sessionStorage.removeItem('currentWillId');
       
       if (createdMessage) {
         toast({
@@ -303,8 +369,10 @@ export const useTankCreation = () => {
         setTimeout(() => {
           // Navigate to appropriate page based on context
           if (selectedWillId) {
+            console.log("Redirecting to wills page");
             navigate('/wills');
           } else {
+            console.log("Redirecting to tank page");
             navigate('/tank');
           }
         }, 2000);

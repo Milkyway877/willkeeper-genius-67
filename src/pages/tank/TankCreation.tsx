@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -103,17 +104,32 @@ export default function TankCreation() {
   const steps = isWillVideoMode ? willVideoSteps : standardSteps;
   
   useEffect(() => {
+    console.log("TankCreation mounted, checking for willId");
+    console.log("Current URL parameters:", window.location.search);
+    console.log("selectedWillId state:", selectedWillId);
+    
+    // Check if there's a willId in the URL
+    const queryParams = new URLSearchParams(window.location.search);
+    const urlWillId = queryParams.get('willId');
+    console.log("URL willId:", urlWillId);
+    
     // Fetch the will title if we have a will ID
-    if (selectedWillId) {
+    if (selectedWillId || urlWillId) {
+      const willIdToUse = selectedWillId || urlWillId;
+      console.log("Using willId for fetch:", willIdToUse);
+      
       const fetchWillTitle = async () => {
         const { data, error } = await supabase
           .from('wills')
           .select('title')
-          .eq('id', selectedWillId)
+          .eq('id', willIdToUse)
           .single();
           
         if (!error && data) {
           setSelectedWillTitle(data.title || "Your Will");
+          console.log("Will title fetched:", data.title);
+        } else {
+          console.error("Error fetching will title:", error);
         }
       };
       
@@ -127,16 +143,25 @@ export default function TankCreation() {
       
       // Force video type and posthumous delivery for will videos
       if (creationType !== 'video') {
+        console.log("Forcing video type for will testament");
         setCreationType('video');
       }
       
       if (deliveryType !== 'posthumous') {
+        console.log("Forcing posthumous delivery for will testament");
         setDeliveryType('posthumous');
       }
       
       // Set recipient to "All Beneficiaries" if not already set
       if (!recipientName) {
+        console.log("Setting default recipient to 'All Beneficiaries'");
         setRecipientName("All Beneficiaries");
+      }
+      
+      // Ensure we're on the right step for will testament creation
+      if (currentStep !== 1 && currentStep !== 4) {
+        console.log("Redirecting to creation step for will testament");
+        setCurrentStep(1);
       }
     }
   }, [selectedWillId]);
@@ -202,8 +227,17 @@ export default function TankCreation() {
   };
 
   const renderStepContent = () => {
+    // Check for willId in URL and in state
+    const queryParams = new URLSearchParams(window.location.search);
+    const urlWillId = queryParams.get('willId');
+    
+    // If there's a willId in the URL but not in state, use it
+    const effectiveWillVideoMode = isWillVideoMode || !!urlWillId;
+    
     // If in will video mode, we have a simplified flow
-    if (isWillVideoMode) {
+    if (effectiveWillVideoMode) {
+      console.log("Rendering in will video mode, currentStep:", currentStep);
+      
       // Force video creation type
       if (creationType !== 'video') {
         setCreationType('video');
@@ -212,6 +246,14 @@ export default function TankCreation() {
       // Force posthumous delivery type
       if (deliveryType !== 'posthumous') {
         setDeliveryType('posthumous');
+      }
+      
+      // Initialize a placeholder future date for delivery if none exists
+      if (!deliveryDate) {
+        const farFutureDate = new Date();
+        farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
+        setDeliveryDate(farFutureDate);
+        console.log("Set placeholder future date:", farFutureDate);
       }
       
       // In will video mode, we only have two meaningful steps:
@@ -233,12 +275,13 @@ export default function TankCreation() {
                  isGenerating={isGenerating}
                  progress={progress}
                  isForWill={true}
-                 willTitle={selectedWillTitle}
+                 willTitle={selectedWillTitle || willTitle || "Your Will"}
                />;
       } else {
         // If we're in any other step, redirect to the appropriate step
+        console.log("Redirecting from unexpected step", currentStep, "to creation step");
         setCurrentStep(1); // Default to creation step
-        return <div>Redirecting...</div>;
+        return <div>Redirecting to video creation...</div>;
       }
     }
     
@@ -270,7 +313,7 @@ export default function TankCreation() {
                  isGenerating={isGenerating}
                  progress={progress}
                  isForWill={!!selectedWillId}
-                 willTitle={selectedWillTitle}
+                 willTitle={selectedWillTitle || willTitle}
                />;
       default:
         return <div>Unknown step</div>;
@@ -296,16 +339,21 @@ export default function TankCreation() {
 
   // Handle navigation for will video mode - COMPLETELY SKIP delivery steps
   const handleWillVideoNext = () => {
+    console.log("handleWillVideoNext called, currentStep:", currentStep);
+    
     if (currentStep === 1) {
       // Skip directly to review step (step 4) - completely bypassing delivery steps
+      console.log("Skipping directly to review step");
       setCurrentStep(4);
       
       // Ensure posthumous delivery is set
       setDeliveryType('posthumous');
+      console.log("Forced posthumous delivery");
       
       // Set recipient to "All Beneficiaries" if not already set
       if (!recipientName) {
         setRecipientName("All Beneficiaries");
+        console.log("Set default recipient to 'All Beneficiaries'");
       }
       
       // Set a placeholder future date for delivery
@@ -313,17 +361,23 @@ export default function TankCreation() {
         const farFutureDate = new Date();
         farFutureDate.setFullYear(farFutureDate.getFullYear() + 100);
         setDeliveryDate(farFutureDate);
+        console.log("Set placeholder future date:", farFutureDate);
       }
     } else {
+      console.log("Finalizing will testament");
       handleFinalize();
     }
   };
 
   const handleWillVideoPrev = () => {
+    console.log("handleWillVideoPrev called, currentStep:", currentStep);
+    
     if (currentStep === 4) {
       // Go back to creation step
+      console.log("Going back to creation step");
       setCurrentStep(1);
     } else {
+      console.log("Cancelling will testament creation");
       handleCancel();
     }
   };
@@ -331,21 +385,26 @@ export default function TankCreation() {
   const StepIcon = getStepIcon();
   const adjustedStepIndex = getAdjustedStepIndex();
 
+  // Check for willId in URL at component level
+  const queryParams = new URLSearchParams(window.location.search);
+  const urlWillId = queryParams.get('willId');
+  const effectiveWillVideoMode = isWillVideoMode || !!urlWillId;
+
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center">
             <MessageSquare className="mr-2 h-6 w-6 md:h-8 md:w-8 text-willtank-600" />
-            {isWillVideoMode ? 'Create Video Testament' : 'Create Future Message'}
+            {effectiveWillVideoMode ? 'Create Video Testament' : 'Create Future Message'}
           </h1>
           <p className="text-gray-600">
-            {isWillVideoMode 
+            {effectiveWillVideoMode 
               ? 'Record a video that will be attached to your will and can be delivered posthumously'
               : 'Craft a message that will be delivered at your chosen time in the future'}
           </p>
           
-          {isWillVideoMode && (
+          {effectiveWillVideoMode && (
             <div className="mt-2 bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center">
               <Info className="h-5 w-5 text-amber-600 mr-2" />
               <p className="text-sm text-amber-700">
@@ -355,7 +414,7 @@ export default function TankCreation() {
           )}
           
           <StepProgress 
-            steps={steps} 
+            steps={effectiveWillVideoMode ? willVideoSteps : standardSteps} 
             currentStep={adjustedStepIndex} 
           />
         </div>
@@ -364,9 +423,9 @@ export default function TankCreation() {
           <CardHeader className="pb-3">
             <div className="flex items-center">
               <StepIcon className="h-5 w-5 text-willtank-600 mr-2" />
-              <CardTitle>{steps[adjustedStepIndex].title}</CardTitle>
+              <CardTitle>{(effectiveWillVideoMode ? willVideoSteps : standardSteps)[adjustedStepIndex].title}</CardTitle>
             </div>
-            <CardDescription>{steps[adjustedStepIndex].description}</CardDescription>
+            <CardDescription>{(effectiveWillVideoMode ? willVideoSteps : standardSteps)[adjustedStepIndex].description}</CardDescription>
           </CardHeader>
           
           <CardContent>
@@ -383,13 +442,13 @@ export default function TankCreation() {
         
         <div className="flex justify-between mt-8">
           <div>
-            {(currentStep > 0 && !isWillVideoMode) && (
+            {(currentStep > 0 && !effectiveWillVideoMode) && (
               <Button onClick={handlePrev} variant="outline">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Previous Step
               </Button>
             )}
-            {(isWillVideoMode && currentStep > 1) && (
+            {(effectiveWillVideoMode && currentStep > 1) && (
               <Button onClick={handleWillVideoPrev} variant="outline">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Recording
@@ -402,14 +461,14 @@ export default function TankCreation() {
               Cancel
             </Button>
             
-            {!isWillVideoMode && currentStep < 4 && (
+            {!effectiveWillVideoMode && currentStep < 4 && (
               <Button onClick={handleNext}>
                 Next Step
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             )}
             
-            {isWillVideoMode && currentStep === 1 && (
+            {effectiveWillVideoMode && currentStep === 1 && (
               <Button onClick={handleWillVideoNext} className="bg-willtank-600 hover:bg-willtank-700 text-white">
                 Review Testament
                 <ArrowRight className="ml-2 h-4 w-4" />

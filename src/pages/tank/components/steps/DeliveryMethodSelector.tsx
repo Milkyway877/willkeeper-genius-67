@@ -19,6 +19,8 @@ export const DeliveryMethodSelector = ({ onSelect }: DeliveryMethodSelectorProps
   // If we're in will mode, automatically select posthumous delivery
   useEffect(() => {
     if (willId) {
+      // Force posthumous delivery for will testaments
+      console.log("Will ID detected in DeliveryMethodSelector, forcing posthumous delivery");
       onSelect('posthumous');
       toast({
         title: 'Will Testament',
