@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,7 +52,7 @@ const documentTemplates = [
 ];
 
 interface FileItem {
-  id: string;
+  id: string;  // This will now store the actual Supabase storage path
   name: string;
   size: number;
   type: string;
@@ -86,7 +87,7 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isEncrypting, setIsEncrypting] = useState<boolean>(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('standard');
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // New state for document preview
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
@@ -159,6 +160,7 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
   
   const handlePreviewFile = async (file: FileItem) => {
     try {
+      // Since file.id now contains the full path, we can use it directly
       const { data } = supabase.storage
         .from('future-documents')
         .getPublicUrl(file.id);
@@ -209,13 +211,13 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
             
             for (let i = 0; i < fileList.length; i++) {
               const file = fileList[i];
-              const fileId = Date.now().toString() + i;
               
+              // Upload to Supabase and get the file path
               const filePath = await uploadDocumentToSupabase(file, file.name);
               
               if (filePath) {
                 newFiles.push({
-                  id: fileId,
+                  id: filePath, // Store the Supabase file path as the ID
                   name: file.name,
                   size: file.size,
                   type: file.type,
@@ -233,6 +235,11 @@ export const TankDocumentCreator: React.FC<TankDocumentCreatorProps> = ({
             });
             
             simulateEncryption();
+            
+            // Clear the file input to prevent duplicate uploads
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
           }, 500);
           
           return 100;
