@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TemplateWillSection } from '@/components/will/TemplateWillSection';
-import { FileText, Download, RefreshCw, Bot } from 'lucide-react';
+import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion } from 'lucide-react';
 import { WillPreview } from '@/pages/will/components/WillPreview';
 import { Button } from '@/components/ui/button';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -139,7 +139,7 @@ export function WillPreviewSection({
         {/* AI assistance hint for interactive mode */}
         {interactive && showAiHint && (
           <div className="absolute top-2 right-2 bg-willtank-100 text-willtank-800 text-xs px-3 py-2 rounded-md flex items-center animate-fade-in">
-            <Bot className="h-4 w-4 mr-1 text-willtank-600" />
+            <MessageCircleQuestion className="h-4 w-4 mr-1 text-willtank-600" />
             Click on a section title to get AI assistance
             <button 
               className="ml-2 text-willtank-600 hover:text-willtank-800" 
