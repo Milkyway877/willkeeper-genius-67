@@ -31,6 +31,7 @@ export function WillPreviewSection({
   const [isComplete, setIsComplete] = useState(true);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   
   // Detect when the user has interacted with the form
   useEffect(() => {
@@ -45,20 +46,48 @@ export function WillPreviewSection({
     // After 5 seconds, we'll consider that the initial load phase is over
     const timer = setTimeout(() => {
       setIsInitialLoad(false);
-    }, 5000);
+      // Only show preview initially if we have non-placeholder content
+      const hasRealContent = content && 
+        !content.includes('Start chatting') && 
+        !content.includes('Your will document will appear here') &&
+        !hasOnlyTemplatePlaceholders(content);
+      setShowPreview(hasRealContent);
+    }, 2000);
     
     return () => {
       document.removeEventListener('input', handleInteraction);
       document.removeEventListener('change', handleInteraction);
       clearTimeout(timer);
     };
-  }, [isInitialLoad]);
+  }, [isInitialLoad, content]);
+  
+  // Helper to check if content has only template placeholders
+  const hasOnlyTemplatePlaceholders = (text: string) => {
+    return text.includes('[Full Name]') && 
+      text.includes('[Address]') && 
+      text.includes('[Date of Birth]') &&
+      !text.includes('Digitally signed by:') && 
+      !text.match(/[A-Z][a-z]+ [A-Z][a-z]+/); // No proper names entered yet
+  };
+  
+  // Show preview after user interaction or if content has meaningful data
+  useEffect(() => {
+    if (userHasInteracted || !isInitialLoad) {
+      const hasRealContent = content && 
+        !content.includes('Start chatting') && 
+        !content.includes('Your will document will appear here') &&
+        !hasOnlyTemplatePlaceholders(content);
+      
+      setShowPreview(true);
+    }
+  }, [content, userHasInteracted, isInitialLoad]);
   
   // Check if will content is complete, but only if content is not an initial placeholder
   useEffect(() => {
     if (content && 
         !content.includes('Start chatting') && 
         !content.includes('Your will document will appear here') &&
+        !hasOnlyTemplatePlaceholders(content) &&
         // Only validate after user interaction or after initial load phase
         (userHasInteracted || !isInitialLoad)) {
       setIsComplete(validateWillContent(content));
@@ -74,7 +103,8 @@ export function WillPreviewSection({
 
   const hasRealContent = content && 
     !content.includes('Start chatting') && 
-    !content.includes('Your will document will appear here');
+    !content.includes('Your will document will appear here') &&
+    !hasOnlyTemplatePlaceholders(content);
   
   // Determine if we should show warning (only after user has interacted and content is incomplete)
   const shouldShowWarning = hasRealContent && !isComplete && (userHasInteracted || !isInitialLoad);

@@ -38,19 +38,20 @@ const hasValidUserData = (formValues: WillFormValues): boolean => {
   // If no form values at all, there's definitely no valid data
   if (!formValues) return false;
   
-  // Check if user has entered basic personal details
-  const hasPersonalInfo = formValues.fullName && formValues.fullName.trim().length > 0;
+  // Check if user has entered basic personal details - name must be provided and not empty
+  const hasPersonalInfo = formValues.fullName && formValues.fullName.trim().length > 3;
   
   // Check if executors have been defined with names
   const hasExecutorInfo = formValues.executors && 
     Array.isArray(formValues.executors) && 
-    formValues.executors.some(e => e?.name && e.name.trim().length > 0);
+    formValues.executors.some(e => e?.name && e.name.trim().length > 2);
   
   // Check if beneficiaries have been defined with names
   const hasBeneficiaryInfo = formValues.beneficiaries && 
     Array.isArray(formValues.beneficiaries) && 
-    formValues.beneficiaries.some(b => b?.name && b.name.trim().length > 0);
+    formValues.beneficiaries.some(b => b?.name && b.name.trim().length > 2);
   
+  // At least one major section must have meaningful data
   return hasPersonalInfo || hasExecutorInfo || hasBeneficiaryInfo;
 };
 
@@ -72,109 +73,113 @@ export const generateWillContent = (formValues: WillFormValues, templateContent:
   
   let newContent = templateContent;
   
+  // Only proceed with replacements if we have actual data - this prevents
+  // partial/incomplete will updates
+  
   // Replace personal information
-  if (formValues.fullName) {
-    newContent = newContent.replace(/\[Full Name\]/g, formValues.fullName);
+  if (formValues.fullName && formValues.fullName.trim()) {
+    newContent = newContent.replace(/\[Full Name\]/g, formValues.fullName.trim());
   }
   
-  if (formValues.dateOfBirth) {
-    newContent = newContent.replace(/\[Date of Birth\]/g, formValues.dateOfBirth);
+  if (formValues.dateOfBirth && formValues.dateOfBirth.trim()) {
+    newContent = newContent.replace(/\[Date of Birth\]/g, formValues.dateOfBirth.trim());
   }
   
-  if (formValues.homeAddress) {
-    newContent = newContent.replace(/\[Address\]/g, formValues.homeAddress);
+  if (formValues.homeAddress && formValues.homeAddress.trim()) {
+    newContent = newContent.replace(/\[Address\]/g, formValues.homeAddress.trim());
   }
   
   // Replace executor information
-  const executors = formValues.executors || [];
-  const primaryExecutor = executors.find(e => e?.isPrimary) || executors[0];
-  const alternateExecutor = executors.find(e => !e?.isPrimary && e?.name) || executors[1];
+  const executors = formValues.executors?.filter(e => e?.name && e.name.trim().length > 0) || [];
   
-  if (primaryExecutor?.name) {
-    newContent = newContent.replace(/\[Executor Name\]/g, primaryExecutor.name);
-  }
-  
-  if (alternateExecutor?.name) {
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, alternateExecutor.name);
-  } else if (executors.length > 1 && executors[1]?.name) {
-    // Try to use the second executor as alternate if not explicitly marked
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, executors[1].name);
+  if (executors.length > 0) {
+    const primaryExecutor = executors.find(e => e?.isPrimary) || executors[0];
+    const alternateExecutor = executors.find(e => !e?.isPrimary && e?.name) || 
+                            (executors.length > 1 ? executors[1] : null);
+    
+    if (primaryExecutor?.name) {
+      newContent = newContent.replace(/\[Executor Name\]/g, primaryExecutor.name);
+    }
+    
+    if (alternateExecutor?.name) {
+      newContent = newContent.replace(/\[Alternate Executor Name\]/g, alternateExecutor.name);
+    } 
   }
   
   // Replace beneficiary information
-  const beneficiaries = formValues.beneficiaries || [];
+  const beneficiaries = formValues.beneficiaries?.filter(b => b?.name && b.name.trim().length > 0) || [];
   
   if (beneficiaries.length > 0) {
     let beneficiaryText = "";
     let beneficiaryDistribution = "";
     
-    // Filter out empty beneficiaries
-    const validBeneficiaries = beneficiaries.filter(b => b?.name);
+    // Create detailed beneficiary listing
+    beneficiaryText = beneficiaries
+      .map(b => {
+        const percentage = typeof b.percentage === 'number' 
+          ? b.percentage 
+          : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
+        
+        return `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${percentage || 0}% of the estate`;
+      })
+      .join('\n');
     
-    if (validBeneficiaries.length > 0) {
-      // Create detailed beneficiary listing
-      beneficiaryText = validBeneficiaries
-        .map(b => {
-          const percentage = typeof b.percentage === 'number' 
-            ? b.percentage 
-            : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
-          
-          return `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${percentage || 0}% of the estate`;
-        })
-        .join('\n');
-      
-      // Create distribution summary
-      beneficiaryDistribution = validBeneficiaries
-        .map(b => {
-          const percentage = typeof b.percentage === 'number' 
-            ? b.percentage 
-            : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
-          
-          return `${b.name} (${percentage || 0}%)`;
-        })
-        .join(', ');
-      
-      // Replace placeholders
-      if (beneficiaryText) {
-        newContent = newContent.replace(/\[Beneficiary details to be added\]/g, beneficiaryText);
-      }
-      
-      if (beneficiaryDistribution) {
-        newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, beneficiaryDistribution);
-      }
+    // Create distribution summary
+    beneficiaryDistribution = beneficiaries
+      .map(b => {
+        const percentage = typeof b.percentage === 'number' 
+          ? b.percentage 
+          : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
+        
+        return `${b.name} (${percentage || 0}%)`;
+      })
+      .join(', ');
+    
+    // Replace placeholders
+    if (beneficiaryText) {
+      newContent = newContent.replace(/\[Beneficiary details to be added\]/g, beneficiaryText);
+    }
+    
+    if (beneficiaryDistribution) {
+      newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, beneficiaryDistribution);
     }
   }
   
   // Replace final arrangements
   let finalArrangements = "";
   
-  if (formValues.funeralPreferences) {
-    finalArrangements += `Funeral Preferences: ${formValues.funeralPreferences}\n\n`;
+  if (formValues.funeralPreferences && formValues.funeralPreferences.trim()) {
+    finalArrangements += `Funeral Preferences: ${formValues.funeralPreferences.trim()}\n\n`;
   }
   
-  if (formValues.memorialService) {
-    finalArrangements += `Memorial Service: ${formValues.memorialService}\n\n`;
+  if (formValues.memorialService && formValues.memorialService.trim()) {
+    finalArrangements += `Memorial Service: ${formValues.memorialService.trim()}\n\n`;
   }
   
-  if (formValues.obituary) {
-    finalArrangements += `Obituary: ${formValues.obituary}\n\n`;
+  if (formValues.obituary && formValues.obituary.trim()) {
+    finalArrangements += `Obituary: ${formValues.obituary.trim()}\n\n`;
   }
   
-  if (formValues.charitableDonations) {
-    finalArrangements += `Charitable Donations: ${formValues.charitableDonations}\n\n`;
+  if (formValues.charitableDonations && formValues.charitableDonations.trim()) {
+    finalArrangements += `Charitable Donations: ${formValues.charitableDonations.trim()}\n\n`;
   }
   
-  if (formValues.specialInstructions) {
-    finalArrangements += `Special Instructions: ${formValues.specialInstructions}`;
+  if (formValues.specialInstructions && formValues.specialInstructions.trim()) {
+    finalArrangements += `Special Instructions: ${formValues.specialInstructions.trim()}`;
   }
   
-  if (finalArrangements) {
-    newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements);
+  if (finalArrangements.trim()) {
+    newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements.trim());
   }
   
-  // Only replace generic placeholders if we have meaningful data and the user has started filling out sections
+  // Only replace generic placeholders if we have meaningful data with multiple filled sections
   // This prevents showing incomplete/error warnings prematurely
-  if (hasValidUserData(formValues) && Object.keys(formValues).length > 2) {
+  const hasMultipleSections = 
+    (formValues.fullName?.trim() && 
+     ((executors.length > 0) || (beneficiaries.length > 0) || 
+      formValues.funeralPreferences || formValues.specialInstructions));
+      
+  if (hasValidUserData(formValues) && hasMultipleSections) {
     // If there are no specific instructions for some sections, replace with generic text
     newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
     newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
