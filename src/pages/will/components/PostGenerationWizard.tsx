@@ -9,7 +9,6 @@ import { WillContent } from './types';
 import { Badge } from '@/components/ui/badge';
 import { Check, FileText, Video, Upload, ArrowRight, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DocumentsUploader } from './DocumentsUploader';
 
 interface PostGenerationWizardProps {
   open: boolean;
@@ -33,49 +32,9 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
   const [videoRecorded, setVideoRecorded] = useState<boolean>(false);
   const [videoData, setVideoData] = useState<{ path: string, url: string } | null>(null);
   const [documentsUploaded, setDocumentsUploaded] = useState<boolean>(false);
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [activeContacts, setActiveContacts] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  useEffect(() => {
-    // Extract contacts from willContent
-    if (willContent) {
-      const contacts = [];
-      
-      // Add executor if exists
-      if (willContent.executors && willContent.executors.length > 0) {
-        willContent.executors.forEach(executor => {
-          if (executor.name) {
-            contacts.push({
-              name: executor.name,
-              role: executor.isPrimary ? 'Executor' : 'Alternate Executor',
-              email: executor.email || '',
-              phone: executor.phone || '',
-              address: executor.address || ''
-            });
-          }
-        });
-      }
-      
-      // Add beneficiaries if they exist
-      if (willContent.beneficiaries && willContent.beneficiaries.length > 0) {
-        willContent.beneficiaries.forEach(beneficiary => {
-          if (beneficiary.name) {
-            contacts.push({
-              name: beneficiary.name,
-              role: 'Beneficiary',
-              relationship: beneficiary.relationship || '',
-              percentage: beneficiary.percentage || 0
-            });
-          }
-        });
-      }
-      
-      setActiveContacts(contacts);
-    }
-  }, [willContent]);
-
   const nextStep = () => {
     if (step === 'preview') setStep('video');
     else if (step === 'video') setStep('documents');
@@ -92,14 +51,15 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
     });
   };
 
-  const handleDocumentsComplete = (uploadedDocs: any[]) => {
-    setDocuments(uploadedDocs);
-    setDocumentsUploaded(true);
-    toast({
-      title: "Documents Uploaded",
-      description: `${uploadedDocs.length} documents have been uploaded successfully.`,
-    });
-    nextStep(); // Move to next step after documents are uploaded
+  const handleDocumentUpload = () => {
+    // Simulate document upload for now
+    setTimeout(() => {
+      setDocumentsUploaded(true);
+      toast({
+        title: "Documents Uploaded",
+        description: "Your supporting documents have been uploaded successfully.",
+      });
+    }, 1000);
   };
 
   const handleComplete = () => {
@@ -131,12 +91,12 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
         </DialogHeader>
 
         <div className="my-4">
-          <div className="flex justify-between items-center mb-6 overflow-x-auto pb-2">
-            <div className="flex space-x-2 min-w-max">
-              <Badge variant={step === 'preview' ? "default" : "outline"} className="px-3 py-1 badge">1. Review</Badge>
-              <Badge variant={step === 'video' ? "default" : "outline"} className="px-3 py-1 badge">2. Video</Badge>
-              <Badge variant={step === 'documents' ? "default" : "outline"} className="px-3 py-1 badge">3. Documents</Badge>
-              <Badge variant={step === 'confirmation' ? "default" : "outline"} className="px-3 py-1 badge">4. Complete</Badge>
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex space-x-2">
+              <Badge variant={step === 'preview' ? "default" : "outline"} className="px-3 py-1">1. Review</Badge>
+              <Badge variant={step === 'video' ? "default" : "outline"} className="px-3 py-1">2. Video</Badge>
+              <Badge variant={step === 'documents' ? "default" : "outline"} className="px-3 py-1">3. Documents</Badge>
+              <Badge variant={step === 'confirmation' ? "default" : "outline"} className="px-3 py-1">4. Complete</Badge>
             </div>
           </div>
 
@@ -179,17 +139,33 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
             <div className="space-y-6">
               <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
                 <h3 className="text-blue-800 font-medium mb-2">Supporting Documents</h3>
-                <p className="text-sm text-blue-700">
+                <p className="text-blue-700">
                   Upload documents that support your will and provide proof of ownership for assets.
                   This can include property deeds, vehicle titles, financial statements, and identification documents.
                 </p>
               </div>
               
-              <DocumentsUploader
-                contacts={activeContacts}
-                responses={willContent || {}}
-                onComplete={handleDocumentsComplete}
-              />
+              <div className="border border-dashed border-gray-300 rounded-lg p-12 text-center">
+                <Upload className="h-12 w-12 mx-auto text-gray-400" />
+                <h3 className="mt-4 font-medium">Upload Supporting Documents</h3>
+                <p className="text-sm text-gray-500 mt-2 mb-4">
+                  Drag and drop files here or click to select files
+                </p>
+                <Button onClick={handleDocumentUpload}>
+                  {documentsUploaded ? "Documents Uploaded" : "Select Files"}
+                </Button>
+              </div>
+              
+              <div className="mt-4">
+                <h4 className="font-medium mb-2">Recommended Documents:</h4>
+                <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                  <li>Proof of identity (passport or driver's license)</li>
+                  <li>Property deeds or mortgages</li>
+                  <li>Vehicle titles</li>
+                  <li>Financial account statements</li>
+                  <li>Insurance policies</li>
+                </ul>
+              </div>
             </div>
           )}
 
@@ -203,84 +179,55 @@ export const PostGenerationWizard: React.FC<PostGenerationWizardProps> = ({
                 </p>
               </div>
               
-              <div className="bg-white p-4 rounded-md border shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-xl">Final Will Preview</h3>
-                  <div className="text-sm text-gray-500">Will ID: {willId || 'Draft'}</div>
-                </div>
-                
-                <div className="relative border rounded-md p-6 mb-4">
-                  {/* Watermark */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-                    <div className="text-6xl font-bold text-willtank-400 rotate-45">WILLTANK</div>
-                  </div>
-                  
-                  {/* Letterhead */}
-                  <div className="flex justify-between items-center mb-6 pb-4 border-b">
-                    <div className="font-bold text-xl text-willtank-700">WillTank Legal Document</div>
-                    <div className="text-sm text-gray-500">Generated on {new Date().toLocaleDateString()}</div>
-                  </div>
-                  
-                  {/* Content preview */}
-                  <div className="prose max-w-none">
-                    <DocumentPreview 
-                      willContent={willContent}
-                      signature={signature}
-                      documentText={documentText}
-                    />
+              <div className="space-y-4">
+                <div className="p-4 border rounded-md">
+                  <div className="flex items-center">
+                    <div className="bg-green-100 p-2 rounded-full mr-4">
+                      <FileText className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium">Will Document</h4>
+                      <p className="text-sm text-gray-500">Created and signed</p>
+                    </div>
+                    <Check className="ml-auto h-5 w-5 text-green-500" />
                   </div>
                 </div>
                 
-                <div className="space-y-4 mt-6">
-                  <div className="p-4 border rounded-md">
-                    <div className="flex items-center">
-                      <div className="bg-green-100 p-2 rounded-full mr-4">
-                        <FileText className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Will Document</h4>
-                        <p className="text-sm text-gray-500">Created and signed</p>
-                      </div>
+                <div className="p-4 border rounded-md">
+                  <div className="flex items-center">
+                    <div className="bg-amber-100 p-2 rounded-full mr-4">
+                      <Video className="h-6 w-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium">Video Testament</h4>
+                      <p className="text-sm text-gray-500">
+                        {videoRecorded ? "Recorded and attached to your will" : "Not recorded"}
+                      </p>
+                    </div>
+                    {videoRecorded ? (
                       <Check className="ml-auto h-5 w-5 text-green-500" />
-                    </div>
+                    ) : (
+                      <Badge variant="outline" className="ml-auto">Optional</Badge>
+                    )}
                   </div>
-                  
-                  <div className="p-4 border rounded-md">
-                    <div className="flex items-center">
-                      <div className="bg-amber-100 p-2 rounded-full mr-4">
-                        <Video className="h-6 w-6 text-amber-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Video Testament</h4>
-                        <p className="text-sm text-gray-500">
-                          {videoRecorded ? "Recorded and attached to your will" : "Not recorded"}
-                        </p>
-                      </div>
-                      {videoRecorded ? (
-                        <Check className="ml-auto h-5 w-5 text-green-500" />
-                      ) : (
-                        <Badge variant="outline" className="ml-auto">Optional</Badge>
-                      )}
+                </div>
+                
+                <div className="p-4 border rounded-md">
+                  <div className="flex items-center">
+                    <div className="bg-blue-100 p-2 rounded-full mr-4">
+                      <Upload className="h-6 w-6 text-blue-600" />
                     </div>
-                  </div>
-                  
-                  <div className="p-4 border rounded-md">
-                    <div className="flex items-center">
-                      <div className="bg-blue-100 p-2 rounded-full mr-4">
-                        <Upload className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Supporting Documents</h4>
-                        <p className="text-sm text-gray-500">
-                          {documents.length > 0 ? `${documents.length} documents uploaded` : "No documents uploaded"}
-                        </p>
-                      </div>
-                      {documents.length > 0 ? (
-                        <Check className="ml-auto h-5 w-5 text-green-500" />
-                      ) : (
-                        <Badge variant="outline" className="ml-auto">Optional</Badge>
-                      )}
+                    <div>
+                      <h4 className="font-medium">Supporting Documents</h4>
+                      <p className="text-sm text-gray-500">
+                        {documentsUploaded ? "Uploaded and attached to your will" : "Not uploaded"}
+                      </p>
                     </div>
+                    {documentsUploaded ? (
+                      <Check className="ml-auto h-5 w-5 text-green-500" />
+                    ) : (
+                      <Badge variant="outline" className="ml-auto">Optional</Badge>
+                    )}
                   </div>
                 </div>
               </div>

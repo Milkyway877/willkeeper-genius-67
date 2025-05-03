@@ -9,7 +9,6 @@ import { templates } from './config/wizardSteps';
 import { getWillProgress, WillProgress, saveWillProgress } from '@/services/willProgressService';
 import { DocumentWillEditor } from './components/DocumentWillEditor';
 import { createWill, updateWill } from '@/services/willService';
-import { PostGenerationWizard } from './components/PostGenerationWizard';
 
 export default function TemplateWillCreationPage() {
   const { templateId } = useParams();
@@ -19,9 +18,6 @@ export default function TemplateWillCreationPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<WillProgress | null>(null);
-  const [wizardOpen, setWizardOpen] = useState<boolean>(false);
-  const [willContent, setWillContent] = useState<any>(null);
-  const [signature, setSignature] = useState<string | null>(null);
   
   useEffect(() => {
     const loadData = async () => {
@@ -67,13 +63,8 @@ export default function TemplateWillCreationPage() {
     navigate('/will/create');
   };
   
-  const handleSave = async (data: any, currentSignature: string | null = null) => {
+  const handleSave = async (data: any) => {
     try {
-      // Save signature if provided
-      if (currentSignature) {
-        setSignature(currentSignature);
-      }
-      
       // Save progress
       if (progress) {
         await saveWillProgress({
@@ -120,24 +111,11 @@ export default function TemplateWillCreationPage() {
       }
     } catch (error) {
       console.error("Error saving will:", error);
-      toast({
-        title: "Error",
-        description: "There was a problem saving your will. Please try again.",
-        variant: "destructive"
-      });
     }
   };
   
-  const handleWillCompleted = async (data: any, currentSignature: string | null = null) => {
-    // First save the data
-    await handleSave(data, currentSignature);
-    
-    // Store the data for the wizard
-    setWillContent(data);
-    setWizardOpen(true);
-  };
-  
-  const handleWizardComplete = () => {
+  const handleWillCompleted = () => {
+    // This function could be used for any additional actions needed when a will is completed
     navigate('/wills');
   };
   
@@ -168,20 +146,8 @@ export default function TemplateWillCreationPage() {
               initialData={progress?.responses} 
               willId={progress?.will_id}
               onSave={handleSave}
-              onComplete={handleWillCompleted}
             />
           </div>
-        )}
-        
-        {wizardOpen && willContent && (
-          <PostGenerationWizard
-            open={wizardOpen}
-            onClose={() => setWizardOpen(false)}
-            willContent={willContent}
-            signature={signature}
-            willId={progress?.will_id}
-            onComplete={handleWizardComplete}
-          />
         )}
       </div>
     </Layout>
