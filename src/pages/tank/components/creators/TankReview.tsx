@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,7 +89,7 @@ export const TankReview: React.FC<TankReviewProps> = ({
                       <p className="font-medium text-blue-800">Will Executors and Beneficiaries</p>
                       <p className="text-sm text-blue-700">
                         This testament will be viewable by the executors and beneficiaries of your will after your passing. 
-                        {recipient && ` Your intended audience is: ${recipient}.`}
+                        {recipient && recipient !== "All Beneficiaries" && ` Your intended audience is: ${recipient}.`}
                       </p>
                     </div>
                   </div>

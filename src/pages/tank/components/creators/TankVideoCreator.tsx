@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +63,7 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
   const { toast } = useToast();
   const { enhanceVideo, isEnhancing } = useMessageEnhancer();
   const [title, setTitle] = useState<string>('');
-  const [recipient, setRecipient] = useState<string>('');
+  const [recipient, setRecipient] = useState<string>('All Beneficiaries'); // Default to All Beneficiaries for will videos
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
@@ -104,6 +103,11 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
         setTitle("Video Testament");
         onTitleChange("Video Testament");
       }
+      
+      // Set default recipient for will videos
+      setRecipient("All Beneficiaries");
+      onRecipientChange("All Beneficiaries");
+      setSelectedRecipientType("all");
     }
   }, [onCategoryChange, willIdFromUrl, selectedWillId]);
   
@@ -221,15 +225,19 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     switch (value) {
       case "all":
         setRecipient("All Beneficiaries");
+        onRecipientChange("All Beneficiaries");
         break;
       case "spouse":
         setRecipient("My Spouse");
+        onRecipientChange("My Spouse");
         break;
       case "children":
         setRecipient("My Children");
+        onRecipientChange("My Children");
         break;
       case "executor":
         setRecipient("Executor of Will");
+        onRecipientChange("Executor of Will");
         break;
       case "custom":
         setRecipient(""); // Clear for custom input
@@ -1194,4 +1202,3 @@ export const TankVideoCreator: React.FC<TankVideoCreatorProps> = ({
     </div>
   );
 };
-

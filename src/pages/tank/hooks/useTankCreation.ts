@@ -67,8 +67,8 @@ export const useTankCreation = () => {
     if (selectedWillId) {
       setDeliveryType('posthumous');
       
-      // Set default delivery date to 50 years in the future for posthumous will videos
-      // This is just a placeholder as the actual delivery depends on verification of passing
+      // For will videos, we don't need a delivery date as they're delivered posthumously
+      // Just set a placeholder date far in the future for database requirements
       const farFutureDate = new Date();
       farFutureDate.setFullYear(farFutureDate.getFullYear() + 50);
       setDeliveryDate(farFutureDate);
@@ -111,12 +111,6 @@ export const useTankCreation = () => {
       }
     }
     
-    if (currentStep === 2 && selectedWillId) {
-      // Skip checking delivery type if it's a will testament
-      setCurrentStep(prev => prev + 1);
-      return;
-    }
-    
     if (currentStep === 2 && !deliveryType) {
       toast({
         title: 'Missing Selection',
@@ -125,13 +119,14 @@ export const useTankCreation = () => {
       return;
     }
     
-    // Skip delivery date validation for will testaments
+    // Skip delivery settings validation completely for will testaments
     if (currentStep === 3 && selectedWillId) {
       setCurrentStep(prev => prev + 1);
       return;
     }
     
-    if (currentStep === 3) {
+    // Only validate date and email for non-will videos
+    if (currentStep === 3 && !selectedWillId) {
       if (!deliveryDate) {
         toast({
           title: 'Missing Date',
