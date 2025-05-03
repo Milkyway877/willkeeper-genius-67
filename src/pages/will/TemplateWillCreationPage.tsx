@@ -9,8 +9,6 @@ import { templates } from './config/wizardSteps';
 import { getWillProgress, WillProgress, saveWillProgress } from '@/services/willProgressService';
 import { DocumentWillEditor } from './components/DocumentWillEditor';
 import { createWill, updateWill } from '@/services/willService';
-import { PostGenerationWizard } from './components/PostGenerationWizard';
-import { WillContent } from './components/types';
 
 export default function TemplateWillCreationPage() {
   const { templateId } = useParams();
@@ -20,9 +18,6 @@ export default function TemplateWillCreationPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<WillProgress | null>(null);
-  const [wizardOpen, setWizardOpen] = useState<boolean>(false);
-  const [willContent, setWillContent] = useState<WillContent | null>(null);
-  const [signature, setSignature] = useState<string | null>(null);
   
   useEffect(() => {
     const loadData = async () => {
@@ -106,12 +101,6 @@ export default function TemplateWillCreationPage() {
             will_id: savedWill.id,
             responses: data
           });
-          
-          // Update local state with will ID
-          setProgress(prev => prev ? {
-            ...prev,
-            will_id: savedWill.id
-          } : null);
         }
       }
     } catch (error) {
@@ -119,19 +108,9 @@ export default function TemplateWillCreationPage() {
     }
   };
   
-  const handleWillCompleted = (content: WillContent, userSignature: string | null) => {
-    setWillContent(content);
-    setSignature(userSignature);
-    setWizardOpen(true);
-  };
-  
-  const handleWizardComplete = () => {
-    navigate('/wills');
-  };
-  
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4 min-h-screen flex flex-col pb-32">
+      <div className="container mx-auto px-4 py-4 min-h-[calc(100vh-64px)] flex flex-col pb-24">
         <div className="flex justify-between items-start mb-4">
           <div>
             <Button variant="ghost" onClick={handleBack} className="mb-2">
@@ -156,20 +135,8 @@ export default function TemplateWillCreationPage() {
               initialData={progress?.responses} 
               willId={progress?.will_id}
               onSave={handleSave}
-              onComplete={handleWillCompleted}
             />
           </div>
-        )}
-        
-        {wizardOpen && willContent && (
-          <PostGenerationWizard
-            open={wizardOpen}
-            onClose={() => setWizardOpen(false)}
-            willContent={willContent}
-            signature={signature}
-            willId={progress?.will_id}
-            onComplete={handleWizardComplete}
-          />
         )}
       </div>
     </Layout>

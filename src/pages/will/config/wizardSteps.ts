@@ -10,7 +10,7 @@ export const templates = [
     iconClassName: 'h-6 w-6 text-willtank-600',
     bgColor: 'bg-blue-100',
     iconColor: 'text-blue-600',
-    tags: ['Most Popular', 'Comprehensive', 'Legal Protection', 'Asset Distribution'],
+    tags: ['Most Popular', 'Comprehensive'],
     popularityBadge: 'Most Popular'
   },
   {
