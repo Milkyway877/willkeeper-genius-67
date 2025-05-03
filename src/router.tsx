@@ -42,7 +42,7 @@ import CheckIns from './pages/CheckIns';
 import TestDeathVerification from './pages/TestDeathVerification';
 import VerificationResponse from './pages/verify/VerificationResponse';
 import VerificationPortal from './pages/verify/VerificationPortal';
-import Layout from './components/layout/Layout';
+import { Layout } from './components/layout/Layout';
 
 // Create the router configuration
 export const router = createBrowserRouter([
