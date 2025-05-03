@@ -84,3 +84,5 @@ export const Select = ({
   );
 };
 
+// Export the Input component
+export { Input }
