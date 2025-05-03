@@ -46,9 +46,7 @@ import TankMessageDetail from './pages/tank/TankMessageDetail';
 import Wills from './pages/wills/Wills';
 import Will from './pages/will/Will';
 import WillCreatePage from './pages/will/WillCreatePage';
-import WillChatCreation from './pages/will/WillChatCreation';
 import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
-import { WillVideoCreation } from './pages/will/WillVideoCreation.tsx';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -230,16 +228,8 @@ const router = createBrowserRouter([
         element: <WillCreatePage />,
       },
       {
-        path: "/will/chat-creation/:templateId",
-        element: <WillChatCreation />,
-      },
-      {
         path: "/will/template-creation/:templateId",
         element: <TemplateWillCreationPage />,
-      },
-      {
-        path: "/will/video-creation/:willId",
-        element: <WillVideoCreation />,
       },
       {
         path: "*",

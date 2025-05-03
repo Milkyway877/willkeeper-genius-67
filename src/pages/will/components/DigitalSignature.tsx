@@ -19,12 +19,7 @@ export function DigitalSignature({ defaultOpen = false, onSignatureChange }: Dig
   };
 
   return (
-    <TemplateWillSection
-      title="Digital Signature"
-      description="Sign your will electronically"
-      defaultOpen={defaultOpen}
-      icon={<Pen className="h-5 w-5" />}
-    >
+    <div>
       <div className="mb-6">
         <p className="text-gray-600 mb-4">
           Sign below using your mouse or finger. Your signature will be attached to your will as an electronic verification of your identity.
@@ -37,7 +32,16 @@ export function DigitalSignature({ defaultOpen = false, onSignatureChange }: Dig
         />
       </div>
         
-      <div className="bg-willtank-50 p-4 rounded-lg border border-willtank-100">
+      {signature && (
+        <div className="mt-4 bg-green-50 border border-green-100 rounded-lg p-3">
+          <div className="flex items-center text-green-800">
+            <Check className="h-4 w-4 mr-2" />
+            <span>Signature captured successfully</span>
+          </div>
+        </div>
+      )}
+        
+      <div className="bg-willtank-50 p-4 rounded-lg border border-willtank-100 mt-4">
         <h4 className="text-willtank-700 font-medium mb-2">Legal Information</h4>
         <p className="text-sm text-gray-700 mb-3">
           By signing this document electronically, you acknowledge that:
@@ -57,6 +61,6 @@ export function DigitalSignature({ defaultOpen = false, onSignatureChange }: Dig
           </li>
         </ul>
       </div>
-    </TemplateWillSection>
+    </div>
   );
 }

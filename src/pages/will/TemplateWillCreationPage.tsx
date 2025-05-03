@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { templates } from './config/wizardSteps';
-import { getWillProgress, WillProgress } from '@/services/willProgressService';
-import { TemplateWillEditor } from './TemplateWillEditor';
+import { getWillProgress, WillProgress, saveWillProgress } from '@/services/willProgressService';
+import { DocumentWillEditor } from './components/DocumentWillEditor';
+import { createWill, updateWill } from '@/services/willService';
 
 export default function TemplateWillCreationPage() {
   const { templateId } = useParams();
@@ -62,6 +63,51 @@ export default function TemplateWillCreationPage() {
     navigate('/will/create');
   };
   
+  const handleSave = async (data: any) => {
+    try {
+      // Save progress
+      if (progress) {
+        await saveWillProgress({
+          ...progress,
+          responses: data,
+          updated_at: new Date().toISOString()
+        });
+      }
+      
+      // If there's a will ID, update the will
+      if (progress?.will_id) {
+        await updateWill(progress.will_id, {
+          title: `${data.fullName}'s Will`,
+          content: JSON.stringify(data),
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        // Create a new will
+        const willData = {
+          title: `${data.fullName}'s Will`,
+          content: JSON.stringify(data),
+          status: 'draft',
+          template_type: templateId || '',
+          ai_generated: false,
+          document_url: ''
+        };
+        
+        const savedWill = await createWill(willData);
+        
+        // Update progress with will ID
+        if (savedWill && progress) {
+          await saveWillProgress({
+            ...progress,
+            will_id: savedWill.id,
+            responses: data
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error saving will:", error);
+    }
+  };
+  
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -73,7 +119,7 @@ export default function TemplateWillCreationPage() {
             
             <h1 className="text-3xl font-bold">{selectedTemplate?.title || 'Create Your Will'}</h1>
             <p className="text-gray-500 mt-1">
-              Complete the form below to create your legal will document
+              Complete your legal will document with our interactive editor
             </p>
           </div>
         </div>
@@ -83,11 +129,11 @@ export default function TemplateWillCreationPage() {
             <Loader2 className="h-8 w-8 animate-spin text-willtank-600" />
           </div>
         ) : (
-          <TemplateWillEditor 
+          <DocumentWillEditor 
             templateId={templateId || ''} 
             initialData={progress?.responses} 
-            isNew={!progress?.will_id}
             willId={progress?.will_id}
+            onSave={handleSave}
           />
         )}
       </div>
