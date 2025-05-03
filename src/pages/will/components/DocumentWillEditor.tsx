@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
@@ -866,4 +867,52 @@ ${finalArrangements || '[No specific final arrangements specified]'}
                 </div>
                 
                 <div className="space-y-1">
-                  <h4
+                  <h4 className="font-medium">Signature</h4>
+                  <div className="ml-2">
+                    {signature ? (
+                      <div className="flex items-center justify-between">
+                        <span>Digital Signature</span>
+                        <Check className="h-4 w-4 text-green-500" />
+                      </div>
+                    ) : (
+                      <div className="text-amber-600 text-sm">
+                        Please add your signature to complete the will
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <Button 
+                  onClick={handleGenerateOfficialWill} 
+                  className="w-full"
+                  disabled={!isComplete || !signature}
+                >
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Generate Official Will
+                </Button>
+              </div>
+            </Card>
+            
+            {/* Document Preview Dialog */}
+            <Dialog open={showPreview} onOpenChange={setShowPreview}>
+              <DialogContent className="max-w-5xl h-[90vh]">
+                <DialogHeader>
+                  <DialogTitle>Will Document Preview</DialogTitle>
+                </DialogHeader>
+                <div className="mt-2 h-full overflow-y-auto">
+                  <DocumentPreview 
+                    documentText={generateDocumentText()} 
+                    willContent={willContent}
+                    signature={signature || ""}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
