@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
@@ -35,6 +36,8 @@ export const useTankCreation = () => {
       setCreationType('video');
       // Set delivery type to posthumous when attaching to a will
       setDeliveryType('posthumous');
+      // Skip to the creation step when coming from a will
+      setCurrentStep(1);
       
       // Fetch the will title
       fetchWillTitle(willIdParam);
@@ -63,10 +66,25 @@ export const useTankCreation = () => {
   useEffect(() => {
     if (selectedWillId) {
       setDeliveryType('posthumous');
+      
+      // Set default delivery date to 50 years in the future for posthumous will videos
+      // This is just a placeholder as the actual delivery depends on verification of passing
+      const farFutureDate = new Date();
+      farFutureDate.setFullYear(farFutureDate.getFullYear() + 50);
+      setDeliveryDate(farFutureDate);
     }
   }, [selectedWillId]);
 
   const handleNext = () => {
+    // Special handling for will videos - simplified flow
+    if (selectedWillId) {
+      if (currentStep === 1) {
+        // Skip directly to review step
+        setCurrentStep(4);
+        return;
+      }
+    }
+    
     if (currentStep === 0 && !creationType) {
       toast({
         title: 'Missing Selection',
@@ -143,6 +161,15 @@ export const useTankCreation = () => {
   };
 
   const handlePrev = () => {
+    // Special handling for will videos - simplified flow
+    if (selectedWillId) {
+      if (currentStep === 4) {
+        // Go back to creation step
+        setCurrentStep(1);
+        return;
+      }
+    }
+    
     setCurrentStep(prev => prev - 1);
   };
 
@@ -156,7 +183,7 @@ export const useTankCreation = () => {
   };
 
   const handleFinalize = async () => {
-    if (!creationType || !deliveryType || !deliveryDate) {
+    if (!creationType || (!deliveryType && !selectedWillId)) {
       toast({
         title: 'Missing Information',
         description: 'Please ensure all required fields are filled out.',
@@ -176,6 +203,9 @@ export const useTankCreation = () => {
         });
       }, 500);
 
+      // For will videos, ensure delivery type is set to posthumous
+      const effectiveDeliveryType = selectedWillId ? 'posthumous' as DeliveryTrigger : deliveryType;
+      
       const message = {
         title: messageTitle,
         recipient_name: recipientName,
@@ -185,8 +215,8 @@ export const useTankCreation = () => {
         content: messageContent,
         message_url: messageUrl || null,
         status: 'scheduled' as 'draft' | 'scheduled' | 'processing' | 'delivered' | 'failed',
-        delivery_type: deliveryType,
-        delivery_date: deliveryDate.toISOString(),
+        delivery_type: effectiveDeliveryType,
+        delivery_date: deliveryDate ? deliveryDate.toISOString() : new Date().toISOString(),
         delivery_event: null,
         category: messageCategory,
         user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
@@ -274,6 +304,7 @@ export const useTankCreation = () => {
     setMessageCategory,
     setDeliveryDate,
     setMessageUrl,
+    setCurrentStep,
     setSelectedWillId,
     setWillTitle,
     handleNext,

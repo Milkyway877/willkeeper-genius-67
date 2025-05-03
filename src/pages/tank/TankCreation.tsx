@@ -18,7 +18,8 @@ import { TankReview } from './components/creators/TankReview';
 import { MessageCategory, DeliveryTrigger } from './types';
 import { supabase } from '@/integrations/supabase/client';
 
-const steps = [
+// Define steps for regular future messages
+const standardSteps = [
   {
     id: "type",
     title: "Select Message Type",
@@ -46,6 +47,20 @@ const steps = [
   }
 ];
 
+// Define steps for will video testaments - simplified flow
+const willVideoSteps = [
+  {
+    id: "creator",
+    title: "Create Video Testament",
+    description: "Record your video testament for your will"
+  },
+  {
+    id: "review",
+    title: "Review & Finalize",
+    description: "Review your video testament and attach it to your will"
+  }
+];
+
 export default function TankCreation() {
   const {
     currentStep,
@@ -61,6 +76,7 @@ export default function TankCreation() {
     progress,
     messageUrl,
     selectedWillId,
+    willTitle,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -77,6 +93,12 @@ export default function TankCreation() {
   } = useTankCreation();
 
   const [selectedWillTitle, setSelectedWillTitle] = useState<string>("");
+  
+  // Determine if we're in will video mode or standard mode
+  const isWillVideoMode = !!selectedWillId;
+  
+  // Select the appropriate steps based on mode
+  const steps = isWillVideoMode ? willVideoSteps : standardSteps;
   
   useEffect(() => {
     // Fetch the will title if we have a will ID
@@ -113,6 +135,8 @@ export default function TankCreation() {
                  onRecipientChange={setRecipientName}
                  onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                  onVideoUrlChange={setMessageUrl}
+                 selectedWillId={selectedWillId}
+                 onWillTitleChange={(title) => setSelectedWillTitle(title)}
                />;
       case 'audio':
         return <TankAudioCreator 
@@ -135,7 +159,64 @@ export default function TankCreation() {
     }
   };
 
+  // Determine current step index based on mode
+  const getAdjustedStepIndex = () => {
+    if (!isWillVideoMode) {
+      return currentStep;
+    }
+    
+    // For will video mode, we map the standard step index to the simplified flow
+    switch (currentStep) {
+      case 0: // Type selection - Skip this in will mode
+      case 1: // Creation - This is our first step in will mode
+        return 0;
+      case 2: // Delivery method - Skip this in will mode
+      case 3: // Delivery settings - Skip this in will mode
+      case 4: // Review - This is our second step in will mode
+        return 1;
+      default:
+        return 0;
+    }
+  };
+
   const renderStepContent = () => {
+    // If in will video mode, we have a simplified flow
+    if (isWillVideoMode) {
+      // Force video creation type
+      if (creationType !== 'video') {
+        setCreationType('video');
+      }
+      
+      // Force posthumous delivery type
+      if (deliveryType !== 'posthumous') {
+        setDeliveryType('posthumous');
+      }
+      
+      // In will video mode, we only have two meaningful steps:
+      // 1. Create the video (corresponds to currentStep 1)
+      // 2. Review and attach (corresponds to currentStep 4)
+      if (currentStep <= 1) {
+        // Video creation step
+        return renderCreationComponent();
+      } else {
+        // Review step - always the last step in will mode
+        return <TankReview 
+                 messageType={creationType!} 
+                 title={messageTitle}
+                 recipient={recipientName}
+                 recipientEmail={recipientEmail}
+                 deliveryType={'posthumous'}
+                 deliveryDate={deliveryDate ? deliveryDate.toISOString() : ''}
+                 onFinalize={handleFinalize}
+                 isGenerating={isGenerating}
+                 progress={progress}
+                 isForWill={true}
+                 willTitle={selectedWillTitle}
+               />;
+      }
+    }
+    
+    // Standard flow for regular future messages
     switch (currentStep) {
       case 0:
         return <MessageTypeSelector onSelect={setCreationType} />;
@@ -171,6 +252,12 @@ export default function TankCreation() {
   };
 
   const getStepIcon = () => {
+    const adjustedStep = getAdjustedStepIndex();
+    
+    if (isWillVideoMode) {
+      return adjustedStep === 0 ? Sparkles : Check;
+    }
+    
     switch (currentStep) {
       case 0: return FileText;
       case 1: return Sparkles;
@@ -181,7 +268,27 @@ export default function TankCreation() {
     }
   };
 
+  // Handle navigation for will video mode
+  const handleWillVideoNext = () => {
+    if (currentStep === 1) {
+      // Skip to review step
+      setCurrentStep(4);
+    } else {
+      handleFinalize();
+    }
+  };
+
+  const handleWillVideoPrev = () => {
+    if (currentStep === 4) {
+      // Go back to creation step
+      setCurrentStep(1);
+    } else {
+      handleCancel();
+    }
+  };
+
   const StepIcon = getStepIcon();
+  const adjustedStepIndex = getAdjustedStepIndex();
 
   return (
     <Layout>
@@ -189,24 +296,27 @@ export default function TankCreation() {
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center">
             <MessageSquare className="mr-2 h-6 w-6 md:h-8 md:w-8 text-willtank-600" />
-            {selectedWillId ? 'Create Video Testament' : 'Create Future Message'}
+            {isWillVideoMode ? 'Create Video Testament' : 'Create Future Message'}
           </h1>
           <p className="text-gray-600">
-            {selectedWillId 
+            {isWillVideoMode 
               ? 'Record a video that will be attached to your will and can be delivered at your chosen time'
               : 'Craft a message that will be delivered at your chosen time in the future'}
           </p>
           
-          <StepProgress steps={steps} currentStep={currentStep} />
+          <StepProgress 
+            steps={steps} 
+            currentStep={adjustedStepIndex} 
+          />
         </div>
         
         <Card className="mb-8">
           <CardHeader className="pb-3">
             <div className="flex items-center">
               <StepIcon className="h-5 w-5 text-willtank-600 mr-2" />
-              <CardTitle>{steps[currentStep].title}</CardTitle>
+              <CardTitle>{steps[adjustedStepIndex].title}</CardTitle>
             </div>
-            <CardDescription>{steps[currentStep].description}</CardDescription>
+            <CardDescription>{steps[adjustedStepIndex].description}</CardDescription>
           </CardHeader>
           
           <CardContent>
@@ -223,10 +333,16 @@ export default function TankCreation() {
         
         <div className="flex justify-between mt-8">
           <div>
-            {currentStep > 0 && (
+            {(currentStep > 0 && !isWillVideoMode) && (
               <Button onClick={handlePrev} variant="outline">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Previous Step
+              </Button>
+            )}
+            {(isWillVideoMode && currentStep > 1) && (
+              <Button onClick={handleWillVideoPrev} variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Recording
               </Button>
             )}
           </div>
@@ -236,9 +352,16 @@ export default function TankCreation() {
               Cancel
             </Button>
             
-            {currentStep < 4 && (
+            {!isWillVideoMode && currentStep < 4 && (
               <Button onClick={handleNext}>
                 Next Step
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
+            
+            {isWillVideoMode && currentStep === 1 && (
+              <Button onClick={handleWillVideoNext}>
+                Review Testament
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             )}
