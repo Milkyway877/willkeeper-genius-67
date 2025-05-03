@@ -29,6 +29,24 @@ export function WillPreview({ content, formatted = true, signature = null }: Wil
           return <h4 key={index} className="text-md font-bold mt-5 mb-2">{paragraph}</h4>;
         }
         
+        // Handle beneficiary lists with bullet points
+        if (paragraph.includes('\n- ')) {
+          const lines = paragraph.split('\n');
+          const title = lines[0];
+          const items = lines.slice(1);
+          
+          return (
+            <div key={index} className="my-3">
+              <p className="text-sm font-medium">{title}</p>
+              <ul className="list-disc ml-5 space-y-1 mt-2">
+                {items.map((item, i) => (
+                  <li key={i} className="text-sm">{item.replace('-', '').trim()}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+        
         // Regular paragraph
         return (
           <p key={index} className="text-sm">
@@ -41,6 +59,21 @@ export function WillPreview({ content, formatted = true, signature = null }: Wil
           </p>
         );
       })}
+      
+      {/* Add signature display at bottom if provided */}
+      {signature && (
+        <div className="border-t border-gray-200 pt-4 mt-6">
+          <p className="text-sm mb-2">Digitally signed:</p>
+          <img 
+            src={signature} 
+            alt="Digital signature" 
+            className="max-w-[200px] max-h-[80px]" 
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Date: {new Date().toLocaleDateString()}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

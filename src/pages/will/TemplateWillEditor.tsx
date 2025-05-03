@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +20,7 @@ import { Loader2, Save, FileCheck, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { generateWillContent } from '@/utils/willTemplateUtils';
 
 // Form validation schema
 const willSchema = z.object({
@@ -61,6 +63,17 @@ const willSchema = z.object({
 });
 
 type WillFormValues = z.infer<typeof willSchema>;
+
+// Create a FormWatcher component to handle form updates
+const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void }) => {
+  const formValues = useWatch();
+  
+  useEffect(() => {
+    onChange(formValues as WillFormValues);
+  }, [formValues, onChange]);
+  
+  return null;
+};
 
 interface TemplateWillEditorProps {
   templateId: string;
@@ -128,103 +141,16 @@ Date: ${new Date().toLocaleDateString()}
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Generate will content when form values change
-  useEffect(() => {
-    // This is a more sophisticated template generation
-    const formValues = form.getValues();
+  // Form watcher to update content as user types
+  const handleFormChange = (values: WillFormValues) => {
+    console.log("Form values updated:", values);
     
-    let newContent = willContent;
+    if (!values) return;
     
-    // Replace personal information
-    if (formValues.fullName) {
-      newContent = newContent.replace(/\[Full Name\]/g, formValues.fullName);
-    }
-    
-    if (formValues.dateOfBirth) {
-      newContent = newContent.replace(/\[Date of Birth\]/g, formValues.dateOfBirth);
-    }
-    
-    if (formValues.homeAddress) {
-      newContent = newContent.replace(/\[Address\]/g, formValues.homeAddress);
-    }
-    
-    // Replace executor information
-    const executors = formValues.executors || [];
-    const primaryExecutor = executors.find(e => e.isPrimary) || executors[0];
-    const alternateExecutor = executors.find(e => !e.isPrimary && e.name) || executors[1];
-    
-    if (primaryExecutor?.name) {
-      newContent = newContent.replace(/\[Executor Name\]/g, primaryExecutor.name);
-    }
-    
-    if (alternateExecutor?.name) {
-      newContent = newContent.replace(/\[Alternate Executor Name\]/g, alternateExecutor.name);
-    } else {
-      newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
-    }
-    
-    // Replace beneficiary information
-    const beneficiaries = formValues.beneficiaries || [];
-    let beneficiaryText = "";
-    
-    if (beneficiaries.length > 0) {
-      beneficiaryText = beneficiaries
-        .filter(b => b.name)
-        .map(b => `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${b.percentage || 0}% of the estate`)
-        .join('\n');
-        
-      if (beneficiaryText) {
-        newContent = newContent.replace(/\[Beneficiary details to be added\]/g, beneficiaryText);
-      }
-      
-      const beneficiaryDistribution = beneficiaries
-        .filter(b => b.name)
-        .map(b => `${b.name} (${b.percentage || 0}%)`)
-        .join(', ');
-        
-      if (beneficiaryDistribution) {
-        newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, beneficiaryDistribution);
-      }
-    }
-    
-    // Replace final arrangements
-    let finalArrangements = "";
-    
-    if (formValues.funeralPreferences) {
-      finalArrangements += `Funeral Preferences: ${formValues.funeralPreferences}\n\n`;
-    }
-    
-    if (formValues.memorialService) {
-      finalArrangements += `Memorial Service: ${formValues.memorialService}\n\n`;
-    }
-    
-    if (formValues.obituary) {
-      finalArrangements += `Obituary: ${formValues.obituary}\n\n`;
-    }
-    
-    if (formValues.charitableDonations) {
-      finalArrangements += `Charitable Donations: ${formValues.charitableDonations}\n\n`;
-    }
-    
-    if (formValues.specialInstructions) {
-      finalArrangements += `Special Instructions: ${formValues.specialInstructions}`;
-    }
-    
-    if (finalArrangements) {
-      newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements);
-    }
-    
-    // If there are no specific instructions for some sections, replace with generic text
-    newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
-    newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
-    newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
-    newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
-    newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
-    newContent = newContent.replace(/\[Address\]/g, "my current legal address");
-    
+    // Generate content based on form values
+    const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
-  }, [form.watch()]);
+  };
   
   const handleSignatureChange = (signatureData: string | null) => {
     setSignature(signatureData);
@@ -234,20 +160,26 @@ Date: ${new Date().toLocaleDateString()}
     try {
       setSaving(true);
       
+      const formValues = form.getValues();
+      console.log("Saving draft with values:", formValues);
+      
+      // Update will content one more time to ensure latest changes
+      const finalWillContent = generateWillContent(formValues, willContent);
+      
       // Save progress
       await saveWillProgress({
         template_id: templateId,
         current_step: 'editing',
-        responses: form.getValues(),
-        content: willContent,
-        title: `${form.getValues().fullName}'s Will`,
+        responses: formValues,
+        content: finalWillContent,
+        title: `${formValues.fullName}'s Will`,
         completedSections: ['personal_info'] // Track completed sections
       });
       
       // Save as draft will
       const willData = {
-        title: `${form.getValues().fullName}'s Will`,
-        content: willContent,
+        title: `${formValues.fullName}'s Will`,
+        content: finalWillContent,
         status: 'draft',
         template_type: templateId,
         ai_generated: false,
@@ -297,10 +229,15 @@ Date: ${new Date().toLocaleDateString()}
         return;
       }
       
+      const formValues = form.getValues();
+      
+      // Generate final content based on form values
+      const finalWillContent = generateWillContent(formValues, willContent);
+      
       // Save as finalized will
       const willData = {
-        title: `${form.getValues().fullName}'s Will`,
-        content: willContent,
+        title: `${formValues.fullName}'s Will`,
+        content: finalWillContent,
         status: 'active', // Mark as active/finalized
         template_type: templateId,
         ai_generated: false,
@@ -333,6 +270,9 @@ Date: ${new Date().toLocaleDateString()}
     <div className="container mx-auto mb-16">
       <FormProvider {...form}>
         <form>
+          {/* Add form watcher to track changes */}
+          <FormWatcher onChange={handleFormChange} />
+          
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <PersonalInfoSection defaultOpen={true} />
