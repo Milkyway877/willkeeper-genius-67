@@ -71,14 +71,13 @@ export function WillPreview({ content, formatted = true, signature = null }: Wil
           );
         }
         
-        // Regular paragraph - Fixed the React.Fragment issue
+        // Regular paragraph
         return (
           <p key={index} className="text-sm">
-            {paragraph.split('\n').map((line, i, arr) => (
-              // Use key for Fragment instead of data-lov-id which was causing the error
+            {paragraph.split('\n').map((line, i) => (
               <React.Fragment key={i}>
                 {line}
-                {i < arr.length - 1 && <br />}
+                {i < paragraph.split('\n').length - 1 && <br />}
               </React.Fragment>
             ))}
           </p>

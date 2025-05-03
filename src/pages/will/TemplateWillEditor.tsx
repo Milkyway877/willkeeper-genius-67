@@ -67,79 +67,52 @@ type WillFormValues = z.infer<typeof willSchema>;
 const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void }) => {
   const formValues = useWatch();
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [hasMeaningfulData, setHasMeaningfulData] = useState(false);
-  
-  // Prevent immediate triggering on mount
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitializing(false);
-    }, 1000); // Short delay to avoid initial rendering issues
-    
-    return () => clearTimeout(timer);
-  }, []);
   
   // Track user interaction with the form
   useEffect(() => {
-    const handleUserInteraction = () => {
-      setHasUserInteracted(true);
-    };
+    const handleUserInteraction = () => setHasUserInteracted(true);
     
     // Listen for user interaction events on the form
     const formElement = document.querySelector('form');
     if (formElement) {
       formElement.addEventListener('input', handleUserInteraction);
       formElement.addEventListener('change', handleUserInteraction);
-      formElement.addEventListener('click', handleUserInteraction);
     }
     
     return () => {
       if (formElement) {
         formElement.removeEventListener('input', handleUserInteraction);
         formElement.removeEventListener('change', handleUserInteraction);
-        formElement.removeEventListener('click', handleUserInteraction);
       }
     };
   }, []);
   
-  // Check if form has meaningful data
   useEffect(() => {
-    if (formValues && !isInitializing) {
-      const hasData = hasValidFormData(formValues);
-      setHasMeaningfulData(hasData);
-      
-      // Only trigger onChange if user has interacted with the form 
-      // or if we have detected meaningful data
-      if ((hasUserInteracted || hasData) && !isInitializing) {
-        console.log("Form watcher triggering onChange with values:", formValues);
-        onChange(formValues as WillFormValues);
-      }
+    // Only trigger onChange if user has interacted with the form or if we have meaningful data
+    if (hasUserInteracted || hasValidFormData(formValues)) {
+      onChange(formValues as WillFormValues);
     }
-  }, [formValues, onChange, hasUserInteracted, isInitializing]);
+  }, [formValues, onChange, hasUserInteracted]);
   
   // Helper to check if form has any meaningful data beyond defaults
   const hasValidFormData = (values: any): boolean => {
     if (!values) return false;
     
     // Check if user has entered a name (most basic thing they'd enter)
-    if (values.fullName && values.fullName.trim().length > 3) return true;
+    if (values.fullName && values.fullName.trim().length > 0) return true;
     
     // Check if user has entered a date of birth
-    if (values.dateOfBirth && values.dateOfBirth.trim().length > 5) return true;
+    if (values.dateOfBirth && values.dateOfBirth.trim().length > 0) return true;
     
     // Check if any executor has a name
     if (values.executors && Array.isArray(values.executors)) {
-      if (values.executors.some(exec => exec && exec.name && exec.name.trim().length > 2)) return true;
+      if (values.executors.some(exec => exec.name && exec.name.trim().length > 0)) return true;
     }
     
     // Check if any beneficiary has a name
     if (values.beneficiaries && Array.isArray(values.beneficiaries)) {
-      if (values.beneficiaries.some(ben => ben && ben.name && ben.name.trim().length > 2)) return true;
+      if (values.beneficiaries.some(ben => ben.name && ben.name.trim().length > 0)) return true;
     }
-    
-    // Check for final wishes content
-    if (values.funeralPreferences && values.funeralPreferences.trim().length > 10) return true;
-    if (values.specialInstructions && values.specialInstructions.trim().length > 10) return true;
     
     return false;
   };
@@ -190,7 +163,6 @@ Date: ${new Date().toLocaleDateString()}
   
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
-  const [contentGenerated, setContentGenerated] = useState<boolean>(false);
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -220,23 +192,9 @@ Date: ${new Date().toLocaleDateString()}
     
     if (!values) return;
     
-    // Check if we have any meaningful data before generating content
-    const hasName = values.fullName && values.fullName.trim().length > 3;
-    const hasDOB = values.dateOfBirth && values.dateOfBirth.trim().length > 5;
-    const hasExecutor = values.executors?.some(e => e?.name && e.name.trim().length > 2);
-    const hasBeneficiary = values.beneficiaries?.some(b => b?.name && b.name.trim().length > 2);
-    
-    const hasMeaningfulData = hasName || (hasExecutor && hasBeneficiary);
-    
-    if (!hasMeaningfulData && !contentGenerated) {
-      console.log("No meaningful data yet, skipping content generation");
-      return;
-    }
-    
     // Only generate content if we have meaningful data
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
-    setContentGenerated(true);
   };
   
   const handleSignatureChange = (signatureData: string | null) => {
