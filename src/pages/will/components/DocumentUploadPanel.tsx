@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 interface DocumentUploadPanelProps {
   willId: string;
@@ -39,9 +39,18 @@ export function DocumentUploadPanel({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useUserProfile();
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to upload documents.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const files = Array.from(e.target.files);
     setIsUploading(true);
@@ -63,11 +72,16 @@ export function DocumentUploadPanel({
         // Create a unique filename
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `${fileName}`;
         
-        // Upload to Supabase
+        // Include user ID in the path as required by storage policies
+        // The format must be: userId/filename
+        const filePath = `${user.id}/${fileName}`;
+        
+        console.log('Uploading to bucket: will_documents, path:', filePath);
+
+        // Upload to Supabase with correct bucket name
         const { error: uploadError } = await supabase.storage
-          .from('will-documents')
+          .from('will_documents')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: true
