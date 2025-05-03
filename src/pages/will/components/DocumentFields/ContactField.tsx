@@ -14,6 +14,8 @@ interface ContactFieldProps {
   type?: 'text' | 'email' | 'tel';
   tooltipText?: string;
   onAiHelp?: (position: { x: number, y: number }) => void;
+  required?: boolean;
+  error?: string;
 }
 
 export function ContactField({ 
@@ -23,7 +25,9 @@ export function ContactField({
   placeholder,
   type = 'text',
   tooltipText,
-  onAiHelp 
+  onAiHelp,
+  required = false,
+  error 
 }: ContactFieldProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -33,8 +37,10 @@ export function ContactField({
     if (onAiHelp) {
       e.stopPropagation();
       
-      // Use getBoundingClientRect to get position relative to viewport
+      // Get the button element position
       const rect = e.currentTarget.getBoundingClientRect();
+      
+      // Calculate position relative to the viewport
       const posX = rect.right;
       const posY = rect.top + (rect.height / 2);
       
@@ -46,7 +52,10 @@ export function ContactField({
   return (
     <div className="relative space-y-1">
       <div className="flex justify-between items-center">
-        <Label htmlFor={`contact-${label}`} className="text-xs">{label}</Label>
+        <Label htmlFor={`contact-${label.replace(/\s+/g, '-').toLowerCase()}`} className="text-xs">
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </Label>
         
         {onAiHelp && (
           <TooltipProvider>
@@ -70,13 +79,16 @@ export function ContactField({
       </div>
       
       <Input 
-        id={`contact-${label}`}
+        id={`contact-${label.replace(/\s+/g, '-').toLowerCase()}`}
         type={type}
         value={value} 
         onChange={handleChange}
         placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-        className="h-8 text-sm"
+        className={`h-8 text-sm ${error ? 'border-red-500' : ''}`}
+        required={required}
       />
+      
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }

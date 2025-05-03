@@ -108,3 +108,26 @@ export interface ScrollContainerProps {
   className?: string;
   children: React.ReactNode;
 }
+
+// Add new types for structured document content
+export interface WillContent {
+  personalInfo: {
+    fullName: string;
+    dateOfBirth: string;
+    address: string;
+    email?: string;
+    phone?: string;
+  };
+  executors: Executor[];
+  beneficiaries: Beneficiary[];
+  guardians?: Guardian[];
+  assets?: {
+    properties?: Property[];
+    vehicles?: Vehicle[];
+    financialAccounts?: FinancialAccount[];
+    digitalAssets?: DigitalAsset[];
+  };
+  specificBequests?: string;
+  residualEstate?: string;
+  finalArrangements?: string;
+}

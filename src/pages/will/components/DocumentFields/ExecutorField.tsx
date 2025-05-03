@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { UserCog, MessageCircleQuestion, PlusCircle, Trash2 } from 'lucide-react';
+import { UserCog, PlusCircle, Trash2, MessageCircleQuestion } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { ContactField } from './ContactField';
 import { Executor } from '../types';
 
@@ -18,19 +18,6 @@ interface ExecutorFieldProps {
 export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldProps) {
   const [expanded, setExpanded] = useState(false);
   
-  const handleChange = (id: string, field: keyof Executor, value: string | boolean) => {
-    if (field === 'isPrimary' && value === true) {
-      // Set all other executors to not primary
-      const updatedExecutors = executors.map(exec => ({
-        ...exec,
-        isPrimary: exec.id === id
-      }));
-      onUpdate(updatedExecutors);
-    } else {
-      onUpdate(executors.map(exec => exec.id === id ? { ...exec, [field]: value } : exec));
-    }
-  };
-  
   const handleAdd = () => {
     const newExecutor: Executor = {
       id: `exec-${Date.now()}`,
@@ -39,7 +26,7 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
       email: '',
       phone: '',
       address: '',
-      isPrimary: executors.length === 0 // First executor is primary by default
+      isPrimary: executors.length === 0
     };
     onUpdate([...executors, newExecutor]);
   };
@@ -47,17 +34,29 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
   const handleRemove = (id: string) => {
     if (executors.length <= 1) return;
     
-    // If removing primary executor, make the first remaining one primary
-    let newExecutors = executors.filter(e => e.id !== id);
-    const wasRemovingPrimary = executors.find(e => e.id === id)?.isPrimary;
+    // If removing the primary executor, make another one primary
+    const isPrimaryBeingRemoved = executors.find(exec => exec.id === id)?.isPrimary;
+    let updatedExecutors = executors.filter(exec => exec.id !== id);
     
-    if (wasRemovingPrimary && newExecutors.length > 0) {
-      newExecutors = newExecutors.map((exec, i) => 
-        i === 0 ? { ...exec, isPrimary: true } : exec
-      );
+    if (isPrimaryBeingRemoved && updatedExecutors.length > 0) {
+      updatedExecutors[0].isPrimary = true;
     }
     
-    onUpdate(newExecutors);
+    onUpdate(updatedExecutors);
+  };
+  
+  const handleChange = (id: string, field: keyof Executor, value: string | boolean) => {
+    if (field === 'isPrimary' && value === true) {
+      // If setting a new primary, make sure all others are not primary
+      onUpdate(executors.map(exec => ({
+        ...exec,
+        isPrimary: exec.id === id
+      })));
+    } else {
+      onUpdate(executors.map(exec => 
+        exec.id === id ? { ...exec, [field]: value } : exec
+      ));
+    }
   };
   
   const handleFieldAiHelp = (id: string, field: string, position: { x: number, y: number }) => {
@@ -71,7 +70,10 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
           className="cursor-pointer border-b border-dashed border-gray-300 hover:border-willtank-400 px-1"
           onClick={() => setExpanded(true)}
         >
-          {executors.find(e => e.isPrimary)?.name || 'Executor'}
+          {executors.length > 0 
+            ? executors.filter(e => e.isPrimary).map(e => e.name || '[Primary Executor]').join(', ')
+            : '[Executor]'
+          }
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -126,26 +128,27 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
         
         <div className="space-y-4">
           {executors.map((executor, index) => (
-            <div key={executor.id} className="p-3 border border-dashed rounded-md">
+            <div key={executor.id} className="mb-4 p-3 border border-dashed rounded-md">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-sm font-medium">Executor {index + 1}</h4>
                 
-                <div className="flex items-center">
-                  <div className="flex items-center gap-2 mr-3">
-                    <Label htmlFor={`primary-${executor.id}`} className="text-xs">Primary</Label>
-                    <Switch
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
                       id={`primary-${executor.id}`}
                       checked={executor.isPrimary}
                       onCheckedChange={(checked) => handleChange(executor.id, 'isPrimary', checked)}
+                      disabled={executor.isPrimary && executors.length > 0}
                     />
+                    <Label htmlFor={`primary-${executor.id}`} className="text-xs">Primary</Label>
                   </div>
                   
                   <Button 
                     variant="ghost" 
-                    size="sm" 
+                    size="sm"
+                    className="h-6 w-6 p-0"
                     onClick={() => handleRemove(executor.id)}
                     disabled={executors.length <= 1}
-                    className="h-6 w-6 p-0"
                   >
                     <Trash2 className="h-3 w-3 text-red-500" />
                   </Button>
@@ -157,7 +160,8 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
                   label="Full Name"
                   value={executor.name}
                   onChange={(value) => handleChange(executor.id, 'name', value)}
-                  placeholder="Full legal name"
+                  placeholder="e.g. John Smith"
+                  required={executor.isPrimary}
                   onAiHelp={(position) => handleFieldAiHelp(executor.id, 'name', position)}
                 />
                 
@@ -165,7 +169,7 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
                   label="Relationship"
                   value={executor.relationship}
                   onChange={(value) => handleChange(executor.id, 'relationship', value)}
-                  placeholder="e.g. Spouse, Child, Sibling, Friend"
+                  placeholder="e.g. Spouse, Friend, Sibling"
                   onAiHelp={(position) => handleFieldAiHelp(executor.id, 'relationship', position)}
                 />
               </div>
@@ -176,7 +180,7 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
                   value={executor.email}
                   onChange={(value) => handleChange(executor.id, 'email', value)}
                   type="email"
-                  placeholder="Email address"
+                  placeholder="their@email.com"
                   onAiHelp={(position) => handleFieldAiHelp(executor.id, 'email', position)}
                 />
                 
@@ -185,26 +189,23 @@ export function ExecutorField({ executors, onUpdate, onAiHelp }: ExecutorFieldPr
                   value={executor.phone}
                   onChange={(value) => handleChange(executor.id, 'phone', value)}
                   type="tel"
-                  placeholder="Phone number"
+                  placeholder="(123) 456-7890"
                   onAiHelp={(position) => handleFieldAiHelp(executor.id, 'phone', position)}
                 />
               </div>
               
-              <div>
-                <ContactField
-                  label="Address"
-                  value={executor.address}
-                  onChange={(value) => handleChange(executor.id, 'address', value)}
-                  placeholder="Full mailing address"
-                  tooltipText="Current mailing address for this executor"
-                  onAiHelp={(position) => handleFieldAiHelp(executor.id, 'address', position)}
-                />
-              </div>
+              <ContactField
+                label="Address"
+                value={executor.address}
+                onChange={(value) => handleChange(executor.id, 'address', value)}
+                placeholder="Full mailing address"
+                onAiHelp={(position) => handleFieldAiHelp(executor.id, 'address', position)}
+              />
             </div>
           ))}
         </div>
         
-        <div className="flex justify-between items-center mt-4">
+        <div className="flex justify-between items-center">
           <Button 
             variant="outline" 
             size="sm" 

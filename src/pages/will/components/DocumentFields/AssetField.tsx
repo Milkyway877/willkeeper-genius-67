@@ -2,14 +2,11 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Home, Car, Landmark, Laptop, PlusCircle, Trash2, MessageCircleQuestion } from 'lucide-react';
+import { Home, Car, Banknote, Globe, PlusCircle, Trash2, MessageCircleQuestion } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ContactField } from './ContactField';
 import { Property, Vehicle, FinancialAccount, DigitalAsset } from '../types';
-
-type AssetType = 'property' | 'vehicle' | 'financial' | 'digital';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface AssetFieldProps {
   properties: Property[];
@@ -23,119 +20,123 @@ interface AssetFieldProps {
   onAiHelp: (field: string, position?: { x: number, y: number }) => void;
 }
 
-export function AssetField({
-  properties,
-  vehicles,
-  financialAccounts,
+export function AssetField({ 
+  properties, 
+  vehicles, 
+  financialAccounts, 
   digitalAssets,
   onUpdateProperties,
   onUpdateVehicles,
   onUpdateFinancialAccounts,
   onUpdateDigitalAssets,
-  onAiHelp
+  onAiHelp 
 }: AssetFieldProps) {
   const [expanded, setExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<AssetType>('property');
-
-  // Property handlers
-  const addProperty = () => {
+  const [activeTab, setActiveTab] = useState("properties");
+  
+  const handleAddProperty = () => {
     const newProperty: Property = {
       id: `prop-${Date.now()}`,
       description: '',
       address: '',
       ownershipType: '',
       approximateValue: 0,
-      mortgageDetails: '',
-      insuranceInfo: ''
     };
     onUpdateProperties([...properties, newProperty]);
   };
-
-  const removeProperty = (id: string) => {
-    onUpdateProperties(properties.filter(p => p.id !== id));
-  };
-
-  const updateProperty = (id: string, field: keyof Property, value: string | number) => {
-    onUpdateProperties(properties.map(p => p.id === id ? { ...p, [field]: value } : p));
-  };
-
-  // Vehicle handlers
-  const addVehicle = () => {
+  
+  const handleAddVehicle = () => {
     const newVehicle: Vehicle = {
-      id: `veh-${Date.now()}`,
+      id: `vehicle-${Date.now()}`,
       description: '',
       registrationNumber: '',
       approximateValue: 0,
-      loanInfo: '',
-      insuranceInfo: ''
     };
     onUpdateVehicles([...vehicles, newVehicle]);
   };
-
-  const removeVehicle = (id: string) => {
-    onUpdateVehicles(vehicles.filter(v => v.id !== id));
-  };
-
-  const updateVehicle = (id: string, field: keyof Vehicle, value: string | number) => {
-    onUpdateVehicles(vehicles.map(v => v.id === id ? { ...v, [field]: value } : v));
-  };
-
-  // Financial account handlers
-  const addFinancialAccount = () => {
+  
+  const handleAddFinancialAccount = () => {
     const newAccount: FinancialAccount = {
-      id: `fin-${Date.now()}`,
+      id: `account-${Date.now()}`,
       accountType: '',
       institution: '',
       accountNumber: '',
       approximateValue: 0,
-      beneficiaryDesignation: ''
     };
     onUpdateFinancialAccounts([...financialAccounts, newAccount]);
   };
-
-  const removeFinancialAccount = (id: string) => {
-    onUpdateFinancialAccounts(financialAccounts.filter(a => a.id !== id));
-  };
-
-  const updateFinancialAccount = (id: string, field: keyof FinancialAccount, value: string | number) => {
-    onUpdateFinancialAccounts(financialAccounts.map(a => a.id === id ? { ...a, [field]: value } : a));
-  };
-
-  // Digital asset handlers
-  const addDigitalAsset = () => {
-    const newAsset: DigitalAsset = {
-      id: `dig-${Date.now()}`,
+  
+  const handleAddDigitalAsset = () => {
+    const newDigitalAsset: DigitalAsset = {
+      id: `digital-${Date.now()}`,
       description: '',
       accessInformation: '',
-      approximateValue: 0,
-      platform: ''
+      platform: '',
     };
-    onUpdateDigitalAssets([...digitalAssets, newAsset]);
+    onUpdateDigitalAssets([...digitalAssets, newDigitalAsset]);
   };
-
-  const removeDigitalAsset = (id: string) => {
+  
+  const handleRemoveProperty = (id: string) => {
+    onUpdateProperties(properties.filter(p => p.id !== id));
+  };
+  
+  const handleRemoveVehicle = (id: string) => {
+    onUpdateVehicles(vehicles.filter(v => v.id !== id));
+  };
+  
+  const handleRemoveFinancialAccount = (id: string) => {
+    onUpdateFinancialAccounts(financialAccounts.filter(a => a.id !== id));
+  };
+  
+  const handleRemoveDigitalAsset = (id: string) => {
     onUpdateDigitalAssets(digitalAssets.filter(a => a.id !== id));
   };
-
-  const updateDigitalAsset = (id: string, field: keyof DigitalAsset, value: string | number) => {
-    onUpdateDigitalAssets(digitalAssets.map(a => a.id === id ? { ...a, [field]: value } : a));
+  
+  const handlePropertyChange = (id: string, field: keyof Property, value: string | number) => {
+    onUpdateProperties(properties.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ));
   };
-
-  // AI help handlers
-  const handleAssetAiHelp = (assetType: string, id: string, field: string, e: React.MouseEvent) => {
-    onAiHelp(`${assetType}_${field}`, { x: e.clientX, y: e.clientY });
+  
+  const handleVehicleChange = (id: string, field: keyof Vehicle, value: string | number) => {
+    onUpdateVehicles(vehicles.map(v => 
+      v.id === id ? { ...v, [field]: value } : v
+    ));
   };
-
+  
+  const handleFinancialAccountChange = (id: string, field: keyof FinancialAccount, value: string | number) => {
+    onUpdateFinancialAccounts(financialAccounts.map(a => 
+      a.id === id ? { ...a, [field]: value } : a
+    ));
+  };
+  
+  const handleDigitalAssetChange = (id: string, field: keyof DigitalAsset, value: string | number) => {
+    onUpdateDigitalAssets(digitalAssets.map(a => 
+      a.id === id ? { ...a, [field]: value } : a
+    ));
+  };
+  
+  // Calculate total assets across all categories
+  const totalAssets = [
+    ...properties.map(p => p.approximateValue || 0),
+    ...vehicles.map(v => v.approximateValue || 0),
+    ...financialAccounts.map(a => a.approximateValue || 0),
+    ...digitalAssets.map(a => (a.approximateValue || 0))
+  ].reduce((sum, value) => sum + value, 0);
+  
+  const assetCount = properties.length + vehicles.length + financialAccounts.length + digitalAssets.length;
+  
   if (!expanded) {
-    const totalAssets = properties.length + vehicles.length + financialAccounts.length + digitalAssets.length;
-    
     return (
       <div className="relative group">
         <span 
           className="cursor-pointer border-b border-dashed border-gray-300 hover:border-willtank-400 px-1"
           onClick={() => setExpanded(true)}
         >
-          {totalAssets > 0 ? `${totalAssets} asset(s)` : 'Assets & Property'}
+          {assetCount > 0 
+            ? `${assetCount} Asset${assetCount !== 1 ? 's' : ''} ($${totalAssets.toLocaleString()})`
+            : 'Add Assets'
+          }
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -160,14 +161,14 @@ export function AssetField({
       </div>
     );
   }
-
+  
   return (
     <Card className="mt-4 mb-4">
       <CardContent className="pt-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-medium flex items-center gap-2">
             <Home className="h-4 w-4" />
-            Assets & Property
+            Assets
           </h3>
           <TooltipProvider>
             <Tooltip>
@@ -187,27 +188,26 @@ export function AssetField({
             </Tooltip>
           </TooltipProvider>
         </div>
-
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as AssetType)} className="mb-6">
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-4 mb-4">
-            <TabsTrigger value="property" className="flex items-center gap-2">
-              <Home className="h-4 w-4" /> Property
+            <TabsTrigger value="properties" className="text-xs">
+              <Home className="h-3 w-3 mr-1" /> Properties
             </TabsTrigger>
-            <TabsTrigger value="vehicle" className="flex items-center gap-2">
-              <Car className="h-4 w-4" /> Vehicles
+            <TabsTrigger value="vehicles" className="text-xs">
+              <Car className="h-3 w-3 mr-1" /> Vehicles
             </TabsTrigger>
-            <TabsTrigger value="financial" className="flex items-center gap-2">
-              <Landmark className="h-4 w-4" /> Financial
+            <TabsTrigger value="accounts" className="text-xs">
+              <Banknote className="h-3 w-3 mr-1" /> Accounts
             </TabsTrigger>
-            <TabsTrigger value="digital" className="flex items-center gap-2">
-              <Laptop className="h-4 w-4" /> Digital
+            <TabsTrigger value="digital" className="text-xs">
+              <Globe className="h-3 w-3 mr-1" /> Digital
             </TabsTrigger>
           </TabsList>
-
-          {/* Property Tab */}
-          <TabsContent value="property" className="space-y-4">
+          
+          <TabsContent value="properties" className="space-y-4">
             {properties.map((property, index) => (
-              <div key={property.id} className="p-3 border border-dashed rounded-md">
+              <div key={property.id} className="mb-4 p-3 border border-dashed rounded-md">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="text-sm font-medium">Property {index + 1}</h4>
                   
@@ -215,94 +215,64 @@ export function AssetField({
                     variant="ghost" 
                     size="sm"
                     className="h-6 w-6 p-0"
-                    onClick={() => removeProperty(property.id)}
+                    onClick={() => handleRemoveProperty(property.id)}
                   >
                     <Trash2 className="h-3 w-3 text-red-500" />
                   </Button>
                 </div>
-
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`property-desc-${property.id}`} className="text-xs">Description</Label>
-                    <Input 
-                      id={`property-desc-${property.id}`}
-                      value={property.description} 
-                      onChange={(e) => updateProperty(property.id, 'description', e.target.value)}
-                      placeholder="e.g. Primary residence, Vacation home"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`property-owner-${property.id}`} className="text-xs">Ownership Type</Label>
-                    <Input 
-                      id={`property-owner-${property.id}`}
-                      value={property.ownershipType} 
-                      onChange={(e) => updateProperty(property.id, 'ownershipType', e.target.value)}
-                      placeholder="e.g. Sole ownership, Joint tenancy"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <Label htmlFor={`property-address-${property.id}`} className="text-xs">Address</Label>
-                  <Input 
-                    id={`property-address-${property.id}`}
-                    value={property.address} 
-                    onChange={(e) => updateProperty(property.id, 'address', e.target.value)}
-                    placeholder="Full property address"
-                    className="h-8 text-sm mt-1"
+                  <ContactField
+                    label="Description"
+                    value={property.description}
+                    onChange={(value) => handlePropertyChange(property.id, 'description', value)}
+                    placeholder="e.g. Primary Residence, Vacation Home"
+                    onAiHelp={(position) => onAiHelp('property_description', position)}
+                  />
+                  
+                  <ContactField
+                    label="Ownership Type"
+                    value={property.ownershipType}
+                    onChange={(value) => handlePropertyChange(property.id, 'ownershipType', value)}
+                    placeholder="e.g. Sole owner, Joint tenant"
+                    onAiHelp={(position) => onAiHelp('property_ownership', position)}
                   />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`property-value-${property.id}`} className="text-xs">Approximate Value</Label>
-                    <Input 
-                      id={`property-value-${property.id}`}
-                      type="number"
-                      value={property.approximateValue} 
-                      onChange={(e) => updateProperty(property.id, 'approximateValue', parseFloat(e.target.value) || 0)}
-                      placeholder="e.g. 300000"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`property-mortgage-${property.id}`} className="text-xs">Mortgage Details</Label>
-                    <Input 
-                      id={`property-mortgage-${property.id}`}
-                      value={property.mortgageDetails || ''} 
-                      onChange={(e) => updateProperty(property.id, 'mortgageDetails', e.target.value)}
-                      placeholder="e.g. Bank name, account number"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`property-insurance-${property.id}`} className="text-xs">Insurance Information</Label>
-                    <Input 
-                      id={`property-insurance-${property.id}`}
-                      value={property.insuranceInfo || ''} 
-                      onChange={(e) => updateProperty(property.id, 'insuranceInfo', e.target.value)}
-                      placeholder="e.g. Insurance company, policy number"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
+                
+                <ContactField
+                  label="Address"
+                  value={property.address}
+                  onChange={(value) => handlePropertyChange(property.id, 'address', value)}
+                  placeholder="Full property address"
+                  onAiHelp={(position) => onAiHelp('property_address', position)}
+                  className="mb-4"
+                />
+                
+                <ContactField
+                  label="Approximate Value ($)"
+                  value={property.approximateValue.toString()}
+                  onChange={(value) => handlePropertyChange(property.id, 'approximateValue', Number(value) || 0)}
+                  type="text"
+                  placeholder="e.g. 250000"
+                  onAiHelp={(position) => onAiHelp('property_value', position)}
+                />
               </div>
             ))}
             
-            <Button variant="outline" className="w-full" onClick={addProperty}>
-              <PlusCircle className="h-4 w-4 mr-2" /> Add Property
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddProperty}
+              className="text-xs w-full"
+            >
+              <PlusCircle className="h-3 w-3 mr-1" />
+              Add Property
             </Button>
           </TabsContent>
-
-          {/* Vehicle Tab */}
-          <TabsContent value="vehicle" className="space-y-4">
+          
+          <TabsContent value="vehicles" className="space-y-4">
             {vehicles.map((vehicle, index) => (
-              <div key={vehicle.id} className="p-3 border border-dashed rounded-md">
+              <div key={vehicle.id} className="mb-4 p-3 border border-dashed rounded-md">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="text-sm font-medium">Vehicle {index + 1}</h4>
                   
@@ -310,167 +280,129 @@ export function AssetField({
                     variant="ghost" 
                     size="sm"
                     className="h-6 w-6 p-0"
-                    onClick={() => removeVehicle(vehicle.id)}
+                    onClick={() => handleRemoveVehicle(vehicle.id)}
                   >
                     <Trash2 className="h-3 w-3 text-red-500" />
                   </Button>
                 </div>
-
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-desc-${vehicle.id}`} className="text-xs">Description</Label>
-                    <Input 
-                      id={`vehicle-desc-${vehicle.id}`}
-                      value={vehicle.description} 
-                      onChange={(e) => updateVehicle(vehicle.id, 'description', e.target.value)}
-                      placeholder="e.g. 2020 Toyota Camry"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-reg-${vehicle.id}`} className="text-xs">Registration Number</Label>
-                    <Input 
-                      id={`vehicle-reg-${vehicle.id}`}
-                      value={vehicle.registrationNumber} 
-                      onChange={(e) => updateVehicle(vehicle.id, 'registrationNumber', e.target.value)}
-                      placeholder="e.g. ABC123"
-                      className="h-8 text-sm"
-                    />
-                  </div>
+                  <ContactField
+                    label="Description"
+                    value={vehicle.description}
+                    onChange={(value) => handleVehicleChange(vehicle.id, 'description', value)}
+                    placeholder="e.g. 2018 Honda Accord"
+                    onAiHelp={(position) => onAiHelp('vehicle_description', position)}
+                  />
+                  
+                  <ContactField
+                    label="Registration Number"
+                    value={vehicle.registrationNumber}
+                    onChange={(value) => handleVehicleChange(vehicle.id, 'registrationNumber', value)}
+                    placeholder="e.g. License plate or VIN"
+                    onAiHelp={(position) => onAiHelp('vehicle_registration', position)}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-value-${vehicle.id}`} className="text-xs">Approximate Value</Label>
-                    <Input 
-                      id={`vehicle-value-${vehicle.id}`}
-                      type="number"
-                      value={vehicle.approximateValue} 
-                      onChange={(e) => updateVehicle(vehicle.id, 'approximateValue', parseFloat(e.target.value) || 0)}
-                      placeholder="e.g. 15000"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-loan-${vehicle.id}`} className="text-xs">Loan Information</Label>
-                    <Input 
-                      id={`vehicle-loan-${vehicle.id}`}
-                      value={vehicle.loanInfo || ''} 
-                      onChange={(e) => updateVehicle(vehicle.id, 'loanInfo', e.target.value)}
-                      placeholder="e.g. Bank name, account number"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`vehicle-insurance-${vehicle.id}`} className="text-xs">Insurance Information</Label>
-                    <Input 
-                      id={`vehicle-insurance-${vehicle.id}`}
-                      value={vehicle.insuranceInfo || ''} 
-                      onChange={(e) => updateVehicle(vehicle.id, 'insuranceInfo', e.target.value)}
-                      placeholder="e.g. Insurance company, policy number"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
+                
+                <ContactField
+                  label="Approximate Value ($)"
+                  value={vehicle.approximateValue.toString()}
+                  onChange={(value) => handleVehicleChange(vehicle.id, 'approximateValue', Number(value) || 0)}
+                  type="text"
+                  placeholder="e.g. 15000"
+                  onAiHelp={(position) => onAiHelp('vehicle_value', position)}
+                />
               </div>
             ))}
             
-            <Button variant="outline" className="w-full" onClick={addVehicle}>
-              <PlusCircle className="h-4 w-4 mr-2" /> Add Vehicle
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddVehicle}
+              className="text-xs w-full"
+            >
+              <PlusCircle className="h-3 w-3 mr-1" />
+              Add Vehicle
             </Button>
           </TabsContent>
-
-          {/* Financial Tab */}
-          <TabsContent value="financial" className="space-y-4">
+          
+          <TabsContent value="accounts" className="space-y-4">
             {financialAccounts.map((account, index) => (
-              <div key={account.id} className="p-3 border border-dashed rounded-md">
+              <div key={account.id} className="mb-4 p-3 border border-dashed rounded-md">
                 <div className="flex justify-between items-center mb-3">
-                  <h4 className="text-sm font-medium">Financial Account {index + 1}</h4>
+                  <h4 className="text-sm font-medium">Account {index + 1}</h4>
                   
                   <Button 
                     variant="ghost" 
                     size="sm"
                     className="h-6 w-6 p-0"
-                    onClick={() => removeFinancialAccount(account.id)}
+                    onClick={() => handleRemoveFinancialAccount(account.id)}
                   >
                     <Trash2 className="h-3 w-3 text-red-500" />
                   </Button>
                 </div>
-
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`account-type-${account.id}`} className="text-xs">Account Type</Label>
-                    <Input 
-                      id={`account-type-${account.id}`}
-                      value={account.accountType} 
-                      onChange={(e) => updateFinancialAccount(account.id, 'accountType', e.target.value)}
-                      placeholder="e.g. Checking, Savings, Investment"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`account-institution-${account.id}`} className="text-xs">Institution</Label>
-                    <Input 
-                      id={`account-institution-${account.id}`}
-                      value={account.institution} 
-                      onChange={(e) => updateFinancialAccount(account.id, 'institution', e.target.value)}
-                      placeholder="e.g. Bank of America"
-                      className="h-8 text-sm"
-                    />
-                  </div>
+                  <ContactField
+                    label="Account Type"
+                    value={account.accountType}
+                    onChange={(value) => handleFinancialAccountChange(account.id, 'accountType', value)}
+                    placeholder="e.g. Checking, Savings, 401(k)"
+                    onAiHelp={(position) => onAiHelp('account_type', position)}
+                  />
+                  
+                  <ContactField
+                    label="Institution"
+                    value={account.institution}
+                    onChange={(value) => handleFinancialAccountChange(account.id, 'institution', value)}
+                    placeholder="e.g. Bank of America, Fidelity"
+                    onAiHelp={(position) => onAiHelp('account_institution', position)}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`account-number-${account.id}`} className="text-xs">Account Number (last 4 digits)</Label>
-                    <Input 
-                      id={`account-number-${account.id}`}
-                      value={account.accountNumber} 
-                      onChange={(e) => updateFinancialAccount(account.id, 'accountNumber', e.target.value)}
-                      placeholder="e.g. xxxx1234"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`account-value-${account.id}`} className="text-xs">Approximate Value</Label>
-                    <Input 
-                      id={`account-value-${account.id}`}
-                      type="number"
-                      value={account.approximateValue} 
-                      onChange={(e) => updateFinancialAccount(account.id, 'approximateValue', parseFloat(e.target.value) || 0)}
-                      placeholder="e.g. 50000"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`account-beneficiary-${account.id}`} className="text-xs">Beneficiary Designation</Label>
-                    <Input 
-                      id={`account-beneficiary-${account.id}`}
-                      value={account.beneficiaryDesignation || ''} 
-                      onChange={(e) => updateFinancialAccount(account.id, 'beneficiaryDesignation', e.target.value)}
-                      placeholder="e.g. Spouse, Child"
-                      className="h-8 text-sm"
-                    />
-                  </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <ContactField
+                    label="Account Number (last 4 digits)"
+                    value={account.accountNumber}
+                    onChange={(value) => handleFinancialAccountChange(account.id, 'accountNumber', value)}
+                    placeholder="e.g. xxxx1234"
+                    onAiHelp={(position) => onAiHelp('account_number', position)}
+                  />
+                  
+                  <ContactField
+                    label="Approximate Value ($)"
+                    value={account.approximateValue.toString()}
+                    onChange={(value) => handleFinancialAccountChange(account.id, 'approximateValue', Number(value) || 0)}
+                    type="text"
+                    placeholder="e.g. 50000"
+                    onAiHelp={(position) => onAiHelp('account_value', position)}
+                  />
                 </div>
+                
+                <ContactField
+                  label="Beneficiary Designation"
+                  value={account.beneficiaryDesignation || ''}
+                  onChange={(value) => handleFinancialAccountChange(account.id, 'beneficiaryDesignation', value)}
+                  placeholder="e.g. Spouse as primary beneficiary"
+                  onAiHelp={(position) => onAiHelp('account_beneficiary', position)}
+                />
               </div>
             ))}
             
-            <Button variant="outline" className="w-full" onClick={addFinancialAccount}>
-              <PlusCircle className="h-4 w-4 mr-2" /> Add Financial Account
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddFinancialAccount}
+              className="text-xs w-full"
+            >
+              <PlusCircle className="h-3 w-3 mr-1" />
+              Add Financial Account
             </Button>
           </TabsContent>
-
-          {/* Digital Tab */}
+          
           <TabsContent value="digital" className="space-y-4">
             {digitalAssets.map((asset, index) => (
-              <div key={asset.id} className="p-3 border border-dashed rounded-md">
+              <div key={asset.id} className="mb-4 p-3 border border-dashed rounded-md">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="text-sm font-medium">Digital Asset {index + 1}</h4>
                   
@@ -478,77 +410,72 @@ export function AssetField({
                     variant="ghost" 
                     size="sm"
                     className="h-6 w-6 p-0"
-                    onClick={() => removeDigitalAsset(asset.id)}
+                    onClick={() => handleRemoveDigitalAsset(asset.id)}
                   >
                     <Trash2 className="h-3 w-3 text-red-500" />
                   </Button>
                 </div>
-
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`digital-desc-${asset.id}`} className="text-xs">Description</Label>
-                    <Input 
-                      id={`digital-desc-${asset.id}`}
-                      value={asset.description} 
-                      onChange={(e) => updateDigitalAsset(asset.id, 'description', e.target.value)}
-                      placeholder="e.g. Cryptocurrency, Domain names"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`digital-platform-${asset.id}`} className="text-xs">Platform</Label>
-                    <Input 
-                      id={`digital-platform-${asset.id}`}
-                      value={asset.platform || ''} 
-                      onChange={(e) => updateDigitalAsset(asset.id, 'platform', e.target.value)}
-                      placeholder="e.g. Coinbase, GoDaddy"
-                      className="h-8 text-sm"
-                    />
-                  </div>
+                  <ContactField
+                    label="Description"
+                    value={asset.description}
+                    onChange={(value) => handleDigitalAssetChange(asset.id, 'description', value)}
+                    placeholder="e.g. Cryptocurrency, Social Media, Email"
+                    onAiHelp={(position) => onAiHelp('digital_description', position)}
+                  />
+                  
+                  <ContactField
+                    label="Platform/Provider"
+                    value={asset.platform || ''}
+                    onChange={(value) => handleDigitalAssetChange(asset.id, 'platform', value)}
+                    placeholder="e.g. Facebook, Gmail, Coinbase"
+                    onAiHelp={(position) => onAiHelp('digital_platform', position)}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`digital-access-${asset.id}`} className="text-xs">Access Information</Label>
-                    <Input 
-                      id={`digital-access-${asset.id}`}
-                      value={asset.accessInformation} 
-                      onChange={(e) => updateDigitalAsset(asset.id, 'accessInformation', e.target.value)}
-                      placeholder="e.g. Located in password manager"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`digital-value-${asset.id}`} className="text-xs">Approximate Value</Label>
-                    <Input 
-                      id={`digital-value-${asset.id}`}
-                      type="number"
-                      value={asset.approximateValue || 0} 
-                      onChange={(e) => updateDigitalAsset(asset.id, 'approximateValue', parseFloat(e.target.value) || 0)}
-                      placeholder="e.g. 5000"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
+                
+                <ContactField
+                  label="Access Information"
+                  value={asset.accessInformation}
+                  onChange={(value) => handleDigitalAssetChange(asset.id, 'accessInformation', value)}
+                  placeholder="Where to find login info or instructions"
+                  onAiHelp={(position) => onAiHelp('digital_access', position)}
+                  className="mb-4"
+                />
+                
+                <ContactField
+                  label="Approximate Value ($)"
+                  value={(asset.approximateValue || 0).toString()}
+                  onChange={(value) => handleDigitalAssetChange(asset.id, 'approximateValue', Number(value) || 0)}
+                  type="text"
+                  placeholder="e.g. 5000 (if applicable)"
+                  onAiHelp={(position) => onAiHelp('digital_value', position)}
+                />
               </div>
             ))}
             
-            <Button variant="outline" className="w-full" onClick={addDigitalAsset}>
-              <PlusCircle className="h-4 w-4 mr-2" /> Add Digital Asset
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddDigitalAsset}
+              className="text-xs w-full"
+            >
+              <PlusCircle className="h-3 w-3 mr-1" />
+              Add Digital Asset
             </Button>
           </TabsContent>
         </Tabs>
         
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setExpanded(false)}
-          className="text-xs mt-4"
-        >
-          Done
-        </Button>
+        <div className="mt-4 flex justify-end">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setExpanded(false)}
+            className="text-xs"
+          >
+            Done
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

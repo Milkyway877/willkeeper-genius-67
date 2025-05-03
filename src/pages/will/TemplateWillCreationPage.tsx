@@ -77,14 +77,14 @@ export default function TemplateWillCreationPage() {
       // If there's a will ID, update the will
       if (progress?.will_id) {
         await updateWill(progress.will_id, {
-          title: `${data.fullName}'s Will`,
+          title: `${data.personalInfo?.fullName}'s Will`,
           content: JSON.stringify(data),
           updated_at: new Date().toISOString()
         });
       } else {
         // Create a new will
         const willData = {
-          title: `${data.fullName}'s Will`,
+          title: `${data.personalInfo?.fullName}'s Will`,
           content: JSON.stringify(data),
           status: 'draft',
           template_type: templateId || '',
@@ -110,7 +110,7 @@ export default function TemplateWillCreationPage() {
   
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4 h-[calc(100vh-64px)] overflow-hidden">
+      <div className="container mx-auto px-4 py-4 h-[calc(100vh-64px)] flex flex-col">
         <div className="flex justify-between items-start mb-4">
           <div>
             <Button variant="ghost" onClick={handleBack} className="mb-2">
@@ -125,11 +125,11 @@ export default function TemplateWillCreationPage() {
         </div>
         
         {loading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-willtank-600" />
           </div>
         ) : (
-          <div className="h-[calc(100vh-180px)] overflow-hidden">
+          <div className="flex-1 overflow-hidden">
             <DocumentWillEditor 
               templateId={templateId || ''} 
               initialData={progress?.responses} 
