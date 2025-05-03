@@ -17,6 +17,7 @@ interface WillPreviewSectionProps {
   defaultOpen?: boolean;
   onRefresh?: () => void;
   onHelp?: () => void;
+  liveUpdate?: boolean; // Added liveUpdate prop
 }
 
 export function WillPreviewSection({ 
@@ -25,7 +26,8 @@ export function WillPreviewSection({
   title = "Last Will and Testament",
   defaultOpen = false,
   onRefresh,
-  onHelp
+  onHelp,
+  liveUpdate = false // Added with default value
 }: WillPreviewSectionProps) {
   const [isFormatted, setIsFormatted] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
