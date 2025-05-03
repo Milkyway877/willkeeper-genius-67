@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
@@ -109,7 +110,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
   const [showBeneficiaryPrompt, setShowBeneficiaryPrompt] = useState<boolean>(false);
-  const [showAISuggestionsPanel, setShowAISuggestionsPanel = useState(true);
+  const [showAISuggestionsPanel, setShowAISuggestionsPanel] = useState(true);
   const [showSuccessScreen, setShowSuccessScreen] = useState<boolean>(false);
   const [generatedWill, setGeneratedWill] = useState<Will | null>(null);
   
@@ -870,4 +871,45 @@ ${finalArrangements || '[No specific final arrangements specified]'}
         
         {/* Official Will Generation Button - Full width at the bottom */}
         <div className="col-span-12 mt-8 pb-12">
-          <div className="bg-gradient-to-r from-willtank-50 to-willtank-100 p-6 rounded-lg border border
+          <div className="bg-gradient-to-r from-willtank-50 to-willtank-100 p-6 rounded-lg border border-willtank-200 shadow-sm">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-willtank-800">Generate Your Official Will</h2>
+                <p className="text-willtank-600">Once you've completed all required sections and added your signature, generate your official legal document.</p>
+              </div>
+              <Button 
+                size="lg"
+                onClick={handleGenerateOfficialWill}
+                disabled={!isComplete || !signature}
+                className="bg-willtank-600 hover:bg-willtank-700 text-white px-8"
+              >
+                <FileCheck className="mr-2 h-5 w-5" />
+                Generate Official Will
+              </Button>
+            </div>
+            {(!isComplete || !signature) && (
+              <div className="mt-4 text-sm text-amber-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                <span>
+                  {!isComplete 
+                    ? "Please complete all required fields before generating your official will." 
+                    : "Please add your digital signature before generating your official will."}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-6xl max-h-screen overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Document Preview</DialogTitle>
+          </DialogHeader>
+          <DocumentPreview willContent={willContent} signature={signature} />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
