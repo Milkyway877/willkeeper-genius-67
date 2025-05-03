@@ -104,6 +104,9 @@ export const useMessageEnhancer = () => {
             filters: enhancements.filters || [],
             useAI: enhancements.useAI || false
           }
+        },
+        headers: {
+          'Content-Type': 'application/json'
         }
       });
       
