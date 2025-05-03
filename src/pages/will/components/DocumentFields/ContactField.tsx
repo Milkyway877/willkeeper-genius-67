@@ -32,12 +32,14 @@ export function ContactField({
   const handleAIHelp = (e: React.MouseEvent) => {
     if (onAiHelp) {
       e.stopPropagation();
-      // Calculate position for the AI helper popup
-      const clickX = e.clientX;
-      const clickY = e.clientY;
+      
+      // Use getBoundingClientRect to get position relative to viewport
+      const rect = e.currentTarget.getBoundingClientRect();
+      const posX = rect.right;
+      const posY = rect.top + (rect.height / 2);
       
       // Pass position to parent component
-      onAiHelp({ x: clickX, y: clickY });
+      onAiHelp({ x: posX, y: posY });
     }
   };
 

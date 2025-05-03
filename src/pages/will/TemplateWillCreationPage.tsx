@@ -110,14 +110,14 @@ export default function TemplateWillCreationPage() {
   
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-start mb-6">
+      <div className="container mx-auto px-4 py-4 h-[calc(100vh-64px)] overflow-hidden">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <Button variant="ghost" onClick={handleBack} className="mb-4">
+            <Button variant="ghost" onClick={handleBack} className="mb-2">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Templates
             </Button>
             
-            <h1 className="text-3xl font-bold">{selectedTemplate?.title || 'Create Your Will'}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">{selectedTemplate?.title || 'Create Your Will'}</h1>
             <p className="text-gray-500 mt-1">
               Complete your legal will document with our interactive editor
             </p>
@@ -129,12 +129,14 @@ export default function TemplateWillCreationPage() {
             <Loader2 className="h-8 w-8 animate-spin text-willtank-600" />
           </div>
         ) : (
-          <DocumentWillEditor 
-            templateId={templateId || ''} 
-            initialData={progress?.responses} 
-            willId={progress?.will_id}
-            onSave={handleSave}
-          />
+          <div className="h-[calc(100vh-180px)] overflow-hidden">
+            <DocumentWillEditor 
+              templateId={templateId || ''} 
+              initialData={progress?.responses} 
+              willId={progress?.will_id}
+              onSave={handleSave}
+            />
+          </div>
         )}
       </div>
     </Layout>

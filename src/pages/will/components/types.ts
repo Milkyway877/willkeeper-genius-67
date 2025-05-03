@@ -101,3 +101,10 @@ export interface DigitalAsset {
   approximateValue?: number;
   platform?: string;
 }
+
+// Add a new interface for scrolling container props
+export interface ScrollContainerProps {
+  maxHeight?: string;
+  className?: string;
+  children: React.ReactNode;
+}
