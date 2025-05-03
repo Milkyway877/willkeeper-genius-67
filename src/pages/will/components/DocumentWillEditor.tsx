@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
@@ -419,7 +418,7 @@ ${willContent.finalArrangements}`;
     // Default position in the middle for mobile
     if (window.innerWidth < 768) {
       return {
-        position: 'fixed',
+        position: 'fixed' as const,
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -440,7 +439,7 @@ ${willContent.finalArrangements}`;
     if (rect.bottom + 200 > viewportHeight) {
       // Position above if not enough space below
       return {
-        position: 'absolute',
+        position: 'absolute' as const,
         bottom: `${document.documentElement.clientHeight - rect.top + 10}px`,
         left: `${rect.left}px`,
         zIndex: 50,
@@ -450,7 +449,7 @@ ${willContent.finalArrangements}`;
     
     // Position below if there's enough space
     return {
-      position: 'absolute',
+      position: 'absolute' as const,
       top: `${rect.bottom + window.scrollY + 10}px`,
       left: `${rect.left}px`,
       zIndex: 50,
