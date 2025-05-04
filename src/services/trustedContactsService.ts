@@ -7,7 +7,8 @@ export interface TrustedContact {
   name: string;
   email: string;
   phone?: string | null;
-  relationship?: string | null;
+  relation?: string | null;  // Changed from relationship to match DB column
+  relationship?: string | null;  // Keep for backward compatibility
   invitation_status?: string | null;
   invitation_sent_at?: string | null;
   invitation_responded_at?: string | null;
@@ -55,10 +56,11 @@ export const createTrustedContact = async (contact: {
       return null;
     }
     
+    // Fix the field name mismatch between code and database
     const newContact = {
       name: contact.name,
       email: contact.email,
-      relation: contact.relationship,
+      relation: contact.relationship, // Changed to match DB column name
       user_id: session.user.id,
       invitation_status: 'pending'
     };
@@ -83,6 +85,12 @@ export const createTrustedContact = async (contact: {
 
 export const updateTrustedContact = async (id: string, updates: Partial<TrustedContact>): Promise<TrustedContact | null> => {
   try {
+    // If updates contain relationship field, map it to relation for the database
+    if (updates.relationship !== undefined && updates.relation === undefined) {
+      updates.relation = updates.relationship;
+      delete updates.relationship;
+    }
+
     const { data, error } = await supabase
       .from('trusted_contacts')
       .update(updates)
