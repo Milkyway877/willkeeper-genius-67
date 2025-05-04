@@ -231,7 +231,7 @@ export const testAllNotificationChannels = async () => {
     if (session) {
       try {
         const channel = supabase
-          .channel('notification-test')
+          .channel('notification-test-channel')
           .on('presence', { event: 'sync' }, () => {
             console.log('Realtime presence sync successful');
             testChecks.push('Realtime Presence: SUCCESS');
@@ -246,10 +246,12 @@ export const testAllNotificationChannels = async () => {
             }
           });
           
-        // Clean up after 2 seconds
+        // Clean up after 3 seconds
         setTimeout(() => {
-          supabase.removeChannel(channel);
-        }, 2000);
+          if (channel) {
+            supabase.removeChannel(channel);
+          }
+        }, 3000);
       } catch (realtimeError) {
         console.error('Error testing Realtime:', realtimeError);
         testChecks.push('Realtime: ERROR');

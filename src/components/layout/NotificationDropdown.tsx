@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BellRing, Check, X } from 'lucide-react';
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ export function NotificationDropdown() {
   const [isCounterVisible, setIsCounterVisible] = useState(true);
   const [countdownValue, setCountdownValue] = useState(0);
   const [isCountingDown, setIsCountingDown] = useState(false);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { 
     notifications, 
@@ -41,17 +42,24 @@ export function NotificationDropdown() {
 
   // Start countdown when dropdown is opened with unread notifications
   useEffect(() => {
-    let countdownTimer: NodeJS.Timeout;
+    // Clear any existing timer first
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
     
     if (isOpen && unreadCount > 0 && !isCountingDown) {
       setIsCountingDown(true);
       setCountdownValue(unreadCount);
       
       // Animate the countdown effect
-      countdownTimer = setInterval(() => {
+      countdownTimerRef.current = setInterval(() => {
         setCountdownValue(prev => {
           if (prev <= 1) {
-            clearInterval(countdownTimer);
+            if (countdownTimerRef.current) {
+              clearInterval(countdownTimerRef.current);
+              countdownTimerRef.current = null;
+            }
             setIsCountingDown(false);
             setIsCounterVisible(false);
             return 0;
@@ -63,13 +71,16 @@ export function NotificationDropdown() {
     
     // Clean up the interval when component unmounts or dropdown closes
     return () => {
-      if (countdownTimer) clearInterval(countdownTimer);
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
     };
   }, [isOpen, unreadCount, isCountingDown]);
   
   // Refresh notifications when dropdown is opened
   useEffect(() => {
-    if (isOpen && fetchNotifications && Date.now() - lastFetched > 10000) { // Reduced from 30s to 10s
+    if (isOpen && fetchNotifications && Date.now() - lastFetched > 5000) { // Reduced from 10s to 5s
       console.log('Refreshing notifications in dropdown');
       fetchNotifications();
       setLastFetched(Date.now());

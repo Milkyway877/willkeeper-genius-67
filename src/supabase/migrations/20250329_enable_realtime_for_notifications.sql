@@ -11,6 +11,9 @@ ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS notifications;
 -- Add the table to the realtime publication
 ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 
+-- Force a restart of the realtime service to ensure changes take effect
+NOTIFY pgrst, 'reload schema';
+
 -- Log that the migration was executed
 DO $$
 BEGIN
@@ -54,3 +57,6 @@ $$ LANGUAGE plpgsql;
 
 -- Call the function immediately to check status
 SELECT check_notification_system();
+
+-- Add index on user_id and created_at for better performance
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created_at ON notifications(user_id, created_at DESC);
