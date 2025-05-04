@@ -41,8 +41,8 @@ export const getTemporaryCredentials = () => {
 
 // Get Supabase functions URL
 const getFunctionsBaseUrl = () => {
-  // Instead of accessing protected property, use the URL directly from the env
-  return `${window.location.protocol}//${new URL(supabase.supabaseUrl).host}/functions/v1`;
+  // Use the SUPABASE_URL from the client.ts file
+  return `${window.location.protocol}//${new URL(import.meta.env.VITE_SUPABASE_URL || "https://ksiinmxsycosnpchutuw.supabase.co").host}/functions/v1`;
 };
 
 // Helper function to call functions with proper error handling
