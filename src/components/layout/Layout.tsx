@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -69,7 +70,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           // Step 3: Check user profile status
           if (profile) {
             // If the user isn't fully activated or email verified
-            if (!profile.activation_complete || !profile.email_verified) {
+            if (!profile.is_activated || !profile.email_verified) {
               console.log("User not verified, redirecting to verification");
               navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
               return;
@@ -79,7 +80,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             if (needsVerification && !sessionVerified) {
               // Only trigger notification for new device logins when the profile exists
               // This avoids sending notifications during initial signup
-              if (profile.activation_complete) {
+              if (profile.is_activated) {
                 // Get browser and OS info for notification
                 const userAgent = navigator.userAgent;
                 const browserInfo = `${/chrome|firefox|safari|edge|opera/i.exec(userAgent.toLowerCase())?.[0] || 'browser'} on ${/windows|mac|linux|android|ios/i.exec(userAgent.toLowerCase())?.[0] || 'unknown device'}`;
