@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Executor {
@@ -11,6 +12,8 @@ export interface Executor {
   compensation?: string;
   notes?: string;
   isVerified?: boolean; // Not in DB, computed based on verification status
+  address?: string; // Adding address field since it's used in the UI
+  invitation_status?: string; // Adding for ContactsManager.tsx
   created_at?: string;
   updated_at?: string;
 }
@@ -26,6 +29,9 @@ export interface Beneficiary {
   specific_assets?: string;
   notes?: string;
   isVerified?: boolean; // Not in DB, computed based on verification status
+  address?: string; // Adding address field since it's used in the UI
+  invitation_status?: string; // Adding for ContactsManager.tsx
+  percentage?: number; // Adding for compatibility with UI
   created_at?: string;
   updated_at?: string;
 }
@@ -225,6 +231,44 @@ export const updateBeneficiary = async (id: string, updates: Partial<Beneficiary
   } catch (error) {
     console.error('Error in updateBeneficiary:', error);
     return null;
+  }
+};
+
+export const deleteExecutor = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('will_executors')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error deleting executor:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteExecutor:', error);
+    return false;
+  }
+};
+
+export const deleteBeneficiary = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('will_beneficiaries')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error deleting beneficiary:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteBeneficiary:', error);
+    return false;
   }
 };
 

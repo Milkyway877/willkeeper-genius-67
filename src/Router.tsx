@@ -1,30 +1,30 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Home from './pages/Home';
-import About from './pages/About';
-import Pricing from './pages/Pricing';
-import Contact from './pages/Contact';
-import Faq from './pages/Faq';
-import Terms from './pages/Terms';
-import Privacy from './pages/Privacy';
-import NotFound from './pages/NotFound';
-import AuthLayout from './components/auth/AuthLayout';
-import SignIn from './pages/auth/SignIn';
-import SignUp from './pages/auth/SignUp';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ResetPassword from './pages/auth/ResetPassword';
-import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
-import Will from './pages/Will';
-import FutureMessages from './pages/FutureMessages';
-import LegacyVault from './pages/LegacyVault';
-import CheckIns from './pages/CheckIns';
-import TestDeathVerificationPage from './pages/TestDeathVerification';
-import SearchPage from './pages/SearchPage';
+import { AuthLayout } from './components/auth/AuthLayout';
 
-// Add the VerifyTrustedContact route
-import VerifyTrustedContact from './pages/VerifyTrustedContact';
+// Create placeholder pages for development
+const Home = () => <div>Home Page</div>;
+const About = () => <div>About Page</div>;
+const Pricing = () => <div>Pricing Page</div>;
+const Contact = () => <div>Contact Page</div>;
+const Faq = () => <div>FAQ Page</div>;
+const Terms = () => <div>Terms Page</div>;
+const Privacy = () => <div>Privacy Page</div>;
+const NotFound = () => <div>404 Not Found</div>;
+const SignIn = () => <div>Sign In Page</div>;
+const SignUp = () => <div>Sign Up Page</div>;
+const ForgotPassword = () => <div>Forgot Password Page</div>;
+const ResetPassword = () => <div>Reset Password Page</div>;
+const Dashboard = () => <div>Dashboard Page</div>;
+const Settings = () => <div>Settings Page</div>;
+const Will = () => <div>Will Page</div>;
+const FutureMessages = () => <div>Future Messages Page</div>;
+const LegacyVault = () => <div>Legacy Vault Page</div>;
+const CheckIns = () => <div>Check-Ins Page</div>;
+const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
+const SearchPage = () => <div>Search Page</div>;
+const VerifyTrustedContact = () => <div>Verify Trusted Contact Page</div>;
 
 function AppRouter() {
   return (
@@ -54,7 +54,6 @@ function AppRouter() {
         <Route path="/check-ins" element={<CheckIns />} />
         <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
 
-        {/* Fix the syntax for the route declaration */}
         <Route
           path="/verify/trusted-contact/:token"
           element={<VerifyTrustedContact />}

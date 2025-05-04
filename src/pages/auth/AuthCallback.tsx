@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
-import { createWelcomeNotification } from '@/services/notificationService';
+import { createSystemNotification } from '@/services/notificationService';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -14,7 +14,10 @@ export default function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         // Create a welcome notification when a user signs in via OAuth
-        await createWelcomeNotification();
+        await createSystemNotification('info', {
+          title: 'Welcome to WillTank',
+          description: 'Thank you for joining our platform. Get started by setting up your profile.'
+        });
         
         // Navigate to dashboard after successful authentication
         navigate('/dashboard');

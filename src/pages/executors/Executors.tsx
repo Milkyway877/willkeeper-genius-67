@@ -76,7 +76,7 @@ type FormData = {
   name: string;
   email: string;
   phone: string;
-  relationship: string;
+  relation: string;
   address?: string;
   notes?: string;
   percentage?: number;
@@ -102,7 +102,7 @@ export default function Executors() {
     name: '',
     email: '',
     phone: '',
-    relationship: '',
+    relation: '',
     address: '',
     notes: '',
     percentage: undefined
@@ -138,7 +138,7 @@ export default function Executors() {
       name: '',
       email: '',
       phone: '',
-      relationship: '',
+      relation: '',
       address: '',
       notes: '',
       percentage: undefined
@@ -160,16 +160,16 @@ export default function Executors() {
   };
 
   const handleEdit = (item: Executor | Beneficiary) => {
-    const isExecutor = 'relationship' in item && !('percentage' in item);
+    const isExecutor = 'primary_executor' in item;
     
     setFormData({
       name: item.name,
-      email: item.email,
-      phone: item.phone,
-      relationship: item.relationship,
+      email: item.email || '',
+      phone: item.phone || '',
+      relation: item.relation || '',
       address: item.address || '',
       notes: item.notes || '',
-      percentage: 'percentage' in item ? item.percentage : undefined
+      percentage: 'allocation_percentage' in item ? item.allocation_percentage : undefined
     });
     
     setIsEditMode(true);
@@ -246,7 +246,7 @@ export default function Executors() {
     
     try {
       // Validate required fields
-      if (!formData.name || !formData.email || !formData.relationship) {
+      if (!formData.name || !formData.email || !formData.relation) {
         toast({
           title: "Missing Information",
           description: "Please fill in all required fields.",
@@ -275,7 +275,7 @@ export default function Executors() {
           const executorData: Partial<Executor> = {
             email: formData.email,
             phone: formData.phone,
-            relationship: formData.relationship,
+            relation: formData.relation,
             address: formData.address,
             notes: formData.notes
           };
@@ -288,10 +288,10 @@ export default function Executors() {
           const beneficiaryData: Partial<Beneficiary> = {
             email: formData.email,
             phone: formData.phone,
-            relationship: formData.relationship,
+            relation: formData.relation,
             address: formData.address,
             notes: formData.notes,
-            percentage: formData.percentage
+            allocation_percentage: formData.percentage
           };
           
           result = await updateBeneficiary(editItemId, beneficiaryData);
@@ -313,13 +313,14 @@ export default function Executors() {
       } else {
         // Create new item
         if (activeTab === "executors") {
-          const newExecutor = {
+          const newExecutor: Omit<Executor, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
-            relationship: formData.relationship,
+            relation: formData.relation,
             address: formData.address,
-            notes: formData.notes
+            notes: formData.notes,
+            primary_executor: true // Default as primary executor
           };
           
           result = await createExecutor(newExecutor);
@@ -327,14 +328,14 @@ export default function Executors() {
             setExecutors([result, ...executors]);
           }
         } else {
-          const newBeneficiary = {
+          const newBeneficiary: Omit<Beneficiary, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
-            relationship: formData.relationship,
+            relation: formData.relation,
             address: formData.address,
             notes: formData.notes,
-            percentage: formData.percentage
+            allocation_percentage: formData.percentage
           };
           
           result = await createBeneficiary(newBeneficiary);
@@ -442,13 +443,13 @@ export default function Executors() {
                 </div>
                 
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="relationship" className="text-right">
+                  <Label htmlFor="relation" className="text-right">
                     Relationship *
                   </Label>
                   <Input
-                    id="relationship"
-                    name="relationship"
-                    value={formData.relationship}
+                    id="relation"
+                    name="relation"
+                    value={formData.relation}
                     onChange={handleInputChange}
                     className="col-span-3"
                     placeholder="e.g. Spouse, Child, Friend"
@@ -553,7 +554,15 @@ export default function Executors() {
                     variant="outline" 
                     className="mt-4"
                     onClick={() => {
-                      resetForm();
+                      setFormData({
+                        name: '',
+                        email: '',
+                        phone: '',
+                        relation: '',
+                        address: '',
+                        notes: '',
+                        percentage: undefined
+                      });
                       setIsSheetOpen(true);
                     }}
                   >
@@ -577,7 +586,7 @@ export default function Executors() {
                     {executors.map((executor) => (
                       <TableRow key={executor.id}>
                         <TableCell className="font-medium">{executor.name}</TableCell>
-                        <TableCell>{executor.relationship}</TableCell>
+                        <TableCell>{executor.relation}</TableCell>
                         <TableCell>{executor.email}</TableCell>
                         <TableCell>
                           {executor.isVerified ? (
@@ -689,7 +698,15 @@ export default function Executors() {
                     variant="outline" 
                     className="mt-4"
                     onClick={() => {
-                      resetForm();
+                      setFormData({
+                        name: '',
+                        email: '',
+                        phone: '',
+                        relation: '',
+                        address: '',
+                        notes: '',
+                        percentage: undefined
+                      });
                       setIsSheetOpen(true);
                     }}
                   >
@@ -714,12 +731,12 @@ export default function Executors() {
                     {beneficiaries.map((beneficiary) => (
                       <TableRow key={beneficiary.id}>
                         <TableCell className="font-medium">{beneficiary.name}</TableCell>
-                        <TableCell>{beneficiary.relationship}</TableCell>
+                        <TableCell>{beneficiary.relation}</TableCell>
                         <TableCell>{beneficiary.email}</TableCell>
                         <TableCell>
                           <span className="inline-flex items-center">
                             <Percent className="mr-1 h-3 w-3" />
-                            {beneficiary.percentage || 0}
+                            {beneficiary.allocation_percentage || 0}
                           </span>
                         </TableCell>
                         <TableCell>
