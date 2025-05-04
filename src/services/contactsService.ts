@@ -54,7 +54,11 @@ export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
       throw error;
     }
     
-    return data || [];
+    // Map relation to relationship for consistency
+    return (data || []).map(contact => ({
+      ...contact,
+      relationship: contact.relation
+    }));
   } catch (error) {
     console.error('Error in getTrustedContacts:', error);
     return [];
@@ -77,7 +81,7 @@ export const createTrustedContact = async (contact: TrustedContact): Promise<Tru
         name: contact.name,
         email: contact.email,
         phone: contact.phone || null,
-        relationship: contact.relationship || null
+        relation: contact.relationship || null
       })
       .select('*')
       .single();
@@ -93,7 +97,11 @@ export const createTrustedContact = async (contact: TrustedContact): Promise<Tru
       description: `${contact.name} has been added as a trusted contact.`
     });
     
-    return data;
+    // Map relation to relationship for consistency
+    return {
+      ...data,
+      relationship: data.relation
+    };
   } catch (error) {
     console.error('Error in createTrustedContact:', error);
     throw error;
@@ -147,14 +155,27 @@ export const updateExecutor = async (id: string, email: string): Promise<any> =>
 // Send invitation to contact (beneficiary, executor, or trusted)
 export const sendContactInvitation = async (contact: ContactInvitation): Promise<boolean> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      throw new Error('User not authenticated');
+    }
+    
     // Call the edge function to send the invitation
-    const { data, error } = await supabase.functions.invoke('send-contact-invitation', {
-      body: { contact }
+    const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': supabase.supabaseKey
+      },
+      body: JSON.stringify({ contact })
     });
     
-    if (error) {
-      console.error('Error sending contact invitation:', error);
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error sending contact invitation:', errorData);
+      return false;
     }
     
     // Update status in the appropriate table
@@ -190,7 +211,8 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       description: `Invitation sent to ${contact.name} for role: ${contact.contactType}`
     });
     
-    return data?.success || false;
+    const responseData = await response.json();
+    return responseData?.success || false;
   } catch (error) {
     console.error('Error in sendContactInvitation:', error);
     return false;

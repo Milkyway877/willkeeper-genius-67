@@ -131,6 +131,7 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
 
 export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
   try {
+    // Get contact details
     const { data: contact, error: contactError } = await supabase
       .from('trusted_contacts')
       .select('*')
@@ -142,12 +143,14 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       return false;
     }
     
+    // Get auth session for auth token
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       console.error('No authenticated user found');
       return false;
     }
     
+    // Get user profile for name
     const { data: userProfile } = await supabase
       .from('user_profiles')
       .select('first_name, last_name, full_name')
@@ -158,13 +161,15 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Call the edge function to send the invitation
+    // Call the edge function directly
     try {
+      // Create the request to the edge function with proper headers
       const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabase.supabaseKey
         },
         body: JSON.stringify({
           contact: {
@@ -178,6 +183,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         })
       });
       
+      // Check if request was successful
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Error from invitation edge function:', errorData);
