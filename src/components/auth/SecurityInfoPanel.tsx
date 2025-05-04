@@ -1,130 +1,110 @@
 
 import React from 'react';
-import { Shield, Lock, Eye, Mail, AlertTriangle, Fingerprint } from 'lucide-react';
-
-type SecurityInfoMode = 'signin' | 'signup' | 'recover' | 'verification';
+import { cn } from '@/lib/utils';
+import { Shield, Lock, Eye, Mail, History, Key } from 'lucide-react';
 
 interface SecurityInfoPanelProps {
-  mode?: SecurityInfoMode;
+  mode?: 'signup' | 'signin' | 'recover' | 'verification';
 }
 
-export function SecurityInfoPanel({ mode = 'signin' }: SecurityInfoPanelProps) {
+export function SecurityInfoPanel({ mode = 'signup' }: SecurityInfoPanelProps) {
+  // Determine which icon and content to show based on the mode
+  const getIcon = () => {
+    switch (mode) {
+      case 'signin':
+        return <Lock className="h-6 w-6 text-willtank-800" />;
+      case 'recover':
+        return <Key className="h-6 w-6 text-willtank-800" />;
+      case 'verification':
+        return <Mail className="h-6 w-6 text-willtank-800" />;
+      case 'signup':
+      default:
+        return <Shield className="h-6 w-6 text-willtank-800" />;
+    }
+  };
+
+  const getTitle = () => {
+    switch (mode) {
+      case 'signin': return "Secure Sign In";
+      case 'recover': return "Account Recovery";
+      case 'verification': return "Verify Your Email";
+      case 'signup':
+      default: return "Secure Registration";
+    }
+  };
+
+  const getDescription = () => {
+    switch (mode) {
+      case 'signin': return "Our secure sign in process protects your account and sensitive information.";
+      case 'recover': return "Account recovery helps you regain access while maintaining security.";
+      case 'verification': return "Email verification helps us ensure that you're the rightful owner of your account.";
+      case 'signup':
+      default: return "Your information is protected with bank-grade encryption.";
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col justify-center">
-      <div className="space-y-8">
-        <div className="flex flex-col items-center justify-center text-center">
-          <div className="rounded-full bg-willtank-100 p-3 mb-4">
-            <Shield className="h-8 w-8 text-willtank-600" />
+    <div className="space-y-8 max-w-md">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center p-3 rounded-full bg-willtank-100/80 mb-4">
+          {getIcon()}
+        </div>
+        <h2 className="text-2xl font-bold mb-2">{getTitle()}</h2>
+        <p className="text-gray-600">
+          {getDescription()}
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-willtank-100/80 flex items-center justify-center">
+            <Shield className="h-5 w-5 text-willtank-800" />
           </div>
-          <h3 className="text-2xl font-bold mb-2">Bank-Grade Security</h3>
-          <p className="text-muted-foreground max-w-sm">
-            Your sensitive information is protected with industry-leading encryption and security practices.
-          </p>
+          <div className="space-y-1">
+            <h3 className="font-medium text-gray-900">Enhanced Security</h3>
+            <p className="text-sm text-gray-600">
+              We use industry-standard security practices to protect your data.
+            </p>
+          </div>
         </div>
-        
-        <div className="grid gap-6">
-          {mode === 'signin' && (
-            <>
-              <SecurityFeature 
-                icon={<Lock className="h-5 w-5" />}
-                title="Secure Authentication"
-                description="Multi-factor authentication and email verification protect your account."
-              />
-              <SecurityFeature 
-                icon={<Eye className="h-5 w-5" />}
-                title="Privacy Focused"
-                description="We don't sell your data or share it with third parties."
-              />
-              <SecurityFeature 
-                icon={<Fingerprint className="h-5 w-5" />}
-                title="Device Recognition"
-                description="We monitor for suspicious login attempts from unknown devices."
-              />
-            </>
-          )}
-          
-          {mode === 'signup' && (
-            <>
-              <SecurityFeature 
-                icon={<Lock className="h-5 w-5" />}
-                title="End-to-End Encryption"
-                description="Your data is encrypted in transit and at rest."
-              />
-              <SecurityFeature 
-                icon={<Mail className="h-5 w-5" />}
-                title="Email Verification"
-                description="We verify your email to ensure account security."
-              />
-              <SecurityFeature 
-                icon={<Shield className="h-5 w-5" />}
-                title="Optional 2FA"
-                description="Enable two-factor authentication for additional security."
-              />
-            </>
-          )}
-          
-          {mode === 'recover' && (
-            <>
-              <SecurityFeature 
-                icon={<AlertTriangle className="h-5 w-5" />}
-                title="Secure Recovery"
-                description="Account recovery is protected by multiple verification steps."
-              />
-              <SecurityFeature 
-                icon={<Mail className="h-5 w-5" />}
-                title="Email Link"
-                description="A secure link will be sent to your registered email."
-              />
-              <SecurityFeature 
-                icon={<Lock className="h-5 w-5" />}
-                title="Time-Limited Reset"
-                description="Password reset links expire after 30 minutes for security."
-              />
-            </>
-          )}
-          
-          {mode === 'verification' && (
-            <>
-              <SecurityFeature 
-                icon={<Mail className="h-5 w-5" />}
-                title="Email Verification"
-                description="Enter the code sent to your email to verify your identity."
-              />
-              <SecurityFeature 
-                icon={<Lock className="h-5 w-5" />}
-                title="Time-Limited Code"
-                description="Verification codes expire after 30 minutes for security."
-              />
-              <SecurityFeature 
-                icon={<AlertTriangle className="h-5 w-5" />}
-                title="Limited Attempts"
-                description="For your security, verification attempts are limited."
-              />
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-interface SecurityFeatureProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}
-
-function SecurityFeature({ icon, title, description }: SecurityFeatureProps) {
-  return (
-    <div className="flex items-start">
-      <div className="shrink-0 mr-3 mt-0.5">
-        <div className="bg-willtank-100 p-1.5 rounded-md text-willtank-600">
-          {icon}
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-willtank-100/80 flex items-center justify-center">
+            <Lock className="h-5 w-5 text-willtank-800" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-medium text-gray-900">Data Encryption</h3>
+            <p className="text-sm text-gray-600">
+              Your information is encrypted both in transit and at rest.
+            </p>
+          </div>
         </div>
-      </div>
-      <div>
-        <h4 className="text-sm font-medium">{title}</h4>
-        <p className="text-sm text-muted-foreground">{description}</p>
+
+        <div className="flex gap-3">
+          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-willtank-100/80 flex items-center justify-center">
+            <Eye className="h-5 w-5 text-willtank-800" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-medium text-gray-900">Privacy Protection</h3>
+            <p className="text-sm text-gray-600">
+              We never share your personal information with third parties.
+            </p>
+          </div>
+        </div>
+
+        {mode === 'signin' && (
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-willtank-100/80 flex items-center justify-center">
+              <History className="h-5 w-5 text-willtank-800" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-medium text-gray-900">Session Security</h3>
+              <p className="text-sm text-gray-600">
+                Automatic time-outs and secure session management protect your account.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

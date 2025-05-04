@@ -8,12 +8,10 @@ import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { FloatingHelp } from '@/components/ui/FloatingHelp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase, sessionRequiresVerification } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { triggerNewLoginNotification } from '@/utils/notificationTriggers';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,10 +26,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
-  const [sessionVerified, setSessionVerified] = useState(false);
-  const [justVerifiedChecked, setJustVerifiedChecked] = useState(false);
-  
-  console.log("Layout rendering, sessionVerified status:", sessionVerified);
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -54,93 +48,30 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [isMobile]);
   
-  // Enhanced authentication check that enforces verification for every session
+  // Check authentication status if required
   useEffect(() => {
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
-        try {
-          console.log("Checking auth status for path:", location.pathname);
-          
-          // Check if session was just verified through email verification
-          const justVerified = localStorage.getItem('session_just_verified');
-          console.log("session_just_verified flag value:", justVerified);
-          
-          if (justVerified === 'true' && !justVerifiedChecked) {
-            console.log("Session was just verified through email, skipping verification");
-            // We leave the flag but mark it as checked to prevent infinite loops
-            setSessionVerified(true);
-            setJustVerifiedChecked(true);
-            return;
-          }
-          
-          // Step 1: Check if there's a valid session
-          const { data } = await supabase.auth.getSession();
-          console.log("Current session status:", data.session ? "Active" : "None");
-          
-          if (!data.session) {
-            console.log("No session found, redirecting to signin");
-            navigate('/auth/signin', { replace: true });
-            return;
-          }
-          
-          // If session exists but we have a just verified flag that's been checked,
-          // we can now clear it since we don't need it anymore
-          if (justVerifiedChecked && justVerified === 'true') {
-            console.log("Clearing session_just_verified flag after successful verification");
-            localStorage.removeItem('session_just_verified');
-          }
-          
-          // Step 2: Check if this is a new device/browser
-          const needsVerification = await sessionRequiresVerification();
-          console.log("Session requires verification:", needsVerification);
-          
-          // Step 3: Check user profile status
-          if (profile) {
-            console.log("User profile status:", { 
-              is_activated: profile.is_activated, 
-              email_verified: profile.email_verified 
-            });
-            
-            // If the user isn't fully activated or email verified
-            if (!profile.is_activated || !profile.email_verified) {
-              console.log("User not verified, redirecting to verification");
-              navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
-              return;
-            }
-            
-            // Even if user is activated, we require verification for every new session
-            if (needsVerification && !sessionVerified && !justVerifiedChecked) {
-              // Only trigger notification for new device logins when the profile exists
-              // This avoids sending notifications during initial signup
-              if (profile.is_activated) {
-                // Get browser and OS info for notification
-                const userAgent = navigator.userAgent;
-                const browserInfo = `${/chrome|firefox|safari|edge|opera/i.exec(userAgent.toLowerCase())?.[0] || 'browser'} on ${/windows|mac|linux|android|ios/i.exec(userAgent.toLowerCase())?.[0] || 'unknown device'}`;
-                
-                // Notify user about the new login
-                triggerNewLoginNotification(browserInfo);
-              }
-              
-              // Store the email in session storage for verification
-              sessionStorage.setItem('auth_email', profile.email || '');
-              
-              // Force verification for every new session
-              console.log("New session detected, redirecting to verification");
-              navigate('/auth/signin', { replace: true });
-              return;
-            }
-            
-            setSessionVerified(true);
-          }
-        } catch (error) {
-          console.error("Authentication check error:", error);
+        const { data } = await supabase.auth.getSession();
+        
+        if (!data.session) {
+          console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
+        } else if (profile && !profile.is_activated) {
+          // If the user is logged in but email is not verified and they're trying to access protected routes
+          const isEmailVerified = profile.email_verified;
+          
+          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
+            // Redirect to email verification with email as a parameter
+            console.log("User not verified, redirecting to verification");
+            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+          }
         }
       };
       
       checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate, profile, sessionVerified, justVerifiedChecked]);
+  }, [forceAuthenticated, location.pathname, navigate, profile]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);

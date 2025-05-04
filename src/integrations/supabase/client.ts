@@ -11,52 +11,8 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: true, // Keep this true to maintain user sessions
-    autoRefreshToken: true, // Keep this true for security during active sessions
-    detectSessionInUrl: true,
-    storageKey: 'sb-auth-token', // Explicitly set storage key for better tracking
-    storage: localStorage, // Explicitly use localStorage for session persistence
-    flowType: 'pkce' // Use PKCE flow for more secure authentication
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  },
-  db: {
-    schema: 'public'
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
   }
 });
-
-// Check if session requires verification
-export const sessionRequiresVerification = async (): Promise<boolean> => {
-  try {
-    const { data } = await supabase.auth.getSession();
-    
-    // If there's no session, verification is required
-    if (!data.session) {
-      console.log("No session found, verification required");
-      return true;
-    }
-    
-    // Check if session was just verified through email or 2FA
-    const justVerified = localStorage.getItem('session_just_verified');
-    if (justVerified === 'true') {
-      console.log("Session was just verified, bypassing additional verification");
-      return false;
-    }
-    
-    // Use created_at from user.created_at as fallback
-    const sessionCreatedAt = new Date(data.session.user?.created_at || Date.now());
-    const currentTime = new Date();
-    const sessionAgeHours = (currentTime.getTime() - sessionCreatedAt.getTime()) / (1000 * 60 * 60);
-    
-    console.log("Session age in hours:", sessionAgeHours);
-    
-    // If session is older than 1 hour, require re-verification
-    return sessionAgeHours > 1;
-  } catch (error) {
-    console.error("Error checking session:", error);
-    return true; // If there's an error, require verification to be safe
-  }
-};

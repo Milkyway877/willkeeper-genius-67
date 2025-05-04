@@ -8,10 +8,11 @@ export const getResendClient = () => {
     throw new Error('RESEND_API_KEY is not set');
   }
   
+  console.log('Initializing Resend client with API key');
   return new Resend(resendApiKey);
 };
 
-export const buildEmailTemplate = (content: string): string => {
+export const buildDefaultEmailLayout = (content: string): string => {
   return `
     <!DOCTYPE html>
     <html>
@@ -47,16 +48,14 @@ export const buildEmailTemplate = (content: string): string => {
           font-size: 12px;
           border-top: 1px solid #eaeaea;
         }
-        .verification-code {
-          font-size: 32px;
-          letter-spacing: 8px;
-          font-weight: bold;
-          text-align: center;
-          margin: 30px 0;
-          color: #1a1a1a;
-          background-color: #f4f4f4;
-          padding: 15px;
-          border-radius: 8px;
+        a.button {
+          display: inline-block;
+          background-color: #4F46E5;
+          color: white;
+          padding: 12px 20px;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 20px 0;
         }
       </style>
     </head>
@@ -66,8 +65,8 @@ export const buildEmailTemplate = (content: string): string => {
           ${content}
         </div>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} WillTank. All rights reserved.</p>
-          <p>If you did not request this email, please disregard it.</p>
+          <p>© ${new Date().getFullYear()} WillTank, a secure digital time capsule service.</p>
+          <p>If you did not expect this email, please contact support@willtank.com</p>
         </div>
       </div>
     </body>
@@ -75,62 +74,35 @@ export const buildEmailTemplate = (content: string): string => {
   `;
 };
 
-export const sendVerificationEmail = async (
-  email: string,
-  code: string,
-  type: string
-): Promise<{success: boolean; messageId?: string; error?: string}> => {
-  try {
-    const resend = getResendClient();
-    
-    let subject = 'Your Verification Code';
-    let greeting = 'Verify your email';
-    let actionText = 'verify your email address';
-    
-    if (type === 'signup') {
-      subject = 'Welcome to WillTank - Verify Your Account';
-      greeting = 'Welcome to WillTank';
-      actionText = 'complete your account setup';
-    } else if (type === 'login') {
-      subject = 'Sign in to WillTank';
-      greeting = 'Sign In Verification';
-      actionText = 'complete your sign-in';
-    } else if (type === 'recovery') {
-      subject = 'Reset Your WillTank Password';
-      greeting = 'Password Reset';
-      actionText = 'reset your password';
-    }
-    
-    const content = `
-      <h2>${greeting}</h2>
-      <p>Please use the following verification code to ${actionText}:</p>
-      <div class="verification-code">${code}</div>
-      <p>This code will expire in 30 minutes.</p>
-      <p>If you did not request this code, please ignore this message.</p>
-    `;
-    
-    const emailResult = await resend.emails.send({
-      from: 'WillTank <support@willtank.com>',
-      to: [email],
-      subject: subject,
-      html: buildEmailTemplate(content),
-    });
-    
-    if (emailResult.error) {
-      return {
-        success: false, 
-        error: emailResult.error.message || 'Failed to send email'
-      };
-    }
-    
-    return {
-      success: true,
-      messageId: emailResult.id
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error sending email'
-    };
+// Helper for checking email sending success
+export const isEmailSendSuccess = (response: any): boolean => {
+  // If there's no response, it's a failure
+  if (!response) return false;
+  
+  // If there's an error property or statusCode is 4xx/5xx, it's a failure
+  if (response.error || (response.statusCode && response.statusCode >= 400)) {
+    return false;
   }
+  
+  // For successful responses, Resend typically returns an ID without errors
+  return !!response.id && !response.error;
+};
+
+// Format error message from Resend response
+export const formatResendError = (response: any): string => {
+  if (!response) return "No response from email service";
+  
+  if (response.error) {
+    return response.error;
+  }
+  
+  if (response.statusCode && response.statusCode >= 400) {
+    return `${response.statusCode}: ${response.message || 'Unknown error'}`;
+  }
+  
+  if (response.message) {
+    return response.message;
+  }
+  
+  return "Unknown email delivery error";
 };

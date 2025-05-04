@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';

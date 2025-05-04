@@ -1,129 +1,105 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Input } from './input';
+import React, { useState, useEffect } from 'react';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { Button } from './button';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from './alert';
+import { ArrowRight, Loader2 } from 'lucide-react';
 
 interface TwoFactorInputProps {
   onSubmit: (code: string) => void;
   loading?: boolean;
-  autoSubmit?: boolean;
   error?: string | null;
+  autoSubmit?: boolean;
 }
 
-export const TwoFactorInput = ({
-  onSubmit,
-  loading = false,
-  autoSubmit = true,
+export function TwoFactorInput({ 
+  onSubmit, 
+  loading = false, 
   error = null,
-}: TwoFactorInputProps) => {
-  const [code, setCode] = useState('');
-  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
-
-  const handleInputChange = (index: number, value: string) => {
-    // Allow only one digit per input
-    if (value && !/^\d$/.test(value)) {
-      return;
-    }
-
-    const newCode = code.split('');
-    newCode[index] = value;
-    const updatedCode = newCode.join('');
-    setCode(updatedCode);
-
-    // Move to next input if current one is filled
-    if (value !== '' && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit if all digits are entered and autoSubmit is true
-    if (updatedCode.length === 6 && !updatedCode.includes('') && autoSubmit) {
-      onSubmit(updatedCode);
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Move to previous input on backspace if current input is empty
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleSubmit = () => {
-    if (code.length === 6) {
-      onSubmit(code);
-    }
-  };
-
-  // Handle paste event
-  const handlePaste = (e: React.ClipboardEvent) => {
+  autoSubmit = true
+}: TwoFactorInputProps) {
+  const [otp, setOtp] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  
+  // Clear local error when external error prop changes or reset when the error is fixed
+  useEffect(() => {
+    setLocalError(error);
+  }, [error]);
+  
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').trim().slice(0, 6);
-    if (/^\d+$/.test(pastedData)) {
-      const newCode = pastedData.padEnd(6, '').split('');
-      setCode(newCode.join(''));
-      newCode.forEach((digit, index) => {
-        if (inputRefs.current[index]) {
-          inputRefs.current[index]!.value = digit;
-        }
-      });
-      
-      // Focus the last input with a value
-      const lastIndex = Math.min(pastedData.length - 1, 5);
-      inputRefs.current[lastIndex]?.focus();
-      
-      if (pastedData.length === 6 && autoSubmit) {
-        onSubmit(pastedData);
-      }
+    if (otp.length === 6) {
+      console.log("Manually submitting 2FA code:", otp);
+      onSubmit(otp);
+    } else {
+      setLocalError("Please enter a 6-digit code");
     }
   };
-
+  
+  const handleChange = (value: string) => {
+    // Clear error when user starts typing
+    if (localError) setLocalError(null);
+    
+    // Ensure only digits are entered
+    if (value && !/^\d*$/.test(value)) {
+      return; // Don't update if non-digits are entered
+    }
+    
+    setOtp(value);
+    
+    // Auto-submit when code is complete (if enabled)
+    if (autoSubmit && value.length === 6) {
+      console.log("Auto-submitting 2FA code:", value);
+      onSubmit(value);
+    }
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Submit on Enter key
+    if (e.key === 'Enter' && otp.length === 6) {
+      e.preventDefault();
+      onSubmit(otp);
+    }
+  };
+  
   return (
-    <div className="space-y-4">
-      <div className="flex justify-center space-x-2">
-        {Array(6).fill(0).map((_, index) => (
-          <Input
-            key={index}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            className="w-12 h-12 text-center text-lg font-bold"
-            value={code[index] || ''}
-            onChange={(e) => handleInputChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(index, e)}
-            onPaste={index === 0 ? handlePaste : undefined}
-            ref={(el) => (inputRefs.current[index] = el)}
-            disabled={loading}
-            aria-label={`Verification code digit ${index + 1}`}
-          />
-        ))}
-      </div>
-      
-      {error && (
-        <Alert variant="destructive" className="mt-2">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      
-      {!autoSubmit && (
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4">
         <div className="flex justify-center">
-          <Button 
-            onClick={handleSubmit} 
-            disabled={code.length !== 6 || loading} 
-            className="w-full"
+          <InputOTP 
+            value={otp} 
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            maxLength={6}
+            disabled={loading}
           >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
-              </>
-            ) : (
-              'Verify'
-            )}
-          </Button>
+            <InputOTPGroup>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <InputOTPSlot key={i} index={i} />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
         </div>
-      )}
-    </div>
+        
+        {localError && (
+          <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
+        )}
+        
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={otp.length !== 6 || loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+            </>
+          ) : (
+            <>
+              Verify <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
   );
-};
+}
