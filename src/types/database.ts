@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -219,6 +218,310 @@ export interface Database {
           updated_at?: string | null
         }
       }
+      trusted_contacts: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          email: string;
+          phone?: string | null;
+          relation?: string | null;
+          invitation_status?: string | null;
+          invitation_sent_at?: string | null;
+          invitation_responded_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          email: string;
+          phone?: string | null;
+          relation?: string | null;
+          invitation_status?: string | null;
+          invitation_sent_at?: string | null;
+          invitation_responded_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          email?: string;
+          phone?: string | null;
+          relation?: string | null;
+          invitation_status?: string | null;
+          invitation_sent_at?: string | null;
+          invitation_responded_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      contact_verifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          contact_id: string;
+          contact_type: string;
+          verification_token: string;
+          expires_at: string;
+          responded_at?: string | null;
+          response?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          contact_id: string;
+          contact_type: string;
+          verification_token: string;
+          expires_at: string;
+          responded_at?: string | null;
+          response?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          contact_id?: string;
+          contact_type?: string;
+          verification_token?: string;
+          expires_at?: string;
+          responded_at?: string | null;
+          response?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      death_verification_settings: {
+        Row: {
+          id: string;
+          user_id: string;
+          check_in_enabled: boolean;
+          check_in_frequency: number;
+          grace_period: number;
+          beneficiary_verification_interval: number;
+          reminder_frequency: number;
+          pin_system_enabled: boolean;
+          executor_override_enabled: boolean;
+          trusted_contact_enabled: boolean;
+          failsafe_enabled: boolean;
+          notification_preferences: any;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          check_in_enabled?: boolean;
+          check_in_frequency?: number;
+          grace_period?: number;
+          beneficiary_verification_interval?: number;
+          reminder_frequency?: number;
+          pin_system_enabled?: boolean;
+          executor_override_enabled?: boolean;
+          trusted_contact_enabled?: boolean;
+          failsafe_enabled?: boolean;
+          notification_preferences?: any;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          check_in_enabled?: boolean;
+          check_in_frequency?: number;
+          grace_period?: number;
+          beneficiary_verification_interval?: number;
+          reminder_frequency?: number;
+          pin_system_enabled?: boolean;
+          executor_override_enabled?: boolean;
+          trusted_contact_enabled?: boolean;
+          failsafe_enabled?: boolean;
+          notification_preferences?: any;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      death_verification_checkins: {
+        Row: {
+          id: string;
+          user_id: string;
+          status: string;
+          checked_in_at: string;
+          next_check_in: string;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          status?: string;
+          checked_in_at?: string;
+          next_check_in: string;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          status?: string;
+          checked_in_at?: string;
+          next_check_in?: string;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      death_verification_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          action: string;
+          details?: any | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          action: string;
+          details?: any | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          action?: string;
+          details?: any | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string | null;
+        };
+      };
+      will_beneficiaries: {
+        Row: {
+          id: string;
+          user_id: string;
+          beneficiary_name: string;
+          email?: string | null;
+          phone?: string | null;
+          relation?: string | null;
+          allocation_percentage?: number | null;
+          specific_assets?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          beneficiary_name: string;
+          email?: string | null;
+          phone?: string | null;
+          relation?: string | null;
+          allocation_percentage?: number | null;
+          specific_assets?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          beneficiary_name?: string;
+          email?: string | null;
+          phone?: string | null;
+          relation?: string | null;
+          allocation_percentage?: number | null;
+          specific_assets?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      will_executors: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          email?: string | null;
+          phone?: string | null;
+          relation?: string | null;
+          primary_executor?: boolean | null;
+          compensation?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          email?: string | null;
+          phone?: string | null;
+          relation?: string | null;
+          primary_executor?: boolean | null;
+          compensation?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          email?: string | null;
+          phone?: string | null;
+          relation?: string | null;
+          primary_executor?: boolean | null;
+          compensation?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description?: string | null;
+          type?: string | null;
+          read?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          description?: string | null;
+          type?: string | null;
+          read?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          description?: string | null;
+          type?: string | null;
+          read?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
     }
     Views: {
       [_ in never]: never

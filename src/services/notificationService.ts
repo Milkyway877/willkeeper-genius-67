@@ -1,71 +1,53 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Notification {
   id: string;
   user_id: string;
   title: string;
   description: string;
-  type: 'success' | 'warning' | 'info' | 'security';
+  type: 'info' | 'success' | 'warning' | 'security';
   read: boolean;
   created_at: string;
+  updated_at: string;
 }
 
-// Event types that can be used by other services
 export type EventType = 
-  | 'success' | 'warning' | 'info' | 'security'
-  | 'will_updated' | 'will_created' | 'will_deleted' | 'will_signed'
-  | 'document_uploaded' | 'document_deleted' | 'document_shared'
-  | 'security_key_generated' 
-  | 'beneficiary_added' | 'executor_added' 
-  | 'contact_verified' | 'trusted_contact_added' | 'trusted_contact_verified'
-  | 'subscription_changed' | 'subscription_renewal' | 'payment_failed'
-  | 'system'
-  | 'subscription_update' | 'account_update'
+  | 'will_created' 
+  | 'will_updated' 
+  | 'will_signed' 
+  | 'will_deleted' 
+  | 'document_uploaded' 
+  | 'document_deleted' 
+  | 'document_shared'
+  | 'beneficiary_added'
+  | 'executor_added'
+  | 'contact_verified'
+  | 'trusted_contact_added'
+  | 'trusted_contact_verified'
+  | 'security_key_generated'
+  | 'new_login'
+  | 'password_changed'
+  | 'subscription_changed'
+  | 'subscription_renewal'
+  | 'payment_failed'
+  | 'system_maintenance'
+  | 'system_update'
+  | 'death_verification_setup'
+  | 'death_verification_checkin'
+  | 'death_verification_missed_checkin'
+  | 'info'
+  | 'success'
+  | 'warning'
+  | 'security'
   | 'item_saved';
-
-// Map specific event types to standard notification types
-export const mapEventTypeToNotificationType = (
-  eventType: EventType
-): 'success' | 'warning' | 'info' | 'security' => {
-  switch (eventType) {
-    case 'success':
-    case 'will_created':
-    case 'will_updated':
-    case 'will_signed':
-    case 'item_saved':
-      return 'success';
-    case 'warning':
-      return 'warning';
-    case 'info':
-    case 'document_uploaded':
-    case 'document_shared':
-    case 'beneficiary_added':
-    case 'executor_added':
-    case 'contact_verified':
-    case 'trusted_contact_added':
-    case 'trusted_contact_verified':
-    case 'subscription_changed':
-    case 'subscription_renewal':
-    case 'will_deleted':
-    case 'document_deleted':
-      return 'info';
-    case 'security':
-    case 'security_key_generated':
-    case 'payment_failed':
-    case 'system':
-      return 'security';
-    default:
-      return 'info'; // Default to info for unknown types
-  }
-};
 
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (!session?.user) {
-      console.warn('User not authenticated, cannot fetch notifications');
+    if (!session) {
+      console.error('No active session found');
       return [];
     }
     
@@ -91,7 +73,7 @@ export const markNotificationAsRead = async (id: string): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('notifications')
-      .update({ read: true })
+      .update({ read: true, updated_at: new Date().toISOString() })
       .eq('id', id);
       
     if (error) {
@@ -110,14 +92,14 @@ export const markAllNotificationsAsRead = async (): Promise<boolean> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (!session?.user) {
-      console.warn('User not authenticated, cannot mark notifications as read');
+    if (!session) {
+      console.error('No active session found');
       return false;
     }
     
     const { error } = await supabase
       .from('notifications')
-      .update({ read: true })
+      .update({ read: true, updated_at: new Date().toISOString() })
       .eq('user_id', session.user.id)
       .eq('read', false);
       
@@ -134,63 +116,56 @@ export const markAllNotificationsAsRead = async (): Promise<boolean> => {
 };
 
 export const createSystemNotification = async (
-  eventType: EventType,
-  details: { title: string, description: string }
+  eventType: EventType, 
+  details: { title: string, description: string, itemId?: string }
 ): Promise<Notification | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (!session?.user) {
-      console.warn('No user logged in, skipping notification creation');
+    if (!session) {
+      console.error('No active session found');
       return null;
     }
     
-    // Map the event type to a standard notification type
-    const type = mapEventTypeToNotificationType(eventType);
+    // Determine notification type based on event type
+    let notificationType: 'info' | 'success' | 'warning' | 'security' = 'info';
     
-    // First try to use the edge function for better reliability
-    try {
-      const response = await fetch('/api/create-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          title: details.title,
-          description: details.description,
-          type
-        })
-      });
-      
-      if (response.ok) {
-        // Fetch the most recent notification to return it
-        const { data } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .eq('title', details.title)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-          
-        return data;
-      }
-    } catch (error) {
-      console.error('Edge function failed, falling back to direct DB insert:', error);
-      // Fall back to direct insert
+    switch (eventType) {
+      case 'will_created':
+      case 'will_signed':
+      case 'success':
+      case 'item_saved':
+      case 'trusted_contact_verified':
+      case 'contact_verified':
+        notificationType = 'success';
+        break;
+      case 'will_deleted':
+      case 'document_deleted':
+      case 'warning':
+      case 'death_verification_missed_checkin':
+        notificationType = 'warning';
+        break;
+      case 'new_login':
+      case 'password_changed':
+      case 'security_key_generated':
+      case 'security':
+        notificationType = 'security';
+        break;
+      default:
+        notificationType = 'info';
     }
     
-    // Fallback: Direct insert to the database
+    const newNotification = {
+      user_id: session.user.id,
+      title: details.title,
+      description: details.description,
+      type: notificationType,
+      read: false
+    };
+    
     const { data, error } = await supabase
       .from('notifications')
-      .insert({
-        user_id: session.user.id,
-        type,
-        title: details.title,
-        description: details.description,
-        read: false
-      })
+      .insert(newNotification)
       .select()
       .single();
       
@@ -204,12 +179,4 @@ export const createSystemNotification = async (
     console.error('Error in createSystemNotification:', error);
     return null;
   }
-};
-
-// Add welcome notification helper function
-export const createWelcomeNotification = async (): Promise<Notification | null> => {
-  return createSystemNotification('success', {
-    title: 'Welcome to WillTank',
-    description: 'Your secure digital legacy platform. Get started by exploring the dashboard.'
-  });
 };

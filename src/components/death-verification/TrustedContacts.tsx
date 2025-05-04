@@ -11,16 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useNotificationTriggers } from '@/hooks/use-notification-triggers';
-import { supabase } from '@/integrations/supabase/client';
-
-interface TrustedContact {
-  id: string;
-  name: string;
-  email: string;
-  relation: string;
-  verified: boolean;
-  created_at?: string;
-}
+import { 
+  TrustedContact, 
+  getTrustedContacts, 
+  createTrustedContact, 
+  sendVerificationRequest, 
+  deleteTrustedContact 
+} from '@/services/trustedContactsService';
 
 interface TrustedContactsProps {
   onContactsChange: () => void;
@@ -28,14 +25,14 @@ interface TrustedContactsProps {
 
 export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const { toast } = useToast();
-  const { triggerContactVerified } = useNotificationTriggers();
+  const { triggerTrustedContactAdded, triggerTrustedContactVerified } = useNotificationTriggers();
   
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
   const [newContact, setNewContact] = useState({
     name: '',
     email: '',
-    relation: ''
+    relationship: ''
   });
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -47,24 +44,8 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const fetchTrustedContacts = async () => {
     try {
       setLoading(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
-      const { data, error } = await supabase
-        .from('trusted_contacts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        throw error;
-      }
-      
-      setContacts(data || []);
+      const fetchedContacts = await getTrustedContacts();
+      setContacts(fetchedContacts);
     } catch (error) {
       console.error('Error fetching trusted contacts:', error);
       toast({
@@ -109,31 +90,14 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         return;
       }
       
-      if (!newContact.relation.trim()) {
-        toast({
-          title: "Missing Information",
-          description: "Please specify your relationship with this contact",
-          variant: "destructive"
-        });
-        return;
-      }
-      
       setSubmitting(true);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
       // Check if email already exists
-      const { data: existingContacts } = await supabase
-        .from('trusted_contacts')
-        .select('email')
-        .eq('user_id', user.id)
-        .eq('email', newContact.email.toLowerCase());
+      const existingContact = contacts.find(c => 
+        c.email.toLowerCase() === newContact.email.toLowerCase()
+      );
       
-      if (existingContacts && existingContacts.length > 0) {
+      if (existingContact) {
         toast({
           title: "Duplicate Contact",
           description: "This email address is already in your trusted contacts list",
@@ -143,34 +107,29 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         return;
       }
       
-      const { data, error } = await supabase
-        .from('trusted_contacts')
-        .insert({
-          user_id: user.id,
-          name: newContact.name.trim(),
-          email: newContact.email.toLowerCase().trim(),
-          relation: newContact.relation.trim(),
-          verified: false,
-          verification_sent: false
-        })
-        .select()
-        .single();
+      const contact = await createTrustedContact({
+        name: newContact.name.trim(),
+        email: newContact.email.toLowerCase().trim(),
+        relationship: newContact.relationship || null
+      });
       
-      if (error) {
-        throw error;
+      if (!contact) {
+        throw new Error("Failed to create trusted contact");
       }
       
       // Clear form and close dialog
-      setNewContact({ name: '', email: '', relation: '' });
+      setNewContact({ name: '', email: '', relationship: '' });
       setFormOpen(false);
       
       // Refresh contacts list
       fetchTrustedContacts();
       onContactsChange();
       
-      // Send verification email (this would be implemented in a Supabase edge function)
+      // Send verification email
       try {
-        await sendVerificationEmail(data.id, newContact.name, newContact.email);
+        await sendVerificationRequest(contact.id);
+        // Trigger notification
+        await triggerTrustedContactAdded(contact.name);
       } catch (emailError) {
         console.error('Error sending verification email:', emailError);
       }
@@ -190,47 +149,19 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       setSubmitting(false);
     }
   };
-
-  const sendVerificationEmail = async (contactId: string, name: string, email: string) => {
-    // This would call a Supabase Edge Function to send the verification email
-    const verificationToken = crypto.randomUUID();
-    
-    // Save verification token to database
-    const { error } = await supabase
-      .from('contact_verifications')
-      .insert({
-        contact_id: contactId,
-        contact_type: 'trusted',
-        verification_token: verificationToken,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-      });
-    
-    if (error) {
-      throw error;
-    }
-    
-    // This would actually be done in a Supabase Edge Function
-    // For now, we'll just mark the verification as sent
-    const { error: updateError } = await supabase
-      .from('trusted_contacts')
-      .update({ verification_sent: true })
-      .eq('id', contactId);
-    
-    if (updateError) {
-      throw updateError;
-    }
-    
-    return true;
-  };
   
-  const handleResendVerification = async (contactId: string, name: string, email: string) => {
+  const handleResendVerification = async (contactId: string, name: string) => {
     try {
-      await sendVerificationEmail(contactId, name, email);
+      const success = await sendVerificationRequest(contactId);
       
-      toast({
-        title: "Verification Email Sent",
-        description: `A verification email has been sent to ${email}`
-      });
+      if (success) {
+        toast({
+          title: "Verification Email Sent",
+          description: `A verification email has been sent to ${name}`
+        });
+      } else {
+        throw new Error("Failed to send verification email");
+      }
     } catch (error) {
       console.error('Error sending verification email:', error);
       toast({
@@ -243,23 +174,20 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   
   const handleDeleteContact = async (contactId: string) => {
     try {
-      const { error } = await supabase
-        .from('trusted_contacts')
-        .delete()
-        .eq('id', contactId);
+      const success = await deleteTrustedContact(contactId);
       
-      if (error) {
-        throw error;
+      if (success) {
+        // Refresh contacts list
+        fetchTrustedContacts();
+        onContactsChange();
+        
+        toast({
+          title: "Contact Removed",
+          description: "The contact has been removed from your trusted contacts list"
+        });
+      } else {
+        throw new Error("Failed to remove trusted contact");
       }
-      
-      // Refresh contacts list
-      fetchTrustedContacts();
-      onContactsChange();
-      
-      toast({
-        title: "Contact Removed",
-        description: "The contact has been removed from your trusted contacts list"
-      });
     } catch (error) {
       console.error('Error removing trusted contact:', error);
       toast({
@@ -269,38 +197,9 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       });
     }
   };
-
-  // Mock for testing - this would be triggered by the verification link in the email
-  const mockVerifyContact = async (contactId: string) => {
-    try {
-      const { error } = await supabase
-        .from('trusted_contacts')
-        .update({ verified: true })
-        .eq('id', contactId);
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Refresh contacts list
-      fetchTrustedContacts();
-      onContactsChange();
-      
-      // Trigger notification
-      await triggerContactVerified();
-      
-      toast({
-        title: "Contact Verified",
-        description: "The contact has been verified successfully"
-      });
-    } catch (error) {
-      console.error('Error verifying trusted contact:', error);
-      toast({
-        title: "Error",
-        description: "Failed to verify trusted contact",
-        variant: "destructive"
-      });
-    }
+  
+  const isVerified = (contact: TrustedContact) => {
+    return contact.invitation_status === 'verified';
   };
   
   return (
@@ -325,7 +224,11 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
             </AlertDescription>
           </Alert>
 
-          {contacts.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin h-8 w-8 border-4 border-willtank-500 border-t-transparent rounded-full"></div>
+            </div>
+          ) : contacts.length === 0 ? (
             <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
               <Shield className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <h3 className="text-lg font-medium text-gray-900 mb-1">No trusted contacts yet</h3>
@@ -347,7 +250,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Relation</TableHead>
+                    <TableHead>Relationship</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -357,9 +260,9 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                     <TableRow key={contact.id}>
                       <TableCell className="font-medium">{contact.name}</TableCell>
                       <TableCell>{contact.email}</TableCell>
-                      <TableCell>{contact.relation}</TableCell>
+                      <TableCell>{contact.relationship || '-'}</TableCell>
                       <TableCell>
-                        {contact.verified ? (
+                        {isVerified(contact) ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                             <Check className="h-3.5 w-3.5 mr-1" /> Verified
                           </Badge>
@@ -370,11 +273,11 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                         )}
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        {!contact.verified && (
+                        {!isVerified(contact) && (
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleResendVerification(contact.id, contact.name, contact.email)}
+                            onClick={() => handleResendVerification(contact.id, contact.name)}
                           >
                             Resend
                           </Button>
@@ -387,18 +290,6 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                        
-                        {/* For development testing only - would be removed in production */}
-                        {!contact.verified && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-blue-50 text-blue-700 border-blue-200"
-                            onClick={() => mockVerifyContact(contact.id)}
-                          >
-                            Test Verify
-                          </Button>
-                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -452,12 +343,12 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="relation">Relationship</Label>
+              <Label htmlFor="relationship">Relationship</Label>
               <Input 
-                id="relation"
-                name="relation"
+                id="relationship"
+                name="relationship"
                 placeholder="e.g. Friend, Family Member, Colleague"
-                value={newContact.relation}
+                value={newContact.relationship}
                 onChange={handleInputChange}
               />
             </div>

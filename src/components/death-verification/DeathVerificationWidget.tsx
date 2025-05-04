@@ -1,62 +1,50 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, User, Check, AlertTriangle, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { differenceInDays, format, parseISO } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { format, formatDistanceToNow, addDays } from 'date-fns';
+import { parseISO } from 'date-fns';
+import { Shield, CheckSquare, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  getDeathVerificationSettings, 
-  getLatestCheckin, 
-  processCheckin, 
-  saveDeathVerificationSettings,
-  createInitialCheckin,
-  DeathVerificationCheckin
+import {
+  getDeathVerificationSettings,
+  getLatestCheckin,
+  performCheckin,
+  DeathVerificationCheckin,
+  DeathVerificationSettings
 } from '@/services/deathVerificationService';
+import { useNotificationTriggers } from '@/hooks/use-notification-triggers';
 
 export function DeathVerificationWidget() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const { triggerDeathVerificationCheckIn } = useNotificationTriggers();
   
-  const [loading, setLoading] = useState(true);
-  const [checkinLoading, setCheckinLoading] = useState(false);
-  const [checkinEnabled, setCheckinEnabled] = useState(false);
   const [checkin, setCheckin] = useState<DeathVerificationCheckin | null>(null);
-  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [settings, setSettings] = useState<DeathVerificationSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [checkingIn, setCheckingIn] = useState(false);
   
   useEffect(() => {
-    fetchVerificationStatus();
+    fetchData();
   }, []);
   
-  const fetchVerificationStatus = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
+      const fetchedSettings = await getDeathVerificationSettings();
+      const latestCheckin = await getLatestCheckin();
       
-      const settings = await getDeathVerificationSettings();
-      
-      if (settings) {
-        setCheckinEnabled(settings.check_in_enabled);
-        
-        if (settings.check_in_enabled) {
-          const latestCheckin = await getLatestCheckin();
-          
-          if (latestCheckin) {
-            setCheckin(latestCheckin);
-            
-            const nextCheckInDate = parseISO(latestCheckin.next_check_in);
-            const today = new Date();
-            const days = differenceInDays(nextCheckInDate, today);
-            setDaysRemaining(days);
-          }
-        } else {
-          // Reset checkin data when disabled
-          setCheckin(null);
-          setDaysRemaining(null);
-        }
-      }
+      setSettings(fetchedSettings);
+      setCheckin(latestCheckin);
     } catch (error) {
-      console.error('Error fetching verification status:', error);
+      console.error('Error fetching verification data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load check-in information",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -64,88 +52,92 @@ export function DeathVerificationWidget() {
   
   const handleCheckin = async () => {
     try {
-      setCheckinLoading(true);
+      setCheckingIn(true);
+      const newCheckin = await performCheckin();
       
-      const updatedCheckin = await processCheckin('alive');
-      
-      if (updatedCheckin) {
-        setCheckin(updatedCheckin);
-        
-        const nextCheckInDate = parseISO(updatedCheckin.next_check_in);
-        const today = new Date();
-        const days = differenceInDays(nextCheckInDate, today);
-        setDaysRemaining(days);
+      if (newCheckin) {
+        setCheckin(newCheckin);
+        await triggerDeathVerificationCheckIn();
         
         toast({
           title: "Check-in Successful",
-          description: "You have successfully checked in. Thank you!",
+          description: "Your check-in has been recorded successfully.",
+          variant: "default"
         });
       } else {
-        throw new Error("Failed to process check-in");
+        throw new Error("Failed to perform check-in");
       }
     } catch (error) {
-      console.error('Error processing check-in:', error);
+      console.error('Error during check-in:', error);
       toast({
         title: "Check-in Failed",
-        description: "There was an error processing your check-in. Please try again.",
+        description: "There was an error recording your check-in. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setCheckinLoading(false);
+      setCheckingIn(false);
     }
   };
   
-  const navigateToSettings = () => {
-    navigate('/check-ins');
+  // Get status based on next check-in date
+  const getStatus = () => {
+    if (!checkin || !settings) return 'unknown';
+    
+    const now = new Date();
+    const nextCheckIn = parseISO(checkin.next_check_in);
+    const gracePeriodEnd = addDays(nextCheckIn, settings.grace_period);
+    
+    if (now > gracePeriodEnd) {
+      return 'overdue';
+    } else if (now > nextCheckIn) {
+      return 'grace-period';
+    }
+    return 'active';
   };
   
+  const status = checkin && settings ? getStatus() : 'unknown';
+  
+  // If no settings or not enabled, show setup required
   if (loading) {
     return (
-      <Card className="w-full">
+      <Card className="animate-pulse">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Clock className="mr-2 h-5 w-5 text-willtank-600" />
-            Check-ins
-          </CardTitle>
-          <CardDescription>Loading check-in status...</CardDescription>
+          <div className="h-7 w-3/4 bg-gray-200 rounded"></div>
+          <div className="h-4 w-1/2 bg-gray-200 rounded"></div>
         </CardHeader>
         <CardContent>
-          <div className="h-20 flex items-center justify-center">
-            <div className="animate-spin h-6 w-6 border-2 border-willtank-600 border-t-transparent rounded-full"></div>
-          </div>
+          <div className="h-12 w-full bg-gray-200 rounded mb-4"></div>
+          <div className="h-20 w-full bg-gray-200 rounded"></div>
         </CardContent>
       </Card>
     );
   }
   
-  if (!checkinEnabled) {
+  // If death verification is not enabled
+  if (!settings?.check_in_enabled) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Clock className="mr-2 h-5 w-5 text-willtank-600" />
-            Check-ins
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center text-amber-600">
+            <Shield className="h-5 w-5 mr-2" />
+            Check-In System Disabled
           </CardTitle>
-          <CardDescription>Protect your will with our automated check-in system</CardDescription>
+          <CardDescription>
+            Enable the Check-In System to protect your will and digital legacy
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="p-4 bg-amber-50 rounded-md">
-            <h3 className="font-medium text-amber-800 flex items-center mb-2">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Check-in system is disabled
-            </h3>
-            <p className="text-sm text-amber-700">
-              Enable check-ins using the toggle in settings to ensure your will is only accessible after verified absence confirmation.
-            </p>
-          </div>
+          <Alert className="bg-amber-50 text-amber-800 border-amber-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Not Protected</AlertTitle>
+            <AlertDescription>
+              Your will is not protected by our check-in verification system. Enable check-ins in the settings tab below to ensure your will is only accessible upon verified absence.
+            </AlertDescription>
+          </Alert>
         </CardContent>
         <CardFooter>
-          <Button 
-            variant="link" 
-            onClick={navigateToSettings} 
-            className="px-0"
-          >
-            Go to Settings
+          <Button variant="outline" onClick={() => window.location.hash = '#settings'} className="w-full">
+            Configure Check-In Settings
           </Button>
         </CardFooter>
       </Card>
@@ -153,83 +145,113 @@ export function DeathVerificationWidget() {
   }
   
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <Clock className="mr-2 h-5 w-5 text-willtank-600" />
-          Check-ins
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className={`flex items-center ${
+          status === 'active' ? 'text-green-600' : 
+          status === 'grace-period' ? 'text-amber-600' : 
+          'text-red-600'
+        }`}>
+          <Shield className="h-5 w-5 mr-2" />
+          {status === 'active' 
+            ? 'Check-In System Active' 
+            : status === 'grace-period' 
+              ? 'Check-In Required' 
+              : 'Check-In Overdue'}
         </CardTitle>
         <CardDescription>
-          {checkin && daysRemaining !== null 
-            ? `Next check-in in ${daysRemaining} days`
-            : 'Protect your will with regular check-ins'}
+          {checkin 
+            ? `Last checked in ${formatDistanceToNow(parseISO(checkin.checked_in_at), { addSuffix: true })}`
+            : 'No previous check-ins found'}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {checkin ? (
-          <>
-            <div className={`p-4 ${daysRemaining && daysRemaining <= 2 ? 'bg-amber-50' : 'bg-green-50'} rounded-md mb-4`}>
-              <h3 className={`font-medium flex items-center mb-2 ${daysRemaining && daysRemaining <= 2 ? 'text-amber-800' : 'text-green-800'}`}>
-                {daysRemaining && daysRemaining <= 2 ? (
-                  <>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Check-in required soon
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Your status is confirmed
-                  </>
-                )}
-              </h3>
-              <p className={`text-sm ${daysRemaining && daysRemaining <= 2 ? 'text-amber-700' : 'text-green-700'}`}>
-                {daysRemaining && daysRemaining <= 2 
-                  ? `Your next check-in is in ${daysRemaining} days. Please confirm you're alive by clicking the button below.`
-                  : `Last check-in: ${format(parseISO(checkin.checked_in_at), 'PPP')}. Your next check-in is on ${format(parseISO(checkin.next_check_in), 'PPP')}.`}
-              </p>
+      
+      <CardContent className="pb-2">
+        {status === 'active' && (
+          <Alert className="bg-green-50 text-green-800 border-green-200 mb-4">
+            <CheckSquare className="h-4 w-4" />
+            <AlertTitle>Status: Protected</AlertTitle>
+            <AlertDescription>
+              Your will is protected by our check-in system. Next check-in due {checkin ? formatDistanceToNow(parseISO(checkin.next_check_in), { addSuffix: true }) : 'soon'}.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {status === 'grace-period' && (
+          <Alert className="bg-amber-50 text-amber-800 border-amber-200 mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Check-In Needed</AlertTitle>
+            <AlertDescription>
+              Your check-in is {checkin ? formatDistanceToNow(parseISO(checkin.next_check_in)) : ''} overdue. Please check in soon to prevent the verification process from starting.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {status === 'overdue' && (
+          <Alert className="bg-red-50 text-red-800 border-red-200 mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Check-In Critically Overdue</AlertTitle>
+            <AlertDescription>
+              Your check-in is significantly overdue. The verification process may have started. Please check in immediately.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between items-center text-sm mb-1">
+              <span className="text-gray-500 flex items-center">
+                <Clock className="h-4 w-4 mr-1 text-gray-400" />
+                Next check-in due
+              </span>
+              <span className={`font-medium ${
+                status === 'active' ? 'text-green-600' : 
+                status === 'grace-period' ? 'text-amber-600' : 
+                'text-red-600'
+              }`}>
+                {checkin ? format(parseISO(checkin.next_check_in), 'PPP') : 'Not set'}
+              </span>
             </div>
             
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-500 flex items-center">
-                <User className="h-4 w-4 mr-1" />
-                Status: <span className="font-medium text-green-600 ml-1">Alive & Well</span>
-              </div>
-              
-              <Button
-                onClick={handleCheckin}
-                disabled={checkinLoading}
-                size="sm"
-                variant={daysRemaining && daysRemaining <= 2 ? "default" : "outline"}
-              >
-                {checkinLoading ? (
-                  <span className="flex items-center">
-                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
-                    Processing...
-                  </span>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    I'm Alive
-                  </>
-                )}
-              </Button>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500">Grace period ends</span>
+              <span className="font-medium">
+                {checkin && settings 
+                  ? format(addDays(parseISO(checkin.next_check_in), settings.grace_period), 'PPP')
+                  : 'Not set'}
+              </span>
             </div>
-          </>
-        ) : (
-          <div className="p-4 bg-amber-50 rounded-md">
-            <h3 className="font-medium text-amber-800 flex items-center mb-2">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Initial check-in required
-            </h3>
-            <p className="text-sm text-amber-700">
-              Please confirm your status to activate the death verification system.
-            </p>
           </div>
-        )}
+          
+          <Separator />
+          
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Check-in frequency</span>
+            <span>{settings?.check_in_frequency} days</span>
+          </div>
+          
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">Grace period</span>
+            <span>{settings?.grace_period} days</span>
+          </div>
+        </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="link" onClick={navigateToSettings} className="px-0">
-          Check-in Settings
+      
+      <CardFooter className="pt-4">
+        <Button 
+          onClick={handleCheckin} 
+          disabled={checkingIn}
+          className="w-full"
+          variant={status === 'active' ? 'outline' : 'default'}
+        >
+          {checkingIn ? (
+            <>
+              <span className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></span>
+              Checking In...
+            </>
+          ) : (
+            'Check In Now'
+          )}
         </Button>
       </CardFooter>
     </Card>

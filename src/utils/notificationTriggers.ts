@@ -1,68 +1,42 @@
+
 import { createSystemNotification } from '@/services/notificationService';
 
-// Define valid event types for type safety
-export type EventType = 
-  | 'will_created' 
-  | 'will_updated' 
-  | 'document_uploaded' 
-  | 'beneficiary_added' 
-  | 'executor_added'
-  | 'security'
-  | 'subscription_update'
-  | 'account_update'
-  | 'will_signed'
-  | 'will_deleted'
-  | 'document_deleted'
-  | 'document_shared'
-  | 'contact_verified'
-  | 'trusted_contact_added'
-  | 'trusted_contact_verified'
-  | 'security_key_generated'
-  | 'subscription_changed'
-  | 'subscription_renewal'
-  | 'payment_failed'
-  | 'system'
-  | 'success'
-  | 'warning'
-  | 'info'
-  | 'item_saved';
-
-// Will-related notifications
+// ============ Will Management Notifications ============
 export const triggerWillCreatedNotification = async () => {
   return await createSystemNotification('will_created', {
-    title: 'Will Created Successfully',
-    description: 'Your will has been created and saved securely.'
+    title: 'Will Created',
+    description: 'Your will has been successfully created.'
   });
 };
 
 export const triggerWillUpdatedNotification = async (details?: string) => {
   return await createSystemNotification('will_updated', {
     title: 'Will Updated',
-    description: details || 'Your will has been updated and saved securely.'
+    description: details || 'Your will has been successfully updated.'
   });
 };
 
 export const triggerWillSignedNotification = async () => {
   return await createSystemNotification('will_signed', {
     title: 'Will Signed',
-    description: 'Your will has been digitally signed and witnesses have been notified.'
+    description: 'Your will has been successfully signed and witnessed.'
   });
 };
 
 export const triggerWillDeletedNotification = async () => {
   return await createSystemNotification('will_deleted', {
     title: 'Will Deleted',
-    description: 'Your will has been deleted from our system.'
+    description: 'Your will has been permanently deleted.'
   });
 };
 
-// Document-related notifications
+// ============ Document Management Notifications ============
 export const triggerDocumentUploadedNotification = async (documentName?: string) => {
   return await createSystemNotification('document_uploaded', {
     title: 'Document Uploaded',
     description: documentName 
-      ? `"${documentName}" has been uploaded successfully.` 
-      : 'Your document has been uploaded successfully.'
+      ? `"${documentName}" has been successfully uploaded.` 
+      : 'A new document has been successfully uploaded.'
   });
 };
 
@@ -70,8 +44,8 @@ export const triggerDocumentDeletedNotification = async (documentName?: string) 
   return await createSystemNotification('document_deleted', {
     title: 'Document Deleted',
     description: documentName 
-      ? `"${documentName}" has been deleted.` 
-      : 'Your document has been deleted.'
+      ? `"${documentName}" has been permanently deleted.` 
+      : 'A document has been permanently deleted.'
   });
 };
 
@@ -79,12 +53,12 @@ export const triggerDocumentSharedNotification = async (documentName?: string) =
   return await createSystemNotification('document_shared', {
     title: 'Document Shared',
     description: documentName 
-      ? `"${documentName}" has been shared successfully.` 
-      : 'Your document has been shared successfully.'
+      ? `"${documentName}" has been shared.` 
+      : 'A document has been shared.'
   });
 };
 
-// Contact-related notifications
+// ============ Contact Management Notifications ============
 export const triggerBeneficiaryAddedNotification = async (name?: string) => {
   return await createSystemNotification('beneficiary_added', {
     title: 'Beneficiary Added',
@@ -108,7 +82,7 @@ export const triggerContactVerifiedNotification = async (name?: string) => {
     title: 'Contact Verified',
     description: name 
       ? `${name} has verified their contact information.` 
-      : 'A contact has been verified successfully.'
+      : 'A contact has verified their information.'
   });
 };
 
@@ -117,7 +91,7 @@ export const triggerTrustedContactAddedNotification = async (name?: string) => {
     title: 'Trusted Contact Added',
     description: name 
       ? `${name} has been added as a trusted contact.` 
-      : 'A new trusted contact has been added for verification purposes.'
+      : 'A new trusted contact has been added.'
   });
 };
 
@@ -125,21 +99,21 @@ export const triggerTrustedContactVerifiedNotification = async (name?: string) =
   return await createSystemNotification('trusted_contact_verified', {
     title: 'Trusted Contact Verified',
     description: name 
-      ? `${name} has verified their contact information.` 
-      : 'A trusted contact has verified their information.'
+      ? `${name} has verified their role as a trusted contact.` 
+      : 'A trusted contact has verified their role.'
   });
 };
 
-// Security-related notifications
+// ============ Security Notifications ============
 export const triggerSecurityKeyGeneratedNotification = async () => {
   return await createSystemNotification('security_key_generated', {
-    title: 'Security Keys Generated',
-    description: 'New security keys have been generated for your account.'
+    title: 'Security Key Generated',
+    description: 'A new security key has been generated for your account.'
   });
 };
 
 export const triggerNewLoginNotification = async (deviceInfo?: string) => {
-  return await createSystemNotification('security', {
+  return await createSystemNotification('new_login', {
     title: 'New Login Detected',
     description: deviceInfo 
       ? `A new login was detected from ${deviceInfo}.` 
@@ -148,13 +122,13 @@ export const triggerNewLoginNotification = async (deviceInfo?: string) => {
 };
 
 export const triggerPasswordChangedNotification = async () => {
-  return await createSystemNotification('security', {
+  return await createSystemNotification('password_changed', {
     title: 'Password Changed',
-    description: 'Your account password has been changed successfully.'
+    description: 'Your account password has been changed.'
   });
 };
 
-// Subscription-related notifications
+// ============ Subscription Notifications ============
 export const triggerSubscriptionChangedNotification = async (newPlan?: string) => {
   return await createSystemNotification('subscription_changed', {
     title: 'Subscription Changed',
@@ -168,53 +142,53 @@ export const triggerSubscriptionRenewalNotification = async (daysUntilRenewal?: 
   return await createSystemNotification('subscription_renewal', {
     title: 'Subscription Renewal',
     description: daysUntilRenewal 
-      ? `Your subscription will be renewed in ${daysUntilRenewal} days.` 
-      : 'Your subscription will be renewed soon.'
+      ? `Your subscription will renew in ${daysUntilRenewal} days.` 
+      : 'Your subscription will renew soon.'
   });
 };
 
 export const triggerPaymentFailedNotification = async () => {
   return await createSystemNotification('payment_failed', {
     title: 'Payment Failed',
-    description: 'We were unable to process your payment. Please update your payment method.'
+    description: 'We were unable to process your last payment. Please update your payment information.'
   });
 };
 
-// System notifications
+// ============ System Notifications ============
 export const triggerSystemMaintenanceNotification = async (scheduledTime?: string) => {
-  return await createSystemNotification('system', {
+  return await createSystemNotification('system_maintenance', {
     title: 'Scheduled Maintenance',
     description: scheduledTime 
-      ? `System maintenance is scheduled for ${scheduledTime}.` 
-      : 'System maintenance is scheduled. Some features may be temporarily unavailable.'
+      ? `WillTank will be undergoing maintenance on ${scheduledTime}.` 
+      : 'WillTank will be undergoing scheduled maintenance soon.'
   });
 };
 
 export const triggerSystemUpdateNotification = async () => {
-  return await createSystemNotification('system', {
-    title: 'System Updated',
-    description: 'Our system has been updated with new features and improvements.'
+  return await createSystemNotification('system_update', {
+    title: 'System Update',
+    description: 'WillTank has been updated with new features and improvements.'
   });
 };
 
-// Death verification notifications
+// ============ Death Verification Notifications ============
 export const triggerDeathVerificationSetupNotification = async () => {
-  return await createSystemNotification('security', {
-    title: 'Death Verification Set Up',
+  return await createSystemNotification('death_verification_setup', {
+    title: 'Death Verification Setup',
     description: 'Your death verification system has been set up successfully.'
   });
 };
 
 export const triggerDeathVerificationCheckInNotification = async () => {
-  return await createSystemNotification('security', {
+  return await createSystemNotification('death_verification_checkin', {
     title: 'Check-in Confirmed',
-    description: 'You have successfully completed your scheduled check-in.'
+    description: 'Your regular check-in has been recorded successfully.'
   });
 };
 
 export const triggerDeathVerificationMissedCheckInNotification = async () => {
-  return await createSystemNotification('security', {
-    title: 'Check-in Missed',
-    description: 'You missed a scheduled check-in. Please check in as soon as possible to avoid triggering the verification process.'
+  return await createSystemNotification('death_verification_missed_checkin', {
+    title: 'Missed Check-in',
+    description: 'You missed your scheduled check-in. Please check in soon to prevent the verification process from starting.'
   });
 };

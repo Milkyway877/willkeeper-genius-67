@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { useNotificationTriggers } from '@/hooks/use-notification-triggers';
 
 export interface TrustedContact {
   id: string;
@@ -9,11 +8,11 @@ export interface TrustedContact {
   email: string;
   phone?: string | null;
   relationship?: string | null;
-  created_at?: string;
-  updated_at?: string;
   invitation_status?: string | null;
   invitation_sent_at?: string | null;
   invitation_responded_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
@@ -43,7 +42,11 @@ export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
   }
 };
 
-export const createTrustedContact = async (contact: Omit<TrustedContact, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<TrustedContact | null> => {
+export const createTrustedContact = async (contact: {
+  name: string;
+  email: string;
+  relationship?: string | null;
+}): Promise<TrustedContact | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -53,8 +56,11 @@ export const createTrustedContact = async (contact: Omit<TrustedContact, 'id' | 
     }
     
     const newContact = {
-      ...contact,
-      user_id: session.user.id
+      name: contact.name,
+      email: contact.email,
+      relation: contact.relationship,
+      user_id: session.user.id,
+      invitation_status: 'pending'
     };
     
     const { data, error } = await supabase
@@ -67,10 +73,6 @@ export const createTrustedContact = async (contact: Omit<TrustedContact, 'id' | 
       console.error('Error creating trusted contact:', error);
       return null;
     }
-
-    // Trigger notification
-    const notificationTriggers = useNotificationTriggers();
-    await notificationTriggers.triggerTrustedContactAdded(contact.name);
     
     return data;
   } catch (error) {
@@ -182,10 +184,6 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
           invitation_status: 'pending'
         })
         .eq('id', contactId);
-        
-      // Trigger notification
-      const notificationTriggers = useNotificationTriggers();
-      await notificationTriggers.triggerTrustedContactAdded(contact.name);
       
       return true;
     } catch (error) {
@@ -197,44 +195,3 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
     return false;
   }
 };
-
-// Create SQL migration for trusted_contacts table
-export const createTrustedContactsTableSQL = `
-CREATE TABLE IF NOT EXISTS public.trusted_contacts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT,
-  relationship TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  invitation_status TEXT,
-  invitation_sent_at TIMESTAMP WITH TIME ZONE,
-  invitation_responded_at TIMESTAMP WITH TIME ZONE,
-  UNIQUE(user_id, email)
-);
-
--- Set up RLS policies
-ALTER TABLE public.trusted_contacts ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own trusted contacts"
-  ON public.trusted_contacts
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own trusted contacts"
-  ON public.trusted_contacts
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own trusted contacts"
-  ON public.trusted_contacts
-  FOR UPDATE
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own trusted contacts"
-  ON public.trusted_contacts
-  FOR DELETE
-  USING (auth.uid() = user_id);
-`;
