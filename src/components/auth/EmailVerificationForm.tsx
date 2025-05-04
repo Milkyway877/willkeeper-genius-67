@@ -162,7 +162,7 @@ export function EmailVerificationForm() {
         </Button>
         
         {attempts > 2 && (
-          <Alert variant="warning" className="mt-4">
+          <Alert variant="default" className="mt-4">
             <AlertDescription>
               Having trouble? You can request a new code or check your spam folder.
             </AlertDescription>
