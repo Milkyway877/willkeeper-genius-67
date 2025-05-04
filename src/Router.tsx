@@ -4,6 +4,14 @@ import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import Documentation from './pages/Documentation';
+import API from './pages/API';
+import CorporateDocumentation from './pages/corporate/Documentation';
+import GettingStarted from './pages/corporate/documentation/GettingStarted';
+import UserGuides from './pages/corporate/documentation/UserGuides';
+import APIReference from './pages/corporate/documentation/API';
+import Security from './pages/corporate/documentation/Security';
+import Integrations from './pages/corporate/documentation/Integrations';
 
 // Create placeholder pages for development
 const Home = () => <div>Home Page</div>;
@@ -46,6 +54,18 @@ function AppRouter() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/search" element={<SearchPage />} />
+        
+        {/* Documentation routes */}
+        <Route path="/documentation" element={<Documentation />} />
+        <Route path="/api" element={<API />} />
+        
+        {/* Corporate documentation routes */}
+        <Route path="/corporate/documentation" element={<CorporateDocumentation />} />
+        <Route path="/corporate/documentation/getting-started" element={<GettingStarted />} />
+        <Route path="/corporate/documentation/user-guides" element={<UserGuides />} />
+        <Route path="/corporate/documentation/api" element={<APIReference />} />
+        <Route path="/corporate/documentation/security" element={<Security />} />
+        <Route path="/corporate/documentation/integrations" element={<Integrations />} />
         
         {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
         <Route element={<AuthLayoutWrapper />}>
