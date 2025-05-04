@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -12,7 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { useEffect as useEffectOnce } from 'usehooks-ts';
+import { useEffectOnce } from 'usehooks-ts';
+import { toast } from '@/hooks/use-toast';
 
 interface LayoutProps {
   children: React.ReactNode;
