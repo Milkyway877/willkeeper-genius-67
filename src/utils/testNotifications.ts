@@ -1,6 +1,6 @@
-
 import { createSystemNotification, createCheckInNotification } from '@/services/notificationService';
 import { toast } from '@/hooks/use-toast';
+import { supabase, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 
 export const createTestNotification = async () => {
   try {
