@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Executor {
@@ -183,6 +182,48 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'u
     return data;
   } catch (error) {
     console.error('Error in createBeneficiary:', error);
+    return null;
+  }
+};
+
+export const updateExecutor = async (id: string, updates: Partial<Executor>): Promise<Executor | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('will_executors')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating executor:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in updateExecutor:', error);
+    return null;
+  }
+};
+
+export const updateBeneficiary = async (id: string, updates: Partial<Beneficiary>): Promise<Beneficiary | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('will_beneficiaries')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating beneficiary:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in updateBeneficiary:', error);
     return null;
   }
 };

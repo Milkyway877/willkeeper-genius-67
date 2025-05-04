@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
@@ -53,11 +54,11 @@ function AppRouter() {
         <Route path="/check-ins" element={<CheckIns />} />
         <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
 
-        {/* Add the route in your router configuration */}
+        {/* Fix the syntax for the route declaration */}
         <Route
-          path: '/verify/trusted-contact/:token',
-          element: <VerifyTrustedContact />
-        },
+          path="/verify/trusted-contact/:token"
+          element={<VerifyTrustedContact />}
+        />
         
         <Route path="*" element={<NotFound />} />
       </Routes>
