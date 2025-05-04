@@ -9,16 +9,13 @@ import {
   getSupabaseClient
 } from "../_shared/auth-helper.ts";
 import { sendVerificationEmail } from "../_shared/email-helper.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, handleCorsRequest } from "../_shared/cors.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  const corsResponse = handleCorsRequest(req);
+  if (corsResponse) {
+    return corsResponse;
   }
 
   try {
