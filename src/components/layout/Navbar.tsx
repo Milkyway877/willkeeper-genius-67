@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -33,7 +34,10 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const { profile } = useUserProfile();
   const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
-  const { unreadCount } = useNotifications();
+  
+  // Only use notifications context when authenticated
+  const notificationsData = isAuthenticated ? useNotifications() : { unreadCount: 0 };
+  const { unreadCount } = notificationsData;
 
   const handleSignOut = async () => {
     try {
