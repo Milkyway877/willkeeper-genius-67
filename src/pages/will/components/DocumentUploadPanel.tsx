@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,11 +9,14 @@ import {
   X, 
   RefreshCw, 
   Check,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { getDocumentUrl, deleteWillDocument } from '@/services/willService';
 
 interface DocumentUploadPanelProps {
   willId: string;
@@ -166,12 +168,88 @@ export function DocumentUploadPanel({
     }
   };
 
-  const handleRemoveDocument = (id: string) => {
-    setUploadedDocuments(prev => {
-      const filtered = prev.filter(doc => doc.id !== id);
-      onDocumentsUploaded(filtered.map(doc => doc.path));
-      return filtered;
-    });
+  const handleRemoveDocument = async (id: string, path: string) => {
+    try {
+      // Create a document object with the minimum required properties for deletion
+      const documentToDelete = {
+        id,
+        file_path: path,
+        will_id: willId,
+        user_id: "",
+        file_name: "",
+        file_size: 0,
+        file_type: "",
+        created_at: ""
+      };
+      
+      console.log(`Attempting to delete document: ${id}, path: ${path}`);
+      const success = await deleteWillDocument(documentToDelete);
+      
+      if (success) {
+        setUploadedDocuments(prev => {
+          const filtered = prev.filter(doc => doc.id !== id);
+          onDocumentsUploaded(filtered.map(doc => doc.path));
+          return filtered;
+        });
+        
+        toast({
+          title: "Document Removed",
+          description: "Document has been removed successfully."
+        });
+      } else {
+        toast({
+          title: "Delete Failed",
+          description: "Could not delete the document. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Delete Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const handlePreviewDocument = async (path: string, name: string) => {
+    try {
+      // Create a document object with the minimum required properties for URL retrieval
+      const documentForPreview = {
+        id: "",
+        file_path: path,
+        will_id: willId,
+        user_id: "",
+        file_name: name,
+        file_size: 0,
+        file_type: "",
+        created_at: ""
+      };
+      
+      console.log(`Getting preview URL for document: ${path}`);
+      const url = await getDocumentUrl(documentForPreview);
+      
+      if (!url) {
+        console.error('No URL returned for document preview');
+        toast({
+          title: "Preview Failed",
+          description: "Could not generate preview link",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Open the document in a new tab
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Error previewing document:', error);
+      toast({
+        title: "Preview Error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleBrowseClick = () => {
@@ -238,13 +316,23 @@ export function DocumentUploadPanel({
                     </div>
                   </div>
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveDocument(doc.id)}
-                  >
-                    <X className="h-4 w-4 text-gray-500" />
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handlePreviewDocument(doc.path, doc.name)}
+                    >
+                      <Eye className="h-4 w-4 text-gray-500" />
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveDocument(doc.id, doc.path)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
