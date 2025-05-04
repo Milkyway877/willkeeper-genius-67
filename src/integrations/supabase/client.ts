@@ -25,6 +25,26 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
     // If there's no session, verification is required
     if (!data.session) return true;
     
+    // Get user security record to check if this session has been verified
+    const { data: securityData, error } = await supabase
+      .from('user_security')
+      .select('last_verified')
+      .eq('user_id', data.session.user.id)
+      .single();
+      
+    // If we found a security record with a recent verification, don't require re-verification
+    if (securityData?.last_verified) {
+      const lastVerified = new Date(securityData.last_verified);
+      const currentTime = new Date();
+      const hoursSinceVerification = (currentTime.getTime() - lastVerified.getTime()) / (1000 * 60 * 60);
+      
+      // If verified in the last hour, don't require verification
+      if (hoursSinceVerification <= 1) {
+        console.log("Recent verification found, not requiring re-verification");
+        return false;
+      }
+    }
+    
     // Use created_at from user.created_at as fallback since Session might not have created_at
     const sessionCreatedAt = new Date(data.session.user?.created_at || Date.now());
     const currentTime = new Date();

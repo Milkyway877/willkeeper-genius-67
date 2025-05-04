@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -169,6 +168,9 @@ export default function EmailVerification() {
                     failed_login_attempts: 0
                   });
               }
+              
+              // Set a flag in localStorage that we can check in Layout.tsx
+              localStorage.setItem('session_verified', 'true');
             }
           } catch (securityError) {
             console.error("Error updating security record:", securityError);
@@ -294,6 +296,7 @@ export default function EmailVerification() {
                       }}
                       loading={isLoading}
                       autoSubmit={false}
+                      useFormElement={false} // Use div instead of form to avoid nesting forms
                     />
                   </FormControl>
                 </FormItem>

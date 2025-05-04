@@ -9,13 +9,15 @@ interface TwoFactorInputProps {
   loading?: boolean;
   error?: string | null;
   autoSubmit?: boolean;
+  useFormElement?: boolean; // New prop to control whether to use form or div
 }
 
 export function TwoFactorInput({ 
   onSubmit, 
   loading = false, 
   error = null,
-  autoSubmit = true
+  autoSubmit = true,
+  useFormElement = true // Default to using form element for backward compatibility
 }: TwoFactorInputProps) {
   const [otp, setOtp] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -61,45 +63,59 @@ export function TwoFactorInput({
     }
   };
   
-  return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-4">
-        <div className="flex justify-center">
-          <InputOTP 
-            value={otp} 
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            maxLength={6}
-            disabled={loading}
-          >
-            <InputOTPGroup>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <InputOTPSlot key={i} index={i} />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-        
-        {localError && (
-          <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
-        )}
-        
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={otp.length !== 6 || loading}
+  const Content = () => (
+    <div className="space-y-4">
+      <div className="flex justify-center">
+        <InputOTP 
+          value={otp} 
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          maxLength={6}
+          disabled={loading}
         >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
-            </>
-          ) : (
-            <>
-              Verify <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
+          <InputOTPGroup>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <InputOTPSlot key={i} index={i} />
+            ))}
+          </InputOTPGroup>
+        </InputOTP>
       </div>
+      
+      {localError && (
+        <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
+      )}
+      
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={otp.length !== 6 || loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+          </>
+        ) : (
+          <>
+            Verify <ArrowRight className="ml-2 h-4 w-4" />
+          </>
+        )}
+      </Button>
+    </div>
+  );
+  
+  // Use either a form or a div based on the prop
+  return useFormElement ? (
+    <form onSubmit={handleSubmit}>
+      <Content />
     </form>
+  ) : (
+    <div onClick={(e) => {
+      // Only call handleSubmit for button clicks
+      if ((e.target as HTMLElement).tagName === 'BUTTON') {
+        handleSubmit(e);
+      }
+    }}>
+      <Content />
+    </div>
   );
 }
