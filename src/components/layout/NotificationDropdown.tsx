@@ -26,7 +26,8 @@ export function NotificationDropdown() {
     markAsRead, 
     unreadCount, 
     fetchNotifications, 
-    loading 
+    loading,
+    hasUnread
   } = useNotifications();
   
   // Update countdown value when unreadCount changes
@@ -68,7 +69,8 @@ export function NotificationDropdown() {
   
   // Refresh notifications when dropdown is opened
   useEffect(() => {
-    if (isOpen && fetchNotifications && Date.now() - lastFetched > 30000) {
+    if (isOpen && fetchNotifications && Date.now() - lastFetched > 10000) { // Reduced from 30s to 10s
+      console.log('Refreshing notifications in dropdown');
       fetchNotifications();
       setLastFetched(Date.now());
     }
@@ -78,6 +80,7 @@ export function NotificationDropdown() {
     e.stopPropagation();
     e.preventDefault(); // Prevent dropdown from closing
     try {
+      console.log('Marking notification as read:', id);
       const success = await markAsRead(id);
       if (!success) {
         toast({
@@ -90,6 +93,16 @@ export function NotificationDropdown() {
       console.error("Error marking notification as read:", error);
     }
   };
+
+  // Log notification state for debugging
+  useEffect(() => {
+    console.log('Notification state:', {
+      count: notifications.length,
+      unreadCount,
+      hasUnread,
+      loading
+    });
+  }, [notifications, unreadCount, hasUnread, loading]);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>

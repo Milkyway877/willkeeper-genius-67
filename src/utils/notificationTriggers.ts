@@ -192,3 +192,31 @@ export const triggerDeathVerificationMissedCheckInNotification = async () => {
     description: 'You missed your scheduled check-in. Please check in soon to prevent the verification process from starting.'
   });
 };
+
+// ============ Check-in Notifications ============
+export const triggerCheckInCompletedNotification = async (date?: string) => {
+  return await createSystemNotification('check_in_completed', {
+    title: 'Check-In Completed',
+    description: date 
+      ? `You have successfully completed your check-in on ${date}.` 
+      : 'You have successfully completed your check-in.'
+  });
+};
+
+export const triggerCheckInMissedNotification = async (date?: string) => {
+  return await createSystemNotification('check_in_missed', {
+    title: 'Check-In Missed',
+    description: date 
+      ? `You missed your scheduled check-in on ${date}.` 
+      : 'You missed your scheduled check-in.'
+  });
+};
+
+export const triggerCheckInScheduledNotification = async (date?: string) => {
+  return await createSystemNotification('check_in_scheduled', {
+    title: 'Check-In Scheduled',
+    description: date 
+      ? `Your next check-in is scheduled for ${date}.` 
+      : 'Your next check-in has been scheduled.'
+  });
+};

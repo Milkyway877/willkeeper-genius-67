@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   description TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('success', 'warning', 'info', 'security')),
   read BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Add indexes for better performance
@@ -62,3 +63,17 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 
 -- Ensure the notifications table has replica identity full for realtime updates
 ALTER TABLE public.notifications REPLICA IDENTITY FULL;
+
+-- Force redeployment of the edge function
+SELECT pg_notify('supabase_functions', 'reload:create-notification');
+
+-- Update the create-notification edge function permissions
+DROP FUNCTION IF EXISTS create_notification_for_user();
+CREATE FUNCTION create_notification_for_user() 
+RETURNS VOID AS $$
+BEGIN
+  GRANT EXECUTE ON FUNCTION create_notification TO anon, authenticated, service_role;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+SELECT create_notification_for_user();

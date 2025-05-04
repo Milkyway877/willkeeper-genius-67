@@ -1,5 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 export interface Notification {
   id: string;
@@ -40,7 +42,10 @@ export type EventType =
   | 'success'
   | 'warning'
   | 'security'
-  | 'item_saved';
+  | 'item_saved'
+  | 'check_in_completed'
+  | 'check_in_missed'
+  | 'check_in_scheduled';
 
 export const getNotifications = async (): Promise<Notification[]> => {
   try {
@@ -138,12 +143,14 @@ export const createSystemNotification = async (
       case 'trusted_contact_verified':
       case 'contact_verified':
       case 'trusted_contact_added':
+      case 'check_in_completed':
         notificationType = 'success';
         break;
       case 'will_deleted':
       case 'document_deleted':
       case 'warning':
       case 'death_verification_missed_checkin':
+      case 'check_in_missed':
         notificationType = 'warning';
         break;
       case 'new_login':
@@ -156,8 +163,11 @@ export const createSystemNotification = async (
         notificationType = 'info';
     }
     
+    console.log(`Creating notification: ${eventType} - ${details.title} (${notificationType})`);
+    
     // Try the RPC method first
     try {
+      console.log('Attempting to create notification via RPC method...');
       const { data: notificationId, error: rpcError } = await supabase.rpc(
         'create_notification',
         {
@@ -172,6 +182,8 @@ export const createSystemNotification = async (
         console.warn('RPC method failed, using fallback:', rpcError);
         throw new Error('RPC method failed');
       }
+      
+      console.log('RPC method succeeded with notification ID:', notificationId);
       
       if (notificationId) {
         // Fetch the newly created notification to return it
@@ -190,11 +202,13 @@ export const createSystemNotification = async (
     
     // Edge function fallback
     try {
+      console.log('Attempting to create notification via edge function...');
       const response = await fetch(`${window.location.origin}/functions/v1/create-notification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_PUBLISHABLE_KEY || ''
         },
         body: JSON.stringify({
           title: details.title,
@@ -204,11 +218,21 @@ export const createSystemNotification = async (
       });
       
       if (!response.ok) {
-        console.warn('Edge function failed, using direct insert:', response.status);
+        console.warn('Edge function failed with status:', response.status);
+        
+        // Try to get more details from the response
+        try {
+          const errorBody = await response.text();
+          console.warn('Edge function error response:', errorBody);
+        } catch (e) {
+          console.warn('Could not parse edge function error response');
+        }
+        
         throw new Error(`Edge function returned ${response.status}`);
       }
       
       const responseData = await response.json();
+      console.log('Edge function succeeded with response:', responseData);
       
       // Use the notification ID returned by the edge function
       if (responseData.notification_id) {
@@ -228,6 +252,7 @@ export const createSystemNotification = async (
     
     // Direct insert fallback as last resort
     try {
+      console.log('Attempting to create notification via direct insert...');
       const { data: directInsert, error: insertError } = await supabase
         .from('notifications')
         .insert({
@@ -242,9 +267,18 @@ export const createSystemNotification = async (
         
       if (insertError) {
         console.error('Direct insert also failed:', insertError);
+        
+        // Last resort: Show a toast notification even if we can't save it
+        toast({
+          title: details.title,
+          description: details.description,
+          variant: notificationType === 'security' ? 'destructive' : 'default',
+        });
+        
         return null;
       }
       
+      console.log('Direct insert succeeded with notification:', directInsert);
       return directInsert;
     } catch (insertError) {
       console.error('All notification creation methods failed:', insertError);
@@ -254,4 +288,34 @@ export const createSystemNotification = async (
     console.error('Error in createSystemNotification:', error);
     return null;
   }
+};
+
+// Add a specialized check-in notification function for the current page
+export const createCheckInNotification = async (
+  checkInType: 'completed' | 'missed' | 'scheduled',
+  details?: { date?: string, nextDate?: string }
+): Promise<Notification | null> => {
+  let title = '';
+  let description = '';
+  let eventType: EventType;
+  
+  switch (checkInType) {
+    case 'completed':
+      title = 'Check-In Completed';
+      description = `You have successfully completed your check-in${details?.date ? ` on ${details.date}` : ''}.`;
+      eventType = 'check_in_completed';
+      break;
+    case 'missed':
+      title = 'Check-In Missed';
+      description = `You missed your scheduled check-in${details?.date ? ` on ${details.date}` : ''}.`;
+      eventType = 'check_in_missed';
+      break;
+    case 'scheduled':
+      title = 'Check-In Scheduled';
+      description = `Your next check-in is scheduled${details?.nextDate ? ` for ${details.nextDate}` : ''}.`;
+      eventType = 'check_in_scheduled';
+      break;
+  }
+  
+  return await createSystemNotification(eventType, { title, description });
 };

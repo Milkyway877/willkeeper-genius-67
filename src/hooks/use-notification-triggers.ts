@@ -95,6 +95,19 @@ export function useNotificationTriggers() {
     return await notificationTriggers.triggerDeathVerificationMissedCheckInNotification();
   }, []);
 
+  // Add the new check-in specific triggers
+  const triggerCheckInCompleted = useCallback(async (date?: string) => {
+    return await notificationTriggers.triggerCheckInCompletedNotification(date);
+  }, []);
+
+  const triggerCheckInMissed = useCallback(async (date?: string) => {
+    return await notificationTriggers.triggerCheckInMissedNotification(date);
+  }, []);
+
+  const triggerCheckInScheduled = useCallback(async (date?: string) => {
+    return await notificationTriggers.triggerCheckInScheduledNotification(date);
+  }, []);
+
   return {
     triggerWillCreated,
     triggerWillUpdated,
@@ -118,6 +131,10 @@ export function useNotificationTriggers() {
     triggerSystemUpdate,
     triggerDeathVerificationSetup,
     triggerDeathVerificationCheckIn,
-    triggerDeathVerificationMissedCheckIn
+    triggerDeathVerificationMissedCheckIn,
+    // New check-in specific triggers
+    triggerCheckInCompleted,
+    triggerCheckInMissed,
+    triggerCheckInScheduled
   };
 }

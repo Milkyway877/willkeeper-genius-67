@@ -22,6 +22,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -29,6 +30,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const { data } = await supabase.auth.getSession();
         setIsAuthenticated(!!data.session);
+        console.log('Auth status checked:', !!data.session);
       } catch (err) {
         console.error('Error checking auth status:', err);
         setIsAuthenticated(false);
@@ -42,12 +44,15 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!isAuthenticated) {
       setNotifications([]);
       setLoading(false);
+      console.log('Not authenticated, skipping notification fetch');
       return;
     }
     
     try {
       setLoading(true);
+      console.log('Fetching notifications...');
       const data = await getNotifications();
+      console.log(`Fetched ${data.length} notifications`);
       setNotifications(data);
       setError(null);
     } catch (err) {
@@ -107,100 +112,110 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     // Initial fetch
     fetchNotifications();
 
-    // Get the current user's session
-    const getUserSession = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        return data.session;
-      } catch (err) {
-        console.error('Error getting session:', err);
-        return null;
-      }
-    };
-
-    // Set up real-time subscription for notifications
-    const setupRealtimeSubscription = async () => {
-      try {
-        const session = await getUserSession();
+    // Only set up subscription if we haven't already
+    if (!subscribed) {
+      console.log('Setting up realtime subscription for notifications...');
       
-        if (!session?.user) {
-          console.warn('No authenticated user found for realtime notifications');
+      // Get the current user's session
+      const getUserSession = async () => {
+        try {
+          const { data } = await supabase.auth.getSession();
+          return data.session;
+        } catch (err) {
+          console.error('Error getting session:', err);
           return null;
         }
+      };
 
-        const channel = supabase
-          .channel('notifications-channel')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${session.user.id}`
-            },
-            (payload) => {
-              const newNotification = payload.new as Notification;
-              
-              // Add to our state
-              setNotifications(prev => [newNotification, ...prev]);
-              
-              // Show a toast
-              toast({
-                title: newNotification.title,
-                description: newNotification.description,
-                variant: newNotification.type === 'security' ? 'destructive' : 'default',
-              });
-            }
-          )
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${session.user.id}`
-            },
-            (payload) => {
-              const updatedNotification = payload.new as Notification;
-              
-              // Update in our state
-              setNotifications(prev => 
-                prev.map(notification => 
-                  notification.id === updatedNotification.id ? updatedNotification : notification
-                )
-              );
-            }
-          )
-          .subscribe((status, err) => {
-            if (status !== 'SUBSCRIBED') {
-              console.error('Failed to subscribe to notifications:', status, err);
-            } else {
-              console.log('Successfully subscribed to notifications');
-            }
-          });
+      // Set up real-time subscription for notifications
+      const setupRealtimeSubscription = async () => {
+        try {
+          const session = await getUserSession();
+        
+          if (!session?.user) {
+            console.warn('No authenticated user found for realtime notifications');
+            return null;
+          }
 
-        // Return cleanup function
-        return () => {
-          supabase.removeChannel(channel);
-        };
-      } catch (error) {
-        console.error('Error setting up realtime subscription:', error);
-        return null;
-      }
-    };
+          const channel = supabase
+            .channel('notifications-changes')
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'notifications',
+                filter: `user_id=eq.${session.user.id}`
+              },
+              (payload) => {
+                console.log('Received new notification via realtime:', payload);
+                const newNotification = payload.new as Notification;
+                
+                // Add to our state
+                setNotifications(prev => [newNotification, ...prev]);
+                
+                // Show a toast
+                toast({
+                  title: newNotification.title,
+                  description: newNotification.description,
+                  variant: newNotification.type === 'security' ? 'destructive' : 'default',
+                });
+              }
+            )
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'notifications',
+                filter: `user_id=eq.${session.user.id}`
+              },
+              (payload) => {
+                console.log('Received notification update via realtime:', payload);
+                const updatedNotification = payload.new as Notification;
+                
+                // Update in our state
+                setNotifications(prev => 
+                  prev.map(notification => 
+                    notification.id === updatedNotification.id ? updatedNotification : notification
+                  )
+                );
+              }
+            )
+            .subscribe((status, err) => {
+              if (status !== 'SUBSCRIBED') {
+                console.error('Failed to subscribe to notifications:', status, err);
+              } else {
+                console.log('Successfully subscribed to notifications');
+                setSubscribed(true);
+              }
+            });
 
-    // Set up the subscription
-    const subscriptionPromise = setupRealtimeSubscription();
-    
-    // Clean up on component unmount
-    return () => {
-      subscriptionPromise.then(cleanupFn => {
-        if (cleanupFn) cleanupFn();
-      }).catch(error => {
-        console.error('Error cleaning up subscription:', error);
-      });
-    };
-  }, [isAuthenticated]);
+          // Return cleanup function
+          return () => {
+            console.log('Cleaning up notification subscription');
+            supabase.removeChannel(channel);
+            setSubscribed(false);
+          };
+        } catch (error) {
+          console.error('Error setting up realtime subscription:', error);
+          return null;
+        }
+      };
+
+      // Set up the subscription
+      const subscriptionPromise = setupRealtimeSubscription();
+      
+      // Clean up on component unmount
+      return () => {
+        subscriptionPromise.then(cleanupFn => {
+          if (cleanupFn) cleanupFn();
+        }).catch(error => {
+          console.error('Error cleaning up subscription:', error);
+        });
+      };
+    }
+  }, [isAuthenticated, subscribed]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const hasUnread = unreadCount > 0;
