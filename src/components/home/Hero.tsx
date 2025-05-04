@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, useAnimation } from 'framer-motion';
-import { Globe } from '@/components/ui/globe';
+import { OptimizedGlobe } from '@/components/ui/optimized-globe';
 
 export function Hero() {
   const controls = useAnimation();
@@ -29,10 +29,43 @@ export function Hero() {
       className="relative min-h-screen overflow-hidden flex items-center"
       animate={controls}
       style={{
-        background: 'linear-gradient(135deg, #000000, #1c2e40, #000000, #162435, #000000)',
+        background: 'linear-gradient(135deg, rgba(0,0,0,0.7), rgba(28,46,64,0.7), rgba(0,0,0,0.7), rgba(22,36,53,0.7), rgba(0,0,0,0.7))',
         backgroundSize: '400% 400%',
       }}
     >
+      {/* Globe background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10"></div>
+        <div className="w-full h-full scale-[1.8] md:scale-[1.4] -translate-y-24 md:-translate-y-0">
+          <OptimizedGlobe 
+            className="opacity-90" 
+            config={{
+              width: 800,
+              height: 800,
+              onRender: () => {},
+              devicePixelRatio: window.devicePixelRatio > 1 ? 2 : 1,
+              phi: 0,
+              theta: 0.3,
+              dark: 1,
+              diffuse: 0.4,
+              mapSamples: 12000,
+              mapBrightness: 1.2,
+              baseColor: [0.3, 0.3, 0.6],
+              markerColor: [66/255, 160/255, 136/255],
+              glowColor: [0.2, 0.2, 0.5],
+              markers: [
+                { location: [14.5995, 120.9842], size: 0.03 },
+                { location: [19.076, 72.8777], size: 0.1 },
+                { location: [39.9042, 116.4074], size: 0.08 },
+                { location: [-23.5505, -46.6333], size: 0.1 },
+                { location: [40.7128, -74.006], size: 0.1 },
+                { location: [51.5074, -0.1278], size: 0.1 },
+              ],
+            }}
+          />
+        </div>
+      </div>
+      
       {/* Subtle overlay pattern for texture */}
       <div className="absolute inset-0 dot-pattern opacity-[0.05] z-10"></div>
       
@@ -127,16 +160,16 @@ export function Hero() {
             </motion.div>
           </motion.div>
           
-          {/* Right content - Globe */}
+          {/* Right content - Space for feature highlights */}
           <motion.div 
-            className="flex justify-center items-center lg:justify-end"
+            className="flex justify-center items-center lg:justify-end backdrop-blur-sm bg-black/10 p-6 rounded-xl border border-white/10"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
           >
             <div className="relative w-full max-w-xl">
               <motion.div 
-                className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 blur-3xl"
+                className="absolute inset-0 rounded-full bg-gradient-to-r from-willtank-500/20 to-indigo-500/20 blur-3xl"
                 animate={{ 
                   opacity: [0.5, 0.8, 0.5],
                   scale: [0.8, 1.05, 0.8],
@@ -149,9 +182,18 @@ export function Hero() {
                 }}
               ></motion.div>
               
-              {/* New Globe component replacing RotatingGlobe */}
-              <div className="relative h-[500px] w-full">
-                <Globe />
+              <div className="text-center space-y-6">
+                <h3 className="text-2xl text-white font-medium">Trusted Worldwide</h3>
+                <p className="text-gray-300">Our secure platform connects you with trusted legal experts and ensures your legacy is protected globally.</p>
+                <div className="grid grid-cols-3 gap-4 mt-6">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="h-20 rounded bg-white/5 flex items-center justify-center border border-white/10">
+                      <div className="w-10 h-10 rounded-full bg-willtank-500/20 flex items-center justify-center">
+                        <span className="text-white font-medium">{i}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </motion.div>
