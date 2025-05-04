@@ -4,7 +4,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { Button } from './button';
 import { ArrowRight, Loader2 } from 'lucide-react';
 
-interface TwoFactorInputProps {
+interface VerificationCodeInputProps {
   onSubmit: (code: string) => void;
   loading?: boolean;
   error?: string | null;
@@ -17,10 +17,10 @@ export function TwoFactorInput({
   onSubmit, 
   loading = false, 
   error = null,
-  autoSubmit = true,
+  autoSubmit = false, // Changed default to false to prevent premature submissions
   value: externalValue,
   onChange: externalOnChange
-}: TwoFactorInputProps) {
+}: VerificationCodeInputProps) {
   const [internalValue, setInternalValue] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   
@@ -35,7 +35,7 @@ export function TwoFactorInput({
     if (e) e.preventDefault();
     
     if (value.length === 6) {
-      console.log("Submitting 2FA code:", value);
+      console.log("Submitting verification code:", value);
       onSubmit(value);
     } else {
       setLocalError("Please enter a 6-digit code");
@@ -59,7 +59,7 @@ export function TwoFactorInput({
     
     // Auto-submit when code is complete (if enabled)
     if (autoSubmit && newValue.length === 6) {
-      console.log("Auto-submitting 2FA code:", newValue);
+      console.log("Auto-submitting verification code:", newValue);
       onSubmit(newValue);
     }
   };
@@ -106,7 +106,7 @@ export function TwoFactorInput({
           </>
         ) : (
           <>
-            Verify <ArrowRight className="ml-2 h-4 w-4" />
+            Verify Email <ArrowRight className="ml-2 h-4 w-4" />
           </>
         )}
       </Button>

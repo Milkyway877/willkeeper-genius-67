@@ -93,6 +93,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   useEffect(() => {
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
+        console.log("Checking authentication status");
         const { data } = await supabase.auth.getSession();
         
         if (!data.session) {
@@ -119,14 +120,19 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         // Check if user profile exists and is activated
         if (profile && !profile.is_activated && !profile.email_verified) {
           // If the user is logged in but email is not verified
+          console.log("User not verified, profile:", profile);
           
           // Only redirect if not already on verification page
           if (!location.pathname.includes('/auth/verify-email') && 
               !location.pathname.includes('/auth/verification')) {
+            const userEmail = profile.email || '';
+            console.log(`Redirecting to verification with email: ${userEmail}`);
+            
             // Redirect to verification page with email as a parameter
-            console.log("User not verified, redirecting to verification");
-            navigate(`/auth/verification?email=${encodeURIComponent(profile.email || '')}&type=signup`, { replace: true });
+            navigate(`/auth/verification?email=${encodeURIComponent(userEmail)}&type=signup`, { replace: true });
           }
+        } else {
+          console.log("User verified and active, profile:", profile);
         }
       };
       

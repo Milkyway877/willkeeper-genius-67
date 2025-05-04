@@ -34,23 +34,43 @@ export default function EmailVerification() {
     try {
       console.log("Verifying code:", code, "for email:", email);
       
-      // First verify the code
+      // First get the most recent valid verification code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('code', code)
         .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       console.log("Verification query result:", { data: verificationData, error: verificationError });
 
-      if (verificationError || !verificationData) {
+      if (verificationError) {
+        console.error("Database error when fetching verification code:", verificationError);
+        throw new Error("Unable to verify code due to database error");
+      }
+      
+      if (!verificationData || verificationData.length === 0) {
         toast({
           title: "Verification failed",
-          description: "The code you entered is invalid or has expired. Please try again or request a new code.",
+          description: "No valid verification code found. Please request a new code.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      const latestVerification = verificationData[0];
+      console.log("Latest verification record:", latestVerification);
+      
+      // Compare the entered code with the one in the database
+      if (latestVerification.code !== code) {
+        console.log("Code mismatch. Expected:", latestVerification.code, "Got:", code);
+        toast({
+          title: "Incorrect verification code",
+          description: "The code you entered doesn't match our records. Please try again.",
           variant: "destructive",
         });
         
@@ -66,17 +86,26 @@ export default function EmailVerification() {
       }
 
       // Mark code as used
-      await supabase
+      const { error: updateError } = await supabase
         .from('email_verification_codes')
         .update({ used: true })
-        .eq('id', verificationData.id);
+        .eq('id', latestVerification.id);
+        
+      if (updateError) {
+        console.error("Error marking code as used:", updateError);
+        // Continue anyway as the verification was successful
+      }
 
       if (type === 'signup') {
         // For signup flow - update user profile to mark activation as complete
-        await supabase
+        const { error: profileError } = await supabase
           .from('user_profiles')
           .update({ activation_complete: true, email_verified: true, is_activated: true })
           .eq('email', email);
+          
+        if (profileError) {
+          console.error("Error updating user profile:", profileError);
+        }
         
         // Get credentials from session storage
         const storedEmail = sessionStorage.getItem('auth_email');
@@ -90,6 +119,7 @@ export default function EmailVerification() {
           });
           
           if (authError) {
+            console.error("Auth error during sign-in after verification:", authError);
             toast({
               title: "Sign in failed",
               description: authError.message,
@@ -119,6 +149,7 @@ export default function EmailVerification() {
         const storedPassword = sessionStorage.getItem('auth_password');
         
         if (storedEmail && storedPassword) {
+          console.log("Attempting sign in with stored credentials");
           // Sign in the user
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: storedEmail,
@@ -126,6 +157,7 @@ export default function EmailVerification() {
           });
           
           if (authError) {
+            console.error("Auth error during sign-in after verification:", authError);
             toast({
               title: "Sign in failed",
               description: authError.message,
@@ -135,15 +167,21 @@ export default function EmailVerification() {
             return;
           }
           
+          console.log("Sign in successful, user authenticated");
+          
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
           
           // Update user profile to mark email as verified
-          await supabase
+          const { error: profileError } = await supabase
             .from('user_profiles')
             .update({ email_verified: true, is_activated: true })
             .eq('email', email);
+          
+          if (profileError) {
+            console.error("Error updating user profile:", profileError);
+          }
           
           toast({
             title: "Login successful",
@@ -154,6 +192,7 @@ export default function EmailVerification() {
           // Navigate to dashboard with replace to prevent back navigation to login
           navigate('/dashboard', { replace: true });
         } else {
+          console.error("No stored credentials found");
           toast({
             title: "Authentication error",
             description: "Login session expired. Please log in again.",
@@ -185,6 +224,22 @@ export default function EmailVerification() {
       
       console.log("Resending verification code to:", email);
       
+      // Store verification code first to ensure it exists in the database
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: email,
+          code: verificationCode,
+          type: type,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
+        });
+      
+      if (storeError) {
+        console.error("Error storing verification code:", storeError);
+        throw new Error("Failed to process verification");
+      }
+      
       // Send verification email
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
@@ -201,22 +256,6 @@ export default function EmailVerification() {
         throw new Error("Failed to send verification code");
       }
       
-      // Store verification code
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: email,
-          code: verificationCode,
-          type: type,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
-        });
-      
-      if (storeError) {
-        console.error("Error storing verification code:", storeError);
-        throw new Error("Failed to process verification");
-      }
-      
       toast({
         title: "Code sent",
         description: "A new verification code has been sent to your email.",
@@ -224,6 +263,7 @@ export default function EmailVerification() {
       
       // Reset the form
       setVerificationCode('');
+      setVerificationAttempts(0);
     } catch (error: any) {
       console.error("Error resending code:", error);
       toast({

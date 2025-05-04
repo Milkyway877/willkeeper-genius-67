@@ -83,6 +83,15 @@ export function SignInForm() {
       
       // Generate verification code for email verification
       const verificationCode = generateVerificationCode();
+      console.log("Generated verification code:", verificationCode);
+      
+      // Delete any expired or used verification codes for this email
+      await supabase
+        .from('email_verification_codes')
+        .delete()
+        .eq('email', data.email)
+        .eq('type', 'login')
+        .or(`used.eq.true,expires_at.lt.${new Date().toISOString()}`);
       
       // Store verification code in database
       const { error: storeError } = await supabase
@@ -113,6 +122,8 @@ export function SignInForm() {
         console.error("Error invoking send-verification function:", emailError);
         throw new Error("Failed to send verification code");
       }
+      
+      console.log("Email verification code sent successfully");
       
       // Save user credentials in session storage for verification page
       sessionStorage.setItem('auth_email', data.email);
@@ -193,11 +204,11 @@ export function SignInForm() {
         <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
             </>
           ) : (
             <>
-              Sign In <ArrowRight className="ml-2 h-4 w-4" />
+              Continue <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
         </Button>
@@ -213,7 +224,7 @@ export function SignInForm() {
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">After signing in, you'll need to verify your login with a 6-digit code sent to your email.</p>
+            <p className="font-medium">After signing in, you'll need to verify your email with a 6-digit code.</p>
           </div>
         </div>
       </form>
