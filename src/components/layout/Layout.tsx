@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -13,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { triggerNewLoginNotification } from '@/utils/notificationTriggers';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,6 +28,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
   const [sessionVerified, setSessionVerified] = useState(false);
+  const [justVerifiedChecked, setJustVerifiedChecked] = useState(false);
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -55,6 +56,18 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
         try {
+          console.log("Checking auth status for path:", location.pathname);
+          
+          // Check if session was just verified through email verification
+          const justVerified = localStorage.getItem('session_just_verified');
+          if (justVerified === 'true' && !justVerifiedChecked) {
+            console.log("Session was just verified through email, skipping verification");
+            localStorage.removeItem('session_just_verified');
+            setSessionVerified(true);
+            setJustVerifiedChecked(true);
+            return;
+          }
+          
           // Step 1: Check if there's a valid session
           const { data } = await supabase.auth.getSession();
           
@@ -66,22 +79,19 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           
           // Step 2: Check if this is a new device/browser
           const needsVerification = await sessionRequiresVerification();
+          console.log("Session requires verification:", needsVerification);
           
           // Step 3: Check user profile status
           if (profile) {
+            console.log("User profile status:", { 
+              is_activated: profile.is_activated, 
+              email_verified: profile.email_verified 
+            });
+            
             // If the user isn't fully activated or email verified
             if (!profile.is_activated || !profile.email_verified) {
               console.log("User not verified, redirecting to verification");
               navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
-              return;
-            }
-            
-            // Skip verification for session that was just verified through email verification
-            const justVerified = localStorage.getItem('session_just_verified');
-            if (justVerified === 'true') {
-              console.log("Session was just verified through email, skipping verification");
-              localStorage.removeItem('session_just_verified');
-              setSessionVerified(true);
               return;
             }
             
@@ -103,7 +113,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
               
               // Force verification for every new session
               console.log("New session detected, redirecting to verification");
-              await supabase.auth.signOut(); // Sign out to force re-authentication
               navigate('/auth/signin', { replace: true });
               return;
             }
@@ -118,7 +127,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       
       checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate, profile, sessionVerified]);
+  }, [forceAuthenticated, location.pathname, navigate, profile, sessionVerified, justVerifiedChecked]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);

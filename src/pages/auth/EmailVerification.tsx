@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -79,6 +78,10 @@ export default function EmailVerification() {
         .update({ used: true })
         .eq('id', verificationData.id);
 
+      // Get stored credentials
+      const storedEmail = sessionStorage.getItem('auth_email') || email;
+      const storedPassword = sessionStorage.getItem('auth_password');
+
       if (type === 'signup') {
         // For signup flow - update user profile to mark activation as complete
         await supabase
@@ -92,13 +95,13 @@ export default function EmailVerification() {
           variant: "default",
         });
         
-        // Get stored credentials if they exist
-        const storedEmail = sessionStorage.getItem('auth_email');
-        const storedPassword = sessionStorage.getItem('auth_password');
+        // Set the session_just_verified flag to bypass additional verification in the Layout component
+        localStorage.setItem('session_just_verified', 'true');
         
         // If credentials are stored, sign in the user
         if (storedEmail && storedPassword) {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
+          console.log("Attempting to sign in after verification with stored credentials");
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: storedEmail,
             password: storedPassword,
           });
@@ -114,6 +117,8 @@ export default function EmailVerification() {
             return;
           }
           
+          console.log("Sign in successful:", signInData);
+          
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
@@ -123,11 +128,12 @@ export default function EmailVerification() {
         navigate('/dashboard', { replace: true });
       } else {
         // For login flow
-        // Get credentials from session storage
-        const storedEmail = sessionStorage.getItem('auth_email');
-        const storedPassword = sessionStorage.getItem('auth_password');
+        console.log("Processing login verification flow");
+        localStorage.setItem('session_just_verified', 'true');
         
         if (storedEmail && storedPassword) {
+          console.log("Attempting to sign in with stored credentials:", { email: storedEmail });
+          
           // Sign in the user
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: storedEmail,
@@ -135,6 +141,7 @@ export default function EmailVerification() {
           });
           
           if (authError) {
+            console.error("Sign in error:", authError);
             toast({
               title: "Sign in failed",
               description: authError.message,
@@ -144,6 +151,8 @@ export default function EmailVerification() {
             navigate('/auth/signin', { replace: true });
             return;
           }
+          
+          console.log("Sign in successful:", { user: authData?.user?.id });
           
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
@@ -212,6 +221,7 @@ export default function EmailVerification() {
           // Navigate to dashboard with replace to prevent back navigation to login
           navigate('/dashboard', { replace: true });
         } else {
+          console.error("Missing stored credentials for login verification");
           toast({
             title: "Authentication error",
             description: "Login session expired. Please log in again.",

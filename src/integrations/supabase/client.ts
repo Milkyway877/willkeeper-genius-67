@@ -11,7 +11,7 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: false, // Changed to false to prevent auto-login
+    persistSession: true, // Changed to true to maintain user sessions
     autoRefreshToken: true, // Keep this true for security during active sessions
     detectSessionInUrl: true
   }
@@ -23,11 +23,15 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
     const { data } = await supabase.auth.getSession();
     
     // If there's no session, verification is required
-    if (!data.session) return true;
+    if (!data.session) {
+      console.log("No session found, verification required");
+      return true;
+    }
     
-    // Check if session was just verified
+    // Check if session was just verified through email
     const justVerified = localStorage.getItem('session_just_verified');
     if (justVerified === 'true') {
+      console.log("Session was just verified through email verification, bypassing additional verification");
       return false;
     }
     
@@ -35,6 +39,8 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
     const sessionCreatedAt = new Date(data.session.user?.created_at || Date.now());
     const currentTime = new Date();
     const sessionAgeHours = (currentTime.getTime() - sessionCreatedAt.getTime()) / (1000 * 60 * 60);
+    
+    console.log("Session age in hours:", sessionAgeHours);
     
     // If session is older than 1 hour, require re-verification
     return sessionAgeHours > 1;

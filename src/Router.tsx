@@ -6,6 +6,7 @@ import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
+import { Layout } from './components/layout/Layout';
 
 // Create placeholder pages for development
 const Home = () => <div>Home Page</div>;
@@ -38,6 +39,15 @@ const AuthLayoutWrapper = () => {
   );
 };
 
+// Dashboard layout wrapper that doesn't force authentication for verification pages
+const DashboardLayoutWrapper = ({ requireAuth = true }) => {
+  return (
+    <Layout forceAuthenticated={requireAuth}>
+      <Outlet />
+    </Layout>
+  );
+};
+
 function AppRouter() {
   return (
     <Router>
@@ -51,9 +61,8 @@ function AppRouter() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/search" element={<SearchPage />} />
         
-        {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
+        {/* Auth routes - don't force auth for these */}
         <Route element={<AuthLayoutWrapper />}>
-          <Route path="/auth" element={<SignIn />} />
           <Route path="/auth/signin" element={<SignIn />} />
           <Route path="/auth/signup" element={<SignUp />} />
           <Route path="/auth/forgot-password" element={<ForgotPassword />} />
@@ -63,14 +72,17 @@ function AppRouter() {
           <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
         </Route>
         
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/will" element={<Will />} />
-        <Route path="/future-messages" element={<FutureMessages />} />
-        <Route path="/legacy-vault" element={<LegacyVault />} />
-        <Route path="/check-ins" element={<CheckIns />} />
-        <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
-
+        {/* Protected routes - require authentication */}
+        <Route element={<DashboardLayoutWrapper />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/will" element={<Will />} />
+          <Route path="/future-messages" element={<FutureMessages />} />
+          <Route path="/legacy-vault" element={<LegacyVault />} />
+          <Route path="/check-ins" element={<CheckIns />} />
+          <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
+        </Route>
+        
         <Route
           path="/verify/trusted-contact/:token"
           element={<VerifyTrustedContact />}
