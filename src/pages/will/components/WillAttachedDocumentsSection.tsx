@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   FileText, 
   Loader2, 
@@ -46,6 +46,7 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -57,7 +58,9 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
       
       try {
         setIsLoading(true);
+        console.log(`Fetching documents for will ID: ${willId}`);
         const docs = await getWillDocuments(willId);
+        console.log(`Retrieved ${docs.length} documents`);
         setDocuments(docs);
       } catch (error) {
         console.error('Error fetching documents:', error);
@@ -79,6 +82,7 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
     if (!e.target.files || e.target.files.length === 0) return;
     
     const file = e.target.files[0];
+    setUploadError(null);
     
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
@@ -94,6 +98,8 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
       setIsUploading(true);
       setUploadProgress(0);
       
+      console.log(`Starting upload for file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+      
       const uploadedDoc = await uploadWillDocument(
         willId, 
         file, 
@@ -101,6 +107,7 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
       );
       
       if (uploadedDoc) {
+        console.log('Document uploaded successfully:', uploadedDoc);
         toast({
           title: 'Document uploaded',
           description: `${file.name} has been added to your will`
@@ -110,14 +117,17 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
         setRefreshTrigger(prev => prev + 1);
         setDialogOpen(false);
       } else {
+        console.error('Upload failed - no document returned');
+        setUploadError('Upload failed. Please try again.');
         toast({
           title: 'Upload failed',
-          description: 'Could not upload document',
+          description: 'Could not upload document. Please try again.',
           variant: 'destructive'
         });
       }
     } catch (error) {
       console.error('Error uploading document:', error);
+      setUploadError('An unexpected error occurred. Please try again.');
       toast({
         title: 'Upload error',
         description: 'An unexpected error occurred',
@@ -137,9 +147,11 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
   // Function to handle document deletion
   const handleDeleteDocument = async (document: WillDocument) => {
     try {
+      console.log(`Deleting document: ${document.id}, file name: ${document.file_name}`);
       const success = await deleteWillDocument(document);
       
       if (success) {
+        console.log('Document deleted successfully');
         toast({
           title: 'Document deleted',
           description: `${document.file_name} has been removed`
@@ -148,6 +160,7 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
         // Remove from local state
         setDocuments(prev => prev.filter(doc => doc.id !== document.id));
       } else {
+        console.error('Delete operation returned false');
         toast({
           title: 'Delete failed',
           description: 'Could not delete document',
@@ -167,9 +180,11 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
   // Function to download document
   const handleDownloadDocument = async (document: WillDocument) => {
     try {
+      console.log(`Getting download URL for document: ${document.file_name}`);
       const url = await getDocumentUrl(document);
       
       if (!url) {
+        console.error('No URL returned from getDocumentUrl');
         toast({
           title: 'Download failed',
           description: 'Could not generate download link',
@@ -185,6 +200,7 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
       window.document.body.appendChild(a);
       a.click();
       window.document.body.removeChild(a);
+      console.log('Download initiated');
     } catch (error) {
       console.error('Error downloading document:', error);
       toast({
@@ -276,6 +292,12 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
                     <span>{uploadProgress}%</span>
                   </div>
                 </div>
+              )}
+              
+              {uploadError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{uploadError}</AlertDescription>
+                </Alert>
               )}
             </div>
             

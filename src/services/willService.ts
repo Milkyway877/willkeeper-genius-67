@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -436,6 +435,9 @@ export const getWillDocuments = async (willId: string): Promise<WillDocument[]> 
       return [];
     }
 
+    // Log the query we're about to execute to help with debugging
+    console.log(`Fetching documents for will_id: ${willId} and user_id: ${session.user.id}`);
+    
     const { data, error } = await supabase
       .from('will_documents')
       .select('*')
@@ -448,6 +450,7 @@ export const getWillDocuments = async (willId: string): Promise<WillDocument[]> 
       return [];
     }
     
+    console.log('Documents retrieved:', data);
     return data || [];
   } catch (error) {
     console.error('Error in getWillDocuments:', error);
@@ -476,28 +479,26 @@ export const uploadWillDocument = async (
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     const filePath = `${session.user.id}/${fileName}`;
     
-    // Upload to Supabase Storage
-    const uploadOptions: any = {
+    console.log(`Starting upload of ${file.name} (${file.size} bytes) to will_documents bucket`);
+    
+    // Upload to Supabase Storage - using will_documents bucket
+    const uploadOptions = {
       cacheControl: '3600',
       upsert: true
     };
     
-    // Add progress tracking if the callback is provided
-    if (onProgress) {
-      uploadOptions.onUploadProgress = (progress: { loaded: number; total: number }) => {
-        const percentage = (progress.loaded / progress.total) * 100;
-        onProgress(Math.round(percentage));
-      };
-    }
-    
+    // Use a type that's compatible with Supabase's storage API
+    // Do not include onUploadProgress yet until we have confirmed it works
     const { error: uploadError, data: uploadData } = await supabase.storage
       .from('will_documents')
       .upload(filePath, file, uploadOptions);
       
     if (uploadError) {
-      console.error('Error uploading will document:', uploadError);
+      console.error('Error uploading will document to storage:', uploadError);
       return null;
     }
+    
+    console.log('File uploaded to storage successfully:', uploadData);
     
     // Save document metadata in the database
     const documentData = {
@@ -509,6 +510,8 @@ export const uploadWillDocument = async (
       file_type: file.type
     };
     
+    console.log('Saving document metadata to database:', documentData);
+    
     const { data, error } = await supabase
       .from('will_documents')
       .insert(documentData)
@@ -516,9 +519,10 @@ export const uploadWillDocument = async (
       .single();
       
     if (error) {
-      console.error('Error saving will document metadata:', error);
+      console.error('Error saving will document metadata to database:', error);
       
       // Try to clean up the uploaded file on error
+      console.log('Attempting to clean up uploaded file after database error');
       await supabase.storage
         .from('will_documents')
         .remove([filePath]);
@@ -526,14 +530,33 @@ export const uploadWillDocument = async (
       return null;
     }
     
-    await createSystemNotification('will_document_added', {
-      title: 'Document Added',
-      description: `Document ${file.name} has been added to your will.`
-    });
+    console.log('Document metadata saved to database successfully:', data);
+    
+    // Create notification after successful upload
+    try {
+      await createSystemNotification('will_document_added', {
+        title: 'Document Added',
+        description: `Document ${file.name} has been added to your will.`
+      });
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Continue even if notification fails
+    }
+    
+    // Update progress to 100% after successful upload
+    if (onProgress) {
+      onProgress(100);
+    }
     
     return data;
   } catch (error) {
     console.error('Error in uploadWillDocument:', error);
+    
+    // Update progress to show failure
+    if (onProgress) {
+      onProgress(0);
+    }
+    
     return null;
   }
 };
@@ -547,6 +570,8 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
       return false;
     }
 
+    console.log(`Attempting to delete document: ${document.id}, file path: ${document.file_path}`);
+    
     // Delete the file from storage
     const { error: storageError } = await supabase.storage
       .from('will_documents')
@@ -555,6 +580,8 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
     if (storageError) {
       console.error('Error deleting file from storage:', storageError);
       // Continue anyway to try to clean up the database entry
+    } else {
+      console.log('File deleted from storage successfully');
     }
     
     // Delete the document metadata from the database
@@ -565,14 +592,22 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
       .eq('user_id', session.user.id);
       
     if (error) {
-      console.error('Error deleting document metadata:', error);
+      console.error('Error deleting document metadata from database:', error);
       return false;
     }
     
-    await createSystemNotification('will_document_removed', {
-      title: 'Document Removed',
-      description: `Document ${document.file_name} has been removed from your will.`
-    });
+    console.log('Document metadata deleted from database successfully');
+    
+    // Create notification after successful deletion
+    try {
+      await createSystemNotification('will_document_removed', {
+        title: 'Document Removed',
+        description: `Document ${document.file_name} has been removed from your will.`
+      });
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Continue even if notification fails
+    }
     
     return true;
   } catch (error) {
@@ -583,6 +618,8 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
 
 export const getDocumentUrl = async (document: WillDocument): Promise<string | null> => {
   try {
+    console.log(`Getting signed URL for document: ${document.file_path}`);
+    
     const { data, error } = await supabase.storage
       .from('will_documents')
       .createSignedUrl(document.file_path, 60); // URL valid for 60 seconds
@@ -592,6 +629,7 @@ export const getDocumentUrl = async (document: WillDocument): Promise<string | n
       return null;
     }
     
+    console.log('Signed URL created successfully');
     return data.signedUrl;
   } catch (error) {
     console.error('Error in getDocumentUrl:', error);
