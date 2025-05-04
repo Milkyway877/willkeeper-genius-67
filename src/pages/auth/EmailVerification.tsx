@@ -19,6 +19,7 @@ export default function EmailVerification() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const { toast } = useToast();
   
   const form = useForm({
@@ -40,12 +41,13 @@ export default function EmailVerification() {
     if (!email) return;
     
     setIsLoading(true);
+    setVerificationError(null);
     setVerificationAttempts(prev => prev + 1);
     
     try {
       console.log("Verifying code:", code, "for email:", email);
       
-      // First verify the code
+      // First verify the code - CRITICAL FIX: Don't use single() here which fails with 406 error
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
@@ -53,15 +55,17 @@ export default function EmailVerification() {
         .eq('code', code)
         .eq('type', type)
         .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+        .gt('expires_at', new Date().toISOString());
 
       console.log("Verification query result:", { data: verificationData, error: verificationError });
 
-      if (verificationError || !verificationData) {
+      // FIXED: Check if we have any rows in the result array instead of using single()
+      if (verificationError || !verificationData || verificationData.length === 0) {
+        const errorMessage = "The code you entered is invalid or has expired. Please try again or request a new code.";
+        setVerificationError(errorMessage);
         toast({
           title: "Verification failed",
-          description: "The code you entered is invalid or has expired. Please try again or request a new code.",
+          description: errorMessage,
           variant: "destructive",
         });
         
@@ -76,11 +80,14 @@ export default function EmailVerification() {
         return;
       }
 
+      // Get the first verification record
+      const verificationRecord = verificationData[0];
+
       // Mark code as used
       await supabase
         .from('email_verification_codes')
         .update({ used: true })
-        .eq('id', verificationData.id);
+        .eq('id', verificationRecord.id);
 
       // Get stored credentials
       const storedEmail = sessionStorage.getItem('auth_email') || email;
@@ -246,9 +253,11 @@ export default function EmailVerification() {
       }
     } catch (error: any) {
       console.error('Error during email verification:', error);
+      const errorMessage = error.message || "An unexpected error occurred. Please try again later.";
+      setVerificationError(errorMessage);
       toast({
         title: "Verification error",
-        description: error.message || "An unexpected error occurred. Please try again later.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -260,6 +269,7 @@ export default function EmailVerification() {
     if (!email) return;
     
     setResendLoading(true);
+    setVerificationError(null);
     
     try {
       // Generate a new verification code
@@ -306,11 +316,14 @@ export default function EmailVerification() {
       
       // Reset the form
       form.reset({ code: '' });
+      setVerificationAttempts(0);
     } catch (error: any) {
       console.error("Error resending code:", error);
+      const errorMessage = error.message || "Failed to send a new code. Please try again later.";
+      setVerificationError(errorMessage);
       toast({
         title: "Error",
-        description: error.message || "Failed to send a new code. Please try again later.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -347,6 +360,7 @@ export default function EmailVerification() {
                         }}
                         loading={isLoading}
                         autoSubmit={false}
+                        error={verificationError}
                       />
                     </div>
                   </FormControl>

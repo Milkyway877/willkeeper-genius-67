@@ -11,6 +11,13 @@ CREATE TABLE IF NOT EXISTS public.email_verification_codes (
   user_id UUID
 );
 
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS email_verification_codes_email_idx ON public.email_verification_codes (email);
+CREATE INDEX IF NOT EXISTS email_verification_codes_code_idx ON public.email_verification_codes (code);
+CREATE INDEX IF NOT EXISTS email_verification_codes_type_idx ON public.email_verification_codes (type);
+CREATE INDEX IF NOT EXISTS email_verification_codes_used_idx ON public.email_verification_codes (used);
+CREATE INDEX IF NOT EXISTS email_verification_codes_expires_at_idx ON public.email_verification_codes (expires_at);
+
 -- Add RLS policies
 ALTER TABLE public.email_verification_codes ENABLE ROW LEVEL SECURITY;
 
@@ -26,8 +33,8 @@ CREATE POLICY IF NOT EXISTS "Anyone can insert verification codes"
   FOR INSERT 
   WITH CHECK (true);
 
--- Only authenticated users can update their own codes
-CREATE POLICY IF NOT EXISTS "Users can update their own verification codes" 
+-- Anyone can update verification codes
+CREATE POLICY IF NOT EXISTS "Anyone can update verification codes" 
   ON public.email_verification_codes 
   FOR UPDATE 
-  USING (auth.uid() = user_id OR user_id IS NULL);
+  USING (true);

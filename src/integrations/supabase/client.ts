@@ -15,7 +15,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true, // Keep this true for security during active sessions
     detectSessionInUrl: true,
     storageKey: 'sb-auth-token', // Explicitly set storage key for better tracking
-    storage: localStorage // Explicitly use localStorage for session persistence
+    storage: localStorage, // Explicitly use localStorage for session persistence
+    flowType: 'pkce' // Use PKCE flow for more secure authentication
+  },
+  global: {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  },
+  db: {
+    schema: 'public'
   }
 });
 
