@@ -13,7 +13,7 @@ import {
   ImageIcon,
   FileTextIcon,
   FileSpreadsheet,
-  FilePdf
+  FileX
 } from 'lucide-react';
 import { 
   Dialog,
@@ -179,12 +179,12 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
       }
       
       // Create a temporary link and trigger download
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = url;
       a.download = document.file_name;
-      document.body.appendChild(a);
+      window.document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
     } catch (error) {
       console.error('Error downloading document:', error);
       toast({
@@ -203,7 +203,7 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
     if (fileType.includes('image')) {
       return <ImageIcon className="h-8 w-8 text-blue-500" />;
     } else if (fileType.includes('pdf')) {
-      return <FilePdf className="h-8 w-8 text-red-500" />;
+      return <FileX className="h-8 w-8 text-red-500" />;
     } else if (fileType.includes('excel') || fileType.includes('sheet') || fileName.endsWith('xlsx') || fileName.endsWith('xls')) {
       return <FileSpreadsheet className="h-8 w-8 text-green-500" />;
     } else if (fileType.includes('word') || fileType.includes('document') || fileName.endsWith('docx') || fileName.endsWith('doc')) {

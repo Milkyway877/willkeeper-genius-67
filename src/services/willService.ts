@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -454,10 +455,13 @@ export const getWillDocuments = async (willId: string): Promise<WillDocument[]> 
   }
 };
 
+// Type definition for progress callback
+type ProgressCallback = (progress: number) => void;
+
 export const uploadWillDocument = async (
   willId: string, 
   file: File, 
-  onProgress?: (progress: number) => void
+  onProgress?: ProgressCallback
 ): Promise<WillDocument | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -473,16 +477,22 @@ export const uploadWillDocument = async (
     const filePath = `${session.user.id}/${fileName}`;
     
     // Upload to Supabase Storage
+    const uploadOptions: any = {
+      cacheControl: '3600',
+      upsert: true
+    };
+    
+    // Add progress tracking if the callback is provided
+    if (onProgress) {
+      uploadOptions.onUploadProgress = (progress: { loaded: number; total: number }) => {
+        const percentage = (progress.loaded / progress.total) * 100;
+        onProgress(Math.round(percentage));
+      };
+    }
+    
     const { error: uploadError, data: uploadData } = await supabase.storage
       .from('will_documents')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-        onUploadProgress: onProgress ? (progress) => {
-          const percentage = (progress.loaded / progress.total) * 100;
-          onProgress(Math.round(percentage));
-        } : undefined
-      });
+      .upload(filePath, file, uploadOptions);
       
     if (uploadError) {
       console.error('Error uploading will document:', uploadError);
@@ -516,7 +526,7 @@ export const uploadWillDocument = async (
       return null;
     }
     
-    await createSystemNotification('document_added', {
+    await createSystemNotification('will_document_added', {
       title: 'Document Added',
       description: `Document ${file.name} has been added to your will.`
     });
@@ -559,7 +569,7 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
       return false;
     }
     
-    await createSystemNotification('document_removed', {
+    await createSystemNotification('will_document_removed', {
       title: 'Document Removed',
       description: `Document ${document.file_name} has been removed from your will.`
     });
