@@ -76,6 +76,15 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
               return;
             }
             
+            // Skip verification for session that was just verified through email verification
+            const justVerified = localStorage.getItem('session_just_verified');
+            if (justVerified === 'true') {
+              console.log("Session was just verified through email, skipping verification");
+              localStorage.removeItem('session_just_verified');
+              setSessionVerified(true);
+              return;
+            }
+            
             // Even if user is activated, we require verification for every new session
             if (needsVerification && !sessionVerified) {
               // Only trigger notification for new device logins when the profile exists

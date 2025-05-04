@@ -25,6 +25,12 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
     // If there's no session, verification is required
     if (!data.session) return true;
     
+    // Check if session was just verified
+    const justVerified = localStorage.getItem('session_just_verified');
+    if (justVerified === 'true') {
+      return false;
+    }
+    
     // Use created_at from user.created_at as fallback since Session might not have created_at
     const sessionCreatedAt = new Date(data.session.user?.created_at || Date.now());
     const currentTime = new Date();

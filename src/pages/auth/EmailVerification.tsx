@@ -92,6 +92,33 @@ export default function EmailVerification() {
           variant: "default",
         });
         
+        // Get stored credentials if they exist
+        const storedEmail = sessionStorage.getItem('auth_email');
+        const storedPassword = sessionStorage.getItem('auth_password');
+        
+        // If credentials are stored, sign in the user
+        if (storedEmail && storedPassword) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: storedEmail,
+            password: storedPassword,
+          });
+          
+          if (signInError) {
+            console.error("Error signing in after verification:", signInError);
+            toast({
+              title: "Sign in failed",
+              description: "Please sign in with your credentials.",
+              variant: "destructive",
+            });
+            navigate('/auth/signin', { replace: true });
+            return;
+          }
+          
+          // Clear stored credentials
+          sessionStorage.removeItem('auth_email');
+          sessionStorage.removeItem('auth_password');
+        }
+        
         // Direct to dashboard after successful signup verification
         navigate('/dashboard', { replace: true });
       } else {
@@ -114,6 +141,7 @@ export default function EmailVerification() {
               variant: "destructive",
             });
             setIsLoading(false);
+            navigate('/auth/signin', { replace: true });
             return;
           }
           
