@@ -137,6 +137,7 @@ export const createSystemNotification = async (
       case 'item_saved':
       case 'trusted_contact_verified':
       case 'contact_verified':
+      case 'trusted_contact_added':
         notificationType = 'success';
         break;
       case 'will_deleted':
@@ -155,26 +156,72 @@ export const createSystemNotification = async (
         notificationType = 'info';
     }
     
-    const newNotification = {
-      user_id: session.user.id,
-      title: details.title,
-      description: details.description,
-      type: notificationType,
-      read: false
-    };
+    // Use the SECURITY DEFINER SQL function via RPC to bypass RLS
+    const { data, error } = await supabase.rpc(
+      'create_notification',
+      {
+        p_user_id: session.user.id,
+        p_title: details.title,
+        p_description: details.description,
+        p_type: notificationType
+      }
+    );
     
-    const { data, error } = await supabase
-      .from('notifications')
-      .insert(newNotification)
-      .select()
-      .single();
-      
     if (error) {
-      console.error('Error creating notification:', error);
+      console.error('Error creating notification via RPC:', error);
+      
+      // Fallback to edge function if RPC fails
+      try {
+        const response = await fetch(`${window.location.origin}/functions/v1/create-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            title: details.title,
+            description: details.description,
+            type: notificationType
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Edge function returned ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        
+        // Use the notification ID returned by the edge function
+        if (responseData.notification_id) {
+          // Fetch the newly created notification to return it
+          const { data: notification } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('id', responseData.notification_id)
+            .single();
+            
+          return notification;
+        }
+      } catch (fallbackError) {
+        console.error('Edge function fallback also failed:', fallbackError);
+        return null;
+      }
+      
       return null;
     }
     
-    return data;
+    // If RPC was successful, fetch the notification to return it
+    if (data) {
+      const { data: notification } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('id', data)
+        .single();
+        
+      return notification;
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error in createSystemNotification:', error);
     return null;

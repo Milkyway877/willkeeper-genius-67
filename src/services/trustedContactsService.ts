@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { createSystemNotification } from './notificationService';
 
 export interface TrustedContact {
   id: string;
@@ -72,6 +73,12 @@ export const createTrustedContact = async (contact: {
       console.error('Error creating trusted contact:', error);
       return null;
     }
+    
+    // Create a notification using the RPC method, which bypasses RLS
+    await createSystemNotification('trusted_contact_added', {
+      title: 'Trusted Contact Added',
+      description: `${contact.name} has been added as a trusted contact.`
+    });
     
     return data;
   } catch (error) {
@@ -152,32 +159,48 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Call the edge function directly
+    // Create the invitation request to be sent via edge function
+    const invitationRequest = {
+      contact: {
+        contactId: contact.id,
+        contactType: 'trusted',
+        name: contact.name,
+        email: contact.email,
+        userId: session.user.id,
+        userFullName
+      },
+      emailDetails: {
+        subject: `Important: ${userFullName} has named you as a trusted contact`,
+        includeVerificationInstructions: true,
+        includeUserBio: true,
+        priority: 'high'
+      }
+    };
+    
+    // Call the edge function to send the invitation
     try {
-      // Create the request to the edge function with proper headers
-      const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
+      // Send the email via edge function
+      const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
           'apikey': SUPABASE_PUBLISHABLE_KEY || ''
         },
-        body: JSON.stringify({
-          contact: {
-            contactId: contact.id,
-            contactType: 'trusted',
-            name: contact.name,
-            email: contact.email,
-            userId: session.user.id,
-            userFullName
-          }
-        })
+        body: JSON.stringify(invitationRequest)
       });
       
       // Check if request was successful
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json();
         console.error('Error from invitation edge function:', errorData);
+        
+        // Create an error notification to alert the user
+        await createSystemNotification('warning', {
+          title: 'Email Delivery Issue',
+          description: `We couldn't send the invitation email to ${contact.name}. The contact was saved, but you'll need to send the invitation again later.`
+        });
+        
         return false;
       }
       
@@ -190,13 +213,66 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         })
         .eq('id', contactId);
       
+      // Create a success notification
+      await createSystemNotification('success', {
+        title: 'Invitation Sent',
+        description: `An invitation email has been sent to ${contact.name}.`
+      });
+      
       return true;
     } catch (error) {
       console.error('Error sending verification request:', error);
+      
+      // Create an error notification
+      await createSystemNotification('warning', {
+        title: 'Invitation Failed',
+        description: `There was an error sending the invitation to ${contact.name}. Please try again later.`
+      });
+      
       return false;
     }
   } catch (error) {
     console.error('Error in sendVerificationRequest:', error);
+    return false;
+  }
+};
+
+// New method to check invitation status
+export const checkInvitationStatus = async (contactId: string): Promise<string> => {
+  try {
+    const { data, error } = await supabase
+      .from('trusted_contacts')
+      .select('invitation_status, invitation_sent_at, invitation_responded_at')
+      .eq('id', contactId)
+      .single();
+      
+    if (error || !data) {
+      console.error('Error checking invitation status:', error);
+      return 'unknown';
+    }
+    
+    return data.invitation_status || 'not_sent';
+  } catch (error) {
+    console.error('Error in checkInvitationStatus:', error);
+    return 'error';
+  }
+};
+
+// New method to resend an invitation
+export const resendInvitation = async (contactId: string): Promise<boolean> => {
+  // Reset invitation status and send again
+  try {
+    await supabase
+      .from('trusted_contacts')
+      .update({
+        invitation_status: 'pending',
+        invitation_sent_at: null
+      })
+      .eq('id', contactId);
+      
+    return await sendVerificationRequest(contactId);
+  } catch (error) {
+    console.error('Error in resendInvitation:', error);
     return false;
   }
 };
