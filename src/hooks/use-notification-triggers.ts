@@ -43,6 +43,14 @@ export function useNotificationTriggers() {
     return await notificationTriggers.triggerContactVerifiedNotification(name);
   }, []);
 
+  const triggerTrustedContactAdded = useCallback(async (name?: string) => {
+    return await notificationTriggers.triggerTrustedContactAddedNotification(name);
+  }, []);
+
+  const triggerTrustedContactVerified = useCallback(async (name?: string) => {
+    return await notificationTriggers.triggerTrustedContactVerifiedNotification(name);
+  }, []);
+
   const triggerSecurityKeyGenerated = useCallback(async () => {
     return await notificationTriggers.triggerSecurityKeyGeneratedNotification();
   }, []);
@@ -75,6 +83,18 @@ export function useNotificationTriggers() {
     return await notificationTriggers.triggerSystemUpdateNotification();
   }, []);
 
+  const triggerDeathVerificationSetup = useCallback(async () => {
+    return await notificationTriggers.triggerDeathVerificationSetupNotification();
+  }, []);
+
+  const triggerDeathVerificationCheckIn = useCallback(async () => {
+    return await notificationTriggers.triggerDeathVerificationCheckInNotification();
+  }, []);
+
+  const triggerDeathVerificationMissedCheckIn = useCallback(async () => {
+    return await notificationTriggers.triggerDeathVerificationMissedCheckInNotification();
+  }, []);
+
   return {
     triggerWillCreated,
     triggerWillUpdated,
@@ -86,6 +106,8 @@ export function useNotificationTriggers() {
     triggerBeneficiaryAdded,
     triggerExecutorAdded,
     triggerContactVerified,
+    triggerTrustedContactAdded,
+    triggerTrustedContactVerified,
     triggerSecurityKeyGenerated,
     triggerNewLogin,
     triggerPasswordChanged,
@@ -93,6 +115,9 @@ export function useNotificationTriggers() {
     triggerSubscriptionRenewal,
     triggerPaymentFailed,
     triggerSystemMaintenance,
-    triggerSystemUpdate
+    triggerSystemUpdate,
+    triggerDeathVerificationSetup,
+    triggerDeathVerificationCheckIn,
+    triggerDeathVerificationMissedCheckIn
   };
 }

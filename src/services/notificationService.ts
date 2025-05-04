@@ -14,9 +14,13 @@ export interface Notification {
 // Event types that can be used by other services
 export type EventType = 
   | 'success' | 'warning' | 'info' | 'security'
-  | 'will_updated' | 'will_created' | 'will_deleted'
-  | 'document_uploaded' | 'security_key_generated' 
+  | 'will_updated' | 'will_created' | 'will_deleted' | 'will_signed'
+  | 'document_uploaded' | 'document_deleted' | 'document_shared'
+  | 'security_key_generated' 
   | 'beneficiary_added' | 'executor_added' 
+  | 'contact_verified' | 'trusted_contact_added' | 'trusted_contact_verified'
+  | 'subscription_changed' | 'subscription_renewal' | 'payment_failed'
+  | 'system'
   | 'item_saved';
 
 // Map specific event types to standard notification types
@@ -27,18 +31,28 @@ export const mapEventTypeToNotificationType = (
     case 'success':
     case 'will_created':
     case 'will_updated':
+    case 'will_signed':
     case 'item_saved':
       return 'success';
     case 'warning':
       return 'warning';
     case 'info':
     case 'document_uploaded':
+    case 'document_shared':
     case 'beneficiary_added':
     case 'executor_added':
+    case 'contact_verified':
+    case 'trusted_contact_added':
+    case 'trusted_contact_verified':
+    case 'subscription_changed':
+    case 'subscription_renewal':
     case 'will_deleted':
+    case 'document_deleted':
       return 'info';
     case 'security':
     case 'security_key_generated':
+    case 'payment_failed':
+    case 'system':
       return 'security';
     default:
       return 'info'; // Default to info for unknown types

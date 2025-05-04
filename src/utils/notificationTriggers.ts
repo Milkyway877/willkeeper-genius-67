@@ -22,7 +22,11 @@ export type EventType =
   | 'subscription_changed'
   | 'subscription_renewal'
   | 'payment_failed'
-  | 'system';
+  | 'system'
+  | 'success'
+  | 'warning'
+  | 'info'
+  | 'item_saved';
 
 // Will-related notifications
 export const triggerWillCreatedNotification = async () => {
