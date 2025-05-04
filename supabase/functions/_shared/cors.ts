@@ -15,3 +15,16 @@ export function handleCorsRequest(req: Request): Response | null {
   }
   return null;
 }
+
+// Apply CORS headers to any response
+export function applyCorsHeaders(response: Response): Response {
+  // Create a new response with CORS headers
+  const newResponse = new Response(response.body, response);
+  
+  // Add CORS headers to the response
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    newResponse.headers.set(key, value);
+  });
+  
+  return newResponse;
+}

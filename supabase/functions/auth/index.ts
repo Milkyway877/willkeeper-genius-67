@@ -9,7 +9,7 @@ import {
   getSupabaseClient
 } from "../_shared/auth-helper.ts";
 import { sendVerificationEmail } from "../_shared/email-helper.ts";
-import { corsHeaders, handleCorsRequest } from "../_shared/cors.ts";
+import { corsHeaders, handleCorsRequest, applyCorsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -54,28 +54,28 @@ serve(async (req) => {
       });
       
       if (!emailResult.success) {
-        return new Response(
+        return applyCorsHeaders(new Response(
           JSON.stringify({ 
             success: false, 
             error: emailResult.error || "Failed to send verification email" 
           }),
           {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
             status: 500,
           }
-        );
+        ));
       }
       
-      return new Response(
+      return applyCorsHeaders(new Response(
         JSON.stringify({
           success: true,
           message: "Verification code sent successfully"
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json" },
           status: 200,
         }
-      );
+      ));
     }
     
     // Verify code
@@ -97,16 +97,16 @@ serve(async (req) => {
       });
       
       if (!verification.isValid) {
-        return new Response(
+        return applyCorsHeaders(new Response(
           JSON.stringify({ 
             success: false, 
             message: verification.message || "Invalid verification code" 
           }),
           {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
             status: 400,
           }
-        );
+        ));
       }
       
       // If verification is for login/signup and we have userId, update security profile
@@ -118,16 +118,16 @@ serve(async (req) => {
         });
       }
       
-      return new Response(
+      return applyCorsHeaders(new Response(
         JSON.stringify({
           success: true,
           message: "Code verified successfully"
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json" },
           status: 200,
         }
-      );
+      ));
     }
     
     // Update security settings
@@ -142,28 +142,28 @@ serve(async (req) => {
       });
       
       if (!updateResult) {
-        return new Response(
+        return applyCorsHeaders(new Response(
           JSON.stringify({ 
             success: false, 
             message: "Failed to update security settings" 
           }),
           {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
             status: 500,
           }
-        );
+        ));
       }
       
-      return new Response(
+      return applyCorsHeaders(new Response(
         JSON.stringify({
           success: true,
           message: "Security settings updated successfully"
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json" },
           status: 200,
         }
-      );
+      ));
     }
     
     else {
@@ -173,15 +173,15 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in auth function:", error);
     
-    return new Response(
+    return applyCorsHeaders(new Response(
       JSON.stringify({ 
         success: false, 
         error: error instanceof Error ? error.message : "An unexpected error occurred" 
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         status: 500,
       }
-    );
+    ));
   }
 });

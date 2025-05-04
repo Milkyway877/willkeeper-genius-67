@@ -41,8 +41,9 @@ export const getTemporaryCredentials = () => {
 
 // Get Supabase functions URL
 const getFunctionsBaseUrl = () => {
-  // Use the SUPABASE_URL from the client.ts file
-  return `${window.location.protocol}//${new URL(import.meta.env.VITE_SUPABASE_URL || "https://ksiinmxsycosnpchutuw.supabase.co").host}/functions/v1`;
+  // Use the SUPABASE_URL from environment variable
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://ksiinmxsycosnpchutuw.supabase.co";
+  return `${window.location.protocol}//${new URL(supabaseUrl).host}/functions/v1`;
 };
 
 // Helper function to call functions with proper error handling
@@ -51,21 +52,26 @@ const callFunction = async (functionName: string, body: any) => {
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData?.session?.access_token;
   
-  // Get Supabase URL and key - using public constants instead of protected properties
+  // Get Supabase URL and key from environment variables
   const baseUrl = getFunctionsBaseUrl();
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
   
   try {
+    console.log(`Calling ${functionName} with baseUrl: ${baseUrl}`);
+    
     const response = await fetch(`${baseUrl}/${functionName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': accessToken ? `Bearer ${accessToken}` : '',
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '' // Using env variable instead
+        'apikey': anonKey
       },
       body: JSON.stringify(body)
     });
     
     if (!response.ok) {
+      console.error(`HTTP error ${response.status} calling ${functionName}`);
+      
       // Try to get error details from the response
       let errorDetails;
       try {
