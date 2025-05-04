@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
+import { OTPInput } from '@/components/ui/OTPInput';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -28,11 +28,14 @@ export default function EmailVerification() {
     },
   });
 
+  // Debug email parameter
   useEffect(() => {
+    console.log("Email verification page loaded with email:", email, "and type:", type);
+    
     if (!email) {
       navigate('/auth/signin', { replace: true });
     }
-  }, [email, navigate]);
+  }, [email, navigate, type]);
 
   const handleVerificationSubmit = async (code: string) => {
     if (!email) return;
@@ -44,12 +47,15 @@ export default function EmailVerification() {
     try {
       console.log("Verifying code:", code, "for email:", email);
       
+      // Ensure code is treated as string
+      const codeString = code.toString();
+      
       // First verify the code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('code', code.toString()) // Ensure code is treated as string
+        .eq('code', codeString)
         .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
@@ -212,10 +218,6 @@ export default function EmailVerification() {
     }
   };
 
-  const handleFormSubmit = async (values: { code: string }) => {
-    handleVerificationSubmit(values.code);
-  };
-
   const handleResendCode = async () => {
     if (!email) return;
     
@@ -293,23 +295,20 @@ export default function EmailVerification() {
         className="w-full"
       >
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
             <FormField
               control={form.control}
               name="code"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className="space-y-3">
                   <FormLabel>Verification Code</FormLabel>
                   <FormControl>
                     <div className="verification-input-container">
-                      <TwoFactorInput 
-                        onSubmit={(code) => {
-                          field.onChange(code);
-                          handleVerificationSubmit(code);
-                        }}
+                      <OTPInput 
+                        onSubmit={handleVerificationSubmit}
                         loading={isLoading}
-                        autoSubmit={false}
-                        useFormElement={false} // Use div to avoid nesting forms
+                        autoSubmit={true}
+                        useFormElement={false} 
                         error={verificationError}
                       />
                     </div>

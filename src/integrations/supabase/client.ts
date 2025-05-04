@@ -28,9 +28,13 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
     }
     
     const { data } = await supabase.auth.getSession();
+    console.log("Session data for verification check:", data);
     
     // If there's no session, verification is required
-    if (!data.session) return true;
+    if (!data.session) {
+      console.log("No session found, verification required");
+      return true;
+    }
     
     // Get user security record to check if this session has been verified
     const { data: securityData, error } = await supabase
@@ -38,6 +42,8 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
       .select('last_verified')
       .eq('user_id', data.session.user.id)
       .single();
+    
+    console.log("Security record for verification check:", { data: securityData, error });
     
     if (error) {
       console.log("Error checking security record:", error);
@@ -64,7 +70,9 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
     const sessionAgeHours = (currentTime.getTime() - sessionCreatedAt.getTime()) / (1000 * 60 * 60);
     
     // If session is older than 1 hour, require re-verification
-    return sessionAgeHours > 1;
+    const requiresVerification = sessionAgeHours > 1;
+    console.log("Session age check:", { sessionAgeHours, requiresVerification });
+    return requiresVerification;
   } catch (error) {
     console.error("Error checking session:", error);
     return true; // If there's an error, require verification to be safe

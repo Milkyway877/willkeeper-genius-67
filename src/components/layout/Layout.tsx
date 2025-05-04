@@ -58,6 +58,12 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   
   // Enhanced authentication check that enforces verification for every session
   useEffect(() => {
+    // Skip auth check for verification pages
+    if (location.pathname.includes('/auth/verification')) {
+      console.log("On verification page, skipping auth check");
+      return;
+    }
+    
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
         try {
@@ -72,12 +78,15 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           
           // Step 2: Check if this is a new device/browser and the session needs verification
           const needsVerification = await sessionRequiresVerification();
+          console.log("Session verification check result:", needsVerification);
           
           // Step 3: Check user profile status
           if (profile) {
             // Check if user is verified through Supabase auth or profile
             const isEmailVerified = profile.email_verified;
             const isUserActivated = profile.is_activated || profile.activation_complete;
+            
+            console.log("User profile check:", { isEmailVerified, isUserActivated });
             
             // If the user isn't fully activated or email verified
             if (!isUserActivated || !isEmailVerified) {
@@ -104,8 +113,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
               
               // Force verification for every new session
               console.log("New session detected, redirecting to verification");
-              await supabase.auth.signOut(); // Sign out to force re-authentication
-              navigate('/auth/signin', { replace: true });
+              navigate('/auth/verification?email=' + encodeURIComponent(profile.email || '') + '&type=login', { replace: true });
               return;
             }
             
