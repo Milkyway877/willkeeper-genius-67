@@ -7,8 +7,7 @@ export interface TrustedContact {
   name: string;
   email: string;
   phone?: string | null;
-  relation?: string | null;  // Changed from relationship to match DB column
-  relationship?: string | null;  // Keep for backward compatibility
+  relation?: string | null;
   invitation_status?: string | null;
   invitation_sent_at?: string | null;
   invitation_responded_at?: string | null;
@@ -46,7 +45,7 @@ export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
 export const createTrustedContact = async (contact: {
   name: string;
   email: string;
-  relationship?: string | null;
+  relation?: string | null;
 }): Promise<TrustedContact | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -56,11 +55,10 @@ export const createTrustedContact = async (contact: {
       return null;
     }
     
-    // Fix the field name mismatch between code and database
     const newContact = {
       name: contact.name,
       email: contact.email,
-      relation: contact.relationship, // Changed to match DB column name
+      relation: contact.relation,
       user_id: session.user.id,
       invitation_status: 'pending'
     };
@@ -85,12 +83,6 @@ export const createTrustedContact = async (contact: {
 
 export const updateTrustedContact = async (id: string, updates: Partial<TrustedContact>): Promise<TrustedContact | null> => {
   try {
-    // If updates contain relationship field, map it to relation for the database
-    if (updates.relationship !== undefined && updates.relation === undefined) {
-      updates.relation = updates.relationship;
-      delete updates.relationship;
-    }
-
     const { data, error } = await supabase
       .from('trusted_contacts')
       .update(updates)
@@ -169,7 +161,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': supabase.supabaseKey
+          'apikey': process.env.SUPABASE_ANON_KEY || ''
         },
         body: JSON.stringify({
           contact: {

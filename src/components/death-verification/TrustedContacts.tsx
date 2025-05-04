@@ -32,7 +32,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const [newContact, setNewContact] = useState({
     name: '',
     email: '',
-    relationship: ''
+    relation: ''
   });
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -110,7 +110,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       const contact = await createTrustedContact({
         name: newContact.name.trim(),
         email: newContact.email.toLowerCase().trim(),
-        relationship: newContact.relationship || null
+        relation: newContact.relation || null
       });
       
       if (!contact) {
@@ -118,7 +118,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       }
       
       // Clear form and close dialog
-      setNewContact({ name: '', email: '', relationship: '' });
+      setNewContact({ name: '', email: '', relation: '' });
       setFormOpen(false);
       
       // Refresh contacts list
@@ -260,7 +260,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                     <TableRow key={contact.id}>
                       <TableCell className="font-medium">{contact.name}</TableCell>
                       <TableCell>{contact.email}</TableCell>
-                      <TableCell>{contact.relationship || '-'}</TableCell>
+                      <TableCell>{contact.relation || '-'}</TableCell>
                       <TableCell>
                         {isVerified(contact) ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -343,12 +343,12 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="relationship">Relationship</Label>
+              <Label htmlFor="relation">Relationship</Label>
               <Input 
-                id="relationship"
-                name="relationship"
+                id="relation"
+                name="relation"
                 placeholder="e.g. Friend, Family Member, Colleague"
-                value={newContact.relationship}
+                value={newContact.relation}
                 onChange={handleInputChange}
               />
             </div>

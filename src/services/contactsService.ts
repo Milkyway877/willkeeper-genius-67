@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -16,7 +15,7 @@ export interface TrustedContact {
   name: string;
   email: string;
   phone?: string;
-  relationship?: string;
+  relation?: string;
   invitation_status?: string;
   invitation_sent_at?: string;
   invitation_responded_at?: string;
@@ -54,11 +53,7 @@ export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
       throw error;
     }
     
-    // Map relation to relationship for consistency
-    return (data || []).map(contact => ({
-      ...contact,
-      relationship: contact.relation
-    }));
+    return data || [];
   } catch (error) {
     console.error('Error in getTrustedContacts:', error);
     return [];
@@ -81,7 +76,7 @@ export const createTrustedContact = async (contact: TrustedContact): Promise<Tru
         name: contact.name,
         email: contact.email,
         phone: contact.phone || null,
-        relation: contact.relationship || null
+        relation: contact.relation || null
       })
       .select('*')
       .single();
@@ -97,11 +92,7 @@ export const createTrustedContact = async (contact: TrustedContact): Promise<Tru
       description: `${contact.name} has been added as a trusted contact.`
     });
     
-    // Map relation to relationship for consistency
-    return {
-      ...data,
-      relationship: data.relation
-    };
+    return data;
   } catch (error) {
     console.error('Error in createTrustedContact:', error);
     throw error;
@@ -167,7 +158,7 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
-        'apikey': supabase.supabaseKey
+        'apikey': process.env.SUPABASE_ANON_KEY || ''
       },
       body: JSON.stringify({ contact })
     });
