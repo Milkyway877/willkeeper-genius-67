@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -11,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { useEffectOnce } from 'usehooks-ts';
 import { toast } from '@/hooks/use-toast';
 
 interface LayoutProps {
@@ -135,7 +135,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   }, [forceAuthenticated, location.pathname, navigate, profile]);
   
   // Additional verification check on initial load
-  useEffectOnce(() => {
+  useEffect(() => {
     if (forceAuthenticated) {
       const verifyAuth = async () => {
         const { data, error } = await supabase.auth.getSession();
@@ -145,7 +145,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       };
       verifyAuth();
     }
-  });
+  }, []);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
