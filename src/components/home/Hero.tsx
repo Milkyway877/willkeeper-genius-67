@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Globe } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, useAnimation } from 'framer-motion';
-import { RotatingGlobe } from './RotatingGlobe';
+import { Globe } from '@/components/ui/globe';
 
 export function Hero() {
   const controls = useAnimation();
@@ -148,7 +148,11 @@ export function Hero() {
                   ease: "linear" 
                 }}
               ></motion.div>
-              <RotatingGlobe />
+              
+              {/* New Globe component replacing RotatingGlobe */}
+              <div className="relative h-[500px] w-full">
+                <Globe />
+              </div>
             </div>
           </motion.div>
         </div>
