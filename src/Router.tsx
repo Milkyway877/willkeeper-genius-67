@@ -40,7 +40,9 @@ function AppRouter() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/search" element={<SearchPage />} />
         
+        {/* Fix the AuthLayout route by using element prop correctly */}
         <Route path="/auth" element={<AuthLayout />}>
+          <Route index element={<SignIn />} />
           <Route path="signin" element={<SignIn />} />
           <Route path="signup" element={<SignUp />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
