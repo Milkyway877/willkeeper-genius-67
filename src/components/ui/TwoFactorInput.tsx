@@ -2,18 +2,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
 import { Button } from './button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from './alert';
 
 interface TwoFactorInputProps {
   onSubmit: (code: string) => void;
   loading?: boolean;
   autoSubmit?: boolean;
+  error?: string | null;
 }
 
 export const TwoFactorInput = ({
   onSubmit,
   loading = false,
   autoSubmit = true,
+  error = null,
 }: TwoFactorInputProps) => {
   const [code, setCode] = useState('');
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
@@ -96,6 +99,13 @@ export const TwoFactorInput = ({
           />
         ))}
       </div>
+      
+      {error && (
+        <Alert variant="destructive" className="mt-2">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       
       {!autoSubmit && (
         <div className="flex justify-center">
