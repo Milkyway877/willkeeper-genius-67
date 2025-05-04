@@ -12,20 +12,62 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { useEffect as useEffectOnce } from 'usehooks-ts';
 
 interface LayoutProps {
   children: React.ReactNode;
   forceAuthenticated?: boolean;
 }
 
+// Time in milliseconds for session inactivity timeout (15 minutes)
+const SESSION_TIMEOUT = 15 * 60 * 1000;
+
 export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileNotification, setShowMobileNotification] = useState(true);
+  const [lastActivity, setLastActivity] = useState(Date.now());
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
+  
+  // Track user activity
+  useEffect(() => {
+    const updateActivity = () => setLastActivity(Date.now());
+    
+    // Add event listeners for user activity
+    window.addEventListener('mousemove', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('scroll', updateActivity);
+    
+    // Session timeout checker
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      if (now - lastActivity > SESSION_TIMEOUT) {
+        console.log("Session timed out due to inactivity");
+        // Force logout after inactivity
+        supabase.auth.signOut().then(() => {
+          toast({
+            title: "Session expired",
+            description: "Your session has expired due to inactivity. Please sign in again.",
+            variant: "destructive"
+          });
+          navigate('/auth/signin', { replace: true });
+        });
+      }
+    }, 60000); // Check every minute
+    
+    return () => {
+      // Clean up event listeners
+      window.removeEventListener('mousemove', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+      clearInterval(intervalId);
+    };
+  }, [lastActivity, navigate]);
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -57,8 +99,27 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         if (!data.session) {
           console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
-        } else if (profile && !profile.is_activated) {
-          // If the user is logged in but email is not verified and they're trying to access protected routes
+          return;
+        }
+        
+        // Check session expiration
+        const expiresAt = data.session?.expires_at;
+        if (expiresAt) {
+          const expiryTime = new Date(expiresAt).getTime();
+          const currentTime = new Date().getTime();
+          const timeLeft = expiryTime - currentTime;
+          
+          if (timeLeft <= 0) {
+            console.log("Session expired, redirecting to signin");
+            await supabase.auth.signOut();
+            navigate('/auth/signin', { replace: true });
+            return;
+          }
+        }
+        
+        // Check if user profile exists and is activated
+        if (profile && !profile.is_activated) {
+          // If the user is logged in but email is not verified
           const isEmailVerified = profile.email_verified;
           
           if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
@@ -72,6 +133,19 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       checkAuthStatus();
     }
   }, [forceAuthenticated, location.pathname, navigate, profile]);
+  
+  // Additional verification check on initial load
+  useEffectOnce(() => {
+    if (forceAuthenticated) {
+      const verifyAuth = async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (error || !data.session) {
+          navigate('/auth/signin', { replace: true });
+        }
+      };
+      verifyAuth();
+    }
+  });
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
