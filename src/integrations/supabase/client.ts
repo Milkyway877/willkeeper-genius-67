@@ -11,9 +11,11 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: true, // Changed to true to maintain user sessions
+    persistSession: true, // Keep this true to maintain user sessions
     autoRefreshToken: true, // Keep this true for security during active sessions
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storageKey: 'sb-auth-token', // Explicitly set storage key for better tracking
+    storage: localStorage // Explicitly use localStorage for session persistence
   }
 });
 

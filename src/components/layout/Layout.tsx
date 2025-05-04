@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -30,6 +31,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [sessionVerified, setSessionVerified] = useState(false);
   const [justVerifiedChecked, setJustVerifiedChecked] = useState(false);
   
+  console.log("Layout rendering, sessionVerified status:", sessionVerified);
+  
   // Check if mobile notification has been dismissed before
   useEffect(() => {
     const dismissedNotification = localStorage.getItem('dismissedMobileNotification');
@@ -60,9 +63,11 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           
           // Check if session was just verified through email verification
           const justVerified = localStorage.getItem('session_just_verified');
+          console.log("session_just_verified flag value:", justVerified);
+          
           if (justVerified === 'true' && !justVerifiedChecked) {
             console.log("Session was just verified through email, skipping verification");
-            localStorage.removeItem('session_just_verified');
+            // We leave the flag but mark it as checked to prevent infinite loops
             setSessionVerified(true);
             setJustVerifiedChecked(true);
             return;
@@ -70,11 +75,19 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           
           // Step 1: Check if there's a valid session
           const { data } = await supabase.auth.getSession();
+          console.log("Current session status:", data.session ? "Active" : "None");
           
           if (!data.session) {
             console.log("No session found, redirecting to signin");
             navigate('/auth/signin', { replace: true });
             return;
+          }
+          
+          // If session exists but we have a just verified flag that's been checked,
+          // we can now clear it since we don't need it anymore
+          if (justVerifiedChecked && justVerified === 'true') {
+            console.log("Clearing session_just_verified flag after successful verification");
+            localStorage.removeItem('session_just_verified');
           }
           
           // Step 2: Check if this is a new device/browser
@@ -96,7 +109,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             }
             
             // Even if user is activated, we require verification for every new session
-            if (needsVerification && !sessionVerified) {
+            if (needsVerification && !sessionVerified && !justVerifiedChecked) {
               // Only trigger notification for new device logins when the profile exists
               // This avoids sending notifications during initial signup
               if (profile.is_activated) {

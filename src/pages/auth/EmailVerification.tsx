@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -30,23 +31,26 @@ export default function EmailVerification() {
     if (!email) {
       navigate('/auth/signin', { replace: true });
     }
-  }, [email, navigate]);
+    
+    // Add debug log to check what URL parameters we're getting
+    console.log("Email verification page loaded with:", { email, type });
+  }, [email, navigate, type]);
 
-  const handleFormSubmit = async (values: { code: string }) => {
+  const handleVerifyCode = async (code: string) => {
     if (!email) return;
     
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      console.log("Verifying code:", values.code, "for email:", email);
+      console.log("Verifying code:", code, "for email:", email);
       
       // First verify the code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('code', values.code)
+        .eq('code', code)
         .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
@@ -83,10 +87,12 @@ export default function EmailVerification() {
       const storedPassword = sessionStorage.getItem('auth_password');
 
       if (type === 'signup') {
+        console.log("Processing signup verification flow");
+        
         // For signup flow - update user profile to mark activation as complete
         await supabase
           .from('user_profiles')
-          .update({ activation_complete: true, email_verified: true })
+          .update({ activation_complete: true, email_verified: true, is_activated: true })
           .eq('email', email);
         
         toast({
@@ -95,8 +101,9 @@ export default function EmailVerification() {
           variant: "default",
         });
         
-        // Set the session_just_verified flag to bypass additional verification in the Layout component
+        // Critical fix: Set the session_just_verified flag to bypass additional verification
         localStorage.setItem('session_just_verified', 'true');
+        console.log("Set session_just_verified flag for signup flow");
         
         // If credentials are stored, sign in the user
         if (storedEmail && storedPassword) {
@@ -117,19 +124,26 @@ export default function EmailVerification() {
             return;
           }
           
-          console.log("Sign in successful:", signInData);
+          console.log("Sign in successful after verification:", signInData);
           
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
+          
+          // Direct to dashboard after successful signup verification
+          navigate('/dashboard', { replace: true });
+        } else {
+          // If no stored credentials but verification successful, still go to dashboard
+          // The Layout component will handle authentication check
+          navigate('/dashboard', { replace: true });
         }
-        
-        // Direct to dashboard after successful signup verification
-        navigate('/dashboard', { replace: true });
       } else {
         // For login flow
         console.log("Processing login verification flow");
+        
+        // Critical fix: Set the session_just_verified flag to bypass additional verification
         localStorage.setItem('session_just_verified', 'true');
+        console.log("Set session_just_verified flag for login flow");
         
         if (storedEmail && storedPassword) {
           console.log("Attempting to sign in with stored credentials:", { email: storedEmail });
@@ -317,7 +331,7 @@ export default function EmailVerification() {
         className="w-full"
       >
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+          <div className="space-y-6">
             <FormField
               control={form.control}
               name="code"
@@ -325,27 +339,30 @@ export default function EmailVerification() {
                 <FormItem className="space-y-3">
                   <FormLabel>Verification Code</FormLabel>
                   <FormControl>
-                    <TwoFactorInput 
-                      onSubmit={(code) => {
-                        field.onChange(code);
-                        form.handleSubmit(handleFormSubmit)();
-                      }}
-                      loading={isLoading}
-                      autoSubmit={false}
-                    />
+                    <div>
+                      <TwoFactorInput 
+                        onSubmit={(code) => {
+                          field.onChange(code);
+                          handleVerifyCode(code);
+                        }}
+                        loading={isLoading}
+                        autoSubmit={false}
+                      />
+                    </div>
                   </FormControl>
                 </FormItem>
               )}
             />
 
             <Button
-              type="submit"
+              type="button"
+              onClick={() => handleVerifyCode(form.getValues().code)}
               className="w-full"
               disabled={isLoading || form.watch('code').length !== 6}
             >
               {isLoading ? "Verifying..." : "Verify Email"}
             </Button>
-          </form>
+          </div>
         </Form>
 
         <div className="text-center mt-6">
