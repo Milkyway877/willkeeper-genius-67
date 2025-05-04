@@ -20,6 +20,8 @@ export default function EmailVerification() {
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState(false); // Debug mode toggle
+  const [debugInfo, setDebugInfo] = useState<any>(null); // Debug information storage
   const { toast } = useToast();
   
   const form = useForm({
@@ -35,7 +37,17 @@ export default function EmailVerification() {
     
     // Add debug log to check what URL parameters we're getting
     console.log("Email verification page loaded with:", { email, type });
-  }, [email, navigate, type]);
+    
+    // Check if debug mode is enabled via URL param
+    const debug = searchParams.get('debug') === 'true';
+    if (debug) {
+      setDebugMode(true);
+      toast({
+        title: "Debug Mode Enabled",
+        description: "Showing additional debug information for verification flow",
+      });
+    }
+  }, [email, navigate, type, searchParams, toast]);
 
   const handleVerifyCode = async (code: string) => {
     if (!email) return;
@@ -46,6 +58,15 @@ export default function EmailVerification() {
     
     try {
       console.log("Verifying code:", code, "for email:", email);
+      
+      // Store debug info about the verification attempt
+      const verificationInfo = {
+        email,
+        code,
+        type,
+        timestamp: new Date().toISOString(),
+        attempt: verificationAttempts + 1
+      };
       
       // First verify the code - CRITICAL FIX: Don't use single() here which fails with 406 error
       const { data: verificationData, error: verificationError } = await supabase
@@ -58,10 +79,31 @@ export default function EmailVerification() {
         .gt('expires_at', new Date().toISOString());
 
       console.log("Verification query result:", { data: verificationData, error: verificationError });
+      
+      // Store debug info
+      if (debugMode) {
+        setDebugInfo({
+          ...verificationInfo,
+          dbResult: {
+            data: verificationData,
+            error: verificationError,
+            query: {
+              email,
+              code,
+              type,
+              used: false,
+              expiresCheck: new Date().toISOString()
+            }
+          }
+        });
+      }
 
       // FIXED: Check if we have any rows in the result array instead of using single()
       if (verificationError || !verificationData || verificationData.length === 0) {
-        const errorMessage = "The code you entered is invalid or has expired. Please try again or request a new code.";
+        const errorMessage = debugMode 
+          ? `Verification failed: Code ${code} not found or expired for ${email}. Type: ${type}`
+          : "The code you entered is invalid or has expired. Please try again or request a new code.";
+          
         setVerificationError(errorMessage);
         toast({
           title: "Verification failed",
@@ -286,6 +328,18 @@ export default function EmailVerification() {
         description: errorMessage,
         variant: "destructive",
       });
+      
+      // Store debug info about the error
+      if (debugMode) {
+        setDebugInfo(prev => ({
+          ...prev,
+          error: {
+            message: errorMessage,
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+          }
+        }));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -303,6 +357,41 @@ export default function EmailVerification() {
       
       console.log("Resending verification code to:", email);
       
+      // First, check if there are existing, unused codes and mark them as used
+      const { data: existingCodes } = await supabase
+        .from('email_verification_codes')
+        .select('id')
+        .eq('email', email)
+        .eq('used', false);
+        
+      if (existingCodes && existingCodes.length > 0) {
+        // Mark existing unused codes as used
+        await supabase
+          .from('email_verification_codes')
+          .update({ used: true })
+          .eq('email', email)
+          .eq('used', false);
+        
+        console.log(`Marked ${existingCodes.length} existing unused codes as used`);
+      }
+      
+      // Store new verification code before sending email
+      // This ensures the code is in the DB even if email sending fails
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: email,
+          code: verificationCode,
+          type: type,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
+        });
+      
+      if (storeError) {
+        console.error("Error storing verification code:", storeError);
+        throw new Error("Failed to process verification");
+      }
+      
       // Send verification email
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
@@ -319,26 +408,23 @@ export default function EmailVerification() {
         throw new Error("Failed to send verification code");
       }
       
-      // Store verification code
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: email,
-          code: verificationCode,
-          type: type,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
+      if (debugMode) {
+        toast({
+          title: "Debug: Code Sent",
+          description: `Verification code: ${verificationCode}`,
         });
-      
-      if (storeError) {
-        console.error("Error storing verification code:", storeError);
-        throw new Error("Failed to process verification");
+        setDebugInfo({
+          lastSentCode: verificationCode,
+          email,
+          type,
+          sentAt: new Date().toISOString()
+        });
+      } else {
+        toast({
+          title: "Code sent",
+          description: "A new verification code has been sent to your email.",
+        });
       }
-      
-      toast({
-        title: "Code sent",
-        description: "A new verification code has been sent to your email.",
-      });
       
       // Reset the form
       form.reset({ code: '' });
@@ -385,7 +471,7 @@ export default function EmailVerification() {
                           handleVerifyCode(code);
                         }}
                         loading={isLoading}
-                        autoSubmit={false} // Changed to false to explicitly show the verify button
+                        autoSubmit={false} // Explicitly show the verify button
                         error={verificationError}
                       />
                     </div>
@@ -409,6 +495,26 @@ export default function EmailVerification() {
             </Button>
           </p>
         </div>
+        
+        {/* Debug information section - only shown in debug mode */}
+        {debugMode && debugInfo && (
+          <div className="mt-8 p-4 bg-gray-100 border border-gray-200 rounded-md text-xs overflow-auto">
+            <h3 className="font-bold mb-2">Debug Information:</h3>
+            <pre className="whitespace-pre-wrap">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+            <div className="mt-2 flex justify-end">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setDebugInfo(null)}
+                className="text-xs"
+              >
+                Clear Debug Info
+              </Button>
+            </div>
+          </div>
+        )}
       </motion.div>
     </AuthLayout>
   );
