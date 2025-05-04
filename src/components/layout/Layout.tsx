@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -118,14 +117,15 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         }
         
         // Check if user profile exists and is activated
-        if (profile && !profile.is_activated) {
+        if (profile && !profile.is_activated && !profile.email_verified) {
           // If the user is logged in but email is not verified
-          const isEmailVerified = profile.email_verified;
           
-          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
-            // Redirect to email verification with email as a parameter
+          // Only redirect if not already on verification page
+          if (!location.pathname.includes('/auth/verify-email') && 
+              !location.pathname.includes('/auth/verification')) {
+            // Redirect to verification page with email as a parameter
             console.log("User not verified, redirecting to verification");
-            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+            navigate(`/auth/verification?email=${encodeURIComponent(profile.email || '')}&type=signup`, { replace: true });
           }
         }
       };
@@ -134,7 +134,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [forceAuthenticated, location.pathname, navigate, profile]);
   
-  // Additional verification check on initial load
+  // Additional verification check on initial load - only run once
   useEffect(() => {
     if (forceAuthenticated) {
       const verifyAuth = async () => {

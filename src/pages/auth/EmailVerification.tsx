@@ -2,12 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
-import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
@@ -19,35 +17,29 @@ export default function EmailVerification() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
-  const { toast } = useToast();
+  const [verificationCode, setVerificationCode] = useState('');
   
-  const form = useForm({
-    defaultValues: {
-      code: '',
-    },
-  });
-
   useEffect(() => {
     if (!email) {
       navigate('/auth/signin', { replace: true });
     }
   }, [email, navigate]);
 
-  const handleFormSubmit = async (values: { code: string }) => {
+  const handleVerification = async (code: string) => {
     if (!email) return;
     
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      console.log("Verifying code:", values.code, "for email:", email);
+      console.log("Verifying code:", code, "for email:", email);
       
       // First verify the code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('code', values.code)
+        .eq('code', code)
         .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
@@ -83,8 +75,34 @@ export default function EmailVerification() {
         // For signup flow - update user profile to mark activation as complete
         await supabase
           .from('user_profiles')
-          .update({ activation_complete: true, email_verified: true })
+          .update({ activation_complete: true, email_verified: true, is_activated: true })
           .eq('email', email);
+        
+        // Get credentials from session storage
+        const storedEmail = sessionStorage.getItem('auth_email');
+        const storedPassword = sessionStorage.getItem('auth_password');
+        
+        if (storedEmail && storedPassword) {
+          // Sign in the user
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: storedEmail,
+            password: storedPassword,
+          });
+          
+          if (authError) {
+            toast({
+              title: "Sign in failed",
+              description: authError.message,
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
+          
+          // Clear stored credentials
+          sessionStorage.removeItem('auth_email');
+          sessionStorage.removeItem('auth_password');
+        }
         
         toast({
           title: "Email verified",
@@ -120,6 +138,12 @@ export default function EmailVerification() {
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
+          
+          // Update user profile to mark email as verified
+          await supabase
+            .from('user_profiles')
+            .update({ email_verified: true, is_activated: true })
+            .eq('email', email);
           
           toast({
             title: "Login successful",
@@ -199,7 +223,7 @@ export default function EmailVerification() {
       });
       
       // Reset the form
-      form.reset({ code: '' });
+      setVerificationCode('');
     } catch (error: any) {
       console.error("Error resending code:", error);
       toast({
@@ -224,50 +248,28 @@ export default function EmailVerification() {
         transition={{ duration: 0.3 }}
         className="w-full"
       >
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Verification Code</FormLabel>
-                  <FormControl>
-                    <TwoFactorInput 
-                      onSubmit={(code) => {
-                        field.onChange(code);
-                        form.handleSubmit(handleFormSubmit)();
-                      }}
-                      loading={isLoading}
-                      autoSubmit={false}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+        <div className="space-y-6">
+          <TwoFactorInput 
+            onSubmit={handleVerification}
+            loading={isLoading}
+            value={verificationCode}
+            onChange={setVerificationCode}
+            autoSubmit={false}
+          />
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading || form.watch('code').length !== 6}
-            >
-              {isLoading ? "Verifying..." : "Verify Email"}
-            </Button>
-          </form>
-        </Form>
-
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-500">
-            Didn't receive a code?{" "}
-            <Button 
-              variant="link" 
-              className="p-0 h-auto" 
-              onClick={handleResendCode}
-              disabled={resendLoading}
-            >
-              {resendLoading ? "Sending..." : "Resend Code"}
-            </Button>
-          </p>
+          <div className="text-center mt-6">
+            <p className="text-sm text-gray-500">
+              Didn't receive a code?{" "}
+              <Button 
+                variant="link" 
+                className="p-0 h-auto" 
+                onClick={handleResendCode}
+                disabled={resendLoading}
+              >
+                {resendLoading ? "Sending..." : "Resend Code"}
+              </Button>
+            </p>
+          </div>
         </div>
       </motion.div>
     </AuthLayout>

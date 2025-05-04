@@ -81,40 +81,8 @@ export function SignInForm() {
         return;
       }
       
-      // We'll first check if the credentials are valid without signing in
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-      
-      if (authError) {
-        toast({
-          title: "Authentication failed",
-          description: authError.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      // Sign out the user to require verification
-      await supabase.auth.signOut();
-      
-      // Generate and send verification code
+      // Generate verification code for email verification
       const verificationCode = generateVerificationCode();
-      
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: data.email,
-          code: verificationCode,
-          type: 'login'
-        }
-      });
-      
-      if (emailError) {
-        console.error("Error invoking send-verification function:", emailError);
-        throw new Error("Failed to send verification code");
-      }
       
       // Store verification code in database
       const { error: storeError } = await supabase
@@ -132,14 +100,28 @@ export function SignInForm() {
         throw new Error("Failed to process verification");
       }
       
-      toast({
-        title: "Verification code sent",
-        description: "Please check your email for the verification code.",
+      // Send verification code
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+        body: {
+          email: data.email,
+          code: verificationCode,
+          type: 'login'
+        }
       });
+      
+      if (emailError) {
+        console.error("Error invoking send-verification function:", emailError);
+        throw new Error("Failed to send verification code");
+      }
       
       // Save user credentials in session storage for verification page
       sessionStorage.setItem('auth_email', data.email);
       sessionStorage.setItem('auth_password', data.password);
+      
+      toast({
+        title: "Verification code sent",
+        description: "Please check your email for the verification code.",
+      });
       
       // Navigate to verification page
       navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
@@ -148,65 +130,6 @@ export function SignInForm() {
       
       toast({
         title: "Sign in failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    const email = form.getValues().email;
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address to resend verification.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      const verificationCode = generateVerificationCode();
-      
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: email,
-          code: verificationCode,
-          type: 'login'
-        }
-      });
-      
-      if (emailError) {
-        throw new Error("Failed to send verification code");
-      }
-      
-      // Store verification code
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: email,
-          code: verificationCode,
-          type: 'login',
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
-        });
-      
-      if (storeError) {
-        throw new Error("Failed to process verification");
-      }
-      
-      toast({
-        title: "Verification email sent",
-        description: "Please check your inbox for the verification link.",
-      });
-    } catch (error: any) {
-      console.error("Error resending verification:", error);
-      toast({
-        title: "Failed to resend verification",
         description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
