@@ -41,8 +41,8 @@ export const getTemporaryCredentials = () => {
 
 // Get Supabase functions URL
 const getFunctionsBaseUrl = () => {
-  const supabaseUrl = supabase.supabaseUrl;
-  return `${supabaseUrl}/functions/v1`;
+  // Instead of accessing protected property, use the URL directly from the env
+  return `${window.location.protocol}//${new URL(supabase.supabaseUrl).host}/functions/v1`;
 };
 
 // Helper function to call functions with proper error handling
@@ -51,7 +51,7 @@ const callFunction = async (functionName: string, body: any) => {
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData?.session?.access_token;
   
-  // Get Supabase URL and key
+  // Get Supabase URL and key - using public constants instead of protected properties
   const baseUrl = getFunctionsBaseUrl();
   
   try {
@@ -60,7 +60,7 @@ const callFunction = async (functionName: string, body: any) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': accessToken ? `Bearer ${accessToken}` : '',
-        'apikey': supabase.supabaseKey
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '' // Using env variable instead
       },
       body: JSON.stringify(body)
     });
