@@ -1,15 +1,17 @@
+
 import React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { Outlet } from 'react-router-dom';
+import { ThemeProvider } from '@/components/ui/theme-provider';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
 
 export default function App() {
   return (
-    <>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       {/* Add Google Fonts for professional will document */}
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" />
       
@@ -47,6 +49,6 @@ export default function App() {
       <Toaster />
       <FloatingAssistant />
       <ReactQueryDevtools initialIsOpen={false} />
-    </>
+    </ThemeProvider>
   );
 }
