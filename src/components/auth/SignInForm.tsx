@@ -81,17 +81,16 @@ export function SignInForm() {
         return;
       }
       
-      // Generate verification code for email verification
-      const verificationCode = generateVerificationCode();
-      console.log("Generated verification code:", verificationCode);
-      
       // Delete any expired or used verification codes for this email
       await supabase
         .from('email_verification_codes')
         .delete()
         .eq('email', data.email)
-        .eq('type', 'login')
         .or(`used.eq.true,expires_at.lt.${new Date().toISOString()}`);
+      
+      // Generate verification code for email verification
+      const verificationCode = generateVerificationCode();
+      console.log("Generated verification code:", verificationCode);
       
       // Store verification code in database
       const { error: storeError } = await supabase

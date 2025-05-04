@@ -42,7 +42,7 @@ serve(async (req) => {
       subject: subject,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1a1a1a;">Welcome to WillTank</h2>
+          <h2 style="color: #1a1a1a;">Email Verification - WillTank</h2>
           <p style="color: #4a4a4a; font-size: 16px; line-height: 1.5;">
             Please use the following verification code to ${actionText}:
           </p>

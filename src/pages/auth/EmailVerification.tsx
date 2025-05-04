@@ -7,7 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
+import { EmailVerificationInput } from '@/components/ui/EmailVerificationInput';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -18,28 +18,34 @@ export default function EmailVerification() {
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const [verificationCode, setVerificationCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     if (!email) {
+      console.log("No email found in URL params, redirecting to signin");
       navigate('/auth/signin', { replace: true });
     }
   }, [email, navigate]);
 
   const handleVerification = async (code: string) => {
-    if (!email) return;
+    if (!email) {
+      console.error("No email found, cannot verify");
+      return;
+    }
     
     setIsLoading(true);
+    setError(null);
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      console.log("Verifying code:", code, "for email:", email);
+      console.log(`Verifying code "${code}" for email "${email}" with type "${type}"`);
       
-      // First get the most recent valid verification code
+      // Improved query - simplified to find any valid verification code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('type', type)
+        .eq('code', code)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
@@ -49,42 +55,43 @@ export default function EmailVerification() {
 
       if (verificationError) {
         console.error("Database error when fetching verification code:", verificationError);
-        throw new Error("Unable to verify code due to database error");
+        setError("Unable to verify code due to a system error. Please try again later.");
+        return;
       }
       
       if (!verificationData || verificationData.length === 0) {
-        toast({
-          title: "Verification failed",
-          description: "No valid verification code found. Please request a new code.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      const latestVerification = verificationData[0];
-      console.log("Latest verification record:", latestVerification);
-      
-      // Compare the entered code with the one in the database
-      if (latestVerification.code !== code) {
-        console.log("Code mismatch. Expected:", latestVerification.code, "Got:", code);
-        toast({
-          title: "Incorrect verification code",
-          description: "The code you entered doesn't match our records. Please try again.",
-          variant: "destructive",
-        });
+        console.log("No valid verification code found for the entered code");
+        
+        // Check if there are any codes (valid or expired) for this email to give better error messages
+        const { data: anyCodes } = await supabase
+          .from('email_verification_codes')
+          .select('*')
+          .eq('email', email)
+          .eq('code', code)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (anyCodes && anyCodes.length > 0) {
+          if (new Date(anyCodes[0].expires_at) < new Date()) {
+            setError("This verification code has expired. Please request a new code.");
+          } else if (anyCodes[0].used) {
+            setError("This code has already been used. Please request a new code.");
+          } else {
+            setError("Invalid verification code. Please check and try again.");
+          }
+        } else {
+          setError("The code you entered doesn't match our records. Please try again.");
+        }
         
         if (verificationAttempts >= 3) {
-          toast({
-            title: "Too many attempts",
-            description: "Please request a new verification code.",
-            variant: "destructive",
-          });
+          setError("Too many attempts. Please request a new verification code.");
         }
-        setIsLoading(false);
         return;
       }
 
+      const latestVerification = verificationData[0];
+      console.log("Valid verification record found:", latestVerification);
+      
       // Mark code as used
       const { error: updateError } = await supabase
         .from('email_verification_codes')
@@ -113,6 +120,7 @@ export default function EmailVerification() {
         
         if (storedEmail && storedPassword) {
           // Sign in the user
+          console.log("Signing in user after successful verification");
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: storedEmail,
             password: storedPassword,
@@ -120,18 +128,17 @@ export default function EmailVerification() {
           
           if (authError) {
             console.error("Auth error during sign-in after verification:", authError);
-            toast({
-              title: "Sign in failed",
-              description: authError.message,
-              variant: "destructive",
-            });
-            setIsLoading(false);
+            setError(authError.message || "Sign in failed after verification");
             return;
           }
           
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
+          
+          console.log("User signed in successfully after verification:", authData);
+        } else {
+          console.warn("No stored credentials found for automatic login");
         }
         
         toast({
@@ -158,12 +165,7 @@ export default function EmailVerification() {
           
           if (authError) {
             console.error("Auth error during sign-in after verification:", authError);
-            toast({
-              title: "Sign in failed",
-              description: authError.message,
-              variant: "destructive",
-            });
-            setIsLoading(false);
+            setError(authError.message || "Sign in failed after verification");
             return;
           }
           
@@ -193,21 +195,12 @@ export default function EmailVerification() {
           navigate('/dashboard', { replace: true });
         } else {
           console.error("No stored credentials found");
-          toast({
-            title: "Authentication error",
-            description: "Login session expired. Please log in again.",
-            variant: "destructive",
-          });
-          navigate('/auth/signin', { replace: true });
+          setError("Login session expired. Please log in again.");
         }
       }
     } catch (error: any) {
       console.error('Error during email verification:', error);
-      toast({
-        title: "Verification error",
-        description: error.message || "An unexpected error occurred. Please try again later.",
-        variant: "destructive",
-      });
+      setError(error.message || "An unexpected error occurred. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -217,12 +210,20 @@ export default function EmailVerification() {
     if (!email) return;
     
     setResendLoading(true);
+    setError(null);
     
     try {
       // Generate a new verification code
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
       console.log("Resending verification code to:", email);
+      
+      // Delete expired codes first to clean up
+      await supabase
+        .from('email_verification_codes')
+        .delete()
+        .eq('email', email)
+        .lt('expires_at', new Date().toISOString());
       
       // Store verification code first to ensure it exists in the database
       const { error: storeError } = await supabase
@@ -266,11 +267,7 @@ export default function EmailVerification() {
       setVerificationAttempts(0);
     } catch (error: any) {
       console.error("Error resending code:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send a new code. Please try again later.",
-        variant: "destructive",
-      });
+      setError(error.message || "Failed to send a new code. Please try again later.");
     } finally {
       setResendLoading(false);
     }
@@ -289,12 +286,13 @@ export default function EmailVerification() {
         className="w-full"
       >
         <div className="space-y-6">
-          <TwoFactorInput 
+          <EmailVerificationInput 
             onSubmit={handleVerification}
             loading={isLoading}
             value={verificationCode}
             onChange={setVerificationCode}
             autoSubmit={false}
+            error={error}
           />
 
           <div className="text-center mt-6">
