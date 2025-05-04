@@ -1,4 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
+import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { createSystemNotification } from "./notificationService";
 
 export interface ContactInvitation {
@@ -75,8 +77,7 @@ export const createTrustedContact = async (contact: TrustedContact): Promise<Tru
         user_id: session.user.id,
         name: contact.name,
         email: contact.email,
-        phone: contact.phone || null,
-        relation: contact.relation || null
+        phone: contact.phone || null
       })
       .select('*')
       .single();
@@ -158,7 +159,7 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
-        'apikey': process.env.SUPABASE_ANON_KEY || ''
+        'apikey': SUPABASE_PUBLISHABLE_KEY || ''
       },
       body: JSON.stringify({ contact })
     });

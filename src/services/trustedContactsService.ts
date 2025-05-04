@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 
 export interface TrustedContact {
   id: string;
@@ -45,7 +46,6 @@ export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
 export const createTrustedContact = async (contact: {
   name: string;
   email: string;
-  relation?: string | null;
 }): Promise<TrustedContact | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -58,7 +58,6 @@ export const createTrustedContact = async (contact: {
     const newContact = {
       name: contact.name,
       email: contact.email,
-      relation: contact.relation,
       user_id: session.user.id,
       invitation_status: 'pending'
     };
@@ -161,7 +160,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': process.env.SUPABASE_ANON_KEY || ''
+          'apikey': SUPABASE_PUBLISHABLE_KEY || ''
         },
         body: JSON.stringify({
           contact: {

@@ -31,8 +31,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
   const [newContact, setNewContact] = useState({
     name: '',
-    email: '',
-    relation: ''
+    email: ''
   });
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -109,8 +108,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       
       const contact = await createTrustedContact({
         name: newContact.name.trim(),
-        email: newContact.email.toLowerCase().trim(),
-        relation: newContact.relation || null
+        email: newContact.email.toLowerCase().trim()
       });
       
       if (!contact) {
@@ -118,7 +116,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       }
       
       // Clear form and close dialog
-      setNewContact({ name: '', email: '', relation: '' });
+      setNewContact({ name: '', email: '' });
       setFormOpen(false);
       
       // Refresh contacts list
@@ -250,7 +248,6 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Relationship</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -260,7 +257,6 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                     <TableRow key={contact.id}>
                       <TableCell className="font-medium">{contact.name}</TableCell>
                       <TableCell>{contact.email}</TableCell>
-                      <TableCell>{contact.relation || '-'}</TableCell>
                       <TableCell>
                         {isVerified(contact) ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -340,17 +336,6 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                   onChange={handleInputChange}
                 />
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="relation">Relationship</Label>
-              <Input 
-                id="relation"
-                name="relation"
-                placeholder="e.g. Friend, Family Member, Colleague"
-                value={newContact.relation}
-                onChange={handleInputChange}
-              />
             </div>
           </div>
           
