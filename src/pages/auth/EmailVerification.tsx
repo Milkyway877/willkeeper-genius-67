@@ -385,7 +385,7 @@ export default function EmailVerification() {
                           handleVerifyCode(code);
                         }}
                         loading={isLoading}
-                        autoSubmit={true}
+                        autoSubmit={false} // Changed to false to explicitly show the verify button
                         error={verificationError}
                       />
                     </div>
