@@ -25,9 +25,8 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
     // If there's no session, verification is required
     if (!data.session) return true;
     
-    // Get the timestamp when session was created (use correct property)
-    // Sessions have a created_at property but it's accessed as a string value
-    const sessionCreatedAt = new Date(data.session.created_at || Date.now());
+    // Use created_at from user.created_at as fallback since Session might not have created_at
+    const sessionCreatedAt = new Date(data.session.user?.created_at || Date.now());
     const currentTime = new Date();
     const sessionAgeHours = (currentTime.getTime() - sessionCreatedAt.getTime()) / (1000 * 60 * 60);
     
