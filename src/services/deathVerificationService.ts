@@ -12,6 +12,7 @@ export interface DeathVerificationSettings {
   pin_system_enabled: boolean;
   executor_override_enabled: boolean;
   trusted_contact_enabled: boolean;
+  trusted_contact_email?: string; // Add this field to fix the error
   failsafe_enabled: boolean;
   notification_preferences: {
     email: boolean;

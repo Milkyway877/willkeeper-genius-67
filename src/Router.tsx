@@ -2,6 +2,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AuthLayout } from './components/auth/AuthLayout';
+import AuthCallback from './pages/auth/AuthCallback';
+import VerifyTrustedContact from './pages/VerifyTrustedContact';
 
 // Create placeholder pages for development
 const Home = () => <div>Home Page</div>;
@@ -24,7 +26,6 @@ const LegacyVault = () => <div>Legacy Vault Page</div>;
 const CheckIns = () => <div>Check-Ins Page</div>;
 const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
-const VerifyTrustedContact = () => <div>Verify Trusted Contact Page</div>;
 
 function AppRouter() {
   return (
@@ -44,6 +45,7 @@ function AppRouter() {
           <Route path="signup" element={<SignUp />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="reset-password" element={<ResetPassword />} />
+          <Route path="callback" element={<AuthCallback />} />
         </Route>
         
         <Route path="/dashboard" element={<Dashboard />} />

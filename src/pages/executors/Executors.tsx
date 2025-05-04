@@ -215,15 +215,15 @@ export default function Executors() {
     }
   };
 
-  const handleVerificationRequest = async (email: string, name: string, type: 'executor' | 'beneficiary') => {
+  const handleVerificationRequest = async (id: string, type: 'executor' | 'beneficiary') => {
     setIsSendingVerification(true);
     try {
-      const success = await sendVerificationRequest(email, name, type);
+      const success = await sendVerificationRequest(id, type);
       
       if (success) {
         toast({
           title: "Verification Sent",
-          description: `A verification request has been sent to ${email}.`
+          description: `A verification request has been sent.`
         });
       } else {
         throw new Error('Failed to send verification');
@@ -642,7 +642,7 @@ export default function Executors() {
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                onClick={() => handleVerificationRequest(executor.email, executor.name, 'executor')}
+                                onClick={() => handleVerificationRequest(executor.id, 'executor')}
                                 disabled={isSendingVerification}
                               >
                                 {isSendingVerification ? (
@@ -793,7 +793,7 @@ export default function Executors() {
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                onClick={() => handleVerificationRequest(beneficiary.email, beneficiary.name, 'beneficiary')}
+                                onClick={() => handleVerificationRequest(beneficiary.id, 'beneficiary')}
                                 disabled={isSendingVerification}
                               >
                                 {isSendingVerification ? (
