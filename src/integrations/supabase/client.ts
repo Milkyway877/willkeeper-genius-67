@@ -39,10 +39,10 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
       return true;
     }
     
-    // Check if session was just verified through email
+    // Check if session was just verified through email or 2FA
     const justVerified = localStorage.getItem('session_just_verified');
     if (justVerified === 'true') {
-      console.log("Session was just verified through email verification, bypassing additional verification");
+      console.log("Session was just verified, bypassing additional verification");
       return false;
     }
     
@@ -61,11 +61,34 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
   }
 };
 
+// Function to check if two-factor authentication is required for a user
+export const twoFactorRequired = async (userId: string): Promise<boolean> => {
+  try {
+    // Check if the user has 2FA enabled in their security settings
+    const { data, error } = await supabase
+      .from('user_security')
+      .select('google_auth_enabled')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error) {
+      console.error("Error checking 2FA requirement:", error);
+      return false; // Default to no 2FA requirement if there's an error
+    }
+    
+    return data?.google_auth_enabled === true;
+  } catch (error) {
+    console.error("Error in twoFactorRequired check:", error);
+    return false;
+  }
+};
+
 // Function to get user security profile
 export const getUserSecurityProfile = async (): Promise<{
   lastVerified?: Date;
   knownDevices?: string[];
   requiresVerification: boolean;
+  twoFactorEnabled?: boolean;
 }> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -85,7 +108,8 @@ export const getUserSecurityProfile = async (): Promise<{
       return {
         lastVerified: data.last_verified ? new Date(data.last_verified) : undefined,
         knownDevices: data.known_devices || [],
-        requiresVerification: true // Always require verification for this sensitive platform
+        requiresVerification: true, // Always require verification for this sensitive platform
+        twoFactorEnabled: data.google_auth_enabled || false
       };
     }
     

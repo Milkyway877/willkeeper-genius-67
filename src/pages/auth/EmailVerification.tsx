@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
+import { OTPInput } from '@/components/ui/OTPInput';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -137,7 +137,20 @@ export default function EmailVerification() {
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
           
-          // Direct to dashboard after successful signup verification
+          // Check if 2FA is enabled for this user
+          const { data: securityData } = await supabase
+            .from('user_security')
+            .select('google_auth_enabled')
+            .eq('user_id', signInData.user.id)
+            .single();
+          
+          if (securityData?.google_auth_enabled) {
+            // Redirect to 2FA page if enabled
+            navigate(`/auth/two-factor?email=${encodeURIComponent(email)}`, { replace: true });
+            return;
+          }
+          
+          // Direct to dashboard if 2FA not enabled
           navigate('/dashboard', { replace: true });
         } else {
           // If no stored credentials but verification successful, still go to dashboard
@@ -178,6 +191,13 @@ export default function EmailVerification() {
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
+          
+          // Check if 2FA is enabled for this user
+          const { data: securityData } = await supabase
+            .from('user_security')
+            .select('google_auth_enabled')
+            .eq('user_id', authData.user.id)
+            .single();
           
           // Record verification in the user_security table
           try {
@@ -231,6 +251,12 @@ export default function EmailVerification() {
           } catch (securityError) {
             console.error("Error updating security record:", securityError);
             // Non-fatal error, continue with login
+          }
+          
+          if (securityData?.google_auth_enabled) {
+            // Redirect to 2FA page if enabled
+            navigate(`/auth/two-factor?email=${encodeURIComponent(email)}`, { replace: true });
+            return;
           }
           
           toast({
@@ -353,13 +379,13 @@ export default function EmailVerification() {
                   <FormLabel>Verification Code</FormLabel>
                   <FormControl>
                     <div>
-                      <TwoFactorInput 
+                      <OTPInput 
                         onSubmit={(code) => {
                           field.onChange(code);
                           handleVerifyCode(code);
                         }}
                         loading={isLoading}
-                        autoSubmit={false}
+                        autoSubmit={true}
                         error={verificationError}
                       />
                     </div>
@@ -367,15 +393,6 @@ export default function EmailVerification() {
                 </FormItem>
               )}
             />
-
-            <Button
-              type="button"
-              onClick={() => handleVerifyCode(form.getValues().code)}
-              className="w-full"
-              disabled={isLoading || form.watch('code').length !== 6}
-            >
-              {isLoading ? "Verifying..." : "Verify Email"}
-            </Button>
           </div>
         </Form>
 

@@ -5,6 +5,7 @@ import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import EmailVerification from './pages/auth/EmailVerification';
+import TwoFactorAuthentication from './pages/auth/TwoFactorAuthentication';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import { Layout } from './components/layout/Layout';
 
@@ -69,6 +70,7 @@ function AppRouter() {
           <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/auth/verification" element={<EmailVerification />} />
+          <Route path="/auth/two-factor" element={<TwoFactorAuthentication />} />
           <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
         </Route>
         
