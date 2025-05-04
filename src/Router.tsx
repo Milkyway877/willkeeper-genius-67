@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom';
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
@@ -27,6 +27,15 @@ const CheckIns = () => <div>Check-Ins Page</div>;
 const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
 
+// Auth layout wrapper component that passes children to AuthLayout
+const AuthLayoutWrapper = () => {
+  return (
+    <AuthLayout>
+      <Outlet />
+    </AuthLayout>
+  );
+};
+
 function AppRouter() {
   return (
     <Router>
@@ -40,8 +49,8 @@ function AppRouter() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/search" element={<SearchPage />} />
         
-        {/* Fix the AuthLayout route by using element prop correctly */}
-        <Route element={<AuthLayout />}>
+        {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
+        <Route element={<AuthLayoutWrapper />}>
           <Route path="/auth" element={<SignIn />} />
           <Route path="/auth/signin" element={<SignIn />} />
           <Route path="/auth/signup" element={<SignUp />} />
