@@ -1,19 +1,15 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { Resend } from "npm:resend@2.0.0";
 import { 
   getResendClient, 
   buildDefaultEmailLayout, 
   isEmailSendSuccess, 
   formatResendError 
 } from "../_shared/email-helper.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
+// Create a Supabase client with the service role key
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -34,14 +30,17 @@ serve(async (req) => {
   }
 
   try {
+    // Parse the request body to get the contact information
     const { contact } = await req.json() as { contact: ContactInvitation };
     
     if (!contact || !contact.email || !contact.contactType || !contact.contactId) {
       return new Response(
-        JSON.stringify({ error: "Missing contact information" }),
+        JSON.stringify({ success: false, message: "Missing required contact information" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log("Processing invitation for contact:", contact.name, contact.email);
     
     // Get user info if fullName isn't provided
     let userFullName = contact.userFullName;
@@ -64,9 +63,30 @@ serve(async (req) => {
     
     // Generate a verification token
     const verificationToken = crypto.randomUUID();
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 30); // Token expires in 30 days
+    
+    // Store the verification token in the database
+    const { error: tokenError } = await supabase
+      .from('contact_verifications')
+      .insert({
+        user_id: contact.userId,
+        contact_id: contact.contactId,
+        contact_type: contact.contactType,
+        verification_token: verificationToken,
+        expires_at: expirationDate.toISOString()
+      });
+      
+    if (tokenError) {
+      console.error('Error storing verification token:', tokenError);
+      return new Response(
+        JSON.stringify({ success: false, message: "Failed to create verification token" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     // Create verification URL
-    const verificationUrl = `https://willtank.com/verify/invitation/${verificationToken}`;
+    const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/trusted-contact/${verificationToken}`;
     
     // Generate email content based on contact type
     let subject = '';
@@ -100,10 +120,11 @@ serve(async (req) => {
       <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
     `;
     
-    // Get resend client
+    // Get resend client to send the email
     const resend = getResendClient();
     
     // Send the email
+    console.log("Sending invitation email to:", contact.email);
     const emailResponse = await resend.emails.send({
       from: "WillTank <invitations@willtank.com>",
       to: [contact.email],
@@ -116,14 +137,14 @@ serve(async (req) => {
       console.error('Error sending invitation email:', errorMessage);
       
       return new Response(
-        JSON.stringify({ success: false, error: errorMessage }),
+        JSON.stringify({ success: false, message: "Failed to send invitation email", error: errorMessage }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
     console.log('Invitation email sent successfully:', emailResponse.id);
     
-    // Store the verification token and details
+    // Store the verification event in logs
     await supabase.from('death_verification_logs').insert({
       user_id: contact.userId,
       action: 'invitation_sent',
@@ -140,7 +161,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Invitation email sent successfully", 
+        message: "Invitation email sent successfully",
         emailId: emailResponse.id 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -148,7 +169,11 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error sending invitation email:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message || "Internal server error" }),
+      JSON.stringify({ 
+        success: false, 
+        message: "Failed to process invitation",
+        error: error.message || "Internal server error" 
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

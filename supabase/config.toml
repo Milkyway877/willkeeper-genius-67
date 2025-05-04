@@ -46,3 +46,6 @@ verify_jwt = true
 
 [functions.create-notification]
 verify_jwt = true
+
+[functions.send-contact-invitation]
+verify_jwt = true
