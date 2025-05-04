@@ -131,6 +131,23 @@ export function DeathVerificationWidget() {
     }
   };
 
+  // Safe function to calculate grace period end date
+  const safeCalculateGracePeriod = (nextCheckInDate: string | undefined | null, gracePeriod: number | undefined): string => {
+    if (!nextCheckInDate || !gracePeriod) return 'Not set';
+    try {
+      const date = parseISO(nextCheckInDate);
+      if (!isValid(date)) return 'Invalid date';
+      
+      const endDate = addDays(date, gracePeriod);
+      if (!isValid(endDate)) return 'Invalid date';
+      
+      return format(endDate, 'PPP');
+    } catch (error) {
+      console.error('Error calculating grace period:', error);
+      return 'Not set';
+    }
+  };
+
   // If no settings or not enabled, show setup required
   if (loading) {
     return (
@@ -216,7 +233,7 @@ export function DeathVerificationWidget() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Check-In Needed</AlertTitle>
             <AlertDescription>
-              Your check-in is {checkin && checkin.next_check_in ? formatDistanceToNow(parseISO(checkin.next_check_in)) : ''} overdue. Please check in soon to prevent the verification process from starting.
+              Your check-in is {checkin && checkin.next_check_in ? safeFormatDistance(checkin.next_check_in) : ''} overdue. Please check in soon to prevent the verification process from starting.
             </AlertDescription>
           </Alert>
         )}
@@ -250,12 +267,7 @@ export function DeathVerificationWidget() {
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">Grace period ends</span>
               <span className="font-medium">
-                {(checkin && settings && checkin.next_check_in)
-                  ? safeFormatDate(
-                      addDays(parseISO(checkin.next_check_in), settings.grace_period).toISOString(),
-                      'PPP'
-                    )
-                  : 'Not set'}
+                {safeCalculateGracePeriod(checkin?.next_check_in, settings?.grace_period)}
               </span>
             </div>
           </div>
