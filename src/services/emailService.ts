@@ -22,24 +22,51 @@ export const sendEmail = async (options: EmailOptions): Promise<{ success: boole
     }
     
     // Call the edge function for sending emails
-    const response = await fetch(`${window.location.origin}/functions/v1/send-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-      },
-      body: JSON.stringify(options)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error sending email:', errorData);
-      return { success: false, error: errorData.message || 'Failed to send email' };
+    try {
+      const response = await fetch(`${window.location.origin}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+        },
+        body: JSON.stringify(options)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error sending email:', errorData);
+        throw new Error(errorData.message || 'Failed to send email');
+      }
+      
+      const data = await response.json();
+      return { success: true, emailId: data.emailId };
+    } catch (fetchError) {
+      console.error('Error with fetch to send-email:', fetchError);
+      
+      // Try using supabase functions invoke as fallback
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('send-email', {
+          body: options
+        });
+        
+        if (fnError || !data?.success) {
+          console.error('Error from functions.invoke:', fnError);
+          return { 
+            success: false, 
+            error: fnError?.message || data?.error || 'Failed to send email via functions invoke'
+          };
+        }
+        
+        return { success: true, emailId: data.emailId };
+      } catch (invokeError) {
+        console.error('Error with functions.invoke:', invokeError);
+        return { 
+          success: false, 
+          error: invokeError instanceof Error ? invokeError.message : 'Unknown error with email delivery'
+        };
+      }
     }
-    
-    const data = await response.json();
-    return { success: true, emailId: data.emailId };
   } catch (error) {
     console.error('Error in sendEmail:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -75,40 +102,8 @@ export const sendTrustedContactInvitation = async (
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Send invitation via edge function
-    const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-      },
-      body: JSON.stringify({
-        contact: {
-          contactId,
-          contactType: 'trusted',
-          name: contactName,
-          email: contactEmail,
-          userId: session.user.id,
-          userFullName
-        },
-        emailDetails: {
-          subject: `Important: ${userFullName} has named you as a trusted contact`,
-          includeVerificationInstructions: true,
-          includeUserBio: true,
-          priority: 'high',
-          customMessage
-        }
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error sending trusted contact invitation:', errorData);
-      return { success: false, error: errorData.message || 'Failed to send invitation' };
-    }
-    
-    // Update contact status in database
+    // First mark the contact as having an invitation sent 
+    // This ensures we don't lose track even if the email fails
     await supabase
       .from('trusted_contacts')
       .update({
@@ -117,7 +112,83 @@ export const sendTrustedContactInvitation = async (
       })
       .eq('id', contactId);
     
-    return { success: true };
+    // Send invitation via edge function with better error handling
+    try {
+      const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+        },
+        body: JSON.stringify({
+          contact: {
+            contactId,
+            contactType: 'trusted',
+            name: contactName,
+            email: contactEmail,
+            userId: session.user.id,
+            userFullName
+          },
+          emailDetails: {
+            subject: `Important: ${userFullName} has named you as a trusted contact`,
+            includeVerificationInstructions: true,
+            includeUserBio: true,
+            priority: 'high',
+            customMessage
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error sending trusted contact invitation:', errorData);
+        throw new Error(errorData.message || 'Failed to send invitation');
+      }
+      
+      return { success: true };
+    } catch (fetchError) {
+      console.error('Fetch error with send-contact-invitation:', fetchError);
+      
+      // Try direct functions invoke as a fallback
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
+          body: {
+            contact: {
+              contactId,
+              contactType: 'trusted',
+              name: contactName,
+              email: contactEmail,
+              userId: session.user.id,
+              userFullName
+            },
+            emailDetails: {
+              subject: `Important: ${userFullName} has named you as a trusted contact`,
+              includeVerificationInstructions: true,
+              includeUserBio: true,
+              priority: 'high',
+              customMessage
+            }
+          }
+        });
+        
+        if (fnError || !data?.success) {
+          console.error('Error from functions.invoke:', fnError);
+          return { 
+            success: false, 
+            error: fnError?.message || data?.error || 'Failed to send invitation via functions invoke'
+          };
+        }
+        
+        return { success: true };
+      } catch (invokeError) {
+        console.error('Error with functions.invoke:', invokeError);
+        return { 
+          success: false, 
+          error: invokeError instanceof Error ? invokeError.message : 'Unknown error with invitation'
+        };
+      }
+    }
   } catch (error) {
     console.error('Error in sendTrustedContactInvitation:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

@@ -156,72 +156,100 @@ export const createSystemNotification = async (
         notificationType = 'info';
     }
     
-    // Use the SECURITY DEFINER SQL function via RPC to bypass RLS
-    const { data, error } = await supabase.rpc(
-      'create_notification',
-      {
-        p_user_id: session.user.id,
-        p_title: details.title,
-        p_description: details.description,
-        p_type: notificationType
-      }
-    );
-    
-    if (error) {
-      console.error('Error creating notification via RPC:', error);
+    // Try the RPC method first
+    try {
+      const { data: notificationId, error: rpcError } = await supabase.rpc(
+        'create_notification',
+        {
+          p_user_id: session.user.id,
+          p_title: details.title,
+          p_description: details.description,
+          p_type: notificationType
+        }
+      );
       
-      // Fallback to edge function if RPC fails
-      try {
-        const response = await fetch(`${window.location.origin}/functions/v1/create-notification`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            title: details.title,
-            description: details.description,
-            type: notificationType
-          })
-        });
+      if (rpcError) {
+        console.warn('RPC method failed, using fallback:', rpcError);
+        throw new Error('RPC method failed');
+      }
+      
+      if (notificationId) {
+        // Fetch the newly created notification to return it
+        const { data: notification } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('id', notificationId)
+          .single();
+          
+        return notification;
+      }
+    } catch (rpcError) {
+      console.error('Error using RPC for notification:', rpcError);
+      // Continue to edge function fallback
+    }
+    
+    // Edge function fallback
+    try {
+      const response = await fetch(`${window.location.origin}/functions/v1/create-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          title: details.title,
+          description: details.description,
+          type: notificationType
+        })
+      });
+      
+      if (!response.ok) {
+        console.warn('Edge function failed, using direct insert:', response.status);
+        throw new Error(`Edge function returned ${response.status}`);
+      }
+      
+      const responseData = await response.json();
+      
+      // Use the notification ID returned by the edge function
+      if (responseData.notification_id) {
+        // Fetch the newly created notification to return it
+        const { data: notification } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('id', responseData.notification_id)
+          .single();
+          
+        return notification;
+      }
+    } catch (edgeFunctionError) {
+      console.error('Edge function fallback failed:', edgeFunctionError);
+      // Continue to direct insert fallback
+    }
+    
+    // Direct insert fallback as last resort
+    try {
+      const { data: directInsert, error: insertError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: session.user.id,
+          title: details.title,
+          description: details.description,
+          type: notificationType,
+          read: false
+        })
+        .select()
+        .single();
         
-        if (!response.ok) {
-          throw new Error(`Edge function returned ${response.status}`);
-        }
-        
-        const responseData = await response.json();
-        
-        // Use the notification ID returned by the edge function
-        if (responseData.notification_id) {
-          // Fetch the newly created notification to return it
-          const { data: notification } = await supabase
-            .from('notifications')
-            .select('*')
-            .eq('id', responseData.notification_id)
-            .single();
-            
-          return notification;
-        }
-      } catch (fallbackError) {
-        console.error('Edge function fallback also failed:', fallbackError);
+      if (insertError) {
+        console.error('Direct insert also failed:', insertError);
         return null;
       }
       
+      return directInsert;
+    } catch (insertError) {
+      console.error('All notification creation methods failed:', insertError);
       return null;
     }
-    
-    // If RPC was successful, fetch the notification to return it
-    if (data) {
-      const { data: notification } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('id', data)
-        .single();
-        
-      return notification;
-    }
-    
-    return null;
   } catch (error) {
     console.error('Error in createSystemNotification:', error);
     return null;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,14 +9,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useNotificationTriggers } from '@/hooks/use-notification-triggers';
 import { 
   TrustedContact, 
   getTrustedContacts, 
   createTrustedContact, 
   sendVerificationRequest, 
-  deleteTrustedContact 
+  deleteTrustedContact,
+  resendInvitation
 } from '@/services/trustedContactsService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TrustedContactsProps {
   onContactsChange: () => void;
@@ -25,7 +25,6 @@ interface TrustedContactsProps {
 
 export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const { toast } = useToast();
-  const { triggerTrustedContactAdded, triggerTrustedContactVerified } = useNotificationTriggers();
   
   const [loading, setLoading] = useState(true);
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
@@ -67,6 +66,37 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+  
+  const createSystemNotificationFallback = async (
+    type: 'success' | 'warning' | 'info' | 'security',
+    title: string,
+    description: string
+  ) => {
+    try {
+      // Check if session exists
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        console.error('No authenticated user found');
+        return;
+      }
+      
+      // Direct insert as fallback since RPC might not be available yet
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: session.user.id,
+          title,
+          description,
+          type,
+          read: false
+        });
+      
+      console.log('Notification created via fallback method');
+    } catch (error) {
+      console.error('Failed to create notification via fallback:', error);
+    }
   };
   
   const handleAddContact = async () => {
@@ -123,19 +153,52 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       fetchTrustedContacts();
       onContactsChange();
       
-      // Send verification email
+      // Attempt to send verification email with enhanced error handling
       try {
-        await sendVerificationRequest(contact.id);
-        // Trigger notification
-        await triggerTrustedContactAdded(contact.name);
+        const success = await sendVerificationRequest(contact.id);
+        
+        if (success) {
+          // Create notification via fallback method
+          await createSystemNotificationFallback(
+            'success',
+            'Trusted Contact Added',
+            `${contact.name} has been added to your trusted contacts list.`
+          );
+          
+          toast({
+            title: "Contact Added",
+            description: `${newContact.name} has been added to your trusted contacts list and a verification email has been sent.`
+          });
+        } else {
+          // User feedback for email sending failure
+          toast({
+            title: "Contact Added",
+            description: `${contact.name} has been added, but we couldn't send the verification email. You can resend it later.`,
+            variant: "default"
+          });
+          
+          // Create warning notification via fallback method
+          await createSystemNotificationFallback(
+            'warning',
+            'Email Delivery Issue',
+            `We couldn't send the verification email to ${contact.name}. You can try resending it later.`
+          );
+        }
       } catch (emailError) {
         console.error('Error sending verification email:', emailError);
+        
+        toast({
+          title: "Contact Added",
+          description: `${contact.name} has been added, but we couldn't send the verification email. You can resend it later.`,
+        });
+        
+        // Create warning notification via fallback method
+        await createSystemNotificationFallback(
+          'warning',
+          'Email Delivery Issue',
+          `We couldn't send the verification email to ${contact.name}. You can try resending it later.`
+        );
       }
-      
-      toast({
-        title: "Contact Added",
-        description: `${newContact.name} has been added to your trusted contacts list.`
-      });
     } catch (error) {
       console.error('Error adding trusted contact:', error);
       toast({
@@ -150,13 +213,41 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   
   const handleResendVerification = async (contactId: string, name: string) => {
     try {
-      const success = await sendVerificationRequest(contactId);
+      toast({
+        title: "Sending...",
+        description: `Attempting to send verification email to ${name}`,
+      });
+      
+      // First try the regular invitation method
+      let success = false;
+      
+      try {
+        success = await resendInvitation(contactId);
+      } catch (error) {
+        console.error('Error using resendInvitation:', error);
+      }
+      
+      // If that fails, try the direct sendVerificationRequest method
+      if (!success) {
+        try {
+          success = await sendVerificationRequest(contactId);
+        } catch (error) {
+          console.error('Error using sendVerificationRequest:', error); 
+        }
+      }
       
       if (success) {
         toast({
           title: "Verification Email Sent",
           description: `A verification email has been sent to ${name}`
         });
+        
+        // Create success notification via fallback method
+        await createSystemNotificationFallback(
+          'success',
+          'Verification Email Sent',
+          `A new verification email has been sent to ${name}.`
+        );
       } else {
         throw new Error("Failed to send verification email");
       }
@@ -164,7 +255,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       console.error('Error sending verification email:', error);
       toast({
         title: "Error",
-        description: "Failed to send verification email",
+        description: "Failed to send verification email. Please try again later.",
         variant: "destructive"
       });
     }
@@ -183,6 +274,13 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           title: "Contact Removed",
           description: "The contact has been removed from your trusted contacts list"
         });
+        
+        // Create info notification via fallback method
+        await createSystemNotificationFallback(
+          'info',
+          'Contact Removed',
+          'A trusted contact has been removed from your list.'
+        );
       } else {
         throw new Error("Failed to remove trusted contact");
       }
