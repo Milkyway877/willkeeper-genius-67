@@ -11,8 +11,64 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    persistSession: false, // Changed to false to prevent auto-login
+    autoRefreshToken: true, // Keep this true for security during active sessions
     detectSessionInUrl: true
   }
 });
+
+// Function to check if session requires verification
+export const sessionRequiresVerification = async (): Promise<boolean> => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    
+    // If there's no session, verification is required
+    if (!data.session) return true;
+    
+    // Check if the session is fresh (less than 1 hour old)
+    const sessionCreatedAt = new Date(data.session.created_at);
+    const currentTime = new Date();
+    const sessionAgeHours = (currentTime.getTime() - sessionCreatedAt.getTime()) / (1000 * 60 * 60);
+    
+    // If session is older than 1 hour, require re-verification
+    return sessionAgeHours > 1;
+  } catch (error) {
+    console.error("Error checking session:", error);
+    return true; // If there's an error, require verification to be safe
+  }
+};
+
+// Function to get user security profile
+export const getUserSecurityProfile = async (): Promise<{
+  lastVerified?: Date;
+  knownDevices?: string[];
+  requiresVerification: boolean;
+}> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      return { requiresVerification: true };
+    }
+    
+    // Get security info from user metadata if available
+    const { data } = await supabase
+      .from('user_security')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .single();
+      
+    if (data) {
+      return {
+        lastVerified: data.last_verified ? new Date(data.last_verified) : undefined,
+        knownDevices: data.known_devices || [],
+        requiresVerification: true // Always require verification for this sensitive platform
+      };
+    }
+    
+    return { requiresVerification: true };
+  } catch (error) {
+    console.error("Error getting security profile:", error);
+    return { requiresVerification: true };
+  }
+};

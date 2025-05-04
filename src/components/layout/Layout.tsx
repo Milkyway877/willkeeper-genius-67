@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -8,10 +7,11 @@ import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { FloatingHelp } from '@/components/ui/FloatingHelp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, sessionRequiresVerification } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { triggerNewLoginNotification } from '@/utils/notificationTriggers';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -26,6 +26,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
+  const [sessionVerified, setSessionVerified] = useState(false);
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -48,30 +49,66 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [isMobile]);
   
-  // Check authentication status if required
+  // Enhanced authentication check that enforces verification for every session
   useEffect(() => {
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
-        const { data } = await supabase.auth.getSession();
-        
-        if (!data.session) {
-          console.log("No session found, redirecting to signin");
-          navigate('/auth/signin', { replace: true });
-        } else if (profile && !profile.is_activated) {
-          // If the user is logged in but email is not verified and they're trying to access protected routes
-          const isEmailVerified = profile.email_verified;
+        try {
+          // Step 1: Check if there's a valid session
+          const { data } = await supabase.auth.getSession();
           
-          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
-            // Redirect to email verification with email as a parameter
-            console.log("User not verified, redirecting to verification");
-            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+          if (!data.session) {
+            console.log("No session found, redirecting to signin");
+            navigate('/auth/signin', { replace: true });
+            return;
           }
+          
+          // Step 2: Check if this is a new device/browser
+          const needsVerification = await sessionRequiresVerification();
+          
+          // Step 3: Check user profile status
+          if (profile) {
+            // If the user isn't fully activated or email verified
+            if (!profile.activation_complete || !profile.email_verified) {
+              console.log("User not verified, redirecting to verification");
+              navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+              return;
+            }
+            
+            // Even if user is activated, we require verification for every new session
+            if (needsVerification && !sessionVerified) {
+              // Only trigger notification for new device logins when the profile exists
+              // This avoids sending notifications during initial signup
+              if (profile.activation_complete) {
+                // Get browser and OS info for notification
+                const userAgent = navigator.userAgent;
+                const browserInfo = `${/chrome|firefox|safari|edge|opera/i.exec(userAgent.toLowerCase())?.[0] || 'browser'} on ${/windows|mac|linux|android|ios/i.exec(userAgent.toLowerCase())?.[0] || 'unknown device'}`;
+                
+                // Notify user about the new login
+                triggerNewLoginNotification(browserInfo);
+              }
+              
+              // Store the email in session storage for verification
+              sessionStorage.setItem('auth_email', profile.email || '');
+              
+              // Force verification for every new session
+              console.log("New session detected, redirecting to verification");
+              await supabase.auth.signOut(); // Sign out to force re-authentication
+              navigate('/auth/signin', { replace: true });
+              return;
+            }
+            
+            setSessionVerified(true);
+          }
+        } catch (error) {
+          console.error("Authentication check error:", error);
+          navigate('/auth/signin', { replace: true });
         }
       };
       
       checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate, profile]);
+  }, [forceAuthenticated, location.pathname, navigate, profile, sessionVerified]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);

@@ -121,6 +121,60 @@ export default function EmailVerification() {
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
           
+          // Record verification in the user_security table
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+              // Update or insert security record
+              const userAgent = navigator.userAgent;
+              const deviceInfo = JSON.stringify({
+                browser: /chrome|firefox|safari|edge|opera/i.exec(userAgent.toLowerCase())?.[0] || 'browser',
+                os: /windows|mac|linux|android|ios/i.exec(userAgent.toLowerCase())?.[0] || 'unknown',
+                timestamp: new Date().toISOString()
+              });
+              
+              // Check if security record exists
+              const { data: securityRecord } = await supabase
+                .from('user_security')
+                .select('id, known_devices')
+                .eq('user_id', user.id)
+                .single();
+              
+              if (securityRecord) {
+                // Update existing record
+                let knownDevices = securityRecord.known_devices || [];
+                if (Array.isArray(knownDevices)) {
+                  knownDevices = [...knownDevices, deviceInfo].slice(-5); // Keep last 5 devices
+                } else {
+                  knownDevices = [deviceInfo];
+                }
+                
+                await supabase
+                  .from('user_security')
+                  .update({
+                    last_verified: new Date().toISOString(),
+                    known_devices: knownDevices,
+                    failed_login_attempts: 0
+                  })
+                  .eq('user_id', user.id);
+              } else {
+                // Create new security record
+                await supabase
+                  .from('user_security')
+                  .insert({
+                    user_id: user.id,
+                    last_verified: new Date().toISOString(),
+                    known_devices: [deviceInfo],
+                    failed_login_attempts: 0
+                  });
+              }
+            }
+          } catch (securityError) {
+            console.error("Error updating security record:", securityError);
+            // Non-fatal error, continue with login
+          }
+          
           toast({
             title: "Login successful",
             description: "You have been successfully verified and logged in.",
