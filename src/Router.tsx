@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import EmailVerification from './pages/auth/EmailVerification';
+import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 
 // Create placeholder pages for development
 const Home = () => <div>Home Page</div>;
@@ -57,6 +59,8 @@ function AppRouter() {
           <Route path="/auth/forgot-password" element={<ForgotPassword />} />
           <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/verification" element={<EmailVerification />} />
+          <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
         </Route>
         
         <Route path="/dashboard" element={<Dashboard />} />

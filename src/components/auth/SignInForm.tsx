@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -98,17 +97,8 @@ export function SignInForm() {
       }
       
       // User exists and password is correct - check if verification is required
-      // For now, direct the user to the dashboard immediately after successful login
-      toast({
-        title: "Login successful",
-        description: "You've been signed in successfully.",
-      });
+      // Remove the temporary direct login and enable verification
       
-      // Navigate directly to dashboard
-      navigate('/dashboard', { replace: true });
-      
-      /* Disable verification flow temporarily 
-      // User exists and password is correct, now proceed with verification
       // Sign out the user to require verification
       await supabase.auth.signOut();
       
@@ -154,7 +144,6 @@ export function SignInForm() {
       
       // Navigate to verification page
       navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
-      */
       
     } catch (error: any) {
       console.error("Sign in error:", error);
