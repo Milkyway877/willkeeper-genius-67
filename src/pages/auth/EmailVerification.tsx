@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { OTPInput } from '@/components/ui/OTPInput';
+import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -19,7 +19,6 @@ export default function EmailVerification() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
   const { toast } = useToast();
   
   const form = useForm({
@@ -28,34 +27,27 @@ export default function EmailVerification() {
     },
   });
 
-  // Debug email parameter
   useEffect(() => {
-    console.log("Email verification page loaded with email:", email, "and type:", type);
-    
     if (!email) {
       navigate('/auth/signin', { replace: true });
     }
-  }, [email, navigate, type]);
+  }, [email, navigate]);
 
-  const handleVerificationSubmit = async (code: string) => {
+  const handleFormSubmit = async (values: { code: string }) => {
     if (!email) return;
     
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
-    setVerificationError(null);
     
     try {
-      console.log("Verifying code:", code, "for email:", email);
-      
-      // Ensure code is treated as string
-      const codeString = code.toString();
+      console.log("Verifying code:", values.code, "for email:", email);
       
       // First verify the code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('code', codeString)
+        .eq('code', values.code)
         .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
@@ -64,11 +56,9 @@ export default function EmailVerification() {
       console.log("Verification query result:", { data: verificationData, error: verificationError });
 
       if (verificationError || !verificationData) {
-        const errorMessage = "The code you entered is invalid or has expired. Please try again or request a new code.";
-        setVerificationError(errorMessage);
         toast({
           title: "Verification failed",
-          description: errorMessage,
+          description: "The code you entered is invalid or has expired. Please try again or request a new code.",
           variant: "destructive",
         });
         
@@ -179,9 +169,6 @@ export default function EmailVerification() {
                     failed_login_attempts: 0
                   });
               }
-              
-              // Set a flag in localStorage that we can check in Layout.tsx
-              localStorage.setItem('session_verified', 'true');
             }
           } catch (securityError) {
             console.error("Error updating security record:", securityError);
@@ -207,7 +194,6 @@ export default function EmailVerification() {
       }
     } catch (error: any) {
       console.error('Error during email verification:', error);
-      setVerificationError(error.message || "An unexpected error occurred");
       toast({
         title: "Verification error",
         description: error.message || "An unexpected error occurred. Please try again later.",
@@ -266,10 +252,8 @@ export default function EmailVerification() {
         description: "A new verification code has been sent to your email.",
       });
       
-      // Reset the form and errors
+      // Reset the form
       form.reset({ code: '' });
-      setVerificationError(null);
-      setVerificationAttempts(0);
     } catch (error: any) {
       console.error("Error resending code:", error);
       toast({
@@ -295,27 +279,34 @@ export default function EmailVerification() {
         className="w-full"
       >
         <Form {...form}>
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="code"
-              render={() => (
+              render={({ field }) => (
                 <FormItem className="space-y-3">
                   <FormLabel>Verification Code</FormLabel>
                   <FormControl>
-                    <div className="verification-input-container">
-                      <OTPInput 
-                        onSubmit={handleVerificationSubmit}
-                        loading={isLoading}
-                        autoSubmit={true}
-                        useFormElement={false} 
-                        error={verificationError}
-                      />
-                    </div>
+                    <TwoFactorInput 
+                      onSubmit={(code) => {
+                        field.onChange(code);
+                        form.handleSubmit(handleFormSubmit)();
+                      }}
+                      loading={isLoading}
+                      autoSubmit={false}
+                    />
                   </FormControl>
                 </FormItem>
               )}
             />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading || form.watch('code').length !== 6}
+            >
+              {isLoading ? "Verifying..." : "Verify Email"}
+            </Button>
           </form>
         </Form>
 

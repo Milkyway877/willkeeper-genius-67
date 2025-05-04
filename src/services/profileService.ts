@@ -14,7 +14,6 @@ export interface UserProfile {
   email: string | null;
   email_verified: boolean | null;
   gender?: 'male' | 'female' | null; // Optional gender field
-  activation_complete?: boolean | null; // Add this for backward compatibility
 }
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
@@ -42,8 +41,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.activation_complete, // Map DB column to interface property
-      activation_complete: data.activation_complete, // Keep for backward compatibility
+      is_activated: data.activation_complete,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date,
       email: session.user.email,

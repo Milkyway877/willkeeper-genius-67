@@ -35,12 +35,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     if (dismissedNotification === 'true') {
       setShowMobileNotification(false);
     }
-    
-    // Check if session has been verified from localStorage
-    const sessionVerifiedFlag = localStorage.getItem('session_verified');
-    if (sessionVerifiedFlag === 'true') {
-      setSessionVerified(true);
-    }
   }, []);
   
   // Handle notification dismissal
@@ -58,12 +52,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   
   // Enhanced authentication check that enforces verification for every session
   useEffect(() => {
-    // Skip auth check for verification pages
-    if (location.pathname.includes('/auth/verification')) {
-      console.log("On verification page, skipping auth check");
-      return;
-    }
-    
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
         try {
@@ -76,20 +64,13 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             return;
           }
           
-          // Step 2: Check if this is a new device/browser and the session needs verification
+          // Step 2: Check if this is a new device/browser
           const needsVerification = await sessionRequiresVerification();
-          console.log("Session verification check result:", needsVerification);
           
           // Step 3: Check user profile status
           if (profile) {
-            // Check if user is verified through Supabase auth or profile
-            const isEmailVerified = profile.email_verified;
-            const isUserActivated = profile.is_activated || profile.activation_complete;
-            
-            console.log("User profile check:", { isEmailVerified, isUserActivated });
-            
             // If the user isn't fully activated or email verified
-            if (!isUserActivated || !isEmailVerified) {
+            if (!profile.is_activated || !profile.email_verified) {
               console.log("User not verified, redirecting to verification");
               navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
               return;
@@ -99,7 +80,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             if (needsVerification && !sessionVerified) {
               // Only trigger notification for new device logins when the profile exists
               // This avoids sending notifications during initial signup
-              if (isUserActivated) {
+              if (profile.is_activated) {
                 // Get browser and OS info for notification
                 const userAgent = navigator.userAgent;
                 const browserInfo = `${/chrome|firefox|safari|edge|opera/i.exec(userAgent.toLowerCase())?.[0] || 'browser'} on ${/windows|mac|linux|android|ios/i.exec(userAgent.toLowerCase())?.[0] || 'unknown device'}`;
@@ -113,7 +94,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
               
               // Force verification for every new session
               console.log("New session detected, redirecting to verification");
-              navigate('/auth/verification?email=' + encodeURIComponent(profile.email || '') + '&type=login', { replace: true });
+              await supabase.auth.signOut(); // Sign out to force re-authentication
+              navigate('/auth/signin', { replace: true });
               return;
             }
             
