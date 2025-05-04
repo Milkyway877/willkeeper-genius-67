@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ export default function EmailVerification() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const { toast } = useToast();
   
   const form = useForm({
@@ -32,21 +34,22 @@ export default function EmailVerification() {
     }
   }, [email, navigate]);
 
-  const handleFormSubmit = async (values: { code: string }) => {
+  const handleVerificationSubmit = async (code: string) => {
     if (!email) return;
     
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
+    setVerificationError(null);
     
     try {
-      console.log("Verifying code:", values.code, "for email:", email);
+      console.log("Verifying code:", code, "for email:", email);
       
       // First verify the code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('code', values.code)
+        .eq('code', code.toString()) // Ensure code is treated as string
         .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
@@ -55,9 +58,11 @@ export default function EmailVerification() {
       console.log("Verification query result:", { data: verificationData, error: verificationError });
 
       if (verificationError || !verificationData) {
+        const errorMessage = "The code you entered is invalid or has expired. Please try again or request a new code.";
+        setVerificationError(errorMessage);
         toast({
           title: "Verification failed",
-          description: "The code you entered is invalid or has expired. Please try again or request a new code.",
+          description: errorMessage,
           variant: "destructive",
         });
         
@@ -196,6 +201,7 @@ export default function EmailVerification() {
       }
     } catch (error: any) {
       console.error('Error during email verification:', error);
+      setVerificationError(error.message || "An unexpected error occurred");
       toast({
         title: "Verification error",
         description: error.message || "An unexpected error occurred. Please try again later.",
@@ -204,6 +210,10 @@ export default function EmailVerification() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFormSubmit = async (values: { code: string }) => {
+    handleVerificationSubmit(values.code);
   };
 
   const handleResendCode = async () => {
@@ -254,8 +264,10 @@ export default function EmailVerification() {
         description: "A new verification code has been sent to your email.",
       });
       
-      // Reset the form
+      // Reset the form and errors
       form.reset({ code: '' });
+      setVerificationError(null);
+      setVerificationAttempts(0);
     } catch (error: any) {
       console.error("Error resending code:", error);
       toast({
@@ -289,27 +301,22 @@ export default function EmailVerification() {
                 <FormItem className="space-y-3">
                   <FormLabel>Verification Code</FormLabel>
                   <FormControl>
-                    <TwoFactorInput 
-                      onSubmit={(code) => {
-                        field.onChange(code);
-                        form.handleSubmit(handleFormSubmit)();
-                      }}
-                      loading={isLoading}
-                      autoSubmit={false}
-                      useFormElement={false} // Use div instead of form to avoid nesting forms
-                    />
+                    <div className="verification-input-container">
+                      <TwoFactorInput 
+                        onSubmit={(code) => {
+                          field.onChange(code);
+                          handleVerificationSubmit(code);
+                        }}
+                        loading={isLoading}
+                        autoSubmit={false}
+                        useFormElement={false} // Use div to avoid nesting forms
+                        error={verificationError}
+                      />
+                    </div>
                   </FormControl>
                 </FormItem>
               )}
             />
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading || form.watch('code').length !== 6}
-            >
-              {isLoading ? "Verifying..." : "Verify Email"}
-            </Button>
           </form>
         </Form>
 

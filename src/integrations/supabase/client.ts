@@ -20,6 +20,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Function to check if session requires verification
 export const sessionRequiresVerification = async (): Promise<boolean> => {
   try {
+    // First check if the session has already been verified and marked in localStorage
+    const sessionVerifiedFlag = localStorage.getItem('session_verified');
+    if (sessionVerifiedFlag === 'true') {
+      console.log("Session already verified according to localStorage");
+      return false;
+    }
+    
     const { data } = await supabase.auth.getSession();
     
     // If there's no session, verification is required
@@ -31,6 +38,11 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
       .select('last_verified')
       .eq('user_id', data.session.user.id)
       .single();
+    
+    if (error) {
+      console.log("Error checking security record:", error);
+      return true; // If there's an error, require verification to be safe
+    }
       
     // If we found a security record with a recent verification, don't require re-verification
     if (securityData?.last_verified) {
@@ -41,6 +53,7 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
       // If verified in the last hour, don't require verification
       if (hoursSinceVerification <= 1) {
         console.log("Recent verification found, not requiring re-verification");
+        localStorage.setItem('session_verified', 'true');
         return false;
       }
     }

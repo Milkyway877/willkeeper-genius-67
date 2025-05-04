@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -34,6 +35,12 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     if (dismissedNotification === 'true') {
       setShowMobileNotification(false);
     }
+    
+    // Check if session has been verified from localStorage
+    const sessionVerifiedFlag = localStorage.getItem('session_verified');
+    if (sessionVerifiedFlag === 'true') {
+      setSessionVerified(true);
+    }
   }, []);
   
   // Handle notification dismissal
@@ -63,7 +70,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             return;
           }
           
-          // Step 2: Check if this is a new device/browser
+          // Step 2: Check if this is a new device/browser and the session needs verification
           const needsVerification = await sessionRequiresVerification();
           
           // Step 3: Check user profile status

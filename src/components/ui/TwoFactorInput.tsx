@@ -9,7 +9,7 @@ interface TwoFactorInputProps {
   loading?: boolean;
   error?: string | null;
   autoSubmit?: boolean;
-  useFormElement?: boolean; // New prop to control whether to use form or div
+  useFormElement?: boolean; // Controls whether to use form or div
 }
 
 export function TwoFactorInput({ 
@@ -72,6 +72,10 @@ export function TwoFactorInput({
           onKeyDown={handleKeyDown}
           maxLength={6}
           disabled={loading}
+          // Add these properties to enable auto-focus behavior
+          autoFocus
+          pattern="\d{1}"
+          inputMode="numeric"
         >
           <InputOTPGroup>
             {Array.from({ length: 6 }).map((_, i) => (
