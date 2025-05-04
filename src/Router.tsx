@@ -9,7 +9,6 @@ import VerifyTrustedContact from './pages/VerifyTrustedContact';
 const Home = () => <div>Home Page</div>;
 const About = () => <div>About Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
-const Contact = () => <div>Contact Page</div>;
 const Faq = () => <div>FAQ Page</div>;
 const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
@@ -43,7 +42,6 @@ function AppRouter() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
-        <Route path="/contact" element={<Contact />} />
         <Route path="/faq" element={<Faq />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
