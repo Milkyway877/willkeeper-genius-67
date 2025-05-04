@@ -160,12 +160,12 @@ export const createInitialCheckin = async (): Promise<DeathVerificationCheckin |
     const nextCheckIn = new Date();
     nextCheckIn.setDate(now.getDate() + settings.check_in_frequency);
     
-    // Create the check-in record
+    // Create the check-in record - Changed 'active' to 'alive'
     const { data, error } = await supabase
       .from('death_verification_checkins')
       .insert({
         user_id: session.user.id,
-        status: 'active',
+        status: 'alive',
         checked_in_at: now.toISOString(),
         next_check_in: nextCheckIn.toISOString()
       })
@@ -238,12 +238,12 @@ export const performCheckin = async (notes?: string): Promise<DeathVerificationC
     const nextCheckIn = new Date();
     nextCheckIn.setDate(now.getDate() + settings.check_in_frequency);
     
-    // Create the check-in record
+    // Create the check-in record - Changed 'active' to 'alive'
     const { data, error } = await supabase
       .from('death_verification_checkins')
       .insert({
         user_id: session.user.id,
-        status: 'active',
+        status: 'alive',
         checked_in_at: now.toISOString(),
         next_check_in: nextCheckIn.toISOString(),
         notes: notes
