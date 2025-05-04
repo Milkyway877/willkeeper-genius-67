@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { format, formatDistanceToNow, addDays } from 'date-fns';
+import { format, formatDistanceToNow, addDays, isValid } from 'date-fns';
 import { parseISO } from 'date-fns';
 import { Shield, CheckSquare, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -83,20 +83,54 @@ export function DeathVerificationWidget() {
   const getStatus = () => {
     if (!checkin || !settings) return 'unknown';
     
-    const now = new Date();
-    const nextCheckIn = parseISO(checkin.next_check_in);
-    const gracePeriodEnd = addDays(nextCheckIn, settings.grace_period);
-    
-    if (now > gracePeriodEnd) {
-      return 'overdue';
-    } else if (now > nextCheckIn) {
-      return 'grace-period';
+    try {
+      const now = new Date();
+      const nextCheckIn = checkin.next_check_in ? parseISO(checkin.next_check_in) : null;
+      
+      if (!nextCheckIn || !isValid(nextCheckIn)) return 'unknown';
+      
+      const gracePeriodEnd = addDays(nextCheckIn, settings.grace_period);
+      
+      if (now > gracePeriodEnd) {
+        return 'overdue';
+      } else if (now > nextCheckIn) {
+        return 'grace-period';
+      }
+      return 'active';
+    } catch (error) {
+      console.error('Error determining status:', error);
+      return 'unknown';
     }
-    return 'active';
   };
   
   const status = checkin && settings ? getStatus() : 'unknown';
   
+  // Helper function to safely format dates
+  const safeFormatDate = (dateString: string | undefined | null, formatStr: string): string => {
+    if (!dateString) return 'Not set';
+    try {
+      const date = parseISO(dateString);
+      if (!isValid(date)) return 'Invalid date';
+      return format(date, formatStr);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
+  };
+  
+  // Helper function to safely calculate time distance
+  const safeFormatDistance = (dateString: string | undefined | null): string => {
+    if (!dateString) return '';
+    try {
+      const date = parseISO(dateString);
+      if (!isValid(date)) return '';
+      return formatDistanceToNow(date, { addSuffix: true });
+    } catch (error) {
+      console.error('Error calculating time distance:', error);
+      return '';
+    }
+  };
+
   // If no settings or not enabled, show setup required
   if (loading) {
     return (
@@ -161,7 +195,7 @@ export function DeathVerificationWidget() {
         </CardTitle>
         <CardDescription>
           {checkin 
-            ? `Last checked in ${formatDistanceToNow(parseISO(checkin.checked_in_at), { addSuffix: true })}`
+            ? `Last checked in ${safeFormatDistance(checkin.checked_in_at)}`
             : 'No previous check-ins found'}
         </CardDescription>
       </CardHeader>
@@ -172,7 +206,7 @@ export function DeathVerificationWidget() {
             <CheckSquare className="h-4 w-4" />
             <AlertTitle>Status: Protected</AlertTitle>
             <AlertDescription>
-              Your will is protected by our check-in system. Next check-in due {checkin ? formatDistanceToNow(parseISO(checkin.next_check_in), { addSuffix: true }) : 'soon'}.
+              Your will is protected by our check-in system. Next check-in due {checkin ? safeFormatDistance(checkin.next_check_in) : 'soon'}.
             </AlertDescription>
           </Alert>
         )}
@@ -182,7 +216,7 @@ export function DeathVerificationWidget() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Check-In Needed</AlertTitle>
             <AlertDescription>
-              Your check-in is {checkin ? formatDistanceToNow(parseISO(checkin.next_check_in)) : ''} overdue. Please check in soon to prevent the verification process from starting.
+              Your check-in is {checkin && checkin.next_check_in ? formatDistanceToNow(parseISO(checkin.next_check_in)) : ''} overdue. Please check in soon to prevent the verification process from starting.
             </AlertDescription>
           </Alert>
         )}
@@ -209,15 +243,18 @@ export function DeathVerificationWidget() {
                 status === 'grace-period' ? 'text-amber-600' : 
                 'text-red-600'
               }`}>
-                {checkin ? format(parseISO(checkin.next_check_in), 'PPP') : 'Not set'}
+                {checkin ? safeFormatDate(checkin.next_check_in, 'PPP') : 'Not set'}
               </span>
             </div>
             
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">Grace period ends</span>
               <span className="font-medium">
-                {checkin && settings 
-                  ? format(addDays(parseISO(checkin.next_check_in), settings.grace_period), 'PPP')
+                {(checkin && settings && checkin.next_check_in)
+                  ? safeFormatDate(
+                      addDays(parseISO(checkin.next_check_in), settings.grace_period).toISOString(),
+                      'PPP'
+                    )
                   : 'Not set'}
               </span>
             </div>

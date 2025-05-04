@@ -41,13 +41,13 @@ function AppRouter() {
         <Route path="/search" element={<SearchPage />} />
         
         {/* Fix the AuthLayout route by using element prop correctly */}
-        <Route path="/auth" element={<AuthLayout />}>
-          <Route index element={<SignIn />} />
-          <Route path="signin" element={<SignIn />} />
-          <Route path="signup" element={<SignUp />} />
-          <Route path="forgot-password" element={<ForgotPassword />} />
-          <Route path="reset-password" element={<ResetPassword />} />
-          <Route path="callback" element={<AuthCallback />} />
+        <Route element={<AuthLayout />}>
+          <Route path="/auth" element={<SignIn />} />
+          <Route path="/auth/signin" element={<SignIn />} />
+          <Route path="/auth/signup" element={<SignUp />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
         </Route>
         
         <Route path="/dashboard" element={<Dashboard />} />
