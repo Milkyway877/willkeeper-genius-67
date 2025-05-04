@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getWill, getWills, updateWill, Will as WillType } from '@/services/willService';
 import { format } from 'date-fns';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
+import { WillAttachedDocumentsSection } from './components/WillAttachedDocumentsSection';
 import { DocumentPreview } from './components/DocumentPreview';
 import { WillContent } from './components/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -477,6 +478,11 @@ export default function Will() {
               <div className="mt-6">
                 <WillAttachedVideosSection willId={currentWill.id} />
               </div>
+            )}
+            
+            {/* Add Supporting Documents Section */}
+            {currentWill && !isLoading && (
+              <WillAttachedDocumentsSection willId={currentWill.id} />
             )}
           </div>
           

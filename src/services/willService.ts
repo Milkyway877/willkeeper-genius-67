@@ -32,6 +32,18 @@ export interface WillBeneficiary {
   will_id?: string;
 }
 
+export interface WillDocument {
+  id: string;
+  will_id: string;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  file_type: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 // Track in-progress operations to prevent duplicates
 const inProgressOperations = {
   creatingDraft: false,
@@ -410,6 +422,169 @@ export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, '
     };
   } catch (error) {
     console.error('Error in createWillBeneficiary:', error);
+    return null;
+  }
+};
+
+export const getWillDocuments = async (willId: string): Promise<WillDocument[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('will_documents')
+      .select('*')
+      .eq('will_id', willId)
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching will documents:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getWillDocuments:', error);
+    return [];
+  }
+};
+
+export const uploadWillDocument = async (
+  willId: string, 
+  file: File, 
+  onProgress?: (progress: number) => void
+): Promise<WillDocument | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+    
+    // Create a unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const filePath = `${session.user.id}/${fileName}`;
+    
+    // Upload to Supabase Storage
+    const { error: uploadError, data: uploadData } = await supabase.storage
+      .from('will_documents')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        onUploadProgress: onProgress ? (progress) => {
+          const percentage = (progress.loaded / progress.total) * 100;
+          onProgress(Math.round(percentage));
+        } : undefined
+      });
+      
+    if (uploadError) {
+      console.error('Error uploading will document:', uploadError);
+      return null;
+    }
+    
+    // Save document metadata in the database
+    const documentData = {
+      will_id: willId,
+      user_id: session.user.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_size: file.size,
+      file_type: file.type
+    };
+    
+    const { data, error } = await supabase
+      .from('will_documents')
+      .insert(documentData)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error saving will document metadata:', error);
+      
+      // Try to clean up the uploaded file on error
+      await supabase.storage
+        .from('will_documents')
+        .remove([filePath]);
+        
+      return null;
+    }
+    
+    await createSystemNotification('document_added', {
+      title: 'Document Added',
+      description: `Document ${file.name} has been added to your will.`
+    });
+    
+    return data;
+  } catch (error) {
+    console.error('Error in uploadWillDocument:', error);
+    return null;
+  }
+};
+
+export const deleteWillDocument = async (document: WillDocument): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return false;
+    }
+
+    // Delete the file from storage
+    const { error: storageError } = await supabase.storage
+      .from('will_documents')
+      .remove([document.file_path]);
+      
+    if (storageError) {
+      console.error('Error deleting file from storage:', storageError);
+      // Continue anyway to try to clean up the database entry
+    }
+    
+    // Delete the document metadata from the database
+    const { error } = await supabase
+      .from('will_documents')
+      .delete()
+      .eq('id', document.id)
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error deleting document metadata:', error);
+      return false;
+    }
+    
+    await createSystemNotification('document_removed', {
+      title: 'Document Removed',
+      description: `Document ${document.file_name} has been removed from your will.`
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteWillDocument:', error);
+    return false;
+  }
+};
+
+export const getDocumentUrl = async (document: WillDocument): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.storage
+      .from('will_documents')
+      .createSignedUrl(document.file_path, 60); // URL valid for 60 seconds
+      
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error in getDocumentUrl:', error);
     return null;
   }
 };

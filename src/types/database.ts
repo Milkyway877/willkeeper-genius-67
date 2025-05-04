@@ -522,6 +522,41 @@ export interface Database {
           updated_at?: string | null;
         };
       };
+      will_documents: {
+        Row: {
+          id: string;
+          will_id: string;
+          user_id: string;
+          file_name: string;
+          file_path: string;
+          file_size: number;
+          file_type: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Insert: {
+          id?: string;
+          will_id: string;
+          user_id: string;
+          file_name: string;
+          file_path: string;
+          file_size: number;
+          file_type: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          will_id?: string;
+          user_id?: string;
+          file_name?: string;
+          file_path?: string;
+          file_size?: number;
+          file_type?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
     }
     Views: {
       [_ in never]: never
