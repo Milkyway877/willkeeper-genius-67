@@ -1,9 +1,9 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, FileText, Key, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { WorldMapDemo } from '@/components/ui/world-map-demo';
 
 export function ServicesSection() {
   const containerVariants = {
@@ -33,15 +33,20 @@ export function ServicesSection() {
       <div className="absolute bottom-0 right-0 w-1/3 h-1/3 bg-gradient-to-tl from-blue-50 to-blue-100/0 opacity-70 rounded-full blur-3xl"></div>
       
       <div className="container max-w-6xl">
-        {/* Replace "Our Work Slaps" section with WorldMapDemo */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="mb-16"
+          className="text-center mb-16"
         >
-          <WorldMapDemo />
+          <h2 className="text-5xl md:text-6xl font-bold mb-8 tracking-tight text-black">
+            Our Work <span className="dot-pattern animate-dot-pattern opacity-80 text-black">Slaps</span>
+          </h2>
+          <p className="text-xl text-gray-700 max-w-3xl mx-auto">
+            WillTank offers estate planning as a service. This means we can solve your legacy 
+            needs from design <span className="highlight-text">👉</span> execution. Bring the idea <span className="highlight-text">💡</span> and watch as it comes to life.
+          </p>
         </motion.div>
         
         <motion.div 

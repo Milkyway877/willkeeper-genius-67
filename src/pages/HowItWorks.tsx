@@ -60,7 +60,7 @@ export default function HowItWorks() {
   ];
 
   return (
-    <Layout forceAuthenticated={false}>
+    <Layout>
       <div className="container max-w-6xl py-16 md:py-24">
         <motion.div 
           className="text-center mb-16"

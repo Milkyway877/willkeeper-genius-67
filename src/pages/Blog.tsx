@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { Navbar } from '@/components/layout/Navbar';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CalendarDays, User, Clock, ArrowRight } from 'lucide-react';
@@ -73,121 +74,127 @@ export default function Blog() {
   const regularPosts = blogPosts.slice(1);
 
   return (
-    <Layout forceAuthenticated={false}>
-      <div className="container px-4 md:px-6 py-12 md:py-16">
-        <motion.div 
-          className="text-center mb-12"
-          initial="hidden"
-          animate="visible"
-          variants={fadeIn}
-        >
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">WillTank Blog</h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Expert insights and guidance on estate planning, will creation, and securing your legacy.
-          </p>
-        </motion.div>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-1 py-12 md:py-16 bg-gray-50">
+        <div className="container px-4 md:px-6">
+          <motion.div 
+            className="text-center mb-12"
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">WillTank Blog</h1>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Expert insights and guidance on estate planning, will creation, and securing your legacy.
+            </p>
+          </motion.div>
           
-        <motion.div 
-          className="mb-12"
-          initial="hidden"
-          animate="visible"
-          variants={fadeIn}
-        >
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="md:flex">
-              <div className="md:w-1/2 bg-gray-200 h-64 md:h-auto"></div>
-              <div className="p-6 md:p-8 md:w-1/2">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-willtank-100 text-willtank-800">
-                    {featuredPost.category}
-                  </span>
-                  <span className="text-sm text-gray-500">{featuredPost.readTime}</span>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                  {featuredPost.title}
-                </h2>
-                <p className="text-gray-600 mb-4">
-                  {featuredPost.excerpt}
-                </p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <User size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-600">{featuredPost.author}</span>
-                    <span className="text-gray-300 mx-1">•</span>
-                    <CalendarDays size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-600">{featuredPost.date}</span>
-                  </div>
-                  <Link to={`/blog/${featuredPost.slug}`}>
-                    <Button variant="ghost" className="text-willtank-600">
-                      Read More <ArrowRight size={16} className="ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-          
-        <motion.div
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.1
-              }
-            }
-          }}
-          initial="hidden"
-          animate="visible"
-        >
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {regularPosts.map((post, index) => (
-              <motion.div
-                key={index}
-                variants={fadeIn}
-                className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border border-gray-100"
-                whileHover={{ y: -5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="bg-gray-200 h-48"></div>
-                <div className="p-6 flex-1 flex flex-col">
+          <motion.div 
+            className="mb-12"
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="md:flex">
+                <div className="md:w-1/2 bg-gray-200 h-64 md:h-auto"></div>
+                <div className="p-6 md:p-8 md:w-1/2">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-willtank-50 text-willtank-800">
-                      {post.category}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-willtank-100 text-willtank-800">
+                      {featuredPost.category}
                     </span>
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Clock size={12} className="mr-1" />
-                      {post.readTime}
-                    </div>
+                    <span className="text-sm text-gray-500">{featuredPost.readTime}</span>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {post.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm mb-4 flex-1">
-                    {post.excerpt}
+                  <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                    {featuredPost.title}
+                  </h2>
+                  <p className="text-gray-600 mb-4">
+                    {featuredPost.excerpt}
                   </p>
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-1">
-                      <User size={14} className="text-gray-400" />
-                      <span className="text-xs text-gray-600">{post.author}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-600">{featuredPost.author}</span>
+                      <span className="text-gray-300 mx-1">•</span>
+                      <CalendarDays size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-600">{featuredPost.date}</span>
                     </div>
-                    <Link to={`/blog/${post.slug}`}>
-                      <Button variant="ghost" size="sm" className="text-willtank-600 p-0 h-auto">
-                        Read More <ArrowRight size={14} className="ml-1" />
+                    <Link to={`/blog/${featuredPost.slug}`}>
+                      <Button variant="ghost" className="text-willtank-600">
+                        Read More <ArrowRight size={16} className="ml-1" />
                       </Button>
                     </Link>
                   </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+              </div>
+            </div>
+          </motion.div>
           
-        <div className="mt-12 text-center">
-          <Button variant="outline">Load More Articles</Button>
+          <motion.div
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1
+                }
+              }
+            }}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {regularPosts.map((post, index) => (
+                <motion.div
+                  key={index}
+                  variants={fadeIn}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border border-gray-100"
+                  whileHover={{ y: -5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="bg-gray-200 h-48"></div>
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-willtank-50 text-willtank-800">
+                        {post.category}
+                      </span>
+                      <div className="flex items-center text-xs text-gray-500">
+                        <Clock size={12} className="mr-1" />
+                        {post.readTime}
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {post.title}
+                    </h3>
+                    <p className="text-gray-600 text-sm mb-4 flex-1">
+                      {post.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-1">
+                        <User size={14} className="text-gray-400" />
+                        <span className="text-xs text-gray-600">{post.author}</span>
+                      </div>
+                      <Link to={`/blog/${post.slug}`}>
+                        <Button variant="ghost" size="sm" className="text-willtank-600 p-0 h-auto">
+                          Read More <ArrowRight size={14} className="ml-1" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+          
+          <div className="mt-12 text-center">
+            <Button variant="outline">Load More Articles</Button>
+          </div>
         </div>
-      </div>
-    </Layout>
+      </main>
+      
+      <Footer />
+    </div>
   );
 }
