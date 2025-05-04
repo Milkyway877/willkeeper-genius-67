@@ -21,6 +21,7 @@ export type EventType =
   | 'contact_verified' | 'trusted_contact_added' | 'trusted_contact_verified'
   | 'subscription_changed' | 'subscription_renewal' | 'payment_failed'
   | 'system'
+  | 'subscription_update' | 'account_update'
   | 'item_saved';
 
 // Map specific event types to standard notification types

@@ -1,4 +1,3 @@
-
 import { createSystemNotification } from '@/services/notificationService';
 
 // Define valid event types for type safety

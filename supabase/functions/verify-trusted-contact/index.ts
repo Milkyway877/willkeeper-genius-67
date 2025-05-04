@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from "../_shared/email-helper.ts";
+import { getSupabaseClient, formatError } from "../_shared/db-helper.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,130 +14,86 @@ serve(async (req) => {
   }
 
   try {
-    const { contactId } = await req.json();
-
-    if (!contactId) {
+    const { token, response } = await req.json() as { token: string; response: 'accept' | 'decline' };
+    
+    if (!token) {
       return new Response(
-        JSON.stringify({ error: "Missing contact ID" }),
+        JSON.stringify({ success: false, message: "Missing verification token" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Get contact information
-    const { data: contact, error: contactError } = await supabase
-      .from('trusted_contacts')
-      .select('*, user_profiles!trusted_contacts_user_id_fkey(full_name)')
-      .eq('id', contactId)
+    const supabase = getSupabaseClient();
+    
+    // Find the verification record using the token
+    const { data: verificationData, error: verificationError } = await supabase
+      .from('contact_verifications')
+      .select('*')
+      .eq('verification_token', token)
       .single();
-
-    if (contactError || !contact) {
+      
+    if (verificationError || !verificationData) {
+      console.error('Error or no verification found:', verificationError);
       return new Response(
-        JSON.stringify({ error: "Contact not found" }),
+        JSON.stringify({ success: false, message: "Invalid verification token or expired" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    // Check if the verification is expired
+    const expiresAt = new Date(verificationData.expires_at);
+    if (expiresAt < new Date()) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Verification link has expired" }),
+        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Create verification token
-    const verificationToken = crypto.randomUUID();
-    
-    // Set expiration date to 7 days from now
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-    
-    // Create contact verification record
-    const { error: verificationError } = await supabase
+    // Mark the verification as responded
+    await supabase
       .from('contact_verifications')
-      .insert({
-        contact_id: contactId,
-        contact_type: 'trusted',
-        verification_token: verificationToken,
-        expires_at: expiresAt.toISOString(),
-        user_id: contact.user_id
-      });
+      .update({
+        responded_at: new Date().toISOString(),
+        response: response
+      })
+      .eq('verification_token', token);
     
-    if (verificationError) {
-      return new Response(
-        JSON.stringify({ error: "Failed to create verification record" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Update contact record to show verification was sent
-    const { error: updateError } = await supabase
+    // Update the trusted contact based on the response
+    const status = response === 'accept' ? 'verified' : 'declined';
+    await supabase
       .from('trusted_contacts')
-      .update({ verification_sent: true })
-      .eq('id', contactId);
+      .update({
+        invitation_status: status,
+        invitation_responded_at: new Date().toISOString()
+      })
+      .eq('id', verificationData.contact_id);
     
-    if (updateError) {
-      console.error('Error updating contact record:', updateError);
-    }
-
-    // Create verification URL
-    const verificationUrl = `https://willtank.com/verify/contact/${verificationToken}`;
-    
-    // Get resend client
-    const resend = getResendClient();
-    
-    // Prepare email content
-    const userName = contact.user_profiles?.full_name || 'A WillTank user';
-    const emailContent = `
-      <h1>Trusted Contact Verification</h1>
-      <p>Hello ${contact.name},</p>
-      <p>${userName} has added you as a trusted contact for their will on WillTank. As a trusted contact, you will be asked to verify their status if they miss scheduled check-ins.</p>
-      <p>You have been specifically selected as a trusted contact because you are considered reliable and impartial. Unlike beneficiaries or executors, you have no financial interest in the will contents.</p>
-      <p>Please click the button below to verify your contact information:</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${verificationUrl}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">VERIFY MY CONTACT</a>
-      </div>
-      <p>If you did not expect this request or have questions, please contact ${userName} directly.</p>
-      <p>Thank you for helping to ensure the security and integrity of ${userName}'s digital legacy.</p>
-    `;
-    
-    // Send verification email
-    const emailResponse = await resend.emails.send({
-      from: "WillTank Verification <verification@willtank.com>",
-      to: [contact.email],
-      subject: `Trusted Contact Verification for ${userName}`,
-      html: buildDefaultEmailLayout(emailContent),
-    });
-    
-    if (!isEmailSendSuccess(emailResponse)) {
-      const errorMessage = formatResendError(emailResponse);
-      return new Response(
-        JSON.stringify({ error: `Failed to send verification email: ${errorMessage}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Log the verification email sent
+    // Log the verification response
     await supabase.from('death_verification_logs').insert({
-      user_id: contact.user_id,
-      action: 'verification_email_sent',
+      user_id: verificationData.user_id,
+      action: response === 'accept' ? 'trusted_contact_accepted' : 'trusted_contact_declined',
       details: {
-        contact_id: contactId,
-        contact_name: contact.name,
-        contact_email: contact.email,
-        email_id: emailResponse.id,
+        contact_id: verificationData.contact_id,
+        verification_id: verificationData.id,
       }
     });
-
+    
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Verification email sent successfully",
-        emailId: emailResponse.id
+      JSON.stringify({
+        success: true,
+        message: response === 'accept' 
+          ? "Thank you for accepting the invitation as a trusted contact." 
+          : "You have declined the invitation as a trusted contact.",
+        status
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error sending verification email:", error);
+    const errorMessage = formatError(error);
+    console.error("Error processing trusted contact verification:", errorMessage);
+    
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ success: false, message: "Error processing verification", error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
