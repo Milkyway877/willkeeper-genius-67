@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { WillVideoRecorder } from '@/pages/will/components/WillVideoRecorder';
@@ -111,6 +110,12 @@ export function WillVideoCreation() {
         });
       }, 300);
       
+      // Get user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('User is not authenticated');
+      }
+      
       // Create a future message record for the video
       const message = {
         title: videoTitle,
@@ -125,7 +130,7 @@ export function WillVideoCreation() {
         delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
         delivery_event: null,
         category: 'story' as const,
-        user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
+        user_id: session.user.id,
       };
       
       setProgress(50);
@@ -141,43 +146,48 @@ export function WillVideoCreation() {
       
       setProgress(80);
       
-      // Ensure this video is linked to the will in the will_videos table
+      // Add metadata for the will linking to the video
       const { error: willVideoError } = await supabase
-        .from('will_videos')
+        .from('future_messages')
         .insert({
-          will_id: willId,
-          file_path: recordedVideoPath,
-          duration: 0 // Could be calculated
+          user_id: session.user.id,
+          title: `Video for Will: ${willId}`,
+          recipient_name: 'Will Video',
+          recipient_email: '',
+          message_type: 'metadata',
+          preview: `Video for Will: ${willId}`,
+          content: JSON.stringify({ will_id: willId, video_path: recordedVideoPath }),
+          message_url: recordedVideoPath,
+          status: 'scheduled' as const,
+          delivery_type: 'posthumous' as const,
+          delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
+          category: 'document' as const
         });
       
       if (willVideoError) {
-        // Check if the error is because the record already exists
-        const { data: existingEntry } = await supabase
-          .from('will_videos')
-          .select('id')
-          .eq('will_id', willId)
-          .eq('file_path', recordedVideoPath)
-          .single();
-          
-        // If it doesn't exist and we got an error, throw it
-        if (!existingEntry) throw willVideoError;
+        console.error('Error saving will video metadata:', willVideoError);
       }
       
-      // If documents were uploaded, link them to the will
+      // If documents were uploaded, register them as linked to the will
       if (uploadedDocuments.length > 0) {
-        // Save document references to a will_documents table
-        const documentEntries = uploadedDocuments.map(doc => ({
-          will_id: willId,
-          file_path: doc,
-          type: 'supporting_document'
-        }));
-        
-        const { error: docsError } = await supabase
-          .from('will_documents')
-          .insert(documentEntries);
-          
-        if (docsError) {
-          console.error('Error saving document references:', docsError);
+        for (const docPath of uploadedDocuments) {
+          // Add metadata entry linking the document to the will
+          await supabase
+            .from('future_messages')
+            .insert({
+              user_id: session.user.id,
+              title: `Document for Will: ${willId}`,
+              recipient_name: 'Will Document',
+              recipient_email: '',
+              message_type: 'metadata',
+              preview: `Document for Will: ${willId}`,
+              content: JSON.stringify({ will_id: willId, doc_path: docPath }),
+              message_url: docPath,
+              status: 'scheduled' as const,
+              delivery_type: 'posthumous' as const,
+              delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
+              category: 'document' as const
+            });
         }
       }
       

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
 
@@ -435,14 +436,16 @@ export const getWillDocuments = async (willId: string): Promise<WillDocument[]> 
       return [];
     }
 
-    // Log the query we're about to execute to help with debugging
+    // We store documents in a custom table format
     console.log(`Fetching documents for will_id: ${willId} and user_id: ${session.user.id}`);
     
+    // Query the future_documents table with a specific prefix for will documents
     const { data, error } = await supabase
-      .from('will_documents')
+      .from('future_messages')
       .select('*')
-      .eq('will_id', willId)
+      .eq('message_type', 'document')
       .eq('user_id', session.user.id)
+      .ilike('message_url', `will_docs/${willId}/%`)
       .order('created_at', { ascending: false });
       
     if (error) {
@@ -450,8 +453,29 @@ export const getWillDocuments = async (willId: string): Promise<WillDocument[]> 
       return [];
     }
     
-    console.log('Documents retrieved:', data);
-    return data || [];
+    // Map the future_messages data to our WillDocument format
+    const documents: WillDocument[] = data?.map(message => {
+      // Extract filename from the message_url path
+      const fileName = message.message_url?.split('/').pop() || 'Unknown';
+      // Get file extension for type
+      const fileType = fileName.includes('.') ? 
+        `application/${fileName.split('.').pop()}` : 'application/octet-stream';
+      
+      return {
+        id: message.id,
+        will_id: willId,
+        user_id: message.user_id,
+        file_name: message.title || fileName,
+        file_path: message.message_url || '',
+        file_size: message.content ? parseInt(message.content) : 0, // Store file size in content field
+        file_type: fileType,
+        created_at: message.created_at || new Date().toISOString(),
+        updated_at: message.updated_at
+      };
+    }) || [];
+    
+    console.log('Documents retrieved:', documents);
+    return documents;
   } catch (error) {
     console.error('Error in getWillDocuments:', error);
     return [];
@@ -477,20 +501,20 @@ export const uploadWillDocument = async (
     // Create a unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-    const filePath = `${session.user.id}/${fileName}`;
+    // Use will_docs prefix to organize documents by will
+    const filePath = `will_docs/${willId}/${fileName}`;
     
-    console.log(`Starting upload of ${file.name} (${file.size} bytes) to will_documents bucket`);
+    console.log(`Starting upload of ${file.name} (${file.size} bytes) to future-documents bucket with path: ${filePath}`);
     
-    // Upload to Supabase Storage - using will_documents bucket
+    // Upload to Supabase Storage - using the existing future-documents bucket
     const uploadOptions = {
       cacheControl: '3600',
       upsert: true
     };
     
-    // Use a type that's compatible with Supabase's storage API
-    // Do not include onUploadProgress yet until we have confirmed it works
+    // Upload the file to storage
     const { error: uploadError, data: uploadData } = await supabase.storage
-      .from('will_documents')
+      .from('future-documents')
       .upload(filePath, file, uploadOptions);
       
     if (uploadError) {
@@ -500,20 +524,26 @@ export const uploadWillDocument = async (
     
     console.log('File uploaded to storage successfully:', uploadData);
     
-    // Save document metadata in the database
+    // Save document metadata in future_messages table
     const documentData = {
-      will_id: willId,
       user_id: session.user.id,
-      file_name: file.name,
-      file_path: filePath,
-      file_size: file.size,
-      file_type: file.type
+      title: file.name,
+      recipient_name: 'Will Document',
+      recipient_email: '',
+      message_type: 'document',
+      content: file.size.toString(), // Store file size in content field
+      message_url: filePath,
+      preview: `Document for will: ${willId}`,
+      status: 'scheduled' as const,
+      delivery_type: 'posthumous' as const,
+      delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
+      category: 'document' as const
     };
     
-    console.log('Saving document metadata to database:', documentData);
+    console.log('Saving document metadata to future_messages:', documentData);
     
     const { data, error } = await supabase
-      .from('will_documents')
+      .from('future_messages')
       .insert(documentData)
       .select()
       .single();
@@ -524,17 +554,17 @@ export const uploadWillDocument = async (
       // Try to clean up the uploaded file on error
       console.log('Attempting to clean up uploaded file after database error');
       await supabase.storage
-        .from('will_documents')
+        .from('future-documents')
         .remove([filePath]);
         
       return null;
     }
     
-    console.log('Document metadata saved to database successfully:', data);
+    console.log('Document metadata saved to future_messages successfully:', data);
     
     // Create notification after successful upload
     try {
-      await createSystemNotification('will_document_added', {
+      await createSystemNotification('success', {
         title: 'Document Added',
         description: `Document ${file.name} has been added to your will.`
       });
@@ -548,7 +578,20 @@ export const uploadWillDocument = async (
       onProgress(100);
     }
     
-    return data;
+    // Convert from future_message format to WillDocument format
+    const willDocument: WillDocument = {
+      id: data.id,
+      will_id: willId,
+      user_id: data.user_id,
+      file_name: data.title || file.name,
+      file_path: data.message_url,
+      file_size: file.size,
+      file_type: file.type,
+      created_at: data.created_at || new Date().toISOString(),
+      updated_at: data.updated_at
+    };
+    
+    return willDocument;
   } catch (error) {
     console.error('Error in uploadWillDocument:', error);
     
@@ -572,9 +615,9 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
 
     console.log(`Attempting to delete document: ${document.id}, file path: ${document.file_path}`);
     
-    // Delete the file from storage
+    // Delete the file from storage - using future-documents bucket
     const { error: storageError } = await supabase.storage
-      .from('will_documents')
+      .from('future-documents')
       .remove([document.file_path]);
       
     if (storageError) {
@@ -584,9 +627,9 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
       console.log('File deleted from storage successfully');
     }
     
-    // Delete the document metadata from the database
+    // Delete the document metadata from future_messages table
     const { error } = await supabase
-      .from('will_documents')
+      .from('future_messages')
       .delete()
       .eq('id', document.id)
       .eq('user_id', session.user.id);
@@ -600,7 +643,7 @@ export const deleteWillDocument = async (document: WillDocument): Promise<boolea
     
     // Create notification after successful deletion
     try {
-      await createSystemNotification('will_document_removed', {
+      await createSystemNotification('info', {
         title: 'Document Removed',
         description: `Document ${document.file_name} has been removed from your will.`
       });
@@ -621,7 +664,7 @@ export const getDocumentUrl = async (document: WillDocument): Promise<string | n
     console.log(`Getting signed URL for document: ${document.file_path}`);
     
     const { data, error } = await supabase.storage
-      .from('will_documents')
+      .from('future-documents')
       .createSignedUrl(document.file_path, 60); // URL valid for 60 seconds
       
     if (error) {

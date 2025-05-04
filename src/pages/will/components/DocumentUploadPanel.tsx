@@ -97,14 +97,14 @@ export function DocumentUploadPanel({
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
         
-        // Include user ID in the path as required by storage policies
-        const filePath = `${userId}/${fileName}`;
+        // Include user ID in the path + will prefix
+        const filePath = `will_docs/${willId}/${fileName}`;
         
-        console.log('Uploading to bucket: will_documents, path:', filePath);
+        console.log('Uploading to bucket: future-documents, path:', filePath);
 
-        // Upload to Supabase with correct bucket name
+        // Upload to Supabase with correct bucket name (future-documents)
         const { error: uploadError } = await supabase.storage
-          .from('will_documents')
+          .from('future-documents')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: true
