@@ -28,7 +28,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Function to check if session requires verification
+// Check if session requires verification
 export const sessionRequiresVerification = async (): Promise<boolean> => {
   try {
     const { data } = await supabase.auth.getSession();
@@ -46,7 +46,7 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
       return false;
     }
     
-    // Use created_at from user.created_at as fallback since Session might not have created_at
+    // Use created_at from user.created_at as fallback
     const sessionCreatedAt = new Date(data.session.user?.created_at || Date.now());
     const currentTime = new Date();
     const sessionAgeHours = (currentTime.getTime() - sessionCreatedAt.getTime()) / (1000 * 60 * 60);
@@ -58,64 +58,5 @@ export const sessionRequiresVerification = async (): Promise<boolean> => {
   } catch (error) {
     console.error("Error checking session:", error);
     return true; // If there's an error, require verification to be safe
-  }
-};
-
-// Function to check if two-factor authentication is required for a user
-export const twoFactorRequired = async (userId: string): Promise<boolean> => {
-  try {
-    // Check if the user has 2FA enabled in their security settings
-    const { data, error } = await supabase
-      .from('user_security')
-      .select('google_auth_enabled')
-      .eq('user_id', userId)
-      .single();
-    
-    if (error) {
-      console.error("Error checking 2FA requirement:", error);
-      return false; // Default to no 2FA requirement if there's an error
-    }
-    
-    return data?.google_auth_enabled === true;
-  } catch (error) {
-    console.error("Error in twoFactorRequired check:", error);
-    return false;
-  }
-};
-
-// Function to get user security profile
-export const getUserSecurityProfile = async (): Promise<{
-  lastVerified?: Date;
-  knownDevices?: string[];
-  requiresVerification: boolean;
-  twoFactorEnabled?: boolean;
-}> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      return { requiresVerification: true };
-    }
-    
-    // Get security info from user metadata if available
-    const { data } = await supabase
-      .from('user_security')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .single();
-      
-    if (data) {
-      return {
-        lastVerified: data.last_verified ? new Date(data.last_verified) : undefined,
-        knownDevices: data.known_devices || [],
-        requiresVerification: true, // Always require verification for this sensitive platform
-        twoFactorEnabled: data.google_auth_enabled || false
-      };
-    }
-    
-    return { requiresVerification: true };
-  } catch (error) {
-    console.error("Error getting security profile:", error);
-    return { requiresVerification: true };
   }
 };

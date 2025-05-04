@@ -1,216 +1,85 @@
-import React, { useState, useEffect } from 'react';
-import { z } from 'zod';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { signIn } from '@/services/authService';
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import Captcha from '@/components/auth/Captcha';
-import { useCaptcha } from '@/hooks/use-captcha';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
-type SignInFormInputs = z.infer<typeof signInSchema>;
+type SignInFormValues = z.infer<typeof signInSchema>;
 
 export function SignInForm() {
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
-  
-  useEffect(() => {
-    const handleAuthRedirect = async () => {
-      const searchParams = new URLSearchParams(location.search);
-      const verified = searchParams.get('verified');
-      
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (data?.session && !error) {
-        if (verified === 'true') {
-          toast({
-            title: "Email verified!",
-            description: "Your email has been verified and you are now signed in.",
-          });
-        } else {
-          toast({
-            title: "Welcome back!",
-            description: "You are now signed in.",
-          });
-        }
-        navigate('/dashboard', { replace: true });
-      }
-    };
-    
-    handleAuthRedirect();
-  }, [navigate, location]);
-  
-  const form = useForm<SignInFormInputs>({
+
+  const form = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
-  
-  const generateVerificationCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
 
-  const onSubmit = async (data: SignInFormInputs) => {
-    try {
-      setIsLoading(true);
-      
-      // Validate captcha first
-      const isCaptchaValid = validateCaptcha();
-      if (!isCaptchaValid) {
-        toast({
-          title: "Security check failed",
-          description: "Please complete the captcha verification correctly before signing in.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      // We'll first check if the credentials are valid without signing in
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-      
-      if (authError) {
-        toast({
-          title: "Authentication failed",
-          description: authError.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      // User exists and password is correct - check if verification is required
-      // Remove the temporary direct login and enable verification
-      
-      // Sign out the user to require verification
-      await supabase.auth.signOut();
-      
-      // Generate and send verification code
-      const verificationCode = generateVerificationCode();
-      
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: data.email,
-          code: verificationCode,
-          type: 'login'
-        }
-      });
-      
-      if (emailError) {
-        throw new Error("Failed to send verification code");
-      }
-      
-      // Store verification code in database
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: data.email,
-          code: verificationCode,
-          type: 'login',
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
-        });
-      
-      if (storeError) {
-        console.error("Error storing verification code:", storeError);
-        throw new Error("Failed to process verification");
-      }
-      
-      toast({
-        title: "Verification code sent",
-        description: "Please check your email for the verification code.",
-      });
-      
-      // Save user credentials in session storage for verification page
-      sessionStorage.setItem('auth_email', data.email);
-      sessionStorage.setItem('auth_password', data.password);
-      
-      // Navigate to verification page
-      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
-      
-    } catch (error: any) {
-      console.error("Sign in error:", error);
-      
-      toast({
-        title: "Sign in failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    const email = form.getValues().email;
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address to resend verification.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  const onSubmit = async (data: SignInFormValues) => {
     setIsLoading(true);
-    
     try {
-      const verificationCode = generateVerificationCode();
+      const result = await signIn(data.email, data.password);
       
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: email,
-          code: verificationCode,
-          type: 'login'
-        }
-      });
-      
-      if (emailError) {
-        throw new Error("Failed to send verification code");
-      }
-      
-      // Store verification code
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: email,
-          code: verificationCode,
-          type: 'login',
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
+      if (!result.success) {
+        toast({
+          title: 'Sign in failed',
+          description: result.message,
+          variant: 'destructive',
         });
-      
-      if (storeError) {
-        throw new Error("Failed to process verification");
+        setIsLoading(false);
+        return;
       }
       
       toast({
-        title: "Verification email sent",
-        description: "Please check your inbox for the verification link.",
+        title: 'Success',
+        description: 'Signed in successfully',
       });
-    } catch (error: any) {
-      console.error("Error resending verification:", error);
+      
+      // Check if we need to redirect to verification
+      if (result.data?.requiresEmailVerification) {
+        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
+        return;
+      }
+      
+      // Check if we need to redirect to 2FA
+      if (result.data?.requires2FA) {
+        navigate(`/auth/two-factor?email=${encodeURIComponent(data.email)}`);
+        return;
+      }
+      
+      // Otherwise redirect to dashboard
+      navigate('/dashboard');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred';
       toast({
-        title: "Failed to resend verification",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -219,15 +88,21 @@ export function SignInForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
+              <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="john.doe@example.com" className="rounded-lg border-2 border-gray-300" {...field} />
+                <Input 
+                  placeholder="your@email.com" 
+                  type="email" 
+                  {...field} 
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -239,62 +114,58 @@ export function SignInForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="font-medium text-gray-700">Password</FormLabel>
-              <div className="relative">
-                <FormControl>
-                  <Input 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="Enter your password" 
-                    className="pr-10 rounded-lg border-2 border-gray-300"
-                    {...field} 
-                  />
-                </FormControl>
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
-                  onClick={() => setShowPassword(!showPassword)}
+              <div className="flex justify-between items-center">
+                <FormLabel>Password</FormLabel>
+                <Link 
+                  to="/auth/recover" 
+                  className="text-xs text-primary hover:underline"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  Forgot password?
+                </Link>
               </div>
+              <FormControl>
+                <div className="relative">
+                  <Input 
+                    placeholder="••••••••" 
+                    type={showPassword ? "text" : "password"} 
+                    {...field} 
+                    disabled={isLoading}
+                    autoComplete="current-password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         
-        <div>
-          <Captcha 
-            ref={captchaRef}
-            onValidated={handleCaptchaValidation} 
-          />
-        </div>
-        
-        <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={isLoading}
+        >
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing In...
             </>
           ) : (
-            <>
-              Sign In <ArrowRight className="ml-2 h-4 w-4" />
-            </>
+            'Sign In'
           )}
         </Button>
-        
-        <div className="space-y-4 mt-4">
-          <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:justify-between">
-            <Link 
-              to="/auth/recover" 
-              className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          
-          <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">After signing in, you'll need to verify your login with a 6-digit code sent to your email.</p>
-          </div>
-        </div>
       </form>
     </Form>
   );

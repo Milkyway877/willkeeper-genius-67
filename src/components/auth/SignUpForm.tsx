@@ -1,16 +1,24 @@
+
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { signUp } from '@/services/authService';
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import Captcha from '@/components/auth/Captcha';
-import { useCaptcha } from '@/hooks/use-captcha';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const signUpSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -18,21 +26,24 @@ const signUpSchema = z.object({
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
+  agreeToTerms: z.boolean().refine(value => value === true, {
+    message: 'You must agree to the terms and conditions',
+  }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
 });
 
-type SignUpFormInputs = z.infer<typeof signUpSchema>;
+type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export function SignUpForm() {
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { captchaRef, validateCaptcha } = useCaptcha();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<SignUpFormInputs>({
+  const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       firstName: '',
@@ -40,141 +51,44 @@ export function SignUpForm() {
       email: '',
       password: '',
       confirmPassword: '',
+      agreeToTerms: false,
     },
   });
 
-  const generateVerificationCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
-  const onSubmit = async (data: SignUpFormInputs) => {
-    // Validate captcha first
-    if (!validateCaptcha()) {
-      toast({
-        title: "Captcha validation failed",
-        description: "Please complete the captcha verification.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  const onSubmit = async (data: SignUpFormValues) => {
     setIsLoading(true);
-    
     try {
-      // Check if email already exists
-      const { data: existingUsers, error: existingError } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('email', data.email)
-        .single();
-        
-      if (existingUsers) {
+      // Create user metadata
+      const metadata = {
+        first_name: data.firstName,
+        last_name: data.lastName,
+      };
+      
+      const result = await signUp(data.email, data.password, metadata);
+      
+      if (!result.success) {
         toast({
-          title: "Email already registered",
-          description: "This email address is already in use. Please use a different email or try to login.",
-          variant: "destructive",
+          title: 'Sign up failed',
+          description: result.message,
+          variant: 'destructive',
         });
         setIsLoading(false);
         return;
       }
       
-      const verificationCode = generateVerificationCode();
-      console.log("Generated verification code:", verificationCode);
+      // Redirect to verification page
+      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
       
-      // First create a user account
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            first_name: data.firstName,
-            last_name: data.lastName,
-            full_name: `${data.firstName} ${data.lastName}`
-          },
-        },
-      });
-      
-      if (signUpError) {
-        toast({
-          title: "Registration failed",
-          description: signUpError.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      console.log("User account created successfully");
-
-      try {
-        console.log("Attempting to send verification email to:", data.email);
-        
-        // Send verification email through the edge function
-        const response = await supabase.functions.invoke('send-verification', {
-          body: {
-            email: data.email,
-            code: verificationCode,
-            type: 'signup'
-          }
-        });
-
-        // Log the full response for debugging
-        console.log("Email function full response:", response);
-        
-        // Access data and error from the response
-        const { data: emailData, error: emailError } = response;
-        
-        console.log("Email data:", emailData);
-        console.log("Email error:", emailError);
-
-        if (emailError) {
-          console.error("Error invoking send-verification function:", emailError);
-          throw new Error("Failed to send verification email");
-        }
-        
-        console.log("Verification email sent successfully");
-
-        // Store verification code
-        const { error: insertError } = await supabase
-          .from('email_verification_codes')
-          .insert({
-            email: data.email,
-            code: verificationCode,
-            type: 'signup',
-            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-            used: false
-          });
-
-        if (insertError) {
-          console.error("Error storing verification code:", insertError);
-          throw new Error("Failed to create verification code");
-        }
-        
-        console.log("Verification code stored successfully");
-        
-        toast({
-          title: "Verification email sent",
-          description: "Please check your email for the verification code.",
-        });
-        
-        // Navigate to verification page with email
-        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
-      } catch (error: any) {
-        // If verification process fails, but user is created
-        console.error("Error in verification process:", error);
-        toast({
-          title: "Verification setup failed",
-          description: "Account created, but we couldn't set up verification. Please try signing in.",
-          variant: "destructive",
-        });
-        navigate("/auth/signin");
-      }
-    } catch (error: any) {
-      console.error("Error during signup:", error);
       toast({
-        title: "Registration failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
+        title: 'Account created',
+        description: 'Please check your email to verify your account',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -182,47 +96,22 @@ export function SignUpForm() {
   };
 
   return (
-    <div className="w-full">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-medium text-gray-700">First Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John" className="rounded-lg" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-medium text-gray-700">Last Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Doe" className="rounded-lg" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <FormField
             control={form.control}
-            name="email"
+            name="firstName"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
+              <FormItem className="flex-1">
+                <FormLabel>First Name</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="john.doe@example.com" className="rounded-lg" {...field} disabled={isLoading} />
+                  <Input 
+                    placeholder="John" 
+                    {...field} 
+                    disabled={isLoading}
+                    autoComplete="given-name"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -231,92 +120,169 @@ export function SignUpForm() {
           
           <FormField
             control={form.control}
-            name="password"
+            name="lastName"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-medium text-gray-700">Password</FormLabel>
+              <FormItem className="flex-1">
+                <FormLabel>Last Name</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="Doe" 
+                    {...field} 
+                    disabled={isLoading}
+                    autoComplete="family-name"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="your@email.com" 
+                  type="email" 
+                  {...field} 
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
                 <div className="relative">
-                  <FormControl>
-                    <Input 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="••••••••••••" 
-                      className="pr-10 rounded-lg"
-                      {...field}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <button
+                  <Input 
+                    placeholder="••••••••" 
+                    type={showPassword ? "text" : "password"} 
+                    {...field} 
+                    disabled={isLoading}
+                    autoComplete="new-password"
+                  />
+                  <Button
                     type="button"
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
+                    tabIndex={-1}
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
                 </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="font-medium text-gray-700">Confirm Password</FormLabel>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confirm Password</FormLabel>
+              <FormControl>
                 <div className="relative">
-                  <FormControl>
-                    <Input 
-                      type={showConfirmPassword ? "text" : "password"} 
-                      placeholder="••••••••••••" 
-                      className="pr-10 rounded-lg"
-                      {...field}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  <Input 
+                    placeholder="••••••••" 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    {...field} 
                     disabled={isLoading}
+                    autoComplete="new-password"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    tabIndex={-1}
                   >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
                 </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="agreeToTerms"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 py-2">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isLoading}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>
+                  I agree to the{" "}
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto font-normal"
+                    type="button"
+                    onClick={() => window.open('/terms', '_blank')}
+                  >
+                    Terms of Service
+                  </Button>{" "}
+                  and{" "}
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto font-normal"
+                    type="button"
+                    onClick={() => window.open('/privacy', '_blank')}
+                  >
+                    Privacy Policy
+                  </Button>
+                </FormLabel>
                 <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <div>
-            <Captcha 
-              ref={captchaRef}
-              onValidated={(isValid) => {
-                // This function is called when the captcha is completed
-                // No need to do anything here as we'll check validity on form submit
-                return isValid;
-              }} 
-            />
-          </div>
-          
-          <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...
-              </>
-            ) : (
-              <>
-                Sign Up <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
-          
-          <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
-            <p className="font-medium">After signing up, you'll need to verify your email with the 6-digit code we send you.</p>
-          </div>
-        </form>
-      </Form>
-    </div>
+              </div>
+            </FormItem>
+          )}
+        />
+        
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...
+            </>
+          ) : (
+            'Create Account'
+          )}
+        </Button>
+      </form>
+    </Form>
   );
 }

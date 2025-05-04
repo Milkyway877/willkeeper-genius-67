@@ -1,129 +1,111 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from './input';
-import { Button } from './button';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './alert';
 
 interface OTPInputProps {
-  onSubmit: (code: string) => void;
-  loading?: boolean;
-  autoSubmit?: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  onComplete?: (value: string) => void;
+  length?: number;
+  disabled?: boolean;
   error?: string | null;
 }
 
-export const OTPInput = ({
-  onSubmit,
-  loading = false,
-  autoSubmit = true,
+export function OTPInput({
+  value,
+  onChange,
+  onComplete,
+  length = 6,
+  disabled = false,
   error = null,
-}: OTPInputProps) => {
-  const [code, setCode] = useState('');
-  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
+}: OTPInputProps) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(length).fill(null));
 
-  const handleInputChange = (index: number, value: string) => {
+  useEffect(() => {
+    // Focus first input on mount
+    if (inputRefs.current[0] && !disabled && value.length === 0) {
+      inputRefs.current[0].focus();
+    }
+  }, [disabled, value]);
+
+  const handleInputChange = (index: number, inputValue: string) => {
     // Allow only one digit per input
-    if (value && !/^\d$/.test(value)) {
+    if (inputValue && !/^\d$/.test(inputValue)) {
       return;
     }
 
-    const newCode = code.split('');
-    newCode[index] = value;
-    const updatedCode = newCode.join('');
-    setCode(updatedCode);
+    const newValue = value.split('');
+    newValue[index] = inputValue;
+    const updatedValue = newValue.join('');
+    onChange(updatedValue);
 
     // Move to next input if current one is filled
-    if (value !== '' && index < 5) {
+    if (inputValue !== '' && index < length - 1) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit if all digits are entered and autoSubmit is true
-    if (updatedCode.length === 6 && !updatedCode.includes('') && autoSubmit) {
-      onSubmit(updatedCode);
+    // Call onComplete if all inputs are filled
+    if (updatedValue.length === length && !updatedValue.includes('') && onComplete) {
+      onComplete(updatedValue);
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     // Move to previous input on backspace if current input is empty
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
+    if (e.key === 'Backspace' && !value[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handleSubmit = () => {
-    if (code.length === 6) {
-      onSubmit(code);
-    }
-  };
-
-  // Handle paste event
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').trim().slice(0, 6);
+    const pastedData = e.clipboardData.getData('text').trim().slice(0, length);
+    
     if (/^\d+$/.test(pastedData)) {
-      const newCode = pastedData.padEnd(6, '').split('');
-      setCode(newCode.join(''));
-      newCode.forEach((digit, index) => {
-        if (inputRefs.current[index]) {
-          inputRefs.current[index]!.value = digit;
-        }
-      });
+      // Update the value
+      onChange(pastedData.padEnd(length, '').substring(0, length));
       
-      // Focus the last input with a value
-      const lastIndex = Math.min(pastedData.length - 1, 5);
-      inputRefs.current[lastIndex]?.focus();
+      // Focus the appropriate input
+      const lastFilledIndex = Math.min(pastedData.length, length - 1);
+      inputRefs.current[lastFilledIndex]?.focus();
       
-      if (pastedData.length === 6 && autoSubmit) {
-        onSubmit(pastedData);
+      // Call onComplete if all inputs are filled
+      if (pastedData.length === length && onComplete) {
+        onComplete(pastedData);
       }
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex justify-center space-x-2">
-        {Array(6).fill(0).map((_, index) => (
+        {Array.from({ length }).map((_, index) => (
           <Input
             key={index}
             type="text"
             inputMode="numeric"
             maxLength={1}
-            className="w-12 h-12 text-center text-lg font-bold"
-            value={code[index] || ''}
+            className="w-12 h-14 text-center text-lg font-semibold"
+            value={value[index] || ''}
             onChange={(e) => handleInputChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={index === 0 ? handlePaste : undefined}
             ref={(el) => (inputRefs.current[index] = el)}
-            disabled={loading}
-            aria-label={`Verification code digit ${index + 1}`}
+            disabled={disabled}
+            aria-label={`Digit ${index + 1} of verification code`}
+            autoComplete="one-time-code"
           />
         ))}
       </div>
       
       {error && (
-        <Alert variant="destructive" className="mt-2">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
-      {!autoSubmit && (
-        <div className="flex justify-center">
-          <Button 
-            onClick={handleSubmit} 
-            disabled={code.length !== 6 || loading} 
-            className="w-full"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
-              </>
-            ) : (
-              'Verify'
-            )}
-          </Button>
-        </div>
-      )}
     </div>
   );
-};
+}

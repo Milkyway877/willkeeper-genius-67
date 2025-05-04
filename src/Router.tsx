@@ -6,7 +6,9 @@ import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import EmailVerification from './pages/auth/EmailVerification';
 import TwoFactorAuthentication from './pages/auth/TwoFactorAuthentication';
-import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
+import SignIn from './pages/auth/SignIn';
+import SignUp from './pages/auth/SignUp';
+import Recover from './pages/auth/Recover';
 import { Layout } from './components/layout/Layout';
 
 // Create placeholder pages for development
@@ -18,9 +20,6 @@ const Faq = () => <div>FAQ Page</div>;
 const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
 const NotFound = () => <div>404 Not Found</div>;
-const SignIn = () => <div>Sign In Page</div>;
-const SignUp = () => <div>Sign Up Page</div>;
-const ForgotPassword = () => <div>Forgot Password Page</div>;
 const ResetPassword = () => <div>Reset Password Page</div>;
 const Dashboard = () => <div>Dashboard Page</div>;
 const Settings = () => <div>Settings Page</div>;
@@ -66,12 +65,11 @@ function AppRouter() {
         <Route element={<AuthLayoutWrapper />}>
           <Route path="/auth/signin" element={<SignIn />} />
           <Route path="/auth/signup" element={<SignUp />} />
-          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/recover" element={<Recover />} />
           <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/auth/verification" element={<EmailVerification />} />
           <Route path="/auth/two-factor" element={<TwoFactorAuthentication />} />
-          <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
         </Route>
         
         {/* Protected routes - require authentication */}
