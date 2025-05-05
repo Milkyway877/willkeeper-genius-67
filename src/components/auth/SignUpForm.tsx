@@ -11,7 +11,6 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
-import { v4 as uuidv4 } from 'uuid';
 
 const signUpSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -44,6 +43,10 @@ export function SignUpForm() {
     },
   });
 
+  const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
   const onSubmit = async (data: SignUpFormInputs) => {
     // Validate captcha first
     if (!validateCaptcha()) {
@@ -75,9 +78,8 @@ export function SignUpForm() {
         return;
       }
       
-      // Generate a verification token (UUID)
-      const verificationToken = uuidv4();
-      console.log("Generated verification token for signup");
+      const verificationCode = generateVerificationCode();
+      console.log("Generated verification code:", verificationCode);
       
       // First create a user account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
@@ -105,30 +107,13 @@ export function SignUpForm() {
       console.log("User account created successfully");
 
       try {
-        // Store verification token
-        const { error: insertError } = await supabase
-          .from('email_verification_codes')
-          .insert({
-            email: data.email,
-            verification_token: verificationToken,
-            type: 'signup',
-            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours expiry
-            used: false
-          });
-
-        if (insertError) {
-          console.error("Error storing verification token:", insertError);
-          throw new Error("Failed to create verification token");
-        }
-        
-        console.log("Verification token stored successfully");
-        
         console.log("Attempting to send verification email to:", data.email);
         
-        // Send verification email with activation link through the edge function
+        // Send verification email through the edge function
         const response = await supabase.functions.invoke('send-verification', {
           body: {
             email: data.email,
+            code: verificationCode,
             type: 'signup'
           }
         });
@@ -148,18 +133,32 @@ export function SignUpForm() {
         }
         
         console.log("Verification email sent successfully");
+
+        // Store verification code
+        const { error: insertError } = await supabase
+          .from('email_verification_codes')
+          .insert({
+            email: data.email,
+            code: verificationCode,
+            type: 'signup',
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+            used: false
+          });
+
+        if (insertError) {
+          console.error("Error storing verification code:", insertError);
+          throw new Error("Failed to create verification code");
+        }
         
-        // Store credentials temporarily for auto-login after verification
-        sessionStorage.setItem('auth_email', data.email);
-        sessionStorage.setItem('auth_password', data.password);
+        console.log("Verification code stored successfully");
         
         toast({
-          title: "Account created",
-          description: "Please check your email to activate your account.",
+          title: "Verification email sent",
+          description: "Please check your email for the verification code.",
         });
         
-        // Navigate to verification banner page
-        navigate('/auth/verify-email');
+        // Navigate to verification page with email
+        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
       } catch (error: any) {
         // If verification process fails, but user is created
         console.error("Error in verification process:", error);
@@ -314,7 +313,7 @@ export function SignUpForm() {
           </Button>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
-            <p className="font-medium">After signing up, we'll send you a verification link to activate your account.</p>
+            <p className="font-medium">After signing up, you'll need to verify your email with the 6-digit code we send you.</p>
           </div>
         </form>
       </Form>

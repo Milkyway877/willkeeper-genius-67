@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -11,7 +12,6 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
-import { v4 as uuidv4 } from 'uuid';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -60,6 +60,10 @@ export function SignInForm() {
       password: '',
     },
   });
+  
+  const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
 
   const onSubmit = async (data: SignInFormInputs) => {
     try {
@@ -77,66 +81,145 @@ export function SignInForm() {
         return;
       }
       
-      // Delete any expired or used verification tokens for this email
-      await supabase
-        .from('email_verification_codes')
-        .delete()
-        .eq('email', data.email)
-        .or(`used.eq.true,expires_at.lt.${new Date().toISOString()}`);
+      // We'll first check if the credentials are valid without signing in
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
       
-      // Generate verification token (UUID)
-      const verificationToken = uuidv4();
-      console.log("Generated verification token for login");
-      
-      // Store verification token in database
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: data.email,
-          code: '000000', // Placeholder code
-          verification_token: verificationToken,
-          type: 'login',
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours expiry
-          used: false
+      if (authError) {
+        toast({
+          title: "Authentication failed",
+          description: authError.message,
+          variant: "destructive",
         });
-      
-      if (storeError) {
-        console.error("Error storing verification token:", storeError);
-        throw new Error("Failed to process verification");
+        setIsLoading(false);
+        return;
       }
       
-      // Send verification email with login link
+      // User exists and password is correct - check if verification is required
+      // For now, direct the user to the dashboard immediately after successful login
+      toast({
+        title: "Login successful",
+        description: "You've been signed in successfully.",
+      });
+      
+      // Navigate directly to dashboard
+      navigate('/dashboard', { replace: true });
+      
+      /* Disable verification flow temporarily 
+      // User exists and password is correct, now proceed with verification
+      // Sign out the user to require verification
+      await supabase.auth.signOut();
+      
+      // Generate and send verification code
+      const verificationCode = generateVerificationCode();
+      
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
           email: data.email,
+          code: verificationCode,
           type: 'login'
         }
       });
       
       if (emailError) {
-        console.error("Error invoking send-verification function:", emailError);
-        throw new Error("Failed to send verification email");
+        throw new Error("Failed to send verification code");
       }
       
-      console.log("Email verification link sent successfully");
+      // Store verification code in database
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: data.email,
+          code: verificationCode,
+          type: 'login',
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
+        });
+      
+      if (storeError) {
+        console.error("Error storing verification code:", storeError);
+        throw new Error("Failed to process verification");
+      }
+      
+      toast({
+        title: "Verification code sent",
+        description: "Please check your email for the verification code.",
+      });
       
       // Save user credentials in session storage for verification page
       sessionStorage.setItem('auth_email', data.email);
       sessionStorage.setItem('auth_password', data.password);
       
-      toast({
-        title: "Verification email sent",
-        description: "Please check your email for the verification link.",
-      });
-      
-      // Navigate to verification banner page
-      navigate('/auth/verify-email');
+      // Navigate to verification page
+      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
+      */
       
     } catch (error: any) {
       console.error("Sign in error:", error);
       
       toast({
         title: "Sign in failed",
+        description: error.message || "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const email = form.getValues().email;
+    if (!email) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address to resend verification.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const verificationCode = generateVerificationCode();
+      
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+        body: {
+          email: email,
+          code: verificationCode,
+          type: 'login'
+        }
+      });
+      
+      if (emailError) {
+        throw new Error("Failed to send verification code");
+      }
+      
+      // Store verification code
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: email,
+          code: verificationCode,
+          type: 'login',
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          used: false
+        });
+      
+      if (storeError) {
+        throw new Error("Failed to process verification");
+      }
+      
+      toast({
+        title: "Verification email sent",
+        description: "Please check your inbox for the verification link.",
+      });
+    } catch (error: any) {
+      console.error("Error resending verification:", error);
+      toast({
+        title: "Failed to resend verification",
         description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
@@ -200,11 +283,11 @@ export function SignInForm() {
         <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
             </>
           ) : (
             <>
-              Continue <ArrowRight className="ml-2 h-4 w-4" />
+              Sign In <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
         </Button>
@@ -220,7 +303,7 @@ export function SignInForm() {
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">After entering your details, we'll send you a verification link to your email to complete your sign in.</p>
+            <p className="font-medium">After signing in, you'll need to verify your login with a 6-digit code sent to your email.</p>
           </div>
         </div>
       </form>

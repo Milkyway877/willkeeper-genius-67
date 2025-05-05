@@ -3,7 +3,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
 
-// For production deployment, this ensures we use environment variables
 const SUPABASE_URL = "https://ksiinmxsycosnpchutuw.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzaWlubXhzeWNvc25wY2h1dHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MjM1MDAsImV4cCI6MjA2MTA5OTUwMH0.BupjPSp1HUmzrHPjn2z4fS-Np00EexnFjDTGfeZsuBY";
 
@@ -12,9 +11,8 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: true, // Enable session persistence between page refreshes
+    persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'willtank-auth-token' // Custom storage key for better isolation
+    detectSessionInUrl: true
   }
 });

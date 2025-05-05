@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -11,62 +12,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
-import { toast } from '@/hooks/use-toast';
 
 interface LayoutProps {
   children: React.ReactNode;
   forceAuthenticated?: boolean;
 }
 
-// Time in milliseconds for session inactivity timeout (15 minutes)
-const SESSION_TIMEOUT = 15 * 60 * 1000;
-
 export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileNotification, setShowMobileNotification] = useState(true);
-  const [lastActivity, setLastActivity] = useState(Date.now());
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
-  
-  // Track user activity
-  useEffect(() => {
-    const updateActivity = () => setLastActivity(Date.now());
-    
-    // Add event listeners for user activity
-    window.addEventListener('mousemove', updateActivity);
-    window.addEventListener('keydown', updateActivity);
-    window.addEventListener('click', updateActivity);
-    window.addEventListener('scroll', updateActivity);
-    
-    // Session timeout checker
-    const intervalId = setInterval(() => {
-      const now = Date.now();
-      if (now - lastActivity > SESSION_TIMEOUT) {
-        console.log("Session timed out due to inactivity");
-        // Force logout after inactivity
-        supabase.auth.signOut().then(() => {
-          toast({
-            title: "Session expired",
-            description: "Your session has expired due to inactivity. Please sign in again.",
-            variant: "destructive"
-          });
-          navigate('/auth/signin', { replace: true });
-        });
-      }
-    }, 60000); // Check every minute
-    
-    return () => {
-      // Clean up event listeners
-      window.removeEventListener('mousemove', updateActivity);
-      window.removeEventListener('keydown', updateActivity);
-      window.removeEventListener('click', updateActivity);
-      window.removeEventListener('scroll', updateActivity);
-      clearInterval(intervalId);
-    };
-  }, [lastActivity, navigate]);
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -93,65 +52,26 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   useEffect(() => {
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
-        console.log("Checking authentication status");
         const { data } = await supabase.auth.getSession();
         
         if (!data.session) {
           console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
-          return;
-        }
-        
-        // Check session expiration
-        const expiresAt = data.session?.expires_at;
-        if (expiresAt) {
-          const expiryTime = new Date(expiresAt).getTime();
-          const currentTime = new Date().getTime();
-          const timeLeft = expiryTime - currentTime;
+        } else if (profile && !profile.is_activated) {
+          // If the user is logged in but email is not verified and they're trying to access protected routes
+          const isEmailVerified = profile.email_verified;
           
-          if (timeLeft <= 0) {
-            console.log("Session expired, redirecting to signin");
-            await supabase.auth.signOut();
-            navigate('/auth/signin', { replace: true });
-            return;
+          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
+            // Redirect to email verification with email as a parameter
+            console.log("User not verified, redirecting to verification");
+            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
           }
-        }
-        
-        // Check if user profile exists and is activated
-        if (profile && !profile.is_activated && !profile.email_verified) {
-          // If the user is logged in but email is not verified
-          console.log("User not verified, profile:", profile);
-          
-          // Only redirect if not already on verification page
-          if (!location.pathname.includes('/auth/verify-email') && 
-              !location.pathname.includes('/auth/verification')) {
-            const userEmail = profile.email || '';
-            console.log(`Redirecting to verification with email: ${userEmail}`);
-            
-            // Redirect to verification page with email as a parameter
-            navigate(`/auth/verification?email=${encodeURIComponent(userEmail)}&type=signup`, { replace: true });
-          }
-        } else {
-          console.log("User verified and active, profile:", profile);
         }
       };
       
       checkAuthStatus();
     }
   }, [forceAuthenticated, location.pathname, navigate, profile]);
-  
-  // Additional verification check on initial load - only run once
-  useEffect(() => {
-    if (forceAuthenticated) {
-      const verifyAuth = async () => {
-        const { data, error } = await supabase.auth.getSession();
-        if (error || !data.session) {
-          navigate('/auth/signin', { replace: true });
-        }
-      };
-      verifyAuth();
-    }
-  }, []);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
