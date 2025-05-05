@@ -18,7 +18,7 @@ interface LayoutProps {
   forceAuthenticated?: boolean;
 }
 
-export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
+export function Layout({ children, forceAuthenticated = false }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileNotification, setShowMobileNotification] = useState(true);
   const location = useLocation();
@@ -77,9 +77,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     setShowSidebar(!showSidebar);
   };
   
-  // Don't show sidebar on auth pages
+  // Don't show sidebar on auth pages or public pages
   const isAuthPage = location.pathname.includes('/auth/');
-  const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
+  const isProtectedPage = forceAuthenticated && !isAuthPage;
+  const isPublicPage = !forceAuthenticated && !isAuthPage;
   
   // Check for URL parameters on Help page
   useEffect(() => {
@@ -113,7 +114,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       "flex h-screen w-full",
       shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
     )}>
-      {showAuthenticatedLayout && (
+      {isProtectedPage && (
         <WillTankSidebar 
           isCollapsed={!showSidebar} 
           onToggle={toggleSidebar}
@@ -123,15 +124,15 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       <motion.div 
         className={cn(
           "flex flex-col w-full transition-all duration-300",
-          showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
+          showSidebar && isProtectedPage ? "lg:ml-64" : isProtectedPage ? "lg:ml-16" : ""
         )}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
+        <Navbar isAuthenticated={isProtectedPage} onMenuToggle={toggleSidebar} />
         
-        {isMobile && showAuthenticatedLayout && showMobileNotification && (
+        {isMobile && isProtectedPage && showMobileNotification && (
           <MobileNotification onDismiss={handleDismissMobileNotification} />
         )}
         
@@ -154,11 +155,15 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           </div>
         </main>
         
-        {showAuthenticatedLayout && (
+        {isProtectedPage && (
           <>
             <FloatingAssistant />
             <FloatingHelp />
           </>
+        )}
+        
+        {isPublicPage && (
+          <FloatingAssistant />
         )}
       </motion.div>
     </div>
