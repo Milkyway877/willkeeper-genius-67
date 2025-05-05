@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -94,6 +93,7 @@ export function SignInForm() {
         .from('email_verification_codes')
         .insert({
           email: data.email,
+          code: '000000', // Placeholder code
           verification_token: verificationToken,
           type: 'login',
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours expiry

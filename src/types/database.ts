@@ -557,6 +557,45 @@ export interface Database {
           updated_at?: string | null;
         };
       };
+      email_verification_codes: {
+        Row: {
+          id: string;
+          email: string;
+          code: string | null;
+          verification_token: string | null;
+          type: string;
+          created_at: string | null;
+          expires_at: string;
+          used: boolean | null;
+          user_id: string | null;
+          link_clicked: boolean | null;
+        }
+        Insert: {
+          id?: string;
+          email: string;
+          code?: string | null;
+          verification_token?: string | null;
+          type: string;
+          created_at?: string | null;
+          expires_at: string;
+          used?: boolean | null;
+          user_id?: string | null;
+          link_clicked?: boolean | null;
+        }
+        Update: {
+          id?: string;
+          email?: string;
+          code?: string | null;
+          verification_token?: string | null;
+          type?: string;
+          created_at?: string | null;
+          expires_at?: string;
+          used?: boolean | null;
+          user_id?: string | null;
+          link_clicked?: boolean | null;
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
