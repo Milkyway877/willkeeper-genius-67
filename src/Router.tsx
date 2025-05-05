@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import VerifyLink from './pages/auth/VerifyLink';
 import App from './App';
 import { supabase } from './integrations/supabase/client';
 
@@ -108,6 +109,9 @@ function AppRouter() {
               <Route path="/auth/verification" element={<EmailVerification />} />
               <Route path="/auth/verify-email" element={<VerifyEmailBanner />} />
             </Route>
+            
+            {/* New verification route - outside the AuthLayoutWrapper */}
+            <Route path="/auth/verify" element={<VerifyLink />} />
             
             {/* Protected Routes */}
             <Route path="/dashboard" element={

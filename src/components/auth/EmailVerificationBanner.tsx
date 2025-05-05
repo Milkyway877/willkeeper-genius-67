@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Mail, Check, ArrowRight, Smartphone, Lock } from 'lucide-react';
+import { Mail, Check, ArrowRight, Link as LinkIcon, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function EmailVerificationBanner() {
@@ -17,7 +17,7 @@ export function EmailVerificationBanner() {
               <Mail className="h-8 w-8 text-willtank-700" />
             </div>
           </div>
-          <CardTitle className="text-2xl md:text-3xl text-center">Verify Your Email Address</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl text-center">Check Your Email</CardTitle>
           <CardDescription className="text-center text-base mt-2">
             We've sent a verification link to your email
           </CardDescription>
@@ -33,7 +33,19 @@ export function EmailVerificationBanner() {
                 <div className="flex-1">
                   <h3 className="font-medium text-lg">Check your inbox</h3>
                   <p className="text-gray-600">
-                    Open the verification email we just sent to your inbox and click the verification link.
+                    We've sent an email with a verification link. Open it and click the button to continue.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 items-start">
+                <div className="bg-willtank-50 p-2 rounded-full">
+                  <LinkIcon className="h-5 w-5 text-willtank-700" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-medium text-lg">Click the verification link</h3>
+                  <p className="text-gray-600">
+                    Once you click the verification link, you'll be automatically signed in and redirected to your dashboard.
                   </p>
                 </div>
               </div>
@@ -43,21 +55,9 @@ export function EmailVerificationBanner() {
                   <ArrowRight className="h-5 w-5 text-willtank-700" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-medium text-lg">Complete verification</h3>
+                  <h3 className="font-medium text-lg">One-click verification</h3>
                   <p className="text-gray-600">
-                    After clicking the link, you'll be returned to the login page. Simply sign in to access your dashboard.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex gap-4 items-start">
-                <div className="bg-willtank-50 p-2 rounded-full">
-                  <Smartphone className="h-5 w-5 text-willtank-700" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-lg">Using a different device?</h3>
-                  <p className="text-gray-600">
-                    If you're checking your email on another device, just click the link and you'll be automatically logged in. You can then logout and sign in on your preferred device.
+                    Our new simplified verification process requires just one click - no codes to enter manually.
                   </p>
                 </div>
               </div>

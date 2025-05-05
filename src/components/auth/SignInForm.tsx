@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
+import { v4 as uuidv4 } from 'uuid';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -60,10 +61,6 @@ export function SignInForm() {
       password: '',
     },
   });
-  
-  const generateVerificationCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
 
   const onSubmit = async (data: SignInFormInputs) => {
     try {
@@ -81,60 +78,60 @@ export function SignInForm() {
         return;
       }
       
-      // Delete any expired or used verification codes for this email
+      // Delete any expired or used verification tokens for this email
       await supabase
         .from('email_verification_codes')
         .delete()
         .eq('email', data.email)
         .or(`used.eq.true,expires_at.lt.${new Date().toISOString()}`);
       
-      // Generate verification code for email verification
-      const verificationCode = generateVerificationCode();
-      console.log("Generated verification code:", verificationCode);
+      // Generate verification token (UUID)
+      const verificationToken = uuidv4();
+      console.log("Generated verification token for login");
       
-      // Store verification code in database
+      // Store verification token in database
       const { error: storeError } = await supabase
         .from('email_verification_codes')
         .insert({
           email: data.email,
-          code: verificationCode,
+          verification_token: verificationToken,
           type: 'login',
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours expiry
           used: false
         });
       
       if (storeError) {
-        console.error("Error storing verification code:", storeError);
+        console.error("Error storing verification token:", storeError);
         throw new Error("Failed to process verification");
       }
       
-      // Send verification code
+      // Send verification email with login link
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
           email: data.email,
-          code: verificationCode,
           type: 'login'
         }
       });
       
       if (emailError) {
         console.error("Error invoking send-verification function:", emailError);
-        throw new Error("Failed to send verification code");
+        throw new Error("Failed to send verification email");
       }
       
-      console.log("Email verification code sent successfully");
+      console.log("Email verification link sent successfully");
       
       // Save user credentials in session storage for verification page
       sessionStorage.setItem('auth_email', data.email);
       sessionStorage.setItem('auth_password', data.password);
       
       toast({
-        title: "Verification code sent",
-        description: "Please check your email for the verification code.",
+        title: "Verification email sent",
+        description: "Please check your email for the verification link.",
       });
       
-      // Navigate to verification page
-      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
+      // Navigate to verification banner page
+      navigate('/auth/verify-email');
+      
     } catch (error: any) {
       console.error("Sign in error:", error);
       
@@ -223,7 +220,7 @@ export function SignInForm() {
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">After signing in, you'll need to verify your email with a 6-digit code.</p>
+            <p className="font-medium">After entering your details, we'll send you a verification link to your email to complete your sign in.</p>
           </div>
         </div>
       </form>
