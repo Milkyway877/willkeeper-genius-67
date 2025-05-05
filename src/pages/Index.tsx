@@ -1,23 +1,20 @@
 
 import React from 'react';
-import { Navbar } from '@/components/layout/Navbar';
+import { Layout } from '@/components/layout/Layout';
 import { Hero } from '@/components/home/Hero';
 import { ServicesSection } from '@/components/home/ServicesSection';
 import { SecuritySection } from '@/components/home/SecuritySection';
 import { FeatureCarousel } from '@/components/home/FeatureCarousel';
 import { InfoCards } from '@/components/home/InfoCards';
-import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { motion } from 'framer-motion';
-import { ArrowRight, Users, BarChart, Briefcase, Map, FileCheck, Phone } from 'lucide-react';
+import { ArrowRight, Users, BarChart, Briefcase, Map, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
 
 export default function Index() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      
+    <Layout forceAuthenticated={false}>
       <main className="flex-1">
         <Hero />
         
@@ -205,8 +202,6 @@ export default function Index() {
       </main>
       
       <Footer />
-      
-      <FloatingAssistant />
-    </div>
+    </Layout>
   );
 }
