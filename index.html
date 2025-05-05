@@ -8,7 +8,10 @@
     <meta name="description" content="Secure your legacy with WillTank, the most trusted platform for estate planning and future message delivery." />
     <meta name="author" content="WillTank" />
 
+    <!-- Use the existing favicon but with proper link references -->
     <link rel="icon" href="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" type="image/png">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png">
 
     <meta property="og:title" content="WillTank - Your Trusted Legacy Keeper" />
     <meta property="og:description" content="Secure your legacy with WillTank, the most trusted platform for estate planning and future message delivery." />
@@ -21,6 +24,21 @@
     
     <!-- Add base tag to help with SPA routing -->
     <base href="/" />
+    
+    <!-- Add a small script to handle any unknown tracking requests -->
+    <script>
+      // Prevent 404 errors for tracking scripts
+      window.addEventListener('error', function(e) {
+        if (e.target && (e.target.src || e.target.href)) {
+          const url = e.target.src || e.target.href;
+          if (url.includes('willtank.com/i') || url.includes('/i/')) {
+            console.log('Prevented 404 for tracking request:', url);
+            e.preventDefault();
+            return false;
+          }
+        }
+      }, true);
+    </script>
   </head>
 
   <body>
