@@ -18,4 +18,3 @@ supabase/.temp
 
 # Lovable specific files
 commitlint.config.js
-tsconfig.app.json
