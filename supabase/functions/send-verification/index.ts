@@ -19,7 +19,10 @@ serve(async (req) => {
       throw new Error("Missing required fields: email, code, and type are required");
     }
 
-    console.log(`Sending ${type} verification email to ${email} with code ${code}`);
+    // Make sure code is a proper 6-digit string
+    const formattedCode = code.toString().padStart(6, "0").substring(0, 6);
+    
+    console.log(`Sending ${type} verification email to ${email} with code ${formattedCode}`);
 
     let subject = "Verify your email";
     let actionText = "verify your email";
@@ -48,7 +51,7 @@ serve(async (req) => {
           </p>
           <div style="background-color: #f4f4f4; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
             <span style="font-size: 32px; letter-spacing: 8px; font-weight: bold; color: #1a1a1a;">
-              ${code}
+              ${formattedCode}
             </span>
           </div>
           <p style="color: #4a4a4a; font-size: 14px;">

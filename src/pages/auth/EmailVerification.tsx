@@ -40,7 +40,7 @@ export default function EmailVerification() {
     try {
       console.log(`Verifying code "${code}" for email "${email}" with type "${type}"`);
       
-      // Improved query - simplified to find any valid verification code
+      // Simplified query - just look for a valid code matching the email
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
@@ -48,7 +48,6 @@ export default function EmailVerification() {
         .eq('code', code)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
         .limit(1);
 
       console.log("Verification query result:", { data: verificationData, error: verificationError });
@@ -68,7 +67,6 @@ export default function EmailVerification() {
           .select('*')
           .eq('email', email)
           .eq('code', code)
-          .order('created_at', { ascending: false })
           .limit(1);
         
         if (anyCodes && anyCodes.length > 0) {
@@ -225,7 +223,7 @@ export default function EmailVerification() {
         .eq('email', email)
         .lt('expires_at', new Date().toISOString());
       
-      // Store verification code first to ensure it exists in the database
+      // Store verification code with proper expiration
       const { error: storeError } = await supabase
         .from('email_verification_codes')
         .insert({
@@ -262,7 +260,7 @@ export default function EmailVerification() {
         description: "A new verification code has been sent to your email.",
       });
       
-      // Reset the form
+      // Reset the form and attempts
       setVerificationCode('');
       setVerificationAttempts(0);
     } catch (error: any) {
