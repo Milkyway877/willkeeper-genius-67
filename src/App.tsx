@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
@@ -40,14 +39,6 @@ export default function App() {
             padding: 0.25rem 0.5rem;
             border-radius: 0.25rem;
             font-size: 0.875rem;
-          }
-
-          /* Reset root styles to ensure full width layout */
-          #root {
-            max-width: 100%;
-            margin: 0;
-            padding: 0;
-            width: 100%;
           }
         `}
       </style>

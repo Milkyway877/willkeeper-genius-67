@@ -12,11 +12,12 @@ import { ArrowRight, Users, BarChart, Briefcase, Map, FileCheck, Phone } from 'l
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Footer } from '@/components/layout/Footer';
-import { Layout } from '@/components/layout/Layout';
 
 export default function Index() {
   return (
-    <Layout forceAuthenticated={false}>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
       <main className="flex-1">
         <Hero />
         
@@ -204,6 +205,8 @@ export default function Index() {
       </main>
       
       <Footer />
-    </Layout>
+      
+      <FloatingAssistant />
+    </div>
   );
 }
