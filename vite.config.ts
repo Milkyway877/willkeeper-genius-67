@@ -26,5 +26,10 @@ export default defineConfig(({ mode }) => ({
   build: {
     // Generate SPA fallback index.html for all routes
     outDir: 'dist',
+    sourcemap: mode !== 'production',
   },
+  // Define environment variables for production based on Vercel's environment
+  define: mode === 'production' ? {
+    // We don't need to define anything here as Vercel will inject the variables
+  } : {},
 }));

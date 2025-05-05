@@ -1,0 +1,21 @@
+
+# Local development files
+.git
+.github
+node_modules
+.env*.local
+
+# Dev environment
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+
+# Supabase local development
+supabase/.branches
+supabase/.temp
+
+# Lovable specific files
+commitlint.config.js
+tsconfig.app.json
