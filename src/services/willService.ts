@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/types/database';
 
@@ -9,6 +10,10 @@ export interface Will {
   created_at: string | null;
   updated_at: string | null;
   status: 'active' | 'draft' | 'completed';
+  template_type?: string;
+  ai_generated?: boolean;
+  document_url?: string;
+  signature?: string;
 }
 
 export interface WillDocument {
@@ -63,11 +68,23 @@ export const getWill = async (id: string): Promise<Will | null> => {
 };
 
 // Create a new will
-export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at' | 'status'>): Promise<Will> => {
+export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will> => {
   try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error("User must be authenticated to create a will");
+    }
+    
+    const willWithUserId = {
+      ...will,
+      user_id: user.id
+    };
+    
     const { data, error } = await supabase
       .from('wills')
-      .insert({ ...will, status: 'draft' })
+      .insert(willWithUserId)
       .select()
       .single();
 
@@ -83,12 +100,12 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
 };
 
 // Update an existing will
-export const updateWill = async (will: Partial<Will> & { id: string }): Promise<Will> => {
+export const updateWill = async (willData: Partial<Will> & { id: string }): Promise<Will> => {
   try {
     const { data, error } = await supabase
       .from('wills')
-      .update(will)
-      .eq('id', will.id)
+      .update(willData)
+      .eq('id', willData.id)
       .select()
       .single();
 
@@ -190,12 +207,19 @@ export const uploadWillDocument = async (
     // Get the file size
     const fileSize = file.size;
 
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error("User must be authenticated to upload a document");
+    }
+
     // Create a new will document record
     const { data: willDocument, error: willDocumentError } = await supabase
       .from('will_documents')
       .insert({
         will_id: willId,
-        user_id: supabase.auth.user()?.id as string,
+        user_id: user.id,
         file_name: file.name,
         file_path: filePath,
         file_size: fileSize,
