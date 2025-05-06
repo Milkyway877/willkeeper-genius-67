@@ -133,12 +133,18 @@ export function DocumentUploadPanel({
         }
         
         // Add to documents list
-        newDocuments.push({
+        const timestamp = new Date().toISOString();
+        
+        const newDocument = {
           id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           name: file.name,
           path: filePath,
-          size: formattedSize
-        });
+          size: formattedSize,
+          created_at: timestamp,
+          updated_at: timestamp // Adding this missing field
+        };
+        
+        newDocuments.push(newDocument);
       }
       
       if (newDocuments.length > 0) {

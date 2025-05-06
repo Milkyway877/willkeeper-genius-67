@@ -79,7 +79,6 @@ export default function TemplateWillCreationPage() {
         await updateWill(progress.will_id, {
           title: `${data.personalInfo?.fullName}'s Will`,
           content: JSON.stringify(data),
-          updated_at: new Date().toISOString()
         });
       } else {
         // Create a new will

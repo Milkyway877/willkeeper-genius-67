@@ -86,8 +86,8 @@ export const createWill = async (will: Partial<Omit<Will, 'id' | 'created_at' | 
     
     const willWithUserId = {
       ...will,
-      user_id: user.id,
-      status
+      status,
+      user_id: user.id
     };
     
     const { data, error } = await supabase
@@ -206,7 +206,7 @@ export const uploadWillDocument = async (
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `wills/${willId}/${fileName}`;
 
-    // Upload the file - create options object conditionally
+    // Upload the file 
     let uploadOptions: Record<string, any> = {
       cacheControl: '3600',
       upsert: false

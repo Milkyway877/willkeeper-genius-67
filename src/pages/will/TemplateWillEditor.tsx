@@ -225,7 +225,7 @@ Date: ${new Date().toLocaleDateString()}
       const willData = {
         title: `${formValues.fullName}'s Will`,
         content: finalWillContent,
-        status: 'draft',
+        status: 'draft' as 'active' | 'draft' | 'completed',
         template_type: templateId,
         ai_generated: false,
         document_url: ''
@@ -283,7 +283,7 @@ Date: ${new Date().toLocaleDateString()}
       const willData = {
         title: `${formValues.fullName}'s Will`,
         content: finalWillContent,
-        status: 'active', // Mark as active/finalized
+        status: 'active' as 'active' | 'draft' | 'completed',
         template_type: templateId,
         ai_generated: false,
         document_url: '',
