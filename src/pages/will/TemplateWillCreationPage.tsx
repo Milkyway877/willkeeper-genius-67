@@ -86,7 +86,7 @@ export default function TemplateWillCreationPage() {
         const willData = {
           title: `${data.personalInfo?.fullName}'s Will`,
           content: JSON.stringify(data),
-          status: 'draft',
+          status: 'draft' as 'active' | 'draft' | 'completed',
           template_type: templateId || '',
           ai_generated: false,
           document_url: ''

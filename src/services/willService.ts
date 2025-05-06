@@ -108,20 +108,22 @@ export const createWill = async (will: Partial<Omit<Will, 'id' | 'created_at' | 
 };
 
 // Update an existing will
-export const updateWill = async (willData: Partial<Will> & { id: string }): Promise<Will> => {
+export const updateWill = async (willId: string, willData: Partial<Omit<Will, 'id' | 'created_at' | 'updated_at' | 'user_id'>>): Promise<Will> => {
   try {
     // Ensure status is one of the allowed values if provided
-    if (willData.status && 
-        willData.status !== 'active' && 
-        willData.status !== 'draft' && 
-        willData.status !== 'completed') {
-      willData.status = 'draft'; // Default to draft if invalid status
+    let updatedData = { ...willData };
+    
+    if (updatedData.status && 
+        updatedData.status !== 'active' && 
+        updatedData.status !== 'draft' && 
+        updatedData.status !== 'completed') {
+      updatedData.status = 'draft'; // Default to draft if invalid status
     }
     
     const { data, error } = await supabase
       .from('wills')
-      .update(willData)
-      .eq('id', willData.id)
+      .update(updatedData)
+      .eq('id', willId)
       .select()
       .single();
 
@@ -328,4 +330,3 @@ export const getDocumentUrl = async (document: WillDocument): Promise<string | n
     return null;
   }
 };
-
