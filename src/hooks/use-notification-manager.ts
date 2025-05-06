@@ -7,7 +7,9 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 export type NotificationPriority = 'low' | 'medium' | 'high';
 
 export function useNotificationManager() {
-  const { fetchNotifications } = useNotifications();
+  const notificationsContext = useNotifications();
+  // Safely access fetchNotifications
+  const fetchNotifications = notificationsContext?.fetchNotifications;
 
   const notify = useCallback(async (
     eventType: EventType,

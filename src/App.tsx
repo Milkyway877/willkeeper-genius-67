@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
@@ -45,7 +46,8 @@ export default function App() {
       
       <Outlet />
       <Toaster />
-      <FloatingAssistant />
+      {/* Wrap FloatingAssistant in error boundary or conditional rendering */}
+      {typeof window !== 'undefined' && <FloatingAssistant />}
       <ReactQueryDevtools initialIsOpen={false} />
     </>
   );
