@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,16 +23,29 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
-import { 
-  getWillDocuments, 
-  WillDocument, 
-  deleteWillDocument, 
-  getDocumentUrl,
-  uploadWillDocument 
-} from '@/services/willService';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
+
+interface WillDocument {
+  id: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  file_path: string;
+  will_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface WillMetadataDocument {
+  id: string;
+  content: string;
+  created_at: string;
+  message_url: string;
+  title: string;
+}
 
 interface WillAttachedDocumentsSectionProps {
   willId: string;
@@ -53,29 +65,88 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
   
   // Fetch documents when willId changes or refresh is triggered
   useEffect(() => {
-    const fetchDocuments = async () => {
-      if (!willId) return;
-      
-      try {
-        setIsLoading(true);
-        console.log(`Fetching documents for will ID: ${willId}`);
-        const docs = await getWillDocuments(willId);
-        console.log(`Retrieved ${docs.length} documents`);
-        setDocuments(docs);
-      } catch (error) {
-        console.error('Error fetching documents:', error);
-        toast({
-          title: 'Error',
-          description: 'Could not load attached documents',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchDocuments();
-  }, [willId, refreshTrigger, toast]);
+  }, [willId, refreshTrigger]);
+  
+  const fetchDocuments = async () => {
+    if (!willId) return;
+    
+    try {
+      setIsLoading(true);
+      console.log(`Fetching documents for will ID: ${willId}`);
+      
+      // Query future_messages table for metadata entries that link documents to this will
+      const { data: metadataEntries, error } = await supabase
+        .from('future_messages')
+        .select('id, content, created_at, message_url, title')
+        .eq('message_type', 'metadata')
+        .like('content', `%"will_id":"${willId}"%`)
+        .like('content', '%"doc_path"%')
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (!metadataEntries || metadataEntries.length === 0) {
+        setDocuments([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log(`Retrieved ${metadataEntries.length} document entries`);
+      
+      // Transform metadata entries into document format
+      const transformedDocs = metadataEntries.map((entry: WillMetadataDocument) => {
+        // Parse the content to extract document path
+        let parsedContent;
+        try {
+          parsedContent = JSON.parse(entry.content);
+        } catch (e) {
+          console.error('Error parsing document metadata content:', e);
+          parsedContent = { doc_path: entry.message_url };
+        }
+        
+        const filePath = parsedContent.doc_path;
+        const fileName = filePath.split('/').pop() || 'Document';
+        const fileExtension = fileName.split('.').pop() || '';
+        
+        // Determine file type based on extension
+        let fileType = 'application/octet-stream';
+        if (['pdf'].includes(fileExtension.toLowerCase())) {
+          fileType = 'application/pdf';
+        } else if (['doc', 'docx'].includes(fileExtension.toLowerCase())) {
+          fileType = 'application/msword';
+        } else if (['xls', 'xlsx'].includes(fileExtension.toLowerCase())) {
+          fileType = 'application/vnd.ms-excel';
+        } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension.toLowerCase())) {
+          fileType = `image/${fileExtension.toLowerCase()}`;
+        }
+        
+        return {
+          id: entry.id,
+          file_name: fileName,
+          file_type: fileType,
+          file_size: 0, // Size not stored in metadata
+          file_path: filePath,
+          will_id: willId,
+          created_at: entry.created_at,
+          updated_at: entry.created_at
+        };
+      });
+      
+      setDocuments(transformedDocs);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load attached documents',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Function to handle document upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,31 +171,62 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
       
       console.log(`Starting upload for file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
       
-      const uploadedDoc = await uploadWillDocument(
-        willId, 
-        file, 
-        (progress) => setUploadProgress(progress)
-      );
+      // Upload file to storage
+      const fileName = `${Date.now()}_${file.name}`;
+      const filePath = `${willId}/${fileName}`;
       
-      if (uploadedDoc) {
-        console.log('Document uploaded successfully:', uploadedDoc);
-        toast({
-          title: 'Document uploaded',
-          description: `${file.name} has been added to your will`
+      // Start progress simulation
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const increment = Math.floor(Math.random() * 10) + 1;
+          return Math.min(prev + increment, 95);
+        });
+      }, 300);
+      
+      // Upload the file to storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('future-attachments')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
         });
         
-        // Refresh document list
-        setRefreshTrigger(prev => prev + 1);
-        setDialogOpen(false);
-      } else {
-        console.error('Upload failed - no document returned');
-        setUploadError('Upload failed. Please try again.');
-        toast({
-          title: 'Upload failed',
-          description: 'Could not upload document. Please try again.',
-          variant: 'destructive'
-        });
-      }
+      if (uploadError) throw uploadError;
+      
+      // Create metadata entry in future_messages
+      const { data: messageData, error: messageError } = await supabase
+        .from('future_messages')
+        .insert({
+          user_id: (await supabase.auth.getSession()).data.session?.user.id,
+          title: `Document for Will: ${willId}`,
+          recipient_name: 'Will Document',
+          recipient_email: '',
+          message_type: 'metadata',
+          preview: `Document for Will: ${willId}`,
+          content: JSON.stringify({ will_id: willId, doc_path: filePath }),
+          message_url: filePath,
+          status: 'scheduled' as const,
+          delivery_type: 'posthumous' as const,
+          delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+          category: 'document' as const
+        })
+        .select()
+        .single();
+      
+      if (messageError) throw messageError;
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      toast({
+        title: 'Document uploaded',
+        description: `${file.name} has been added to your will`
+      });
+      
+      // Refresh document list
+      setRefreshTrigger(prev => prev + 1);
+      setDialogOpen(false);
+      
     } catch (error) {
       console.error('Error uploading document:', error);
       setUploadError('An unexpected error occurred. Please try again.');
@@ -148,25 +250,33 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
   const handleDeleteDocument = async (document: WillDocument) => {
     try {
       console.log(`Deleting document: ${document.id}, file name: ${document.file_name}`);
-      const success = await deleteWillDocument(document);
       
-      if (success) {
-        console.log('Document deleted successfully');
-        toast({
-          title: 'Document deleted',
-          description: `${document.file_name} has been removed`
-        });
+      // Delete the metadata entry from future_messages table
+      const { error: dbError } = await supabase
+        .from('future_messages')
+        .delete()
+        .eq('id', document.id);
         
-        // Remove from local state
-        setDocuments(prev => prev.filter(doc => doc.id !== document.id));
-      } else {
-        console.error('Delete operation returned false');
-        toast({
-          title: 'Delete failed',
-          description: 'Could not delete document',
-          variant: 'destructive'
-        });
+      if (dbError) throw dbError;
+      
+      // Then try to delete the file from storage
+      const { error: storageError } = await supabase.storage
+        .from('future-attachments')
+        .remove([document.file_path]);
+        
+      // We don't throw on storage error since the DB record is the most important
+      if (storageError) {
+        console.warn('Could not delete document file from storage:', storageError);
       }
+      
+      toast({
+        title: 'Document deleted',
+        description: `${document.file_name} has been removed`
+      });
+      
+      // Remove from local state
+      setDocuments(prev => prev.filter(doc => doc.id !== document.id));
+      
     } catch (error) {
       console.error('Error deleting document:', error);
       toast({
@@ -181,21 +291,18 @@ export function WillAttachedDocumentsSection({ willId }: WillAttachedDocumentsSe
   const handleDownloadDocument = async (document: WillDocument) => {
     try {
       console.log(`Getting download URL for document: ${document.file_name}`);
-      const url = await getDocumentUrl(document);
       
-      if (!url) {
-        console.error('No URL returned from getDocumentUrl');
-        toast({
-          title: 'Download failed',
-          description: 'Could not generate download link',
-          variant: 'destructive'
-        });
-        return;
+      const { data } = supabase.storage
+        .from('future-attachments')
+        .getPublicUrl(document.file_path);
+      
+      if (!data || !data.publicUrl) {
+        throw new Error('Could not generate download URL');
       }
       
       // Create a temporary link and trigger download
       const a = window.document.createElement('a');
-      a.href = url;
+      a.href = data.publicUrl;
       a.download = document.file_name;
       window.document.body.appendChild(a);
       a.click();
