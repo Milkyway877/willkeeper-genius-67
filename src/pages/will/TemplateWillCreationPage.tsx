@@ -70,7 +70,7 @@ export default function TemplateWillCreationPage() {
         await saveWillProgress({
           ...progress,
           responses: data,
-          updated_at: new Date().toISOString()
+          current_step: progress.current_step || 'draft'
         });
       }
       
@@ -98,7 +98,8 @@ export default function TemplateWillCreationPage() {
           await saveWillProgress({
             ...progress,
             will_id: savedWill.id,
-            responses: data
+            responses: data,
+            current_step: progress.current_step || 'draft'
           });
         }
       }

@@ -149,7 +149,8 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId: initi
           template_id: templateId,
           will_id: willId,
           responses: values,
-          content: newContent
+          content: newContent,
+          current_step: 'draft' // Add the required current_step field
         });
       }
       
@@ -208,7 +209,8 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId: initi
             template_id: templateId,
             will_id: savedWill.id,
             responses: values,
-            content: newContent
+            content: newContent,
+            current_step: 'draft' // Add the required current_step field
           });
           
           setWillId(savedWill.id);
