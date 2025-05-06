@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/types/database';
+import { getCurrentUserId } from '@/utils/authUtils';
 
 export interface Will {
   id: string;
@@ -68,7 +69,7 @@ export const getWill = async (id: string): Promise<Will | null> => {
 };
 
 // Create a new will
-export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will> => {
+export const createWill = async (will: Partial<Omit<Will, 'id' | 'created_at' | 'updated_at' | 'user_id'>>): Promise<Will> => {
   try {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
@@ -79,7 +80,8 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
     
     const willWithUserId = {
       ...will,
-      user_id: user.id
+      user_id: user.id,
+      status: will.status || 'draft'
     };
     
     const { data, error } = await supabase
@@ -181,24 +183,30 @@ export const willHasDocuments = async (willId: string): Promise<boolean> => {
 export const uploadWillDocument = async (
   willId: string,
   file: File,
-  onUploadProgress: (progress: number) => void
+  onUploadProgress?: (progress: number) => void
 ): Promise<WillDocument | null> => {
   try {
     // Create a unique file name
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `wills/${willId}/${fileName}`;
 
-    // Upload the file
+    // Upload the file - create options object conditionally
+    let uploadOptions: any = {
+      cacheControl: '3600',
+      upsert: false
+    };
+    
+    // Only add onUploadProgress if it's provided
+    if (onUploadProgress) {
+      uploadOptions.onUploadProgress = (event: any) => {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onUploadProgress(progress);
+      };
+    }
+
     const { data, error } = await supabase.storage
       .from('will_documents')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        onUploadProgress: (event) => {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          onUploadProgress(progress);
-        },
-      });
+      .upload(filePath, file, uploadOptions);
 
     if (error) {
       throw error;
@@ -224,6 +232,7 @@ export const uploadWillDocument = async (
         file_path: filePath,
         file_size: fileSize,
         file_type: file.type,
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
