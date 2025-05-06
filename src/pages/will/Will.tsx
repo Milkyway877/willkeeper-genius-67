@@ -189,6 +189,7 @@ export default function Will() {
         content: willContent,
         title: willTitle,
         signature: signature, // Include signature in the update
+        updated_at: new Date().toISOString()
       });
       
       if (!updated) throw new Error("Failed to update will");

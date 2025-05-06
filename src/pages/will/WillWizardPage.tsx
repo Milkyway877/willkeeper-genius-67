@@ -332,7 +332,7 @@ export default function WillWizardPage() {
       
       const will = {
         title: responses.fullName ? `Will of ${responses.fullName}` : 'My Will',
-        status: 'active' as 'active' | 'draft' | 'completed',
+        status: 'active',
         document_url: 'generated-will.pdf',
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,

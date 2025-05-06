@@ -129,7 +129,7 @@ Date: ${new Date().toLocaleDateString()}
       // Save the draft will to the database
       const will = {
         title: data.responses.fullName ? `Will of ${data.responses.fullName}` : 'My Will',
-        status: 'draft' as 'active' | 'draft' | 'completed',
+        status: 'draft',
         document_url: '',
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,
@@ -156,7 +156,7 @@ Date: ${new Date().toLocaleDateString()}
     try {
       const will = {
         title: willData.responses.fullName ? `Will of ${willData.responses.fullName}` : 'My Will',
-        status: 'active' as 'active' | 'draft' | 'completed',
+        status: 'active',
         document_url: '',
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,

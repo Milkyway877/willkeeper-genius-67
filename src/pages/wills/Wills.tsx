@@ -13,21 +13,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getWills, Will, deleteWill, willHasVideos, willHasDocuments } from '@/services/willService';
+import { getWills, Will, deleteWill } from '@/services/willService';
 import { templates } from '../will/config/wizardSteps';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/utils';
 import { HighlightedWillCard } from './components/HighlightedWillCard';
 
 // WillCard component remains the same
-const WillCard = ({ will, onDelete, onView, onEdit, hasVideo, hasDocuments }: { 
-  will: Will, 
-  onDelete: () => void, 
-  onView: () => void, 
-  onEdit: () => void,
-  hasVideo: boolean,
-  hasDocuments: boolean 
-}) => (
+const WillCard = ({ will, onDelete, onView, onEdit }: { will: Will, onDelete: () => void, onView: () => void, onEdit: () => void }) => (
   <Card>
     <CardContent className="pt-6">
       <div className="flex justify-between items-start">
@@ -79,7 +72,6 @@ export default function Wills() {
   const [willToDelete, setWillToDelete] = useState<Will | null>(null);
   const [currentTab, setCurrentTab] = useState('active');
   const [newlyCreatedWillId, setNewlyCreatedWillId] = useState<string | null>(null);
-  const [willAttachments, setWillAttachments] = useState<Record<string, {hasVideo: boolean, hasDocuments: boolean}>>({});
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -101,20 +93,6 @@ export default function Wills() {
       setIsLoading(true);
       const willsData = await getWills();
       setWills(willsData);
-      
-      // Check for video and document attachments for each will
-      const attachmentsData: Record<string, {hasVideo: boolean, hasDocuments: boolean}> = {};
-      
-      for (const will of willsData) {
-        const [hasVideo, hasDocuments] = await Promise.all([
-          willHasVideos(will.id),
-          willHasDocuments(will.id)
-        ]);
-        
-        attachmentsData[will.id] = { hasVideo, hasDocuments };
-      }
-      
-      setWillAttachments(attachmentsData);
     } catch (error) {
       console.error('Error loading wills:', error);
       toast({
@@ -199,8 +177,8 @@ export default function Wills() {
                     <HighlightedWillCard 
                       key={will.id} 
                       will={will}
-                      hasVideo={willAttachments[will.id]?.hasVideo || false} 
-                      hasDocuments={willAttachments[will.id]?.hasDocuments || false} 
+                      hasVideo={false} 
+                      hasDocuments={false} 
                     />
                   ) : (
                     <WillCard 
@@ -209,8 +187,6 @@ export default function Wills() {
                       onDelete={() => handleDelete(will)}
                       onView={() => navigate(`/will/${will.id}`)}
                       onEdit={() => navigate(`/will/edit/${will.id}`)}
-                      hasVideo={willAttachments[will.id]?.hasVideo || false}
-                      hasDocuments={willAttachments[will.id]?.hasDocuments || false}
                     />
                   )
                 ))}
@@ -243,8 +219,8 @@ export default function Wills() {
                     <HighlightedWillCard 
                       key={will.id} 
                       will={will}
-                      hasVideo={willAttachments[will.id]?.hasVideo || false} 
-                      hasDocuments={willAttachments[will.id]?.hasDocuments || false} 
+                      hasVideo={false} 
+                      hasDocuments={false} 
                     />
                   ) : (
                     <WillCard 
@@ -253,8 +229,6 @@ export default function Wills() {
                       onDelete={() => handleDelete(will)}
                       onView={() => navigate(`/will/${will.id}`)}
                       onEdit={() => navigate(`/will/edit/${will.id}`)}
-                      hasVideo={willAttachments[will.id]?.hasVideo || false}
-                      hasDocuments={willAttachments[will.id]?.hasDocuments || false}
                     />
                   )
                 ))}
@@ -287,8 +261,8 @@ export default function Wills() {
                     <HighlightedWillCard 
                       key={will.id} 
                       will={will}
-                      hasVideo={willAttachments[will.id]?.hasVideo || false} 
-                      hasDocuments={willAttachments[will.id]?.hasDocuments || false} 
+                      hasVideo={false} 
+                      hasDocuments={false} 
                     />
                   ) : (
                     <WillCard 
@@ -297,8 +271,6 @@ export default function Wills() {
                       onDelete={() => handleDelete(will)}
                       onView={() => navigate(`/will/${will.id}`)}
                       onEdit={() => navigate(`/will/edit/${will.id}`)}
-                      hasVideo={willAttachments[will.id]?.hasVideo || false}
-                      hasDocuments={willAttachments[will.id]?.hasDocuments || false}
                     />
                   )
                 ))}

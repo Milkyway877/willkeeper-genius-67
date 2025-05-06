@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Bot, X, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,9 +12,7 @@ export function FloatingAssistant() {
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  // Get notification manager, but handle potential undefined values
-  const notificationManager = useNotificationManager();
-  const notifyInfo = notificationManager?.notifyInfo;
+  const { notifyInfo } = useNotificationManager();
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -87,9 +86,7 @@ export function FloatingAssistant() {
       
       // Try to create a notification for this interaction, but don't block if it fails
       try {
-        if (notifyInfo) {
-          notifyInfo('Skyler', 'You received a new response from Skyler.', 'low');
-        }
+        notifyInfo('Skyler', 'You received a new response from Skyler.', 'low');
       } catch (notifyError) {
         console.warn('Could not create notification:', notifyError);
       }

@@ -28,14 +28,6 @@ interface WillVideo {
   title?: string;
 }
 
-interface WillMetadataVideo {
-  id: string;
-  content: string;
-  created_at: string;
-  message_url: string;
-  title: string;
-}
-
 interface WillAttachedVideosSectionProps {
   willId: string;
 }
@@ -62,45 +54,17 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
     try {
       setIsLoading(true);
       
-      // Query future_messages table for metadata entries that link videos to this will
-      const { data: metadataEntries, error } = await supabase
-        .from('future_messages')
-        .select('id, content, created_at, message_url, title')
-        .eq('message_type', 'metadata')
-        .like('content', `%"will_id":"${willId}"%`)
-        .like('content', '%"video_path"%')
+      const { data, error } = await supabase
+        .from('will_videos')
+        .select('*')
+        .eq('will_id', willId)
         .order('created_at', { ascending: false });
         
       if (error) {
         throw error;
       }
       
-      if (!metadataEntries || metadataEntries.length === 0) {
-        setVideos([]);
-        return;
-      }
-      
-      // Transform metadata entries into will video format
-      const transformedVideos = metadataEntries.map((entry: WillMetadataVideo) => {
-        // Parse the content to extract video path
-        let parsedContent;
-        try {
-          parsedContent = JSON.parse(entry.content);
-        } catch (e) {
-          console.error('Error parsing video metadata content:', e);
-          parsedContent = { video_path: entry.message_url };
-        }
-        
-        return {
-          id: entry.id,
-          will_id: willId,
-          file_path: parsedContent.video_path,
-          created_at: entry.created_at,
-          title: entry.title?.replace(`Video for Will: ${willId}`, 'Video Testament') || 'Video Testament'
-        };
-      });
-      
-      setVideos(transformedVideos);
+      setVideos(data || []);
     } catch (error) {
       console.error('Error loading will videos:', error);
       toast({
@@ -121,7 +85,7 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
     try {
       // Check if the file exists first
       const { data: fileExists, error: checkError } = await supabase.storage
-        .from('future-videos')
+        .from('future-videos') // Changed from 'will_videos' to 'future-videos'
         .list('', {
           search: filePath
         });
@@ -132,7 +96,7 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
       
       // Get the public URL regardless of existence check (may fail silently)
       const { data } = supabase.storage
-        .from('future-videos')
+        .from('future-videos') // Changed from 'will_videos' to 'future-videos'
         .getPublicUrl(filePath);
       
       // Add a cache-busting parameter to avoid caching issues
@@ -184,9 +148,9 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
     setIsDeleting(true);
     
     try {
-      // Delete the metadata entry from future_messages table
+      // First delete the record from the will_videos table
       const { error: dbError } = await supabase
-        .from('future_messages')
+        .from('will_videos')
         .delete()
         .eq('id', videoToDelete.id);
         
@@ -194,7 +158,7 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
       
       // Then try to delete the file from storage
       const { error: storageError } = await supabase.storage
-        .from('future-videos')
+        .from('future-videos') // Changed from 'will_videos' to 'future-videos'
         .remove([videoToDelete.file_path]);
         
       // We don't throw on storage error since the DB record is the most important

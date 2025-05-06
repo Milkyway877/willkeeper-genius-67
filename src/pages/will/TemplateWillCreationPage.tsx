@@ -70,7 +70,7 @@ export default function TemplateWillCreationPage() {
         await saveWillProgress({
           ...progress,
           responses: data,
-          current_step: progress.current_step || 'draft'
+          updated_at: new Date().toISOString()
         });
       }
       
@@ -79,13 +79,14 @@ export default function TemplateWillCreationPage() {
         await updateWill(progress.will_id, {
           title: `${data.personalInfo?.fullName}'s Will`,
           content: JSON.stringify(data),
+          updated_at: new Date().toISOString()
         });
       } else {
         // Create a new will
         const willData = {
           title: `${data.personalInfo?.fullName}'s Will`,
           content: JSON.stringify(data),
-          status: 'draft' as 'active' | 'draft' | 'completed',
+          status: 'draft',
           template_type: templateId || '',
           ai_generated: false,
           document_url: ''
@@ -98,8 +99,7 @@ export default function TemplateWillCreationPage() {
           await saveWillProgress({
             ...progress,
             will_id: savedWill.id,
-            responses: data,
-            current_step: progress.current_step || 'draft'
+            responses: data
           });
         }
       }

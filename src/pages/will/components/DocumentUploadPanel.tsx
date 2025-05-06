@@ -38,8 +38,6 @@ export function DocumentUploadPanel({
     name: string;
     path: string;
     size: string;
-    created_at: string;
-    updated_at: string;
   }>>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,18 +133,12 @@ export function DocumentUploadPanel({
         }
         
         // Add to documents list
-        const timestamp = new Date().toISOString();
-        
-        const newDocument = {
+        newDocuments.push({
           id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           name: file.name,
           path: filePath,
-          size: formattedSize,
-          created_at: timestamp,
-          updated_at: timestamp
-        };
-        
-        newDocuments.push(newDocument);
+          size: formattedSize
+        });
       }
       
       if (newDocuments.length > 0) {
@@ -187,8 +179,7 @@ export function DocumentUploadPanel({
         file_name: "",
         file_size: 0,
         file_type: "",
-        created_at: "",
-        updated_at: "" // Adding the missing updated_at field
+        created_at: ""
       };
       
       console.log(`Attempting to delete document: ${id}, path: ${path}`);
@@ -233,8 +224,7 @@ export function DocumentUploadPanel({
         file_name: name,
         file_size: 0,
         file_type: "",
-        created_at: "",
-        updated_at: "" // Adding the missing updated_at field
+        created_at: ""
       };
       
       console.log(`Getting preview URL for document: ${path}`);
