@@ -4,34 +4,28 @@ import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
-import { Layout } from './components/layout/Layout';
-import Index from './pages/Index';
 
-// Create pages that will be accessible without authentication
-const Home = () => <Layout forceAuthenticated={false}><div>Home Page</div></Layout>;
-const About = () => <Layout forceAuthenticated={false}><div>About Page</div></Layout>;
-const Pricing = () => <Layout forceAuthenticated={false}><div>Pricing Page</div></Layout>;
-const Contact = () => <Layout forceAuthenticated={false}><div>Contact Page</div></Layout>;
-const Faq = () => <Layout forceAuthenticated={false}><div>FAQ Page</div></Layout>;
-const Terms = () => <Layout forceAuthenticated={false}><div>Terms Page</div></Layout>;
-const Privacy = () => <Layout forceAuthenticated={false}><div>Privacy Page</div></Layout>;
-const NotFound = () => <Layout forceAuthenticated={false}><div>404 Not Found</div></Layout>;
-const SearchPage = () => <Layout forceAuthenticated={false}><div>Search Page</div></Layout>;
-
-// These pages still require authentication
-const Dashboard = () => <Layout forceAuthenticated={true}><div>Dashboard Page</div></Layout>;
-const Settings = () => <Layout forceAuthenticated={true}><div>Settings Page</div></Layout>;
-const Will = () => <Layout forceAuthenticated={true}><div>Will Page</div></Layout>;
-const FutureMessages = () => <Layout forceAuthenticated={true}><div>Future Messages Page</div></Layout>;
-const LegacyVault = () => <Layout forceAuthenticated={true}><div>Legacy Vault Page</div></Layout>;
-const CheckIns = () => <Layout forceAuthenticated={true}><div>Check-Ins Page</div></Layout>;
-const TestDeathVerificationPage = () => <Layout forceAuthenticated={true}><div>Test Death Verification Page</div></Layout>;
-
-// Auth pages
+// Create placeholder pages for development
+const Home = () => <div>Home Page</div>;
+const About = () => <div>About Page</div>;
+const Pricing = () => <div>Pricing Page</div>;
+const Contact = () => <div>Contact Page</div>;
+const Faq = () => <div>FAQ Page</div>;
+const Terms = () => <div>Terms Page</div>;
+const Privacy = () => <div>Privacy Page</div>;
+const NotFound = () => <div>404 Not Found</div>;
 const SignIn = () => <div>Sign In Page</div>;
 const SignUp = () => <div>Sign Up Page</div>;
 const ForgotPassword = () => <div>Forgot Password Page</div>;
 const ResetPassword = () => <div>Reset Password Page</div>;
+const Dashboard = () => <div>Dashboard Page</div>;
+const Settings = () => <div>Settings Page</div>;
+const Will = () => <div>Will Page</div>;
+const FutureMessages = () => <div>Future Messages Page</div>;
+const LegacyVault = () => <div>Legacy Vault Page</div>;
+const CheckIns = () => <div>Check-Ins Page</div>;
+const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
+const SearchPage = () => <div>Search Page</div>;
 
 // Auth layout wrapper component that passes children to AuthLayout
 const AuthLayoutWrapper = () => {
@@ -46,7 +40,7 @@ function AppRouter() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/contact" element={<Contact />} />
@@ -55,7 +49,7 @@ function AppRouter() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/search" element={<SearchPage />} />
         
-        {/* Auth routes - no authentication required */}
+        {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
         <Route element={<AuthLayoutWrapper />}>
           <Route path="/auth" element={<SignIn />} />
           <Route path="/auth/signin" element={<SignIn />} />
@@ -65,7 +59,6 @@ function AppRouter() {
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Route>
         
-        {/* Protected routes - require authentication */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/will" element={<Will />} />

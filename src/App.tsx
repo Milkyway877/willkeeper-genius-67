@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
+import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { Outlet } from 'react-router-dom';
 
 // Add global mobile responsive styles
@@ -45,6 +45,7 @@ export default function App() {
       
       <Outlet />
       <Toaster />
+      <FloatingAssistant />
       <ReactQueryDevtools initialIsOpen={false} />
     </>
   );
