@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { generateWillDocument } from '@/utils/willTemplateUtils';
+import { generateWillContent } from '@/utils/willTemplateUtils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
@@ -128,8 +128,8 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId: initi
       Date: ${new Date().toLocaleDateString()}
     `;
     
-    if (signature) {
-      document += `\n\nDigitally Signed: ${signature}`;
+    if (data.signature) {
+      document += `\n\nDigitally Signed: ${data.signature}`;
     }
     
     return document;
