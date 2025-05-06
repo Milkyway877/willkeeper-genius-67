@@ -78,10 +78,16 @@ export const createWill = async (will: Partial<Omit<Will, 'id' | 'created_at' | 
       throw new Error("User must be authenticated to create a will");
     }
     
+    // Ensure status is one of the allowed values
+    let status: 'active' | 'draft' | 'completed' = 'draft';
+    if (will.status === 'active' || will.status === 'completed') {
+      status = will.status;
+    }
+    
     const willWithUserId = {
       ...will,
       user_id: user.id,
-      status: will.status || 'draft'
+      status
     };
     
     const { data, error } = await supabase
@@ -104,6 +110,14 @@ export const createWill = async (will: Partial<Omit<Will, 'id' | 'created_at' | 
 // Update an existing will
 export const updateWill = async (willData: Partial<Will> & { id: string }): Promise<Will> => {
   try {
+    // Ensure status is one of the allowed values if provided
+    if (willData.status && 
+        willData.status !== 'active' && 
+        willData.status !== 'draft' && 
+        willData.status !== 'completed') {
+      willData.status = 'draft'; // Default to draft if invalid status
+    }
+    
     const { data, error } = await supabase
       .from('wills')
       .update(willData)
@@ -191,7 +205,7 @@ export const uploadWillDocument = async (
     const filePath = `wills/${willId}/${fileName}`;
 
     // Upload the file - create options object conditionally
-    let uploadOptions: any = {
+    let uploadOptions: Record<string, any> = {
       cacheControl: '3600',
       upsert: false
     };
@@ -222,6 +236,9 @@ export const uploadWillDocument = async (
       throw new Error("User must be authenticated to upload a document");
     }
 
+    // Current timestamp for both created_at and updated_at
+    const timestamp = new Date().toISOString();
+
     // Create a new will document record
     const { data: willDocument, error: willDocumentError } = await supabase
       .from('will_documents')
@@ -232,7 +249,8 @@ export const uploadWillDocument = async (
         file_path: filePath,
         file_size: fileSize,
         file_type: file.type,
-        updated_at: new Date().toISOString()
+        created_at: timestamp,
+        updated_at: timestamp
       })
       .select()
       .single();
@@ -310,3 +328,4 @@ export const getDocumentUrl = async (document: WillDocument): Promise<string | n
     return null;
   }
 };
+
