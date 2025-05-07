@@ -4,16 +4,20 @@ import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import Documentation from './pages/Documentation';
+import NotFound from './pages/NotFound';
+import Index from './pages/Index';
+import API from './pages/API';
 
 // Create placeholder pages for development
-const Home = () => <div>Home Page</div>;
+const Home = () => <Index />;
 const About = () => <div>About Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
-const Contact = () => <div>Contact Page</div>;
-const Faq = () => <div>FAQ Page</div>;
+const Faq = () => <div>Frequently Asked Questions</div>;
 const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
-const NotFound = () => <div>404 Not Found</div>;
+const Help = () => <div>Help Center</div>;
+const NotFoundPage = () => <NotFound />;
 const SignIn = () => <div>Sign In Page</div>;
 const SignUp = () => <div>Sign Up Page</div>;
 const ForgotPassword = () => <div>Forgot Password Page</div>;
@@ -43,11 +47,13 @@ function AppRouter() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
-        <Route path="/contact" element={<Contact />} />
         <Route path="/faq" element={<Faq />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/search" element={<SearchPage />} />
+        <Route path="/documentation" element={<Documentation />} />
+        <Route path="/api" element={<API />} />
+        <Route path="/help" element={<Help />} />
         
         {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
         <Route element={<AuthLayoutWrapper />}>
@@ -72,7 +78,7 @@ function AppRouter() {
           element={<VerifyTrustedContact />}
         />
         
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>
   );

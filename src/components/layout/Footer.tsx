@@ -13,7 +13,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li><Link to="/services" className="text-gray-400 hover:text-white transition">Features</Link></li>
               <li><Link to="/security" className="text-gray-400 hover:text-white transition">Security</Link></li>
-              <li><Link to="/contact" className="text-gray-400 hover:text-white transition">FAQ</Link></li>
+              <li><Link to="/faq" className="text-gray-400 hover:text-white transition">FAQ</Link></li>
             </ul>
           </div>
           
@@ -21,17 +21,16 @@ export function Footer() {
             <h4 className="font-medium mb-4">Company</h4>
             <ul className="space-y-2">
               <li><Link to="/about" className="text-gray-400 hover:text-white transition">About</Link></li>
-              <li><Link to="/blog" className="text-gray-400 hover:text-white transition">Blog</Link></li>
-              <li><Link to="/contact" className="text-gray-400 hover:text-white transition">Contact</Link></li>
+              <li><Link to="/help" className="text-gray-400 hover:text-white transition">Help Center</Link></li>
             </ul>
           </div>
           
           <div>
             <h4 className="font-medium mb-4">Resources</h4>
             <ul className="space-y-2">
-              <li><Link to="/corporate/documentation" className="text-gray-400 hover:text-white transition">Documentation</Link></li>
+              <li><Link to="/documentation" className="text-gray-400 hover:text-white transition">Documentation</Link></li>
               <li><Link to="/help" className="text-gray-400 hover:text-white transition">Help Center</Link></li>
-              <li><Link to="/corporate/documentation/api" className="text-gray-400 hover:text-white transition">API</Link></li>
+              <li><Link to="/api" className="text-gray-400 hover:text-white transition">API</Link></li>
             </ul>
           </div>
           
