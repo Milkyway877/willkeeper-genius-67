@@ -8,12 +8,12 @@ import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
 import API from './pages/API';
+import FAQ from './pages/FAQ';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
 const About = () => <div>About Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
-const Faq = () => <div>Frequently Asked Questions</div>;
 const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
 const Help = () => <div>Help Center</div>;
@@ -47,7 +47,7 @@ function AppRouter() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
-        <Route path="/faq" element={<Faq />} />
+        <Route path="/faq" element={<FAQ />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/search" element={<SearchPage />} />
