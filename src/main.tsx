@@ -56,6 +56,14 @@ import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 
+// Import all documentation sub-pages
+import GettingStarted from './pages/documentation/GettingStarted';
+import UserGuides from './pages/documentation/UserGuides';
+import ApiReference from './pages/documentation/ApiReference';
+import SecurityDocs from './pages/documentation/Security';
+import Integrations from './pages/documentation/Integrations';
+import UpdatesArchive from './pages/documentation/UpdatesArchive';
+
 // Create a QueryClient instance
 const queryClient = new QueryClient();
 
@@ -128,6 +136,30 @@ const router = createBrowserRouter([
       {
         path: "/documentation",
         element: <Documentation />,
+      },
+      {
+        path: "/documentation/getting-started",
+        element: <GettingStarted />,
+      },
+      {
+        path: "/documentation/user-guides",
+        element: <UserGuides />,
+      },
+      {
+        path: "/documentation/api",
+        element: <ApiReference />,
+      },
+      {
+        path: "/documentation/security",
+        element: <SecurityDocs />,
+      },
+      {
+        path: "/documentation/integrations",
+        element: <Integrations />,
+      },
+      {
+        path: "/documentation/updates",
+        element: <UpdatesArchive />,
       },
       {
         path: "/api",

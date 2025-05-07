@@ -56,19 +56,19 @@ export default function Documentation() {
       title: "API v2.0 Release",
       date: "June 10, 2023",
       description: "New endpoints for beneficiary management and improved document versioning.",
-      link: "/documentation/updates/api-v2"
+      link: "/documentation/updates"
     },
     {
       title: "Advanced Document Sharing",
       date: "May 22, 2023",
       description: "Enhanced permissions and controls for document sharing with executors and trusted contacts.",
-      link: "/documentation/updates/document-sharing"
+      link: "/documentation/updates"
     },
     {
       title: "Multi-Factor Authentication",
       date: "May 5, 2023",
       description: "Added support for hardware security keys and additional MFA options.",
-      link: "/documentation/updates/mfa-enhancements"
+      link: "/documentation/updates"
     }
   ];
 
@@ -120,13 +120,16 @@ export default function Documentation() {
                   <p className="text-gray-600 mb-4">{category.description}</p>
                   
                   <ul className="space-y-1 mb-4">
-                    {category.subcategories.map((subcat, subIndex) => (
-                      <li key={subIndex} className="text-sm text-gray-600">
-                        <Link to={`${category.link}/${subcat.toLowerCase().replace(/ /g, '-')}`} className="hover:text-willtank-600">
-                          • {subcat}
-                        </Link>
-                      </li>
-                    ))}
+                    {category.subcategories.map((subcat, subIndex) => {
+                      const anchorId = subcat.toLowerCase().replace(/ /g, '-');
+                      return (
+                        <li key={subIndex} className="text-sm text-gray-600">
+                          <Link to={`${category.link}#${anchorId}`} className="hover:text-willtank-600">
+                            • {subcat}
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                   
                   <Link to={category.link} className="text-willtank-600 hover:text-willtank-700 font-medium inline-flex items-center">
@@ -148,11 +151,11 @@ export default function Documentation() {
               
               <div className="space-y-4">
                 {[
-                  { title: "Creating Your First Will", views: "5.2k", difficulty: "Beginner", time: "10 min read", link: "/documentation/getting-started/first-will" },
-                  { title: "Setting Up Executor Access", views: "3.8k", difficulty: "Intermediate", time: "15 min read", link: "/documentation/user-guides/executors" },
-                  { title: "Digital Asset Management", views: "2.9k", difficulty: "Intermediate", time: "12 min read", link: "/documentation/user-guides/digital-assets" },
-                  { title: "Estate Planning for Business Owners", views: "2.5k", difficulty: "Advanced", time: "20 min read", link: "/documentation/user-guides/business-owners" },
-                  { title: "API Authentication", views: "1.8k", difficulty: "Technical", time: "8 min read", link: "/documentation/api/authentication" }
+                  { title: "Creating Your First Will", views: "5.2k", difficulty: "Beginner", time: "10 min read", link: "/documentation/getting-started#first-will" },
+                  { title: "Setting Up Executor Access", views: "3.8k", difficulty: "Intermediate", time: "15 min read", link: "/documentation/user-guides#executors" },
+                  { title: "Digital Asset Management", views: "2.9k", difficulty: "Intermediate", time: "12 min read", link: "/documentation/user-guides#digital-assets" },
+                  { title: "Estate Planning for Business Owners", views: "2.5k", difficulty: "Advanced", time: "20 min read", link: "/documentation/user-guides#business-owners" },
+                  { title: "API Authentication", views: "1.8k", difficulty: "Technical", time: "8 min read", link: "/documentation/api#authentication" }
                 ].map((doc, index) => (
                   <div key={index} className="border-b border-gray-200 pb-4 last:border-0 last:pb-0">
                     <Link to={doc.link} className="hover:text-willtank-600">
