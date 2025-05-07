@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -51,6 +52,9 @@ import { WillVideoCreation } from './pages/will/WillVideoCreation';
 import Notifications from './pages/notifications/Notifications';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Documentation from './pages/Documentation';
+import API from './pages/API';
+import FAQ from './pages/FAQ';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
@@ -120,6 +124,18 @@ const router = createBrowserRouter([
       {
         path: "/cookies",
         element: <Cookies />,
+      },
+      {
+        path: "/documentation",
+        element: <Documentation />,
+      },
+      {
+        path: "/api",
+        element: <API />,
+      },
+      {
+        path: "/faq",
+        element: <FAQ />,
       },
       {
         path: "/auth/signin",
