@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -34,14 +35,17 @@ export default function EmailVerification() {
       console.log("Verifying code:", code, "for email:", email, "type:", type);
       
       // Use the database function to verify the code
-      const { data: isValid, error: functionError } = await supabase.rpc(
+      const { data: functionResult, error: functionError } = await supabase.rpc(
         'is_verification_code_valid',
         { check_email: email, check_code: code, check_type: type }
       );
 
-      console.log("Verification check result:", { isValid, error: functionError });
+      // Create a mutable variable to track if the code is valid
+      let isCodeValid = !!functionResult;
+
+      console.log("Verification check result:", { isValid: isCodeValid, error: functionError });
       
-      if (functionError || !isValid) {
+      if (functionError || !isCodeValid) {
         // Fallback to direct query if the function fails
         const { data: verificationData, error: verificationError } = await supabase
           .from('email_verification_codes')
@@ -85,8 +89,8 @@ export default function EmailVerification() {
           return;
         }
         
-        // If we get here using the fallback, set isValid to true
-        isValid = true;
+        // If we get here using the fallback, set isCodeValid to true
+        isCodeValid = true;
         
         // Mark code as used
         const { error: updateError } = await supabase
