@@ -48,9 +48,7 @@ function AppRouter() {
         
         {/* Let Clerk handle all auth pages directly */}
         
-        {/* Redirect old auth routes to new ones */}
-        <Route path="/sign-in" element={<Navigate to="/auth/signin" replace />} />
-        <Route path="/sign-up" element={<Navigate to="/auth/signup" replace />} />
+        {/* No redirects from sign-in/sign-up to auth/signin, let Clerk handle directly */}
         
         <Route path="/user-profile" element={
           <ClerkProtectedRoute>

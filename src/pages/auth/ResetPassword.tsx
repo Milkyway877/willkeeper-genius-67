@@ -57,7 +57,7 @@ export default function ResetPassword() {
       
       // Redirect to sign in page
       setTimeout(() => {
-        navigate('/auth/signin');
+        navigate('/sign-in');
       }, 2000);
     } catch (error) {
       console.error("Password reset error:", error);
@@ -142,7 +142,7 @@ export default function ResetPassword() {
           
           <p className="text-center text-sm text-muted-foreground mt-6">
             Remember your password?{" "}
-            <Link to="/auth/signin" className="font-medium text-willtank-600 hover:text-willtank-700">
+            <Link to="/sign-in" className="font-medium text-willtank-600 hover:text-willtank-700">
               Sign in
             </Link>
           </p>
