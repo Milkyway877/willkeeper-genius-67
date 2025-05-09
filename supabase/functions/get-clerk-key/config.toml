@@ -1,3 +1,0 @@
-
-[global.env]
-CLERK_PUBLISHABLE_KEY = "{{env.CLERK_PUBLISHABLE_KEY}}"

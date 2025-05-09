@@ -8,10 +8,10 @@ import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { FloatingHelp } from '@/components/ui/FloatingHelp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
-import { useClerkSupabase } from '@/contexts/ClerkSupabaseContext';
-import { useAuth } from '@clerk/clerk-react';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,10 +25,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  
-  // Using Clerk for auth
-  const { isLoaded, userId } = useAuth();
-  const { profile } = useClerkSupabase();
+  const { profile } = useUserProfile();
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -53,13 +50,28 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   
   // Check authentication status if required
   useEffect(() => {
-    if (forceAuthenticated && !location.pathname.includes('/auth/') && isLoaded) {
-      if (!userId) {
-        console.log("No Clerk user found, redirecting to signin");
-        navigate('/auth/signin', { replace: true });
-      }
+    if (forceAuthenticated && !location.pathname.includes('/auth/')) {
+      const checkAuthStatus = async () => {
+        const { data } = await supabase.auth.getSession();
+        
+        if (!data.session) {
+          console.log("No session found, redirecting to signin");
+          navigate('/auth/signin', { replace: true });
+        } else if (profile && !profile.is_activated) {
+          // If the user is logged in but email is not verified and they're trying to access protected routes
+          const isEmailVerified = profile.email_verified;
+          
+          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
+            // Redirect to email verification with email as a parameter
+            console.log("User not verified, redirecting to verification");
+            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+          }
+        }
+      };
+      
+      checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate, isLoaded, userId]);
+  }, [forceAuthenticated, location.pathname, navigate, profile]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);

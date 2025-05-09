@@ -11,22 +11,8 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: false, // Don't use Supabase Auth - we're using Clerk instead
-    autoRefreshToken: false,
-    detectSessionInUrl: false
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
   }
 });
-
-// This function can be used to create an authenticated Supabase client with a Clerk JWT
-export const createAuthenticatedSupabaseClient = async (clerkToken: string) => {
-  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${clerkToken}`
-      }
-    },
-    auth: {
-      persistSession: false
-    }
-  });
-};

@@ -7,7 +7,6 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
-import { ClerkProvider } from "@clerk/clerk-react";
 import CheckIns from './pages/CheckIns.tsx';
 import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
@@ -23,6 +22,14 @@ import BlogArticle from './pages/BlogArticle';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
+import SecureSignIn from './pages/auth/SecureSignIn';
+import SecureSignUp from './pages/auth/SecureSignUp';
+import SecureRecover from './pages/auth/SecureRecover';
+import AuthResetPassword from './pages/auth/ResetPassword';
+import AccountActivation from './pages/auth/AccountActivation';
+import EmailVerification from './pages/auth/EmailVerification';
+import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
+import AuthCallback from './pages/auth/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -48,23 +55,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
+
+// Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
 import UserGuides from './pages/documentation/UserGuides';
 import ApiReference from './pages/documentation/ApiReference';
 import SecurityDocs from './pages/documentation/Security';
 import Integrations from './pages/documentation/Integrations';
 import UpdatesArchive from './pages/documentation/UpdatesArchive';
-
-// New auth components with Clerk
-import ClerkSignIn from './pages/auth/ClerkSignIn';
-import ClerkSignUp from './pages/auth/ClerkSignUp';
-import ClerkRecover from './pages/auth/ClerkRecover';
-import ClerkResetPassword from './pages/auth/ClerkResetPassword';
-import ClerkEmailVerification from './pages/auth/ClerkEmailVerification';
-
-// Import the Clerk-Supabase AuthProvider
-import { ClerkSupabaseProvider } from './contexts/ClerkSupabaseContext';
-import { useClerkKey } from './hooks/use-clerk-key';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
@@ -171,39 +169,37 @@ const router = createBrowserRouter([
         path: "/faq",
         element: <FAQ />,
       },
-      // Updated auth routes to use Clerk components
       {
         path: "/auth/signin",
-        element: <ClerkSignIn />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/signup",
-        element: <ClerkSignUp />,
+        element: <SecureSignUp />,
       },
       {
         path: "/auth/verification",
-        element: <ClerkEmailVerification />,
+        element: <EmailVerification />,
       },
       {
         path: "/auth/forgot-password",
-        element: <ClerkRecover />,
+        element: <SecureRecover />,
       },
       {
         path: "/auth/reset-password",
-        element: <ClerkResetPassword />,
+        element: <AuthResetPassword />,
       },
-      // Keep the existing paths for backward compatibility
       {
         path: "/auth/activate",
-        element: <ClerkEmailVerification />,
+        element: <AccountActivation />,
       },
       {
         path: "/auth/verify-email",
-        element: <ClerkEmailVerification />,
+        element: <VerifyEmailBanner />,
       },
       {
         path: "/auth/callback",
-        element: <Dashboard />,  // Redirect to dashboard after auth
+        element: <AuthCallback />,
       },
       {
         path: "/dashboard",
@@ -301,33 +297,12 @@ const router = createBrowserRouter([
   },
 ]);
 
-function Root() {
-  const { publishableKey, loading } = useClerkKey();
-  
-  if (loading) {
-    return <div className="flex h-screen w-full items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mx-auto"></div>
-        <p className="mt-4 text-gray-700">Loading authentication system...</p>
-      </div>
-    </div>;
-  }
-  
-  return (
-    <ClerkProvider publishableKey={publishableKey || "pk_test_Y2xlcmsuZGV2ZWxvcG1lbnQua2V5LmRpc2FibGVkLmZvci5kZXZlbG9wbWVudA"}>
-      <QueryClientProvider client={queryClient}>
-        <ClerkSupabaseProvider>
-          <NotificationsProvider>
-            <RouterProvider router={router} />
-          </NotificationsProvider>
-        </ClerkSupabaseProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
-  );
-}
-
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Root />
+    <QueryClientProvider client={queryClient}>
+      <NotificationsProvider>
+        <RouterProvider router={router} />
+      </NotificationsProvider>
+    </QueryClientProvider>
   </React.StrictMode>,
-);
+)
