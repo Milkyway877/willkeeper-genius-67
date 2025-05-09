@@ -30,25 +30,29 @@ const SearchPage = () => <div>Search Page</div>;
 
 // Define Clerk Components for routes
 const SignInPage = () => (
-  <ClerkLoading>
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-    </div>
-  </ClerkLoading>
-  <ClerkLoaded>
-    <SignIn redirectUrl="/dashboard" />
-  </ClerkLoaded>
+  <>
+    <ClerkLoading>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    </ClerkLoading>
+    <ClerkLoaded>
+      <SignIn redirectUrl="/dashboard" />
+    </ClerkLoaded>
+  </>
 );
 
 const SignUpPage = () => (
-  <ClerkLoading>
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-    </div>
-  </ClerkLoading>
-  <ClerkLoaded>
-    <SignUp redirectUrl="/dashboard" />
-  </ClerkLoaded>
+  <>
+    <ClerkLoading>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    </ClerkLoading>
+    <ClerkLoaded>
+      <SignUp redirectUrl="/dashboard" />
+    </ClerkLoaded>
+  </>
 );
 
 function AppRouter() {
