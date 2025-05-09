@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -84,16 +83,40 @@ export function SignInForm() {
       await supabase.auth.signOut();
       
       if (authData.user) {
-        // Check if user has 2FA enabled
-        const { data: securityData } = await supabase
-          .from('user_security')
-          .select('google_auth_enabled, google_auth_secret')
-          .eq('email', data.email)
+        // Check if user has a profile entry
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('id, email')
+          .eq('id', authData.user.id)
           .maybeSingle();
 
-        // Always redirect to 2FA page regardless of whether it's enabled
-        // If not enabled, the user should be prompted to enable it
+        // Check if user has 2FA enabled by looking up security record
+        const { data: securityData } = await supabase
+          .from('user_security')
+          .select('google_auth_enabled, google_auth_secret, user_id')
+          .eq('user_id', authData.user.id)
+          .maybeSingle();
+          
+        // If security record exists but doesn't have the email, update it
+        if (securityData && !securityData.email && data.email) {
+          await supabase
+            .from('user_security')
+            .update({ email: data.email })
+            .eq('user_id', authData.user.id);
+        }
+        
+        // If profile exists but doesn't have the email, update it
+        if (profileData && !profileData.email && data.email) {
+          await supabase
+            .from('user_profiles')
+            .update({ email: data.email })
+            .eq('id', authData.user.id);
+        }
+
+        // Store the email in session storage for the 2FA page
         sessionStorage.setItem('auth_email', data.email);
+        
+        // Redirect to 2FA page
         navigate('/auth/two-factor');
       }
     } catch (error: any) {

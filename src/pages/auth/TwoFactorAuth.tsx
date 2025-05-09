@@ -24,6 +24,7 @@ export default function TwoFactorAuth() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [secretKey, setSecretKey] = useState<string | null>(null);
   const [showSetup, setShowSetup] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Get email from sessionStorage
@@ -39,6 +40,30 @@ export default function TwoFactorAuth() {
     const checkUserSecurity = async () => {
       try {
         setIsLoading(true);
+        
+        // First get the user ID associated with this email
+        const { data: userData, error: userError } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('email', storedEmail)
+          .maybeSingle();
+        
+        if (userError) {
+          console.error('Error fetching user profile:', userError);
+          toast({
+            title: "Error",
+            description: "Failed to fetch user information. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        if (userData?.id) {
+          setUserId(userData.id);
+        }
+        
+        // Check for security record using email
         const { data: securityData, error } = await supabase
           .from('user_security')
           .select('google_auth_enabled, google_auth_secret')
@@ -46,8 +71,51 @@ export default function TwoFactorAuth() {
           .maybeSingle();
           
         if (error) {
-          console.error('Error checking 2FA status:', error);
-          return;
+          console.error('Error checking 2FA status by email:', error);
+          
+          // If we have a userId, try looking up by user_id instead
+          if (userData?.id) {
+            const { data: securityByUserId, error: userIdError } = await supabase
+              .from('user_security')
+              .select('google_auth_enabled, google_auth_secret')
+              .eq('user_id', userData.id)
+              .maybeSingle();
+              
+            if (userIdError) {
+              console.error('Error checking 2FA status by user_id:', userIdError);
+              toast({
+                title: "Error",
+                description: "Failed to fetch security information. Please try again.",
+                variant: "destructive",
+              });
+              setIsLoading(false);
+              return;
+            }
+            
+            // Update security data with what we found by user_id
+            if (securityByUserId) {
+              // If the record exists but doesn't have the email, update it
+              const { error: updateError } = await supabase
+                .from('user_security')
+                .update({ email: storedEmail })
+                .eq('user_id', userData.id);
+              
+              if (updateError) {
+                console.error('Error updating security record with email:', updateError);
+              }
+              
+              // Process the security data
+              if (securityByUserId.google_auth_enabled && securityByUserId.google_auth_secret) {
+                setIs2FASetup(true);
+              } else {
+                setIs2FASetup(false);
+                setShowSetup(false);
+              }
+              
+              setIsLoading(false);
+              return;
+            }
+          }
         }
         
         // If 2FA is already set up
@@ -60,7 +128,7 @@ export default function TwoFactorAuth() {
           // Only show setup if the user explicitly clicks to set up
           setShowSetup(false);
           
-          // Generate secret for setup
+          // Generate secret for setup if needed
           if (!showSetup) {
             const { data, error } = await supabase.functions.invoke('two-factor-auth', {
               body: { 
@@ -71,6 +139,12 @@ export default function TwoFactorAuth() {
             
             if (error || !data?.success) {
               console.error('Error generating 2FA secret:', error || data?.error);
+              toast({
+                title: "Error",
+                description: "Failed to generate security keys. Please try again.",
+                variant: "destructive",
+              });
+              setIsLoading(false);
               return;
             }
             
@@ -80,13 +154,18 @@ export default function TwoFactorAuth() {
         }
       } catch (error) {
         console.error('Error in checkUserSecurity:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
     checkUserSecurity();
-  }, [navigate, showSetup]);
+  }, [navigate, showSetup, toast]);
 
   const handleVerifyOTP = async (code: string) => {
     if (!email) return;
@@ -104,6 +183,7 @@ export default function TwoFactorAuth() {
         body: {
           action: 'verify',
           email: email,
+          userId: userId, // Pass userId as fallback
           code: code
         }
       });

@@ -57,11 +57,11 @@ serve(async (req) => {
       
       case "verify": {
         // Verify a TOTP code against the user's stored secret
-        if (!email || !code) {
+        if ((!email && !userId) || !code) {
           return new Response(
             JSON.stringify({
               success: false,
-              error: "Missing email or code"
+              error: "Missing email/userId or code"
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -70,15 +70,45 @@ serve(async (req) => {
           );
         }
         
-        // Get the user's secret from the database
-        const { data: securityData, error: securityError } = await supabase
-          .from("user_security")
-          .select("google_auth_secret")
-          .eq("email", email)
-          .single();
+        // Try getting the user's secret from the database, first by email
+        let securityData = null;
+        let securityError = null;
+        
+        if (email) {
+          const securityResult = await supabase
+            .from("user_security")
+            .select("google_auth_secret, user_id")
+            .eq("email", email)
+            .maybeSingle();
+            
+          securityData = securityResult.data;
+          securityError = securityResult.error;
+        }
+        
+        // If email lookup failed or returned no results, try with userId
+        if ((!securityData || securityError) && userId) {
+          console.log("Email lookup failed, trying userId:", userId);
+          
+          const securityByIdResult = await supabase
+            .from("user_security")
+            .select("google_auth_secret, email")
+            .eq("user_id", userId)
+            .maybeSingle();
+            
+          securityData = securityByIdResult.data;
+          securityError = securityByIdResult.error;
+          
+          // If we found a record by user_id but it's missing the email, update it
+          if (securityData && !securityData.email && email) {
+            await supabase
+              .from("user_security")
+              .update({ email })
+              .eq("user_id", userId);
+          }
+        }
           
         if (securityError || !securityData?.google_auth_secret) {
-          console.error("Error fetching secret:", securityError);
+          console.error("Error fetching secret:", securityError || "Secret not found");
           return new Response(
             JSON.stringify({
               success: false,
@@ -94,7 +124,7 @@ serve(async (req) => {
         // Create a TOTP object with the stored secret
         const totp = new OTPAuth.TOTP({
           issuer: "WillTank",
-          label: email,
+          label: email || "user",
           secret: securityData.google_auth_secret,
           digits: 6,
           period: 30
@@ -107,21 +137,35 @@ serve(async (req) => {
         const isValid = delta !== null;
         
         if (isValid) {
-          // Update the last successful 2FA authentication timestamp
-          await supabase
-            .from("user_security")
-            .update({ 
-              last_2fa_at: new Date().toISOString() 
-            })
-            .eq("email", email);
-            
-          // Update user profile to mark as logged in
-          await supabase
-            .from("user_profiles")
-            .update({ 
-              last_login: new Date().toISOString() 
-            })
-            .eq("email", email);
+          // Get the actual user_id to update records
+          const userIdToUpdate = securityData.user_id || userId;
+          
+          if (userIdToUpdate) {
+            // Update the last successful 2FA authentication timestamp
+            await supabase
+              .from("user_security")
+              .update({ 
+                last_2fa_at: new Date().toISOString() 
+              })
+              .eq("user_id", userIdToUpdate);
+              
+            // Update user profile to mark as logged in
+            if (email) {
+              await supabase
+                .from("user_profiles")
+                .update({ 
+                  last_login: new Date().toISOString() 
+                })
+                .eq("email", email);
+            } else {
+              await supabase
+                .from("user_profiles")
+                .update({ 
+                  last_login: new Date().toISOString() 
+                })
+                .eq("id", userIdToUpdate);
+            }
+          }
         }
         
         return new Response(
@@ -165,28 +209,61 @@ serve(async (req) => {
         const isValid = delta !== null;
         
         if (isValid && userId) {
-          // Store the secret in the database if validation is successful and userId is provided
-          const { error: insertError } = await supabase
+          // Check if a record already exists for this user
+          const { data: existingRecord } = await supabase
             .from("user_security")
-            .upsert({
-              user_id: userId,
-              email,
-              google_auth_enabled: true,
-              google_auth_secret: secret
-            });
-            
-          if (insertError) {
-            console.error("Error storing 2FA secret:", insertError);
-            return new Response(
-              JSON.stringify({
-                success: false,
-                error: "Failed to store 2FA configuration"
-              }),
-              {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 500,
-              }
-            );
+            .select("id")
+            .eq("user_id", userId)
+            .maybeSingle();
+          
+          if (existingRecord) {
+            // Update existing record
+            const { error: updateError } = await supabase
+              .from("user_security")
+              .update({
+                email,
+                google_auth_enabled: true,
+                google_auth_secret: secret
+              })
+              .eq("user_id", userId);
+              
+            if (updateError) {
+              console.error("Error updating 2FA settings:", updateError);
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: "Failed to update 2FA configuration"
+                }),
+                {
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  status: 500,
+                }
+              );
+            }
+          } else {
+            // Insert new record
+            const { error: insertError } = await supabase
+              .from("user_security")
+              .insert({
+                user_id: userId,
+                email,
+                google_auth_enabled: true,
+                google_auth_secret: secret
+              });
+              
+            if (insertError) {
+              console.error("Error storing 2FA secret:", insertError);
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: "Failed to store 2FA configuration"
+                }),
+                {
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  status: 500,
+                }
+              );
+            }
           }
         }
         

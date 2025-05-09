@@ -22,6 +22,14 @@ ADD COLUMN IF NOT EXISTS email TEXT;
 CREATE INDEX IF NOT EXISTS idx_user_security_email
 ON public.user_security(email);
 
+-- Ensure we have the email field in user_profiles as well
+ALTER TABLE IF EXISTS public.user_profiles
+ADD COLUMN IF NOT EXISTS email TEXT;
+
+-- Create an index for faster email lookups in user_profiles
+CREATE INDEX IF NOT EXISTS idx_user_profiles_email
+ON public.user_profiles(email);
+
 -- Update RLS policies to ensure proper access
 -- Ensure anyone can select verification codes
 CREATE POLICY IF NOT EXISTS "Anyone can select email verification codes"
