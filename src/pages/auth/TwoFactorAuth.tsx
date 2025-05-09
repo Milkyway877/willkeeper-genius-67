@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
@@ -15,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function TwoFactorAuth() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -191,7 +191,7 @@ export default function TwoFactorAuth() {
       toast({
         title: "Two-factor authentication enabled",
         description: "Your account is now protected with 2FA.",
-        variant: "success",
+        variant: "default",
       });
       
       // Update the state to show verification screen
