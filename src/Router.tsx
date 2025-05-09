@@ -10,9 +10,6 @@ import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
-import SecureSignIn from './pages/auth/SecureSignIn';
-import SecureSignUp from './pages/auth/SecureSignUp';
-import SecureRecover from './pages/auth/SecureRecover';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -43,21 +40,6 @@ const AuthLayoutWrapper = ({ children }) => {
   );
 };
 
-// Protected route that requires authentication
-const ProtectedRoute = ({ children }) => {
-  const { isLoaded, userId, isSignedIn } = useAuth();
-  
-  if (!isLoaded) {
-    return <div>Loading...</div>;
-  }
-  
-  if (!isSignedIn) {
-    return <Navigate to="/auth/signin" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
 function AppRouter() {
   return (
     <Router>
@@ -85,51 +67,58 @@ function AppRouter() {
           </AuthLayoutWrapper>
         } />
         <Route path="/user-profile" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <UserProfile routing="path" path="/user-profile" />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
         
-        {/* Custom Auth Routes */}
-        <Route path="/auth/signin" element={<SecureSignIn />} />
-        <Route path="/auth/signup" element={<SecureSignUp />} />
-        <Route path="/auth/recover" element={<SecureRecover />} />
+        {/* Auth Routes with /auth prefix - Using Clerk components */}
+        <Route path="/auth/signin" element={
+          <AuthLayoutWrapper>
+            <SignIn routing="path" path="/auth/signin" />
+          </AuthLayoutWrapper>
+        } />
+        <Route path="/auth/signup" element={
+          <AuthLayoutWrapper>
+            <SignUp routing="path" path="/auth/signup" />
+          </AuthLayoutWrapper>
+        } />
         
         {/* Protected Routes */}
         <Route path="/dashboard" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <Dashboard />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
         <Route path="/settings" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <Settings />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
         <Route path="/will" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <Will />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
         <Route path="/future-messages" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <FutureMessages />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
         <Route path="/legacy-vault" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <LegacyVault />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
         <Route path="/check-ins" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <CheckIns />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
         <Route path="/test-death-verification" element={
-          <ProtectedRoute>
+          <ClerkProtectedRoute>
             <TestDeathVerificationPage />
-          </ProtectedRoute>
+          </ClerkProtectedRoute>
         } />
 
         <Route
