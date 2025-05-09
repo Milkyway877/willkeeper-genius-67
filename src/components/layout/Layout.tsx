@@ -49,10 +49,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   
   // Check authentication status if required
   useEffect(() => {
-    if (forceAuthenticated && !location.pathname.includes('/auth/')) {
+    if (forceAuthenticated && !isAuthPath(location.pathname)) {
       if (isLoaded && !isSignedIn) {
         console.log("No session found, redirecting to signin");
-        navigate('/auth/signin', { replace: true });
+        navigate('/sign-in', { replace: true });
       }
     }
   }, [forceAuthenticated, location.pathname, navigate, isLoaded, isSignedIn]);
@@ -62,7 +62,14 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   };
   
   // Don't show sidebar on auth pages
-  const isAuthPage = location.pathname.includes('/auth/');
+  const isAuthPath = (path: string): boolean => {
+    return path === '/sign-in' || 
+           path === '/sign-up' || 
+           path.startsWith('/sso-callback') || 
+           path.startsWith('/verify');
+  };
+  
+  const isAuthPage = isAuthPath(location.pathname);
   const showAuthenticatedLayout = forceAuthenticated && !isAuthPage && isSignedIn;
   
   // Check for URL parameters on Help page

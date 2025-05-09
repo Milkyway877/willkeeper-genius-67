@@ -85,7 +85,7 @@ export function EmailVerificationBanner() {
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => navigate('/auth/signin')}
+                onClick={() => navigate('/sign-in')}
               >
                 Return to Login
               </Button>
