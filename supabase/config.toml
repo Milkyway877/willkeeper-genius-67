@@ -29,6 +29,9 @@ site_url = "http://localhost:3000"
 [functions.message-ai]
 verify_jwt = true
 
+[functions.send-verification]
+verify_jwt = false
+
 [functions.send-future-message]
 verify_jwt = false
 

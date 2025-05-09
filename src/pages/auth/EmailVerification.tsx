@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
-import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
+import { VerificationCodeInput } from '@/components/ui/VerificationCodeInput';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { AlertCircle } from 'lucide-react';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -17,115 +17,162 @@ export default function EmailVerification() {
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (!email) {
       navigate('/auth/signin', { replace: true });
+      return;
     }
+    
+    // Clean up any previous errors
+    setVerificationError(null);
   }, [email, navigate]);
 
   const handleVerifyCode = async (code: string) => {
     if (!email) return;
     
+    // Reset error state
+    setVerificationError(null);
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      console.log("Verifying code:", code, "for email:", email, "type:", type);
+      console.log(`Verifying code: ${code} for email: ${email} type: ${type}`);
       
-      // Use the database function to verify the code
+      // First try using DB function (will fail gracefully if function doesn't exist)
       const { data: functionResult, error: functionError } = await supabase.rpc(
         'is_verification_code_valid',
         { check_email: email, check_code: code, check_type: type }
       );
-
-      // Create a mutable variable to track if the code is valid
-      let isCodeValid = !!functionResult;
-
-      console.log("Verification check result:", { isValid: isCodeValid, error: functionError });
       
-      if (functionError || !isCodeValid) {
-        // Fallback to direct query if the function fails
-        const { data: verificationData, error: verificationError } = await supabase
+      // Track verification status
+      let isCodeValid = false;
+      let verificationData = null;
+      
+      console.log("DB function verification result:", { result: functionResult, error: functionError });
+      
+      // If function check worked and returned true, code is valid
+      if (!functionError && functionResult === true) {
+        isCodeValid = true;
+        console.log("Code verified through database function");
+      } 
+      // Otherwise fall back to direct query
+      else {
+        console.log("Using fallback verification method");
+        
+        // Get the current server timestamp to avoid timezone issues
+        const { data: timeData } = await supabase.rpc('get_current_timestamp');
+        const serverNow = timeData || new Date().toISOString();
+        
+        console.log("Server timestamp for verification:", serverNow);
+        
+        const { data, error } = await supabase
           .from('email_verification_codes')
           .select('*')
           .eq('email', email)
           .eq('code', code)
           .eq('type', type)
           .eq('used', false)
-          .gt('expires_at', new Date().toISOString())
+          .gt('expires_at', serverNow)
           .order('created_at', { ascending: false })
           .maybeSingle();
           
-        console.log("Fallback verification query result:", { 
-          data: verificationData, 
-          error: verificationError 
-        });
+        console.log("Fallback verification query result:", { data, error });
         
-        if (verificationError || !verificationData) {
-          let errorMessage = "The verification code is invalid or has expired. Please try again or request a new code.";
-          
-          if (verificationError?.code === 'PGRST116') {
-            errorMessage = "Verification code not found. Please check the code and try again.";
-          }
-          
-          console.error("Verification failed:", verificationError || "No verification data found");
-          
-          toast({
-            title: "Verification failed",
-            description: errorMessage,
-            variant: "destructive",
-          });
-          
-          if (verificationAttempts >= 3) {
-            toast({
-              title: "Too many attempts",
-              description: "Please request a new verification code.",
-              variant: "destructive",
-            });
-          }
-          setIsLoading(false);
-          return;
+        if (error) {
+          console.error("Verification query error:", error);
+          throw new Error(error.message || "Database error during verification");
         }
         
-        // If we get here using the fallback, set isCodeValid to true
+        if (!data) {
+          throw new Error("Invalid or expired verification code");
+        }
+        
+        // If we get here, the code is valid
+        verificationData = data;
         isCodeValid = true;
-        
-        // Mark code as used
-        const { error: updateError } = await supabase
-          .from('email_verification_codes')
-          .update({ used: true })
-          .eq('id', verificationData.id);
-        
-        if (updateError) {
-          console.error("Error marking code as used:", updateError);
-          // Continue with verification even if marking as used fails
+      }
+      
+      // If code is valid, mark it as used and proceed with verification
+      if (isCodeValid) {
+        // Find the code record if we don't have it yet
+        if (!verificationData) {
+          const { data, error } = await supabase
+            .from('email_verification_codes')
+            .select('id')
+            .eq('email', email)
+            .eq('code', code)
+            .eq('type', type)
+            .eq('used', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+            
+          if (error || !data) {
+            console.warn("Found valid code but couldn't retrieve record:", error || "No data returned");
+          } else {
+            verificationData = data;
+          }
         }
-      } else {
-        // If using the function method, find and mark the code as used
-        const { data: codeData, error: findError } = await supabase
-          .from('email_verification_codes')
-          .select('id')
-          .eq('email', email)
-          .eq('code', code)
-          .eq('type', type)
-          .eq('used', false)
-          .gt('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-          
-        if (!findError && codeData) {
-          // Mark code as used
-          await supabase
+        
+        // Mark code as used if we found a record
+        if (verificationData?.id) {
+          console.log("Marking code as used:", verificationData.id);
+          const { error: updateError } = await supabase
             .from('email_verification_codes')
             .update({ used: true })
-            .eq('id', codeData.id);
+            .eq('id', verificationData.id);
+          
+          if (updateError) {
+            console.warn("Error marking code as used:", updateError);
+            // Continue anyway since verification succeeded
+          }
+        }
+        
+        // Handle successful verification based on type
+        await handleSuccessfulVerification();
+      }
+    } catch (error: any) {
+      console.error("Verification error:", error);
+      
+      // Set user-friendly error message
+      let errorMessage = "The verification code is invalid or has expired. Please try again or request a new code.";
+      
+      if (error?.message) {
+        if (error.message.includes("function") || error.message.includes("does not exist")) {
+          errorMessage = "Verification system is temporarily unavailable. Please try again later.";
+          console.error("Database function is missing - admin should check migrations");
+        } else if (error.message.includes("permission") || error.message.includes("policy")) {
+          errorMessage = "Access denied. Please contact support.";
+          console.error("RLS policy issue detected - admin should check migrations");
         }
       }
-
-      // Code is valid, proceed with verification logic
+      
+      // Display error to user
+      setVerificationError(errorMessage);
+      
+      toast({
+        title: "Verification failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      if (verificationAttempts >= 3) {
+        toast({
+          title: "Too many attempts",
+          description: "Please request a new verification code.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleSuccessfulVerification = async () => {
+    try {
       if (type === 'signup') {
         // For signup flow - update user profile to mark email as verified
         const { error: profileError } = await supabase
@@ -142,7 +189,6 @@ export default function EmailVerification() {
             description: "Your email was verified, but we couldn't update your profile. Please contact support.",
             variant: "destructive",
           });
-          setIsLoading(false);
           return;
         }
         
@@ -190,14 +236,12 @@ export default function EmailVerification() {
         }
       }
     } catch (error: any) {
-      console.error('Error during email verification:', error);
+      console.error("Error during post-verification process:", error);
       toast({
         title: "Verification error",
-        description: error.message || "An unexpected error occurred. Please try again later.",
+        description: error.message || "An unexpected error occurred after verification. Please contact support.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -205,28 +249,32 @@ export default function EmailVerification() {
     if (!email) return;
     
     setResendLoading(true);
+    setVerificationError(null);
     
     try {
       // Generate a new verification code
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
-      console.log("Resending verification code to:", email, "type:", type);
+      console.log(`Resending verification code to: ${email} type: ${type}`);
       
       // Send verification email using Edge Function
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+      const { data, error } = await supabase.functions.invoke('send-verification', {
         body: {
-          email: email,
+          email,
           code: verificationCode,
-          type: type
+          type
         }
       });
       
-      console.log("Email function response:", emailData);
+      console.log("Email function response:", data);
       
-      if (emailError) {
-        console.error("Error invoking send-verification function:", emailError);
+      if (error) {
+        console.error("Error invoking send-verification function:", error);
         throw new Error("Failed to send verification code");
       }
+      
+      // Reset verification attempts
+      setVerificationAttempts(0);
       
       toast({
         title: "Code sent",
@@ -259,11 +307,19 @@ export default function EmailVerification() {
         <div className="space-y-6">
           <div className="space-y-3">
             <Label>Verification Code</Label>
-            <TwoFactorInput 
+            <VerificationCodeInput 
               onSubmit={handleVerifyCode}
               loading={isLoading}
               autoSubmit={false}
+              error={verificationError}
             />
+            
+            {verificationError && (
+              <div className="flex items-start text-sm text-red-500 mt-2">
+                <AlertCircle className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                <span>{verificationError}</span>
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-6">

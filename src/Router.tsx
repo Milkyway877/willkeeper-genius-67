@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom';
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
+import EmailVerification from './pages/auth/EmailVerification';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
@@ -55,7 +56,7 @@ function AppRouter() {
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
         
-        {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
+        {/* Auth routes */}
         <Route element={<AuthLayoutWrapper />}>
           <Route path="/auth" element={<SignIn />} />
           <Route path="/auth/signin" element={<SignIn />} />
@@ -64,6 +65,9 @@ function AppRouter() {
           <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Route>
+        
+        {/* Email Verification - separate from auth layout wrapper */}
+        <Route path="/auth/verification" element={<EmailVerification />} />
         
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
