@@ -93,6 +93,19 @@ serve(async (req) => {
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 30);
     
+    // Delete any old unused codes for this email and type to prevent confusion
+    const { error: deleteError } = await supabase
+      .from('email_verification_codes')
+      .delete()
+      .eq('email', email)
+      .eq('type', type)
+      .eq('used', false);
+      
+    if (deleteError) {
+      console.error("Error cleaning up old verification codes:", deleteError);
+      // Continue regardless of cleanup success
+    }
+    
     // Store the verification code in the database BEFORE sending the email
     const { error: insertError } = await supabase
       .from('email_verification_codes')

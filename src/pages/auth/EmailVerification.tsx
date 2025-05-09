@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -34,65 +33,95 @@ export default function EmailVerification() {
     try {
       console.log("Verifying code:", code, "for email:", email, "type:", type);
       
-      // First verify the code - fixed timestamp comparison
-      const now = new Date().toISOString();
-      const { data: verificationData, error: verificationError } = await supabase
-        .from('email_verification_codes')
-        .select('*')
-        .eq('email', email)
-        .eq('code', code)
-        .eq('type', type)
-        .eq('used', false)
-        .gte('expires_at', now) // Changed direction to check if expiration is in future
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Use the database function to verify the code
+      const { data: isValid, error: functionError } = await supabase.rpc(
+        'is_verification_code_valid',
+        { check_email: email, check_code: code, check_type: type }
+      );
 
-      console.log("Verification query result:", { 
-        data: verificationData, 
-        error: verificationError,
-        currentTime: now,
-      });
-
-      if (verificationError || !verificationData) {
-        let errorMessage = "The verification code is invalid or has expired. Please try again or request a new code.";
-        
-        if (verificationError?.code === 'PGRST116') {
-          errorMessage = "Verification code not found. Please check the code and try again.";
-        } else if (verificationError?.message?.includes('expires_at')) {
-          errorMessage = "This verification code has expired. Please request a new one.";
-        }
-        
-        console.error("Verification failed:", verificationError || "No verification data found");
-        
-        toast({
-          title: "Verification failed",
-          description: errorMessage,
-          variant: "destructive",
+      console.log("Verification check result:", { isValid, error: functionError });
+      
+      if (functionError || !isValid) {
+        // Fallback to direct query if the function fails
+        const { data: verificationData, error: verificationError } = await supabase
+          .from('email_verification_codes')
+          .select('*')
+          .eq('email', email)
+          .eq('code', code)
+          .eq('type', type)
+          .eq('used', false)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .maybeSingle();
+          
+        console.log("Fallback verification query result:", { 
+          data: verificationData, 
+          error: verificationError 
         });
         
-        if (verificationAttempts >= 3) {
+        if (verificationError || !verificationData) {
+          let errorMessage = "The verification code is invalid or has expired. Please try again or request a new code.";
+          
+          if (verificationError?.code === 'PGRST116') {
+            errorMessage = "Verification code not found. Please check the code and try again.";
+          }
+          
+          console.error("Verification failed:", verificationError || "No verification data found");
+          
           toast({
-            title: "Too many attempts",
-            description: "Please request a new verification code.",
+            title: "Verification failed",
+            description: errorMessage,
             variant: "destructive",
           });
+          
+          if (verificationAttempts >= 3) {
+            toast({
+              title: "Too many attempts",
+              description: "Please request a new verification code.",
+              variant: "destructive",
+            });
+          }
+          setIsLoading(false);
+          return;
         }
-        setIsLoading(false);
-        return;
+        
+        // If we get here using the fallback, set isValid to true
+        isValid = true;
+        
+        // Mark code as used
+        const { error: updateError } = await supabase
+          .from('email_verification_codes')
+          .update({ used: true })
+          .eq('id', verificationData.id);
+        
+        if (updateError) {
+          console.error("Error marking code as used:", updateError);
+          // Continue with verification even if marking as used fails
+        }
+      } else {
+        // If using the function method, find and mark the code as used
+        const { data: codeData, error: findError } = await supabase
+          .from('email_verification_codes')
+          .select('id')
+          .eq('email', email)
+          .eq('code', code)
+          .eq('type', type)
+          .eq('used', false)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (!findError && codeData) {
+          // Mark code as used
+          await supabase
+            .from('email_verification_codes')
+            .update({ used: true })
+            .eq('id', codeData.id);
+        }
       }
 
-      // Mark code as used
-      const { error: updateError } = await supabase
-        .from('email_verification_codes')
-        .update({ used: true })
-        .eq('id', verificationData.id);
-      
-      if (updateError) {
-        console.error("Error marking code as used:", updateError);
-        // Continue with verification even if marking as used fails
-      }
-
+      // Code is valid, proceed with verification logic
       if (type === 'signup') {
         // For signup flow - update user profile to mark email as verified
         const { error: profileError } = await supabase

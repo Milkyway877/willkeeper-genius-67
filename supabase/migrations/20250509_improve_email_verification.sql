@@ -8,24 +8,27 @@ ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false;
 ALTER TABLE IF EXISTS public.user_profiles 
 ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ;
 
--- Drop and recreate RLS policies for email_verification_codes to ensure proper access
--- This ensures anyone can verify codes without authentication
+-- Clear out any existing policies that might conflict
 DROP POLICY IF EXISTS "Anyone can verify codes" ON public.email_verification_codes;
+DROP POLICY IF EXISTS "Anyone can update verification codes" ON public.email_verification_codes;
+DROP POLICY IF EXISTS "Anyone can insert verification codes" ON public.email_verification_codes;
+DROP POLICY IF EXISTS "Users can update their own verification codes" ON public.email_verification_codes;
+
+-- Create new policies with correct permissions
+-- Allow anyone to SELECT verification codes (needed for verification)
 CREATE POLICY "Anyone can verify codes" 
   ON public.email_verification_codes 
   FOR SELECT 
   USING (true);
 
--- Allow anyone to update verification codes (for marking as used)
-DROP POLICY IF EXISTS "Anyone can update verification codes" ON public.email_verification_codes;
+-- Allow anyone to UPDATE verification codes (for marking as used)
 CREATE POLICY "Anyone can update verification codes" 
   ON public.email_verification_codes 
   FOR UPDATE 
   USING (true)
   WITH CHECK (true);
 
--- Allow anyone to insert verification codes (needed for signups)
-DROP POLICY IF EXISTS "Anyone can insert verification codes" ON public.email_verification_codes;
+-- Allow anyone to INSERT verification codes (needed for signups)
 CREATE POLICY "Anyone can insert verification codes" 
   ON public.email_verification_codes 
   FOR INSERT 
