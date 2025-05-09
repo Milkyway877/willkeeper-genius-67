@@ -81,6 +81,57 @@ export default function App() {
           input:focus, textarea:focus {
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
           }
+          
+          /* Enhanced input field styling */
+          .focus\:shadow-input:focus {
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+          
+          /* Highlight fields in the document */
+          [class*="will-field-"] {
+            background-color: #FFFBEB;
+            border: 1px dotted #F59E0B;
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+          }
+          
+          [class*="will-field-"]:hover {
+            background-color: #FEF3C7;
+          }
+          
+          [class*="will-field-"]::before {
+            content: "Click to edit";
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background: #FBBF24;
+            color: #78350F;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+          }
+          
+          [class*="will-field-"]:hover::before {
+            opacity: 1;
+          }
+          
+          /* Empty required field styling */
+          .empty-required {
+            background-color: #FEE2E2;
+            border-color: #EF4444;
+          }
+          
+          .empty-required::after {
+            content: "*";
+            color: #EF4444;
+            font-weight: bold;
+            margin-left: 2px;
+          }
         `}
       </style>
       

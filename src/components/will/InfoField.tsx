@@ -34,18 +34,18 @@ export function InfoField({
         control={form.control}
         name={name}
         render={({ field }) => (
-          <FormItem className={cn("space-y-1", containerClassName)}>
+          <FormItem className={cn("space-y-2", containerClassName)}>
             <div className="flex items-center gap-1.5">
-              <FormLabel>{label}</FormLabel>
+              <FormLabel className="font-medium">{label}</FormLabel>
               <InfoTooltip text={tooltipText} />
             </div>
-            {description && <FormDescription>{description}</FormDescription>}
+            {description && <FormDescription className="text-sm">{description}</FormDescription>}
             <FormControl>
               <Input 
                 {...props} 
                 {...field} 
                 className={cn(
-                  "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 transition-colors",
+                  "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 focus:ring-2 focus:ring-willtank-100 transition-all",
                   className
                 )}
                 placeholder={props.placeholder || `Enter ${label.toLowerCase()}`} 
@@ -60,9 +60,9 @@ export function InfoField({
 
   // Fallback for use without form context
   return (
-    <div className={cn("space-y-1", containerClassName)}>
+    <div className={cn("space-y-2", containerClassName)}>
       <div className="flex items-center gap-1.5">
-        <Label htmlFor={name}>{label}</Label>
+        <Label htmlFor={name} className="font-medium">{label}</Label>
         <InfoTooltip text={tooltipText} />
       </div>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
@@ -70,7 +70,7 @@ export function InfoField({
         id={name} 
         name={name} 
         className={cn(
-          "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 transition-colors",
+          "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 focus:ring-2 focus:ring-willtank-100 transition-all",
           className
         )} 
         placeholder={props.placeholder || `Enter ${label.toLowerCase()}`}

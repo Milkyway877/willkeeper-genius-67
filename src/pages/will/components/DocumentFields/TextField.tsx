@@ -47,14 +47,21 @@ export function TextField({
     
     return (
       <span 
-        className={`group cursor-pointer inline-flex items-center ${isEmpty ? 'bg-amber-50 border-b-2 border-dashed border-amber-300 text-amber-700 px-1 relative hover:bg-amber-100 transition-colors' : 'hover:bg-gray-100 px-1 rounded'}`}
+        className={`group cursor-pointer inline-flex items-center relative
+          ${isEmpty 
+            ? 'bg-amber-100 border-b-2 border-dashed border-amber-400 text-amber-800 px-2 py-1 rounded-sm hover:bg-amber-200 transition-colors' 
+            : 'hover:bg-gray-100 px-1 rounded border-b border-gray-200 hover:border-gray-400'}`}
         onClick={handleClick}
       >
         {displayValue}
+        <span className="absolute -top-5 left-0 text-[10px] bg-amber-50 text-amber-700 font-medium px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-amber-200 shadow-sm whitespace-nowrap">
+          Click to edit {label}
+        </span>
         {isEmpty && (
-          <span className="absolute -top-5 left-0 text-[10px] text-amber-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-            Click to edit
-          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1 text-amber-500 group-hover:animate-pulse">
+            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
         )}
         {onAiHelp && (
           <TooltipProvider>
@@ -78,34 +85,27 @@ export function TextField({
             </Tooltip>
           </TooltipProvider>
         )}
-        {/* Add a visual pencil icon indicator for empty fields */}
-        {isEmpty && (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity">
-            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-            <path d="m15 5 4 4"></path>
-          </svg>
-        )}
       </span>
     );
   }
 
   return (
     <div className="my-2 relative">
-      <label className="text-xs font-medium text-gray-700 mb-1 block">{label}</label>
+      <label className="text-xs font-medium text-gray-700 mb-1 block">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>
       {multiline ? (
         <Textarea
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
-          placeholder={placeholder}
-          className="min-h-[100px] bg-white shadow-inner border-2 focus:border-willtank-500"
+          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+          className="min-h-[100px] bg-white shadow-sm border-2 focus:border-willtank-500 focus:ring-2 focus:ring-willtank-100"
         />
       ) : (
         <input
           type="text"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
-          placeholder={placeholder}
-          className="w-full p-2 border-2 rounded bg-white shadow-inner focus:border-willtank-500 focus:ring-willtank-500 font-medium"
+          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+          className="w-full p-2 border-2 rounded bg-white shadow-sm focus:border-willtank-500 focus:ring-2 focus:ring-willtank-100 font-medium"
         />
       )}
       
