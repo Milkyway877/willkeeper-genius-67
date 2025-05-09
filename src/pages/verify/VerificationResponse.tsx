@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,11 @@ export default function VerificationResponse() {
   const [processing, setProcessing] = useState(false);
   
   useEffect(() => {
+    console.log('VerificationResponse component mounted');
+    console.log('Token:', token);
+    console.log('Type:', type);
+    console.log('Path:', path);
+    
     if (!token || !type) {
       setError('Invalid verification token or type');
       setLoading(false);
@@ -58,6 +64,7 @@ export default function VerificationResponse() {
   const fetchVerificationDetails = async () => {
     try {
       setLoading(true);
+      console.log('Fetching verification details for type:', type);
       
       if (type === 'invitation') {
         // First try to get the verification from contact_verifications
@@ -67,6 +74,9 @@ export default function VerificationResponse() {
             .select('*, trusted_contacts(*)')
             .eq('verification_token', token)
             .single();
+          
+          console.log('Invitation verification data:', data);
+          console.log('Invitation verification error:', error);
           
           if (!error && data) {
             // Check if expired
@@ -112,6 +122,9 @@ export default function VerificationResponse() {
             .eq('details->verification_token', token)
             .single();
           
+          console.log('Fall back to logs - data:', data);
+          console.log('Fall back to logs - error:', error);
+          
           if (error || !data) {
             console.error('Error fetching invitation details:', error);
             setError('This invitation link is invalid or has expired');
@@ -134,20 +147,26 @@ export default function VerificationResponse() {
           .eq('verification_token', token)
           .single();
         
+        console.log('Status verification data:', data);
+        console.log('Status verification error:', error);
+        
         if (error || !data) {
           console.error('Error fetching verification details:', error);
           setError('This verification link is invalid or has expired');
+          setLoading(false);
           return;
         }
         
         if (new Date(data.expires_at) < new Date()) {
           setError('This verification link has expired');
+          setLoading(false);
           return;
         }
         
         if (data.responded_at) {
           setSuccess(true);
           setVerificationDetails(data);
+          setLoading(false);
           return;
         }
         
@@ -187,12 +206,12 @@ export default function VerificationResponse() {
         
         let details = { ...data, contact: contactInfo };
         setVerificationDetails(details);
+        setLoading(false);
       }
       
     } catch (error) {
       console.error('Error fetching verification details:', error);
       setError('An error occurred while fetching verification details');
-    } finally {
       setLoading(false);
     }
   };
@@ -200,6 +219,7 @@ export default function VerificationResponse() {
   const handleSubmit = async (response: string) => {
     try {
       setProcessing(true);
+      console.log('Submitting response:', response);
       
       const { data, error } = await supabase.functions.invoke('process-verification-response', {
         body: {
@@ -209,6 +229,9 @@ export default function VerificationResponse() {
           notes: notes.trim() || undefined
         }
       });
+      
+      console.log('Response submission result:', data);
+      console.log('Response submission error:', error);
       
       if (error) {
         console.error('Error processing response:', error);

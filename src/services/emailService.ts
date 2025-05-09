@@ -114,6 +114,8 @@ export const sendTrustedContactInvitation = async (
     
     // Send invitation via edge function with better error handling
     try {
+      console.log('Sending invitation to trusted contact with ID:', contactId);
+      
       const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
         method: 'POST',
         headers: {
@@ -142,7 +144,7 @@ export const sendTrustedContactInvitation = async (
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error sending trusted contact invitation:', errorData);
+        console.error('Error from invitation edge function:', errorData);
         throw new Error(errorData.message || 'Failed to send invitation');
       }
       
