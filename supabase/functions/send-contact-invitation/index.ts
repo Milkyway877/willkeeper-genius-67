@@ -102,12 +102,7 @@ serve(async (req) => {
     }
     
     // Create direct verification URL - Link directly to the invitation response page
-    // This is a critical change - ensure we use the exact path that matches the router
-    const originUrl = req.headers.get("origin") || "https://willtank.com";
-    console.log("Origin URL for verification link:", originUrl);
-    
-    const verificationUrl = `${originUrl}/verify/invitation/${verificationToken}`;
-    console.log("Generated verification URL:", verificationUrl);
+    const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/invitation/${verificationToken}`;
     
     // Generate email content based on contact type and email details
     let subject = emailDetails?.subject || '';
@@ -237,7 +232,7 @@ serve(async (req) => {
     
     console.log('Invitation email sent successfully:', emailResponse.id);
     
-    // Log the verification event in logs
+    // Store the verification event in logs
     await supabase.from('death_verification_logs').insert({
       user_id: contact.userId,
       action: 'invitation_sent',
@@ -248,7 +243,6 @@ serve(async (req) => {
         contact_email: contact.email,
         verification_token: verificationToken,
         email_id: emailResponse.id,
-        verification_url: verificationUrl
       }
     });
     

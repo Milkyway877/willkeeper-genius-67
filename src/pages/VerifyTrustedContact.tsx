@@ -21,8 +21,6 @@ export default function VerifyTrustedContact() {
       }
 
       try {
-        console.log('Verifying token:', token);
-        
         // Verify the token against the database
         const { data: verification, error } = await supabase
           .from('contact_verifications')
@@ -45,7 +43,6 @@ export default function VerifyTrustedContact() {
           return;
         }
         
-        console.log('Token verified, redirecting to invitation page');
         // If token is valid, redirect directly to the verification response page
         navigate(`/verify/invitation/${token}`);
         
