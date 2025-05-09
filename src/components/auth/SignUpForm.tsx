@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -44,6 +43,10 @@ export function SignUpForm() {
     },
   });
 
+  const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
   const onSubmit = async (data: SignUpFormInputs) => {
     // Validate captcha first
     if (!validateCaptcha()) {
@@ -75,6 +78,9 @@ export function SignUpForm() {
         return;
       }
       
+      const verificationCode = generateVerificationCode();
+      console.log("Generated verification code:", verificationCode);
+      
       // First create a user account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
@@ -98,97 +104,70 @@ export function SignUpForm() {
         return;
       }
 
-      // Sign out immediately to prevent auto-login
-      await supabase.auth.signOut();
-
       console.log("User account created successfully");
 
-      // Store email in session storage for verification page (NOT password)
-      sessionStorage.setItem('auth_email', data.email);
-      
-      let verificationSent = false;
-      let errorMessage = '';
-      
       try {
-        console.log("Sending verification email to:", data.email);
+        console.log("Attempting to send verification email to:", data.email);
         
-        // Send verification email through the edge function with useLink=true
-        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+        // Send verification email through the edge function
+        const response = await supabase.functions.invoke('send-verification', {
           body: {
             email: data.email,
-            type: 'signup',
-            useLink: true // Always use link-based verification
+            code: verificationCode,
+            type: 'signup'
           }
         });
 
-        if (emailError || !emailData?.success) {
-          console.error("Error invoking send-verification function:", emailError || emailData?.error);
-          errorMessage = emailError?.message || emailData?.error || "Failed to send verification email";
-          // We'll create a fallback verification below
-        } else {
-          console.log("Verification email sent successfully");
-          verificationSent = true;
+        // Log the full response for debugging
+        console.log("Email function full response:", response);
+        
+        // Access data and error from the response
+        const { data: emailData, error: emailError } = response;
+        
+        console.log("Email data:", emailData);
+        console.log("Email error:", emailError);
+
+        if (emailError) {
+          console.error("Error invoking send-verification function:", emailError);
+          throw new Error("Failed to send verification email");
         }
-      } catch (error: any) {
-        console.error("Error in verification process:", error);
-        errorMessage = error.message || "Failed to send verification email";
-        // We'll create a fallback verification below
-      }
-      
-      // If verification email sending failed, create a fallback verification
-      if (!verificationSent) {
-        try {
-          // Generate a token directly in the client
-          const token = generateSecureToken(data.email);
-          const expiresAt = new Date();
-          expiresAt.setHours(expiresAt.getHours() + 24); // Expire in 24 hours
-          
-          console.log("Creating fallback verification record");
-          
-          // Try to insert the verification record directly
-          const { error: fallbackError } = await supabase
-            .from('email_verification_codes')
-            .insert({
-              email: data.email,
-              code: String(Math.floor(100000 + Math.random() * 900000)), // 6-digit code
-              token: token,
-              type: 'signup',
-              expires_at: expiresAt.toISOString(),
-              used: false
-            });
-            
-          if (fallbackError) {
-            console.error("Fallback verification creation failed:", fallbackError);
-            errorMessage = fallbackError.message;
-          } else {
-            console.log("Fallback verification created successfully");
-            verificationSent = true; // We created a verification record, so count this as success
-          }
-        } catch (err: any) {
-          console.error("Error in createFallbackVerification:", err);
-          errorMessage = err.message || "Failed to create verification";
+        
+        console.log("Verification email sent successfully");
+
+        // Store verification code
+        const { error: insertError } = await supabase
+          .from('email_verification_codes')
+          .insert({
+            email: data.email,
+            code: verificationCode,
+            type: 'signup',
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+            used: false
+          });
+
+        if (insertError) {
+          console.error("Error storing verification code:", insertError);
+          throw new Error("Failed to create verification code");
         }
-      }
-      
-      // Show appropriate message based on verification status
-      if (verificationSent) {
+        
+        console.log("Verification code stored successfully");
+        
         toast({
-          title: "Account created successfully",
-          description: "We've sent a verification link to your email. Please check your inbox and click the link to activate your account.",
-          variant: "default",
+          title: "Verification email sent",
+          description: "Please check your email for the verification code.",
         });
         
-        // Navigate to verification page with autologin flag
-        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup&autologin=true`);
-      } else {
-        // If everything failed, still let them know account was created but with warning
+        // Navigate to verification page with email
+        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
+      } catch (error: any) {
+        // If verification process fails, but user is created
+        console.error("Error in verification process:", error);
         toast({
-          title: "Account created with issues",
-          description: `Your account was created, but we couldn't send the verification email. Error: ${errorMessage}`,
+          title: "Verification setup failed",
+          description: "Account created, but we couldn't set up verification. Please try signing in.",
           variant: "destructive",
         });
-        
-        navigate('/auth/signin');
+        navigate("/auth/signin");
       }
     } catch (error: any) {
       console.error("Error during signup:", error);
@@ -200,14 +179,6 @@ export function SignUpForm() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Generate a more secure token for verification links
-  const generateSecureToken = (email: string): string => {
-    const timestamp = Date.now().toString();
-    const randomPart = Math.random().toString(36).substring(2, 15);
-    const secondRandomPart = Math.random().toString(36).substring(2, 15);
-    return `${timestamp}.${randomPart}.${secondRandomPart}.${btoa(email).substring(0, 10)}`;
   };
 
   return (
@@ -342,7 +313,7 @@ export function SignUpForm() {
           </Button>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
-            <p className="font-medium">After signing up, you'll receive a verification link via email to activate your account.</p>
+            <p className="font-medium">After signing up, you'll need to verify your email with the 6-digit code we send you.</p>
           </div>
         </form>
       </Form>

@@ -22,15 +22,14 @@ import BlogArticle from './pages/BlogArticle';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
-import SignIn from './pages/auth/SignIn';
-import SignUp from './pages/auth/SignUp';
+import SecureSignIn from './pages/auth/SecureSignIn';
+import SecureSignUp from './pages/auth/SecureSignUp';
 import SecureRecover from './pages/auth/SecureRecover';
 import AuthResetPassword from './pages/auth/ResetPassword';
 import AccountActivation from './pages/auth/AccountActivation';
 import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import AuthCallback from './pages/auth/AuthCallback';
-import TwoFactorAuth from './pages/auth/TwoFactorAuth';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -172,11 +171,11 @@ const router = createBrowserRouter([
       },
       {
         path: "/auth/signin",
-        element: <SignIn />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/signup",
-        element: <SignUp />,
+        element: <SecureSignUp />,
       },
       {
         path: "/auth/verification",
@@ -201,10 +200,6 @@ const router = createBrowserRouter([
       {
         path: "/auth/callback",
         element: <AuthCallback />,
-      },
-      {
-        path: "/auth/two-factor",
-        element: <TwoFactorAuth />,
       },
       {
         path: "/dashboard",

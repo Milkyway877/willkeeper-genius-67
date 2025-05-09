@@ -77,7 +77,6 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          email: string | null
           google_auth_enabled: boolean | null
           google_auth_secret: string | null
           encryption_key: string | null
@@ -87,7 +86,6 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          email?: string | null
           google_auth_enabled?: boolean | null
           google_auth_secret?: string | null
           encryption_key?: string | null
@@ -97,7 +95,6 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          email?: string | null
           google_auth_enabled?: boolean | null
           google_auth_secret?: string | null
           encryption_key?: string | null

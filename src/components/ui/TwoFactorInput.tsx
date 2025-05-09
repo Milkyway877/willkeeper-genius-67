@@ -25,9 +25,10 @@ export function TwoFactorInput({
     setLocalError(error);
   }, [error]);
   
-  const handleManualSubmit = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (otp.length === 6) {
-      console.log("Submitting verification code:", otp);
+      console.log("Manually submitting 2FA code:", otp);
       onSubmit(otp);
     } else {
       setLocalError("Please enter a 6-digit code");
@@ -47,7 +48,7 @@ export function TwoFactorInput({
     
     // Auto-submit when code is complete (if enabled)
     if (autoSubmit && value.length === 6) {
-      console.log("Auto-submitting verification code:", value);
+      console.log("Auto-submitting 2FA code:", value);
       onSubmit(value);
     }
   };
@@ -61,43 +62,44 @@ export function TwoFactorInput({
   };
   
   return (
-    <div className="space-y-4">
-      <div className="flex justify-center">
-        <InputOTP 
-          value={otp} 
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          maxLength={6}
-          disabled={loading}
-        >
-          <InputOTPGroup>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <InputOTPSlot key={i} index={i} />
-            ))}
-          </InputOTPGroup>
-        </InputOTP>
-      </div>
-      
-      {localError && (
-        <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
-      )}
-      
-      <Button 
-        type="button"
-        className="w-full" 
-        disabled={otp.length !== 6 || loading}
-        onClick={handleManualSubmit}
-      >
-        {loading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
-          </>
-        ) : (
-          <>
-            Verify <ArrowRight className="ml-2 h-4 w-4" />
-          </>
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4">
+        <div className="flex justify-center">
+          <InputOTP 
+            value={otp} 
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            maxLength={6}
+            disabled={loading}
+          >
+            <InputOTPGroup>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <InputOTPSlot key={i} index={i} />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+        </div>
+        
+        {localError && (
+          <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
         )}
-      </Button>
-    </div>
+        
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={otp.length !== 6 || loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+            </>
+          ) : (
+            <>
+              Verify <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
   );
 }

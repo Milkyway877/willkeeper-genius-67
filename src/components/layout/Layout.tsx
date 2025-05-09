@@ -25,7 +25,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  const { profile, loading } = useUserProfile();
+  const { profile } = useUserProfile();
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -57,31 +57,21 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         if (!data.session) {
           console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
-          return;
-        } 
-        
-        if (!loading && profile) {
-          // Check if email is verified
+        } else if (profile && !profile.is_activated) {
+          // If the user is logged in but email is not verified and they're trying to access protected routes
           const isEmailVerified = profile.email_verified;
           
-          // Check if user account is activated
-          const isActivated = profile.is_activated;
-          
-          if (!isEmailVerified) {
-            // Redirect to signin page - will handle verification from there
-            console.log("User email not verified, redirecting to signin");
-            navigate('/auth/signin', { replace: true });
-          } else if (!isActivated) {
-            // Redirect to activation page
-            console.log("User account not activated, redirecting to activation");
-            navigate('/auth/activate', { replace: true });
+          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
+            // Redirect to email verification with email as a parameter
+            console.log("User not verified, redirecting to verification");
+            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
           }
         }
       };
       
       checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate, profile, loading]);
+  }, [forceAuthenticated, location.pathname, navigate, profile]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
@@ -102,6 +92,13 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [location]);
 
+  // Pass the selected topic to the Help page through the URL
+  useEffect(() => {
+    if (selectedTopic && location.pathname === '/help') {
+      // This is handled by the Help component
+    }
+  }, [selectedTopic, location.pathname]);
+  
   // Determine if we're on a page that should have the cream accent background
   const shouldHaveCreamBackground = !isAuthPage && 
     !location.pathname.includes('/dashboard') && 

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -8,10 +9,10 @@ export interface UserProfile {
   created_at: string;
   updated_at: string;
   is_activated: boolean | null;
-  email_verified: boolean | null;
   subscription_plan: string | null;
   activation_date: string | null;
   email: string | null;
+  email_verified: boolean | null;
   gender?: 'male' | 'female' | null; // Optional gender field
 }
 
@@ -40,11 +41,11 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.is_activated || false,
+      is_activated: data.activation_complete,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date,
       email: session.user.email,
-      email_verified: data.email_verified || session.user.email_confirmed_at !== null,
+      email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
     };
   } catch (error) {
@@ -63,10 +64,16 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     
     const dbUpdates: any = {...updates};
     
+    if (updates.is_activated !== undefined) {
+      dbUpdates.activation_complete = updates.is_activated;
+      delete dbUpdates.is_activated;
+    }
+    
     // These fields should not be sent to the database
     delete dbUpdates.activation_date;
     delete dbUpdates.subscription_plan;
     delete dbUpdates.email;
+    delete dbUpdates.email_verified;
     
     const { data, error } = await supabase
       .from('user_profiles')
@@ -86,11 +93,11 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.is_activated || false,
+      is_activated: data.activation_complete,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date || null,
       email: session.user.email,
-      email_verified: data.email_verified || session.user.email_confirmed_at !== null,
+      email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
     };
   } catch (error) {
