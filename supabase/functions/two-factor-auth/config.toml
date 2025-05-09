@@ -1,0 +1,3 @@
+
+[functions.two-factor-auth]
+verify_jwt = false

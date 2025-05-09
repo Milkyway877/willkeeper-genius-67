@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -44,10 +43,6 @@ export function SignUpForm() {
     },
   });
 
-  const generateVerificationCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
-
   const onSubmit = async (data: SignUpFormInputs) => {
     // Validate captcha first
     if (!validateCaptcha()) {
@@ -79,9 +74,6 @@ export function SignUpForm() {
         return;
       }
       
-      const verificationCode = generateVerificationCode();
-      console.log("Generated verification code:", verificationCode);
-      
       // First create a user account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
@@ -111,25 +103,16 @@ export function SignUpForm() {
       console.log("User account created successfully");
 
       try {
-        console.log("Attempting to send verification email to:", data.email);
+        console.log("Sending verification email to:", data.email);
         
-        // Send verification email through the edge function
-        const response = await supabase.functions.invoke('send-verification', {
+        // Send verification email through the edge function with useLink=true
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
           body: {
             email: data.email,
-            code: verificationCode,
-            type: 'signup'
+            type: 'signup',
+            useLink: true // Use link-based verification instead of codes
           }
         });
-
-        // Log the full response for debugging
-        console.log("Email function full response:", response);
-        
-        // Access data and error from the response
-        const { data: emailData, error: emailError } = response;
-        
-        console.log("Email data:", emailData);
-        console.log("Email error:", emailError);
 
         if (emailError) {
           console.error("Error invoking send-verification function:", emailError);
@@ -137,34 +120,16 @@ export function SignUpForm() {
         }
         
         console.log("Verification email sent successfully");
-
-        // Store verification code
-        const { error: insertError } = await supabase
-          .from('email_verification_codes')
-          .insert({
-            email: data.email,
-            code: verificationCode,
-            type: 'signup',
-            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-            used: false
-          });
-
-        if (insertError) {
-          console.error("Error storing verification code:", insertError);
-          throw new Error("Failed to create verification code");
-        }
-        
-        console.log("Verification code stored successfully");
         
         toast({
           title: "Verification email sent",
-          description: "Please check your email for the verification code.",
+          description: "Please check your email and click the verification link to complete your registration.",
         });
         
         // Store email in session storage for verification page (NOT password)
         sessionStorage.setItem('auth_email', data.email);
         
-        // Navigate to verification page
+        // Navigate to verification page (we'll show a waiting screen)
         navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
       } catch (error: any) {
         // If verification process fails, but user is created
@@ -320,7 +285,7 @@ export function SignUpForm() {
           </Button>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
-            <p className="font-medium">After signing up, you'll need to verify your email with the 6-digit code we send you.</p>
+            <p className="font-medium">After signing up, you'll receive a verification link via email to activate your account.</p>
           </div>
         </form>
       </Form>

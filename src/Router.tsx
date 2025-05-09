@@ -4,6 +4,9 @@ import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import EmailVerification from './pages/auth/EmailVerification';
+import EmailVerify from './pages/auth/EmailVerify';
+import LoginVerify from './pages/auth/LoginVerify';
+import TwoFactorAuth from './pages/auth/TwoFactorAuth';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
@@ -66,8 +69,11 @@ function AppRouter() {
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Route>
         
-        {/* Email Verification - separate from auth layout wrapper */}
+        {/* Email Verification routes */}
         <Route path="/auth/verification" element={<EmailVerification />} />
+        <Route path="/auth/verify" element={<EmailVerify />} />
+        <Route path="/auth/login-verify" element={<LoginVerify />} />
+        <Route path="/auth/two-factor" element={<TwoFactorAuth />} />
         
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
