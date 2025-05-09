@@ -48,13 +48,11 @@ function AppRouter() {
         <Route path="/auth/signin" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
         
-        {/* Let Clerk handle its own routes */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
+        {/* Clerk specific routes - make sure these match Clerk's expected paths */}
+        <Route path="/auth/signup/*" element={<SignUpPage />} />
+        <Route path="/auth/signup/verify-email-address" element={<SignUpPage />} />
         
-        {/* All verification paths should be handled by Clerk */}
-        <Route path="/verify-*" element={<SignUpPage />} />
-        
+        {/* User profile route */}
         <Route path="/user-profile" element={
           <ClerkProtectedRoute>
             <UserProfile routing="path" path="/user-profile" />
