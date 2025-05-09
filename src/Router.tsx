@@ -42,6 +42,12 @@ function AppRouter() {
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
         
+        {/* Redirect legacy auth routes to Clerk's default paths */}
+        <Route path="/auth/signin" element={<Navigate to="/sign-in" replace />} />
+        <Route path="/auth/signup" element={<Navigate to="/sign-up" replace />} />
+        <Route path="/auth/verify-email-address" element={<Navigate to="/verify-email" replace />} />
+        <Route path="/auth/signup/verify-email-address" element={<Navigate to="/verify-email" replace />} />
+        
         {/* Let Clerk handle all auth routes */}
         <Route path="/user-profile" element={
           <ClerkProtectedRoute>
