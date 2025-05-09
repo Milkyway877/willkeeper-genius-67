@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -56,7 +57,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         if (!data.session) {
           console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
-        } else if (!loading && profile) {
+          return;
+        } 
+        
+        if (!loading && profile) {
           // Check if email is verified
           const isEmailVerified = profile.email_verified;
           
@@ -64,13 +68,13 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           const isActivated = profile.is_activated;
           
           if (!isEmailVerified) {
-            // Redirect to email verification page
-            console.log("User email not verified, redirecting to verification");
-            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`);
+            // Redirect to signin page - will handle verification from there
+            console.log("User email not verified, redirecting to signin");
+            navigate('/auth/signin', { replace: true });
           } else if (!isActivated) {
             // Redirect to activation page
             console.log("User account not activated, redirecting to activation");
-            navigate('/auth/activate');
+            navigate('/auth/activate', { replace: true });
           }
         }
       };
@@ -98,13 +102,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [location]);
 
-  // Pass the selected topic to the Help page through the URL
-  useEffect(() => {
-    if (selectedTopic && location.pathname === '/help') {
-      // This is handled by the Help component
-    }
-  }, [selectedTopic, location.pathname]);
-  
   // Determine if we're on a page that should have the cream accent background
   const shouldHaveCreamBackground = !isAuthPage && 
     !location.pathname.includes('/dashboard') && 

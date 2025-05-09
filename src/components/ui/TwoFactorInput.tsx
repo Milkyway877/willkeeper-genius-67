@@ -25,8 +25,7 @@ export function TwoFactorInput({
     setLocalError(error);
   }, [error]);
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleManualSubmit = () => {
     if (otp.length === 6) {
       console.log("Manually submitting 2FA code:", otp);
       onSubmit(otp);
@@ -62,44 +61,43 @@ export function TwoFactorInput({
   };
   
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-4">
-        <div className="flex justify-center">
-          <InputOTP 
-            value={otp} 
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            maxLength={6}
-            disabled={loading}
-          >
-            <InputOTPGroup>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <InputOTPSlot key={i} index={i} />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-        
-        {localError && (
-          <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
-        )}
-        
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={otp.length !== 6 || loading}
+    <div className="space-y-4">
+      <div className="flex justify-center">
+        <InputOTP 
+          value={otp} 
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          maxLength={6}
+          disabled={loading}
         >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
-            </>
-          ) : (
-            <>
-              Verify <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
+          <InputOTPGroup>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <InputOTPSlot key={i} index={i} />
+            ))}
+          </InputOTPGroup>
+        </InputOTP>
       </div>
-    </form>
+      
+      {localError && (
+        <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
+      )}
+      
+      <Button 
+        type="button"
+        className="w-full" 
+        disabled={otp.length !== 6 || loading}
+        onClick={handleManualSubmit}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+          </>
+        ) : (
+          <>
+            Verify <ArrowRight className="ml-2 h-4 w-4" />
+          </>
+        )}
+      </Button>
+    </div>
   );
 }

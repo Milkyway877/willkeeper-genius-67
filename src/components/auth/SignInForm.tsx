@@ -7,7 +7,7 @@ import { Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Captcha from '@/components/auth/Captcha';
@@ -25,15 +25,28 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const verified = searchParams.get('verified') === 'true';
   const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      email: '',
+      email: searchParams.get('email') || '',
       password: '',
     },
   });
+  
+  useEffect(() => {
+    // If user just completed verification, show a welcome back message
+    if (verified) {
+      toast({
+        title: "Welcome back",
+        description: "Please enter your password to continue.",
+        variant: "default",
+      });
+    }
+  }, [verified]);
   
   const generateVerificationCode = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -55,7 +68,7 @@ export function SignInForm() {
         return;
       }
       
-      // First check if credentials are valid without signing in fully
+      // First check if credentials are valid
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -71,10 +84,9 @@ export function SignInForm() {
         return;
       }
       
-      // Sign out immediately to prevent auto-login
+      // Always sign out to prevent automatic login - we'll require verification
       await supabase.auth.signOut();
       
-      // Check if the user's email is verified
       if (authData.user) {
         // Get user profile to check verification status
         const { data: profileData } = await supabase

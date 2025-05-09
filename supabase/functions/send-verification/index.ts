@@ -19,7 +19,13 @@ serve(async (req) => {
     const { email, code, type } = await req.json();
     
     if (!email || !code || !type) {
-      throw new Error("Missing required fields: email, code, and type are required");
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: email, code, and type are required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     console.log(`Sending ${type} verification email to ${email} with code ${code}`);
@@ -77,8 +83,14 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("Error sending verification email:", error);
+    
+    // Provide better error details
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: "Failed to send verification email. Please try again later."
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
