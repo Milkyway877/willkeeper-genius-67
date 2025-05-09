@@ -13,7 +13,6 @@ export default function SignUpPage() {
       rightPanel={<SecurityInfoPanel mode="signup" />}
     >
       <SignUp 
-        routing="path"
         path="/auth/signup"
         signInUrl="/auth/signin"
         redirectUrl="/dashboard"

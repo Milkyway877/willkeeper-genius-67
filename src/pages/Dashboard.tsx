@@ -10,7 +10,7 @@ import { getDashboardSummary } from '@/services/dashboardService';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 
 export default function Dashboard() {
-  const { data: dashboardSummary, isLoading, error } = useQuery({
+  const { data: dashboardSummary, isLoading } = useQuery({
     queryKey: ['dashboardSummary'],
     queryFn: getDashboardSummary
   });
@@ -29,9 +29,7 @@ export default function Dashboard() {
                 <h3 className="font-medium text-lg">Security Status</h3>
               </div>
               
-              {error ? (
-                <p className="text-red-600 mb-4">Error loading security status</p>
-              ) : isLoading ? (
+              {isLoading ? (
                 <p className="text-gray-600 mb-4">Loading security status...</p>
               ) : (
                 <p className="text-gray-600 mb-4">

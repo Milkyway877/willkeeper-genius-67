@@ -6,10 +6,6 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { CLERK_PUBLISHABLE_KEY } from './config/env.ts';
 import AppRouter from './Router.tsx';
 import { NotificationsProvider } from './contexts/NotificationsContext.tsx';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-// Create a client
-const queryClient = new QueryClient();
 
 // Check if we have a publishable key
 if (!CLERK_PUBLISHABLE_KEY) {
@@ -28,12 +24,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           card: "shadow-none"
         }
       }}
+      signInUrl="/auth/signin"
+      signUpUrl="/auth/signup"
+      redirectUrl="/dashboard"
     >
-      <QueryClientProvider client={queryClient}>
-        <NotificationsProvider>
-          <AppRouter />
-        </NotificationsProvider>
-      </QueryClientProvider>
+      <NotificationsProvider>
+        <AppRouter />
+      </NotificationsProvider>
     </ClerkProvider>
   </React.StrictMode>,
 )

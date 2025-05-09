@@ -13,10 +13,9 @@ export default function SignInPage() {
       rightPanel={<SecurityInfoPanel mode="signin" />}
     >
       <SignIn 
-        routing="path"
-        path="/auth/signin"
+        path="/auth/signin" 
         signUpUrl="/auth/signup"
-        afterSignInUrl="/dashboard"
+        redirectUrl="/dashboard"
         appearance={{
           elements: {
             formButtonPrimary: "bg-black hover:bg-gray-800 text-white rounded-xl transition-all duration-200 font-medium",
