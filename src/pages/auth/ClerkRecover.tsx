@@ -17,7 +17,7 @@ export default function ClerkRecover() {
         signUpUrl="/auth/signup"
         afterSignInUrl="/dashboard"
         initialValues={{ 
-          identifier: '' 
+          emailAddress: '' 
         }}
         appearance={{
           elements: {
