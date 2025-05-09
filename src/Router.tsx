@@ -48,6 +48,7 @@ function AppRouter() {
         
         {/* Auth routes */}
         <Route path="/auth/signin" element={<SignInPage />} />
+        <Route path="/auth/signin/*" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
         <Route path="/auth/signup/*" element={<SignUpPage />} />
         <Route path="/auth/signup/verify-email-address" element={<SignUpPage />} />

@@ -64,6 +64,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   // Don't show sidebar on auth pages
   const isAuthPath = (path: string): boolean => {
     return path === '/auth/signin' || 
+           path.startsWith('/auth/signin/') || 
            path === '/auth/signup' || 
            path.startsWith('/auth/signup/') ||
            path.startsWith('/sso-callback') || 
