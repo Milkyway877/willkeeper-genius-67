@@ -10,9 +10,6 @@ import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
-import SignInPage from './pages/auth/SignIn';
-import SignUpPage from './pages/auth/SignUp';
-import VerifyEmail from './pages/auth/VerifyEmail';
 
 // Import Clerk user profile component
 import { UserProfile as ClerkUserProfile } from "@clerk/clerk-react";
@@ -49,13 +46,7 @@ function AppRouter() {
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
         
-        {/* Standardized Authentication Routes */}
-        <Route path="/auth/signin" element={<SignInPage />} />
-        <Route path="/auth/signup" element={<SignUpPage />} />
-        
-        {/* Email Verification Routes */}
-        <Route path="/auth/verify-email-address" element={<VerifyEmail />} />
-        <Route path="/auth/signup/verify-email-address" element={<VerifyEmail />} />
+        {/* Let Clerk handle all auth pages directly */}
         
         {/* Redirect old auth routes to new ones */}
         <Route path="/sign-in" element={<Navigate to="/auth/signin" replace />} />
