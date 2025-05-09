@@ -1,15 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
-import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
-import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 export default function EmailVerification() {
   const navigate = useNavigate();
@@ -20,12 +18,6 @@ export default function EmailVerification() {
   const [resendLoading, setResendLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const { toast } = useToast();
-  
-  const form = useForm({
-    defaultValues: {
-      code: '',
-    },
-  });
 
   useEffect(() => {
     if (!email) {
@@ -186,9 +178,6 @@ export default function EmailVerification() {
         title: "Code sent",
         description: "A new verification code has been sent to your email.",
       });
-      
-      // Reset the form
-      form.reset({ code: '' });
     } catch (error: any) {
       console.error("Error resending code:", error);
       toast({
@@ -215,7 +204,7 @@ export default function EmailVerification() {
       >
         <div className="space-y-6">
           <div className="space-y-3">
-            <FormLabel>Verification Code</FormLabel>
+            <Label>Verification Code</Label>
             <TwoFactorInput 
               onSubmit={handleVerifyCode}
               loading={isLoading}
@@ -241,3 +230,6 @@ export default function EmailVerification() {
     </AuthLayout>
   );
 }
+
+// Import the VerificationInfoPanel component from its file
+import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
