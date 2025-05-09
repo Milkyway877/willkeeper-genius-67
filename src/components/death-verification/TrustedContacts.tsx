@@ -37,7 +37,19 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const [submitting, setSubmitting] = useState(false);
   
   useEffect(() => {
+    // Initial fetch
     fetchTrustedContacts();
+    
+    // Set up a polling mechanism to check for status changes every 10 seconds
+    const statusCheckInterval = setInterval(() => {
+      if (contacts.some(contact => contact.invitation_status === 'pending')) {
+        fetchTrustedContacts();
+      }
+    }, 10000);
+    
+    return () => {
+      clearInterval(statusCheckInterval);
+    };
   }, []);
   
   const fetchTrustedContacts = async () => {
@@ -291,7 +303,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     }
   };
 
-  // Function to get appropriate status badge
+  // Function to get appropriate status badge with improved styling
   const getStatusBadge = (status: string | null) => {
     if (!status || status === 'not_sent') {
       return (
@@ -304,7 +316,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     if (status === 'pending') {
       return (
         <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-          Pending Response
+          <AlertTriangle className="h-3 w-3 mr-1" /> Pending Response
         </Badge>
       );
     }
@@ -320,7 +332,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     if (status === 'declined') {
       return (
         <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
-          Declined
+          <X className="h-3 w-3 mr-1" /> Declined
         </Badge>
       );
     }

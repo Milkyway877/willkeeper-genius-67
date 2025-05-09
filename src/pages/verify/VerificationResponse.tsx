@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -60,24 +59,73 @@ export default function VerificationResponse() {
     try {
       setLoading(true);
       
-      let details = null;
-      
       if (type === 'invitation') {
-        // For invitations, we look in the logs
-        const { data, error } = await supabase
-          .from('death_verification_logs')
-          .select('details')
-          .eq('action', 'invitation_sent')
-          .eq('details->verification_token', token)
-          .single();
-        
-        if (error || !data) {
-          console.error('Error fetching invitation details:', error);
-          setError('This invitation link is invalid or has expired');
-          return;
+        // First try to get the verification from contact_verifications
+        try {
+          const { data, error } = await supabase
+            .from('contact_verifications')
+            .select('*, trusted_contacts(*)')
+            .eq('verification_token', token)
+            .single();
+          
+          if (!error && data) {
+            // Check if expired
+            if (new Date(data.expires_at) < new Date()) {
+              setError('This invitation link has expired');
+              setLoading(false);
+              return;
+            }
+
+            if (data.responded_at) {
+              setSuccess(true);
+              setVerificationDetails(data);
+              setLoading(false);
+              return;
+            }
+
+            // Get user info
+            const { data: userData } = await supabase
+              .from('user_profiles')
+              .select('full_name')
+              .eq('id', data.user_id)
+              .single();
+
+            const details = {
+              ...data,
+              user_name: userData?.full_name || 'a WillTank user'
+            };
+            
+            setVerificationDetails(details);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Error fetching from contact_verifications:', e);
         }
         
-        details = data.details;
+        // Fall back to using the logs if direct query failed
+        try {
+          const { data, error } = await supabase
+            .from('death_verification_logs')
+            .select('details')
+            .eq('action', 'invitation_sent')
+            .eq('details->verification_token', token)
+            .single();
+          
+          if (error || !data) {
+            console.error('Error fetching invitation details:', error);
+            setError('This invitation link is invalid or has expired');
+            setLoading(false);
+            return;
+          }
+          
+          setVerificationDetails(data.details);
+          setLoading(false);
+        } catch (e) {
+          console.error('Error fetching from logs:', e);
+          setError('Unable to find invitation details');
+          setLoading(false);
+        }
       } else if (type === 'status') {
         // For status checks, we look in the contact_verifications table
         const { data, error } = await supabase
@@ -170,14 +218,15 @@ export default function VerificationResponse() {
       if (error) {
         console.error('Error processing response:', error);
         setError('An error occurred while processing your response');
+        setProcessing(false);
         return;
       }
       
       setSuccess(true);
+      setProcessing(false);
     } catch (error) {
       console.error('Error submitting response:', error);
       setError('An error occurred while submitting your response');
-    } finally {
       setProcessing(false);
     }
   };
@@ -271,7 +320,7 @@ export default function VerificationResponse() {
             <>
               <CardTitle className="text-center">Role Invitation</CardTitle>
               <CardDescription className="text-center">
-                You've been invited to be a {verificationDetails?.contact_type} for {verificationDetails?.user_name || 'a WillTank user'}
+                You've been invited to be a {verificationDetails?.contact_type || 'trusted contact'} for {verificationDetails?.user_name || 'a WillTank user'}
               </CardDescription>
             </>
           )}

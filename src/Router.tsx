@@ -74,7 +74,7 @@ function AppRouter() {
         <Route path="/check-ins" element={<CheckIns />} />
         <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
 
-        {/* Verification routes */}
+        {/* Verification routes - ensure proper ordering */}
         <Route
           path="/verify/trusted-contact/:token"
           element={<VerifyTrustedContact />}

@@ -1,7 +1,5 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { Resend } from "npm:resend@2.0.0";
 import { 
   getResendClient, 
   buildDefaultEmailLayout, 
@@ -42,8 +40,132 @@ serve(async (req) => {
     }
     
     if (type === 'invitation') {
-      // For invitation responses, we need to find which record this belongs to
-      // by looking at the death_verification_logs
+      // First try to get the invitation from contact_verifications table
+      const { data: verification, error: verificationError } = await supabase
+        .from('contact_verifications')
+        .select('*')
+        .eq('verification_token', token)
+        .single();
+      
+      if (!verificationError && verification) {
+        // Update the verification record
+        await supabase
+          .from('contact_verifications')
+          .update({
+            responded_at: new Date().toISOString(),
+            response: response
+          })
+          .eq('verification_token', token);
+        
+        // Update the appropriate table based on contact type
+        if (verification.contact_type === 'trusted') {
+          await supabase
+            .from('trusted_contacts')
+            .update({
+              invitation_status: response === 'accept' ? 'verified' : 'declined',
+              invitation_responded_at: new Date().toISOString()
+            })
+            .eq('id', verification.contact_id);
+        } else if (verification.contact_type === 'beneficiary') {
+          await supabase
+            .from('will_beneficiaries')
+            .update({ 
+              invitation_status: response === 'accept' ? 'accepted' : 'declined',
+              invitation_responded_at: new Date().toISOString()
+            })
+            .eq('id', verification.contact_id);
+        } else if (verification.contact_type === 'executor') {
+          await supabase
+            .from('will_executors')
+            .update({ 
+              invitation_status: response === 'accept' ? 'accepted' : 'declined',
+              invitation_responded_at: new Date().toISOString()
+            })
+            .eq('id', verification.contact_id);
+        }
+        
+        // Log the response
+        await supabase.from('death_verification_logs').insert({
+          user_id: verification.user_id,
+          action: `invitation_${response}ed`,
+          details: {
+            contact_id: verification.contact_id,
+            contact_type: verification.contact_type,
+            verification_id: verification.id,
+            response_notes: notes,
+            responded_at: new Date().toISOString()
+          }
+        });
+        
+        // Get user and contact info for email notification
+        const { data: userData } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .eq('id', verification.user_id)
+          .single();
+        
+        let contactName = "Your contact";
+        if (verification.contact_type === 'trusted') {
+          const { data: trusted } = await supabase
+            .from('trusted_contacts')
+            .select('name')
+            .eq('id', verification.contact_id)
+            .single();
+          
+          if (trusted) contactName = trusted.name;
+        }
+        
+        // Send notification email to the user
+        if (userData?.email) {
+          const resend = getResendClient();
+          
+          const content = `
+            <h1>${contactName} has ${response}ed their role</h1>
+            <p>Hello,</p>
+            <p>${contactName} has ${response}ed their role as a ${verification.contact_type} in your WillTank account.</p>
+            ${notes ? `<p>They provided the following notes: "${notes}"</p>` : ''}
+            <p>You can manage your contacts in the Check-ins section of your WillTank account.</p>
+          `;
+          
+          await resend.emails.send({
+            from: "WillTank <notifications@willtank.com>",
+            to: [userData.email],
+            subject: `${contactName} has ${response}ed their role as ${verification.contact_type}`,
+            html: buildDefaultEmailLayout(content),
+          });
+        }
+        
+        // Create notification in database
+        await supabase.rpc(
+          'create_notification',
+          {
+            p_user_id: verification.user_id,
+            p_title: `Contact ${response === 'accept' ? 'Accepted' : 'Declined'} Role`,
+            p_description: `${contactName} has ${response}ed their role as your ${verification.contact_type}.`,
+            p_type: response === 'accept' ? 'success' : 'warning'
+          }
+        ).catch(e => {
+          console.error('Failed to create notification with RPC:', e);
+          // Fallback direct insert
+          supabase.from('notifications').insert({
+            user_id: verification.user_id,
+            title: `Contact ${response === 'accept' ? 'Accepted' : 'Declined'} Role`,
+            description: `${contactName} has ${response}ed their role as your ${verification.contact_type}.`,
+            type: response === 'accept' ? 'success' : 'warning',
+            read: false
+          });
+        });
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: `Invitation ${response}ed successfully` 
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // If not found in verifications table, fall back to logs
       const { data: logData, error: logError } = await supabase
         .from('death_verification_logs')
         .select('details, user_id')
@@ -63,7 +185,15 @@ serve(async (req) => {
       const userId = logData.user_id;
       
       // Update the appropriate table based on contact type
-      if (contactDetails.contact_type === 'beneficiary') {
+      if (contactDetails.contact_type === 'trusted') {
+        await supabase
+          .from('trusted_contacts')
+          .update({ 
+            invitation_status: response === 'accept' ? 'verified' : 'declined',
+            invitation_responded_at: new Date().toISOString()
+          })
+          .eq('id', contactDetails.contact_id);
+      } else if (contactDetails.contact_type === 'beneficiary') {
         await supabase
           .from('will_beneficiaries')
           .update({ 
@@ -74,14 +204,6 @@ serve(async (req) => {
       } else if (contactDetails.contact_type === 'executor') {
         await supabase
           .from('will_executors')
-          .update({ 
-            invitation_status: response === 'accept' ? 'accepted' : 'declined',
-            invitation_responded_at: new Date().toISOString()
-          })
-          .eq('id', contactDetails.contact_id);
-      } else if (contactDetails.contact_type === 'trusted') {
-        await supabase
-          .from('trusted_contacts')
           .update({ 
             invitation_status: response === 'accept' ? 'accepted' : 'declined',
             invitation_responded_at: new Date().toISOString()
@@ -294,8 +416,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error processing verification response:", error);
+    
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

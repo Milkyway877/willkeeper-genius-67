@@ -43,8 +43,7 @@ export default function VerifyTrustedContact() {
           return;
         }
         
-        // If token is valid, redirect to the appropriate verification response page
-        // This enables the contact to explicitly accept or decline the invitation
+        // If token is valid, redirect directly to the verification response page
         navigate(`/verify/invitation/${token}`);
         
       } catch (error) {

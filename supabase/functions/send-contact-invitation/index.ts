@@ -101,7 +101,7 @@ serve(async (req) => {
       );
     }
     
-    // Create verification URL - UPDATED to use the invitation path
+    // Create direct verification URL - Link directly to the invitation response page
     const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/invitation/${verificationToken}`;
     
     // Generate email content based on contact type and email details
