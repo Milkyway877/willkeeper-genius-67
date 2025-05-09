@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { UserProfile, SignIn, SignUp, ClerkLoaded, ClerkLoading } from "@clerk/clerk-react";
@@ -11,7 +10,17 @@ import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import VerifyEmail from './pages/auth/VerifyEmail';
 
-// Create placeholder pages for development
+// Import actual implemented pages instead of placeholders
+import Dashboard from './pages/Dashboard';
+import Wills from './pages/wills/Wills';
+import Will from './pages/will/Will';
+import Tank from './pages/tank/Tank';
+import CheckIns from './pages/CheckIns';
+import Settings from './pages/settings/Settings';
+import IDSecurity from './pages/security/IDSecurity';
+import TestDeathVerificationPage from './pages/TestDeathVerification';
+
+// Create placeholder pages for development (only keeping what's still needed)
 const Home = () => <Index />;
 const About = () => <div>About Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
@@ -19,14 +28,9 @@ const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
 const Help = () => <div>Help Center</div>;
 const NotFoundPage = () => <NotFound />;
-const Dashboard = () => <div>Dashboard Page</div>;
-const Settings = () => <div>Settings Page</div>;
-const Will = () => <div>Will Page</div>;
-const FutureMessages = () => <div>Future Messages Page</div>;
-const LegacyVault = () => <div>Legacy Vault Page</div>;
-const CheckIns = () => <div>Check-Ins Page</div>;
-const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
+const Billing = () => <div>Billing Page</div>;
+const Corporate = () => <div>For Corporations Page</div>;
 
 // Define Clerk Components for routes
 const SignInPage = () => (
@@ -88,7 +92,7 @@ function AppRouter() {
           </ClerkProtectedRoute>
         } />
         
-        {/* Protected Routes */}
+        {/* Protected Routes with actual implemented components */}
         <Route path="/dashboard" element={
           <ClerkProtectedRoute>
             <Dashboard />
@@ -99,24 +103,59 @@ function AppRouter() {
             <Settings />
           </ClerkProtectedRoute>
         } />
+        <Route path="/wills" element={
+          <ClerkProtectedRoute>
+            <Wills />
+          </ClerkProtectedRoute>
+        } />
         <Route path="/will" element={
           <ClerkProtectedRoute>
             <Will />
           </ClerkProtectedRoute>
         } />
-        <Route path="/future-messages" element={
+        <Route path="/will/:id" element={
           <ClerkProtectedRoute>
-            <FutureMessages />
+            <Will />
           </ClerkProtectedRoute>
         } />
-        <Route path="/legacy-vault" element={
+        <Route path="/will/create" element={
           <ClerkProtectedRoute>
-            <LegacyVault />
+            <Will />
+          </ClerkProtectedRoute>
+        } />
+        <Route path="/will/edit/:id" element={
+          <ClerkProtectedRoute>
+            <Will />
+          </ClerkProtectedRoute>
+        } />
+        <Route path="/security" element={
+          <ClerkProtectedRoute>
+            <IDSecurity />
+          </ClerkProtectedRoute>
+        } />
+        <Route path="/tank" element={
+          <ClerkProtectedRoute>
+            <Tank />
+          </ClerkProtectedRoute>
+        } />
+        <Route path="/future-messages" element={
+          <ClerkProtectedRoute>
+            <Tank />
           </ClerkProtectedRoute>
         } />
         <Route path="/check-ins" element={
           <ClerkProtectedRoute>
             <CheckIns />
+          </ClerkProtectedRoute>
+        } />
+        <Route path="/billing" element={
+          <ClerkProtectedRoute>
+            <Billing />
+          </ClerkProtectedRoute>
+        } />
+        <Route path="/corporate" element={
+          <ClerkProtectedRoute>
+            <Corporate />
           </ClerkProtectedRoute>
         } />
         <Route path="/test-death-verification" element={
