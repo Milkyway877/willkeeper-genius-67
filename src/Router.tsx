@@ -58,12 +58,12 @@ function AppRouter() {
         {/* Clerk Authentication Routes */}
         <Route path="/sign-in" element={
           <AuthLayoutWrapper>
-            <SignIn routing="path" path="/sign-in" />
+            <SignIn routing="path" path="/sign-in" redirectUrl="/dashboard" />
           </AuthLayoutWrapper>
         } />
         <Route path="/sign-up" element={
           <AuthLayoutWrapper>
-            <SignUp routing="path" path="/sign-up" />
+            <SignUp routing="path" path="/sign-up" redirectUrl="/dashboard" />
           </AuthLayoutWrapper>
         } />
         <Route path="/user-profile" element={
@@ -75,12 +75,12 @@ function AppRouter() {
         {/* Auth Routes with /auth prefix - Using Clerk components */}
         <Route path="/auth/signin" element={
           <AuthLayoutWrapper>
-            <SignIn routing="path" path="/auth/signin" />
+            <SignIn routing="path" path="/auth/signin" redirectUrl="/dashboard" />
           </AuthLayoutWrapper>
         } />
         <Route path="/auth/signup" element={
           <AuthLayoutWrapper>
-            <SignUp routing="path" path="/auth/signup" />
+            <SignUp routing="path" path="/auth/signup" redirectUrl="/dashboard" />
           </AuthLayoutWrapper>
         } />
         
