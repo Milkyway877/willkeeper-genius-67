@@ -8,19 +8,23 @@ ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false;
 ALTER TABLE IF EXISTS public.user_profiles 
 ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ;
 
--- Update RLS policies for email_verification_codes to ensure proper access
+-- Drop and recreate RLS policies for email_verification_codes to ensure proper access
+-- This ensures anyone can verify codes without authentication
 DROP POLICY IF EXISTS "Anyone can verify codes" ON public.email_verification_codes;
 CREATE POLICY "Anyone can verify codes" 
   ON public.email_verification_codes 
   FOR SELECT 
   USING (true);
 
+-- Allow anyone to update verification codes (for marking as used)
 DROP POLICY IF EXISTS "Anyone can update verification codes" ON public.email_verification_codes;
 CREATE POLICY "Anyone can update verification codes" 
   ON public.email_verification_codes 
   FOR UPDATE 
-  USING (true);
+  USING (true)
+  WITH CHECK (true);
 
+-- Allow anyone to insert verification codes (needed for signups)
 DROP POLICY IF EXISTS "Anyone can insert verification codes" ON public.email_verification_codes;
 CREATE POLICY "Anyone can insert verification codes" 
   ON public.email_verification_codes 
@@ -49,3 +53,18 @@ EXECUTE FUNCTION clean_old_verification_codes();
 -- Create an index to speed up verification queries
 CREATE INDEX IF NOT EXISTS idx_email_verification_codes_email_code_type
 ON public.email_verification_codes (email, code, type);
+
+-- Create a function to check if a verification code is valid
+CREATE OR REPLACE FUNCTION is_verification_code_valid(check_email TEXT, check_code TEXT, check_type TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.email_verification_codes
+    WHERE email = check_email
+    AND code = check_code
+    AND type = check_type
+    AND used = false
+    AND expires_at > NOW()
+  );
+END;
+$$ LANGUAGE plpgsql;

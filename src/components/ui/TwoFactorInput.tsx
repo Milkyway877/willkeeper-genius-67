@@ -27,7 +27,7 @@ export function TwoFactorInput({
   
   const handleManualSubmit = () => {
     if (otp.length === 6) {
-      console.log("Manually submitting 2FA code:", otp);
+      console.log("Manually submitting verification code:", otp);
       onSubmit(otp);
     } else {
       setLocalError("Please enter a 6-digit code");
@@ -47,7 +47,7 @@ export function TwoFactorInput({
     
     // Auto-submit when code is complete (if enabled)
     if (autoSubmit && value.length === 6) {
-      console.log("Auto-submitting 2FA code:", value);
+      console.log("Auto-submitting verification code:", value);
       onSubmit(value);
     }
   };

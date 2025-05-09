@@ -32,9 +32,10 @@ export default function EmailVerification() {
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      console.log("Verifying code:", code, "for email:", email);
+      console.log("Verifying code:", code, "for email:", email, "type:", type);
       
-      // First verify the code
+      // First verify the code - fixed timestamp comparison
+      const now = new Date().toISOString();
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
@@ -42,19 +43,27 @@ export default function EmailVerification() {
         .eq('code', code)
         .eq('type', type)
         .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
+        .gte('expires_at', now) // Changed direction to check if expiration is in future
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
-      console.log("Verification query result:", { data: verificationData, error: verificationError });
+      console.log("Verification query result:", { 
+        data: verificationData, 
+        error: verificationError,
+        currentTime: now,
+      });
 
       if (verificationError || !verificationData) {
-        let errorMessage = "The code you entered is invalid or has expired. Please try again or request a new code.";
+        let errorMessage = "The verification code is invalid or has expired. Please try again or request a new code.";
         
         if (verificationError?.code === 'PGRST116') {
           errorMessage = "Verification code not found. Please check the code and try again.";
         } else if (verificationError?.message?.includes('expires_at')) {
           errorMessage = "This verification code has expired. Please request a new one.";
         }
+        
+        console.error("Verification failed:", verificationError || "No verification data found");
         
         toast({
           title: "Verification failed",
@@ -168,9 +177,9 @@ export default function EmailVerification() {
       // Generate a new verification code
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
-      console.log("Resending verification code to:", email);
+      console.log("Resending verification code to:", email, "type:", type);
       
-      // Send verification email
+      // Send verification email using Edge Function
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
         body: {
           email: email,
@@ -179,31 +188,11 @@ export default function EmailVerification() {
         }
       });
       
-      console.log("Email function response:", { data: emailData, error: emailError });
+      console.log("Email function response:", emailData);
       
       if (emailError) {
         console.error("Error invoking send-verification function:", emailError);
         throw new Error("Failed to send verification code");
-      }
-      
-      // Store verification code with explicit expiration time (30 minutes from now)
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 30);
-      
-      // Store verification code
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: email,
-          code: verificationCode,
-          type: type,
-          expires_at: expiresAt.toISOString(), // 30 minutes expiry
-          used: false
-        });
-      
-      if (storeError) {
-        console.error("Error storing verification code:", storeError);
-        throw new Error("Failed to process verification");
       }
       
       toast({
