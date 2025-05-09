@@ -21,6 +21,7 @@ export default function VerifyTrustedContact() {
       }
 
       try {
+        console.log('VerifyTrustedContact - Processing token:', token);
         // Verify the token against the database
         const { data: verification, error } = await supabase
           .from('contact_verifications')
@@ -43,8 +44,12 @@ export default function VerifyTrustedContact() {
           return;
         }
         
-        // If token is valid, redirect directly to the verification response page
-        navigate(`/verify/invitation/${token}`);
+        // If token is valid, directly proceeding to verification response
+        console.log('VerifyTrustedContact - Valid token, navigating to:', `/verify/invitation/${token}`);
+        
+        // Instead of redirecting, show success and provide button to proceed
+        setStatus('success');
+        setMessage('Your verification token is valid. Please click below to respond to the invitation.');
         
       } catch (error) {
         console.error('Error in verification process:', error);
@@ -55,6 +60,11 @@ export default function VerifyTrustedContact() {
 
     verifyToken();
   }, [token, navigate]);
+
+  const handleProceedToResponse = () => {
+    console.log('VerifyTrustedContact - User clicked to proceed to response page');
+    navigate(`/verify/invitation/${token}`);
+  };
 
   // Display a loading screen while redirecting
   return (
@@ -80,6 +90,14 @@ export default function VerifyTrustedContact() {
             {message}
           </div>
         </CardContent>
+        
+        {status === 'success' && (
+          <CardFooter className="flex justify-center">
+            <Button variant="default" onClick={handleProceedToResponse}>
+              Respond to Invitation
+            </Button>
+          </CardFooter>
+        )}
         
         {status === 'error' && (
           <CardFooter className="flex justify-center">
