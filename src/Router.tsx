@@ -1,14 +1,15 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Outlet, Navigate } from 'react-router-dom';
+import { SignIn, SignUp, UserProfile, useAuth } from "@clerk/clerk-react";
 import { AuthLayout } from './components/auth/AuthLayout';
-import AuthCallback from './pages/auth/AuthCallback';
-import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import { ClerkProtectedRoute } from './components/auth/ClerkProtectedRoute';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
+import VerifyTrustedContact from './pages/VerifyTrustedContact';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -18,10 +19,6 @@ const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
 const Help = () => <div>Help Center</div>;
 const NotFoundPage = () => <NotFound />;
-const SignIn = () => <div>Sign In Page</div>;
-const SignUp = () => <div>Sign Up Page</div>;
-const ForgotPassword = () => <div>Forgot Password Page</div>;
-const ResetPassword = () => <div>Reset Password Page</div>;
 const Dashboard = () => <div>Dashboard Page</div>;
 const Settings = () => <div>Settings Page</div>;
 const Will = () => <div>Will Page</div>;
@@ -32,12 +29,30 @@ const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
 
 // Auth layout wrapper component that passes children to AuthLayout
-const AuthLayoutWrapper = () => {
+const AuthLayoutWrapper = ({ children }) => {
   return (
-    <AuthLayout>
-      <Outlet />
+    <AuthLayout
+      title="Access Your Account"
+      subtitle="Secure authentication with Clerk"
+    >
+      {children}
     </AuthLayout>
   );
+};
+
+// Protected route that requires authentication
+const ProtectedRoute = ({ children }) => {
+  const { isLoaded, userId, isSignedIn } = useAuth();
+  
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
+  
+  if (!isSignedIn) {
+    return <Navigate to="/sign-in" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 function AppRouter() {
@@ -55,23 +70,59 @@ function AppRouter() {
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
         
-        {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
-        <Route element={<AuthLayoutWrapper />}>
-          <Route path="/auth" element={<SignIn />} />
-          <Route path="/auth/signin" element={<SignIn />} />
-          <Route path="/auth/signup" element={<SignUp />} />
-          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-          <Route path="/auth/reset-password" element={<ResetPassword />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-        </Route>
+        {/* Clerk Authentication Routes */}
+        <Route path="/sign-in" element={
+          <AuthLayoutWrapper>
+            <SignIn routing="path" path="/sign-in" />
+          </AuthLayoutWrapper>
+        } />
+        <Route path="/sign-up" element={
+          <AuthLayoutWrapper>
+            <SignUp routing="path" path="/sign-up" />
+          </AuthLayoutWrapper>
+        } />
+        <Route path="/user-profile" element={
+          <ProtectedRoute>
+            <UserProfile routing="path" path="/user-profile" />
+          </ProtectedRoute>
+        } />
         
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/will" element={<Will />} />
-        <Route path="/future-messages" element={<FutureMessages />} />
-        <Route path="/legacy-vault" element={<LegacyVault />} />
-        <Route path="/check-ins" element={<CheckIns />} />
-        <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
+        {/* Protected Routes */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } />
+        <Route path="/will" element={
+          <ProtectedRoute>
+            <Will />
+          </ProtectedRoute>
+        } />
+        <Route path="/future-messages" element={
+          <ProtectedRoute>
+            <FutureMessages />
+          </ProtectedRoute>
+        } />
+        <Route path="/legacy-vault" element={
+          <ProtectedRoute>
+            <LegacyVault />
+          </ProtectedRoute>
+        } />
+        <Route path="/check-ins" element={
+          <ProtectedRoute>
+            <CheckIns />
+          </ProtectedRoute>
+        } />
+        <Route path="/test-death-verification" element={
+          <ProtectedRoute>
+            <TestDeathVerificationPage />
+          </ProtectedRoute>
+        } />
 
         <Route
           path="/verify/trusted-contact/:token"

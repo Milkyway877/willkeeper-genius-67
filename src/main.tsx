@@ -1,8 +1,10 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import {
+  ClerkProvider,
+} from "@clerk/clerk-react";
 import {
   createBrowserRouter,
   RouterProvider,
@@ -66,6 +68,15 @@ import UpdatesArchive from './pages/documentation/UpdatesArchive';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
+
+// Get the publishable key from Supabase secrets
+// In production, this would be set in your environment variables
+// Since we're pulling from Supabase secrets, we access it directly
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!CLERK_PUBLISHABLE_KEY) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
+}
 
 // Create a unified router configuration
 const router = createBrowserRouter([
@@ -299,10 +310,12 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <NotificationsProvider>
-        <RouterProvider router={router} />
-      </NotificationsProvider>
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <NotificationsProvider>
+          <RouterProvider router={router} />
+        </NotificationsProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
   </React.StrictMode>,
 )

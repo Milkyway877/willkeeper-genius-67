@@ -1,17 +1,10 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserAvatar } from '@/components/UserAvatar';
+import { UserButton, useAuth, useClerk } from '@clerk/clerk-react';
 import { Logo } from '@/components/ui/logo/Logo';
-import { useUserProfile } from '@/contexts/UserProfileContext';
-import { NotificationDropdown } from './NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useNotifications } from '@/contexts/NotificationsContext';
-import { supabase } from '@/integrations/supabase/client';
 import {
   Search,
-  LogOut,
-  Settings,
   Menu,
   Home,
   Info,
@@ -26,7 +19,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
@@ -38,18 +30,18 @@ interface NavbarProps {
 
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
   const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   
-  // Only use notifications context when authenticated
-  const notificationsData = isAuthenticated ? useNotifications() : { unreadCount: 0 };
-  const { unreadCount } = notificationsData;
+  // Use Clerk's isSignedIn instead of the passed prop
+  const userIsAuthenticated = isSignedIn;
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate('/auth/signin');
+      await signOut();
+      navigate('/sign-in');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -79,16 +71,15 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     <div className="relative z-10">
       <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
         <div className="flex h-16 items-center px-4">
-          {/* Removed the hamburger menu button that was here */}
           
-          {(!isAuthenticated || isMobile) && (
+          {(!userIsAuthenticated || isMobile) && (
             <Link to="/" className="flex items-center">
               <Logo size={isMobile ? 'sm' : 'md'} />
             </Link>
           )}
 
           {/* Desktop Navigation Links */}
-          {!isAuthenticated && !isMobile && (
+          {!userIsAuthenticated && !isMobile && (
             <nav className="ml-8 hidden md:flex items-center space-x-6">
               {navLinks.map((link) => (
                 <Link 
@@ -105,7 +96,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           <div className="flex-grow"></div>
 
           <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
+            {userIsAuthenticated ? (
               <>
                 {!showSearchInput ? (
                   <Button 
@@ -130,33 +121,15 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </form>
                 )}
 
-                <NotificationDropdown />
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <UserAvatar />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel className="flex flex-col">
-                      <span className="font-semibold">{profile?.full_name || 'Guest User'}</span>
-                      <span className="text-xs text-gray-500 truncate">{profile?.email || 'No email'}</span>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/settings" className="w-full cursor-pointer flex items-center">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer flex items-center">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Log out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Replace the user dropdown with Clerk's UserButton */}
+                <UserButton 
+                  afterSignOutUrl="/sign-in"
+                  appearance={{
+                    elements: {
+                      userButtonBox: "h-8 w-8"
+                    }
+                  }}
+                />
               </>
             ) : (
               <div className="flex items-center">
@@ -178,19 +151,19 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       ))}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link to="/auth/signin" className="w-full">Sign in</Link>
+                        <Link to="/sign-in" className="w-full">Sign in</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/auth/signup" className="w-full">Sign up</Link>
+                        <Link to="/sign-up" className="w-full">Sign up</Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
                   <>
-                    <Link to="/auth/signin" className="ml-4">
+                    <Link to="/sign-in" className="ml-4">
                       <Button variant="ghost">Sign in</Button>
                     </Link>
-                    <Link to="/auth/signup">
+                    <Link to="/sign-up">
                       <Button>Sign up</Button>
                     </Link>
                   </>
