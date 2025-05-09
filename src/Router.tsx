@@ -33,6 +33,7 @@ function AppRouter() {
   return (
     <Router>
       <Routes>
+        {/* Public routes */}
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
@@ -47,60 +48,30 @@ function AppRouter() {
         {/* Auth routes */}
         <Route path="/auth/signin" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
-        
-        {/* Clerk specific routes - make sure these match Clerk's expected paths */}
         <Route path="/auth/signup/*" element={<SignUpPage />} />
         <Route path="/auth/signup/verify-email-address" element={<SignUpPage />} />
         
-        {/* User profile route */}
-        <Route path="/user-profile" element={
-          <ClerkProtectedRoute>
-            <UserProfile routing="path" path="/user-profile" />
-          </ClerkProtectedRoute>
-        } />
+        {/* Verification routes */}
+        <Route path="/verify/trusted-contact/:token" element={<VerifyTrustedContact />} />
         
-        {/* Protected Routes */}
-        <Route path="/dashboard" element={
-          <ClerkProtectedRoute>
-            <Dashboard />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ClerkProtectedRoute>
-            <Settings />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/will" element={
-          <ClerkProtectedRoute>
-            <Will />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/future-messages" element={
-          <ClerkProtectedRoute>
-            <FutureMessages />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/legacy-vault" element={
-          <ClerkProtectedRoute>
-            <LegacyVault />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/check-ins" element={
-          <ClerkProtectedRoute>
-            <CheckIns />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/test-death-verification" element={
-          <ClerkProtectedRoute>
-            <TestDeathVerificationPage />
-          </ClerkProtectedRoute>
-        } />
-
-        <Route
-          path="/verify/trusted-contact/:token"
-          element={<VerifyTrustedContact />}
+        {/* Protected routes - now rendered directly */}
+        <Route 
+          path="/user-profile" 
+          element={
+            <ClerkProtectedRoute>
+              <UserProfile routing="path" path="/user-profile" />
+            </ClerkProtectedRoute>
+          } 
         />
+        <Route path="/dashboard" element={<ClerkProtectedRoute><Dashboard /></ClerkProtectedRoute>} />
+        <Route path="/settings" element={<ClerkProtectedRoute><Settings /></ClerkProtectedRoute>} />
+        <Route path="/will" element={<ClerkProtectedRoute><Will /></ClerkProtectedRoute>} />
+        <Route path="/future-messages" element={<ClerkProtectedRoute><FutureMessages /></ClerkProtectedRoute>} />
+        <Route path="/legacy-vault" element={<ClerkProtectedRoute><LegacyVault /></ClerkProtectedRoute>} />
+        <Route path="/check-ins" element={<ClerkProtectedRoute><CheckIns /></ClerkProtectedRoute>} />
+        <Route path="/test-death-verification" element={<ClerkProtectedRoute><TestDeathVerificationPage /></ClerkProtectedRoute>} />
         
+        {/* Catch-all route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>

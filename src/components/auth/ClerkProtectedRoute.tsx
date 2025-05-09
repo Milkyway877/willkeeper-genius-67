@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { useAuth } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 
