@@ -48,9 +48,17 @@ export default function EmailVerification() {
       console.log("Verification query result:", { data: verificationData, error: verificationError });
 
       if (verificationError || !verificationData) {
+        let errorMessage = "The code you entered is invalid or has expired. Please try again or request a new code.";
+        
+        if (verificationError?.code === 'PGRST116') {
+          errorMessage = "Verification code not found. Please check the code and try again.";
+        } else if (verificationError?.message?.includes('expires_at')) {
+          errorMessage = "This verification code has expired. Please request a new one.";
+        }
+        
         toast({
           title: "Verification failed",
-          description: "The code you entered is invalid or has expired. Please try again or request a new code.",
+          description: errorMessage,
           variant: "destructive",
         });
         
@@ -66,19 +74,35 @@ export default function EmailVerification() {
       }
 
       // Mark code as used
-      await supabase
+      const { error: updateError } = await supabase
         .from('email_verification_codes')
         .update({ used: true })
         .eq('id', verificationData.id);
+      
+      if (updateError) {
+        console.error("Error marking code as used:", updateError);
+        // Continue with verification even if marking as used fails
+      }
 
       if (type === 'signup') {
         // For signup flow - update user profile to mark email as verified
-        await supabase
+        const { error: profileError } = await supabase
           .from('user_profiles')
           .update({ 
-            email_verified: true
+            email_verified: true 
           })
           .eq('email', email);
+        
+        if (profileError) {
+          console.error("Error updating user profile:", profileError);
+          toast({
+            title: "Verification error",
+            description: "Your email was verified, but we couldn't update your profile. Please contact support.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
         
         toast({
           title: "Email verified",
@@ -94,10 +118,14 @@ export default function EmailVerification() {
         
         if (storedEmail) {
           // Update user profile to mark login verification successful
-          await supabase
+          const { error: profileError } = await supabase
             .from('user_profiles')
             .update({ last_login: new Date().toISOString() })
             .eq('email', email);
+            
+          if (profileError) {
+            console.error("Error updating login timestamp:", profileError);
+          }
             
           // Clear stored email
           sessionStorage.removeItem('auth_email');
@@ -158,6 +186,10 @@ export default function EmailVerification() {
         throw new Error("Failed to send verification code");
       }
       
+      // Store verification code with explicit expiration time (30 minutes from now)
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+      
       // Store verification code
       const { error: storeError } = await supabase
         .from('email_verification_codes')
@@ -165,7 +197,7 @@ export default function EmailVerification() {
           email: email,
           code: verificationCode,
           type: type,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+          expires_at: expiresAt.toISOString(), // 30 minutes expiry
           used: false
         });
       
