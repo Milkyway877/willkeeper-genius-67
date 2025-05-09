@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -362,7 +361,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           </div>
         ) : (
           <>
-            <Alert variant="info" className="mb-4">
+            <Alert variant="default" className="mb-4">
               <Info className="h-4 w-4" />
               <AlertTitle>Important</AlertTitle>
               <AlertDescription>

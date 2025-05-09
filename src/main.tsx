@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -11,6 +12,7 @@ import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
 import VerificationResponse from './pages/verify/VerificationResponse.tsx';
 import VerificationPortal from './pages/verify/VerificationPortal.tsx';
+import VerifyTrustedContact from './pages/VerifyTrustedContact.tsx';
 import Home from './pages/Index';
 import About from './pages/About';
 import Contact from './pages/Contact';
