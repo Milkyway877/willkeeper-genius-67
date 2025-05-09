@@ -12,6 +12,11 @@ import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import SignInPage from './pages/auth/SignIn';
 import SignUpPage from './pages/auth/SignUp';
 import Dashboard from './pages/Dashboard';
+import WillsPage from './pages/wills/Wills';
+import TankPage from './pages/tank/Tank';
+import CheckInsPage from './pages/CheckIns';
+import IDSecurityPage from './pages/security/IDSecurity';
+import BillingPage from './pages/billing/Billing';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -22,10 +27,6 @@ const Privacy = () => <div>Privacy Page</div>;
 const Help = () => <div>Help Center</div>;
 const NotFoundPage = () => <NotFound />;
 const Settings = () => <div>Settings Page</div>;
-const Will = () => <div>Will Page</div>;
-const FutureMessages = () => <div>Future Messages Page</div>;
-const LegacyVault = () => <div>Legacy Vault Page</div>;
-const CheckIns = () => <div>Check-Ins Page</div>;
 const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
 
@@ -65,10 +66,11 @@ function AppRouter() {
         />
         <Route path="/dashboard" element={<ClerkProtectedRoute><Dashboard /></ClerkProtectedRoute>} />
         <Route path="/settings" element={<ClerkProtectedRoute><Settings /></ClerkProtectedRoute>} />
-        <Route path="/will" element={<ClerkProtectedRoute><Will /></ClerkProtectedRoute>} />
-        <Route path="/future-messages" element={<ClerkProtectedRoute><FutureMessages /></ClerkProtectedRoute>} />
-        <Route path="/legacy-vault" element={<ClerkProtectedRoute><LegacyVault /></ClerkProtectedRoute>} />
-        <Route path="/check-ins" element={<ClerkProtectedRoute><CheckIns /></ClerkProtectedRoute>} />
+        <Route path="/wills" element={<ClerkProtectedRoute><WillsPage /></ClerkProtectedRoute>} />
+        <Route path="/tank" element={<ClerkProtectedRoute><TankPage /></ClerkProtectedRoute>} />
+        <Route path="/pages/security/IDSecurity" element={<ClerkProtectedRoute><IDSecurityPage /></ClerkProtectedRoute>} />
+        <Route path="/check-ins" element={<ClerkProtectedRoute><CheckInsPage /></ClerkProtectedRoute>} />
+        <Route path="/pages/billing/Billing" element={<ClerkProtectedRoute><BillingPage /></ClerkProtectedRoute>} />
         <Route path="/test-death-verification" element={<ClerkProtectedRoute><TestDeathVerificationPage /></ClerkProtectedRoute>} />
         
         {/* Catch-all route */}
