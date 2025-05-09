@@ -21,12 +21,16 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Two-factor-auth function called");
     const { action, email, code, secret, userId } = await req.json();
+    console.log("Request parameters:", { action, email: !!email, userId: !!userId, code: !!code, secret: !!secret });
+    
     const supabase = getSupabaseClient();
     
     // Handle different actions
     switch (action) {
       case "generate": {
+        console.log("Generating new 2FA secret");
         // Generate a new secret for setting up Google Authenticator
         const secret = generateSecret();
         
@@ -41,6 +45,7 @@ serve(async (req) => {
         
         // Get the URL for generating a QR code
         const qrCodeUrl = totp.toString();
+        console.log("Generated 2FA setup data successfully");
         
         return new Response(
           JSON.stringify({
@@ -56,8 +61,10 @@ serve(async (req) => {
       }
       
       case "verify": {
+        console.log("Verifying 2FA code");
         // Verify a TOTP code against the user's stored secret
         if ((!email && !userId) || !code) {
+          console.error("Missing required parameters");
           return new Response(
             JSON.stringify({
               success: false,
@@ -75,6 +82,7 @@ serve(async (req) => {
         let securityError = null;
         
         if (email) {
+          console.log("Looking up security by email:", email);
           const securityResult = await supabase
             .from("user_security")
             .select("google_auth_secret, user_id")
@@ -83,6 +91,12 @@ serve(async (req) => {
             
           securityData = securityResult.data;
           securityError = securityResult.error;
+          
+          if (securityError) {
+            console.error("Error looking up by email:", securityError);
+          } else if (securityData) {
+            console.log("Found security data by email");
+          }
         }
         
         // If email lookup failed or returned no results, try with userId
@@ -98,8 +112,15 @@ serve(async (req) => {
           securityData = securityByIdResult.data;
           securityError = securityByIdResult.error;
           
+          if (securityError) {
+            console.error("Error looking up by userId:", securityError);
+          } else if (securityData) {
+            console.log("Found security data by userId");
+          }
+          
           // If we found a record by user_id but it's missing the email, update it
           if (securityData && !securityData.email && email) {
+            console.log("Updating security record with email");
             await supabase
               .from("user_security")
               .update({ email })
@@ -130,13 +151,15 @@ serve(async (req) => {
           period: 30
         });
         
-        // Verify the provided code
+        // Verify the provided code - with a window of 1 to allow for slight time drift
         const delta = totp.validate({ token: code, window: 1 });
         
         // delta is null if the code is invalid, otherwise it's the time step difference
         const isValid = delta !== null;
+        console.log("Verification result:", isValid ? "valid" : "invalid");
         
         if (isValid) {
+          console.log("Valid 2FA code, updating records");
           // Get the actual user_id to update records
           const userIdToUpdate = securityData.user_id || userId;
           
@@ -181,8 +204,10 @@ serve(async (req) => {
       }
       
       case "validate": {
+        console.log("Validating 2FA setup");
         // Validate a code during setup to ensure the user scanned the QR code correctly
         if (!code || !secret) {
+          console.error("Missing code or secret for validation");
           return new Response(
             JSON.stringify({
               success: false,
@@ -207,8 +232,10 @@ serve(async (req) => {
         // Verify the provided code
         const delta = totp.validate({ token: code, window: 1 });
         const isValid = delta !== null;
+        console.log("Setup validation result:", isValid ? "valid" : "invalid");
         
         if (isValid && userId) {
+          console.log("Valid setup, saving to database");
           // Check if a record already exists for this user
           const { data: existingRecord } = await supabase
             .from("user_security")
@@ -217,6 +244,7 @@ serve(async (req) => {
             .maybeSingle();
           
           if (existingRecord) {
+            console.log("Updating existing security record");
             // Update existing record
             const { error: updateError } = await supabase
               .from("user_security")
@@ -241,6 +269,7 @@ serve(async (req) => {
               );
             }
           } else {
+            console.log("Creating new security record");
             // Insert new record
             const { error: insertError } = await supabase
               .from("user_security")
@@ -280,6 +309,7 @@ serve(async (req) => {
       }
       
       default:
+        console.error("Invalid action requested:", action);
         return new Response(
           JSON.stringify({
             success: false,

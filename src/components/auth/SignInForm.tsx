@@ -51,6 +51,7 @@ export function SignInForm() {
   const onSubmit = async (data: SignInFormInputs) => {
     try {
       setIsLoading(true);
+      console.log("Attempting sign in with email:", data.email);
       
       // Validate captcha first
       const isCaptchaValid = validateCaptcha();
@@ -71,6 +72,7 @@ export function SignInForm() {
       });
       
       if (authError) {
+        console.error("Authentication error:", authError);
         toast({
           title: "Authentication failed",
           description: authError.message,
@@ -84,12 +86,16 @@ export function SignInForm() {
       await supabase.auth.signOut();
       
       if (authData.user) {
+        console.log("User authenticated successfully, checking for 2FA requirement");
+        
         // Check if user has a profile entry
         const { data: profileData } = await supabase
           .from('user_profiles')
           .select('id, email')
           .eq('id', authData.user.id)
           .maybeSingle();
+
+        console.log("Profile data:", profileData);
 
         // Check if user has 2FA enabled by looking up security record
         const { data: securityData } = await supabase
@@ -98,8 +104,11 @@ export function SignInForm() {
           .eq('user_id', authData.user.id)
           .maybeSingle();
           
+        console.log("Security data:", securityData);
+          
         // If security record exists but doesn't have email field, update it
         if (securityData && !securityData.email && data.email) {
+          console.log("Updating security record with email");
           await supabase
             .from('user_security')
             .update({ email: data.email })
@@ -108,15 +117,18 @@ export function SignInForm() {
         
         // If profile exists but doesn't have the email, update it
         if (profileData && !profileData.email && data.email) {
+          console.log("Updating profile with email");
           await supabase
             .from('user_profiles')
             .update({ email: data.email })
             .eq('id', authData.user.id);
         }
 
-        // Store the email in session storage for the 2FA page
+        // Store both email and user ID in session storage for the 2FA page
         sessionStorage.setItem('auth_email', data.email);
+        sessionStorage.setItem('auth_user_id', authData.user.id);
         
+        console.log("Redirecting to 2FA page");
         // Redirect to 2FA page
         navigate('/auth/two-factor');
       }

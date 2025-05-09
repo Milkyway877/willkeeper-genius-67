@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Shield, Info, AlertTriangle } from 'lucide-react';
+import { AlertCircle, Shield, AlertTriangle } from 'lucide-react';
 import { VerificationCodeInput } from '@/components/ui/VerificationCodeInput';
 import { SecurityInfoPanel } from '@/components/auth/SecurityInfoPanel';
 import { QRCode } from '@/components/ui/QRCode';
@@ -14,7 +15,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function TwoFactorAuth() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -27,109 +27,121 @@ export default function TwoFactorAuth() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get email from sessionStorage
+    console.log("TwoFactorAuth component mounted");
+    
+    // Get email and userId from sessionStorage
     const storedEmail = sessionStorage.getItem('auth_email');
+    const storedUserId = sessionStorage.getItem('auth_user_id');
+    
+    console.log("Session storage data:", { email: storedEmail, userId: storedUserId });
+    
     if (!storedEmail) {
+      console.log("No email found in session storage, redirecting to sign in");
+      toast({
+        title: "Session expired",
+        description: "Please sign in again.",
+        variant: "destructive",
+      });
       navigate('/auth/signin', { replace: true });
       return;
     }
     
     setEmail(storedEmail);
+    if (storedUserId) {
+      setUserId(storedUserId);
+    }
     
     // Check if user has 2FA enabled
     const checkUserSecurity = async () => {
       try {
         setIsLoading(true);
+        console.log("Checking user security status");
         
-        // First get the user ID associated with this email
-        const { data: userData, error: userError } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('email', storedEmail)
-          .maybeSingle();
-        
-        if (userError) {
-          console.error('Error fetching user profile:', userError);
-          toast({
-            title: "Error",
-            description: "Failed to fetch user information. Please try again.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
+        // If we don't have userId but have email, try to get userId from email
+        if (!storedUserId && storedEmail) {
+          console.log("Looking up user by email:", storedEmail);
+          const { data: userData, error: userError } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('email', storedEmail)
+            .maybeSingle();
+          
+          if (userError) {
+            console.error('Error fetching user profile by email:', userError);
+          } else if (userData?.id) {
+            console.log("Found user by email:", userData.id);
+            setUserId(userData.id);
+            sessionStorage.setItem('auth_user_id', userData.id);
+          }
         }
         
-        if (userData?.id) {
-          setUserId(userData.id);
-        }
+        // Try to get security data using both email and userId for better fallback
+        let securityData = null;
+        let securityError = null;
         
-        // Check for security record using email
-        const { data: securityData, error } = await supabase
-          .from('user_security')
-          .select('google_auth_enabled, google_auth_secret')
-          .eq('email', storedEmail)
-          .maybeSingle();
-          
-        if (error) {
-          console.error('Error checking 2FA status by email:', error);
-          
-          // If we have a userId, try looking up by user_id instead
-          if (userData?.id) {
-            const { data: securityByUserId, error: userIdError } = await supabase
-              .from('user_security')
-              .select('google_auth_enabled, google_auth_secret')
-              .eq('user_id', userData.id)
-              .maybeSingle();
-              
-            if (userIdError) {
-              console.error('Error checking 2FA status by user_id:', userIdError);
-              toast({
-                title: "Error",
-                description: "Failed to fetch security information. Please try again.",
-                variant: "destructive",
-              });
-              setIsLoading(false);
-              return;
-            }
+        // First try by email since that's most reliable
+        if (storedEmail) {
+          console.log("Looking up security by email:", storedEmail);
+          const { data, error } = await supabase
+            .from('user_security')
+            .select('google_auth_enabled, google_auth_secret, user_id')
+            .eq('email', storedEmail)
+            .maybeSingle();
             
-            // Update security data with what we found by user_id
-            if (securityByUserId) {
-              // If the record exists but doesn't have the email, update it
-              const { error: updateError } = await supabase
+          securityData = data;
+          securityError = error;
+          
+          if (error) {
+            console.error('Error fetching security by email:', error);
+          } else if (data) {
+            console.log("Found security by email:", data);
+          }
+        }
+        
+        // If no result by email, try by user_id if available
+        if ((!securityData || securityError) && (storedUserId || userId)) {
+          const lookupId = storedUserId || userId;
+          console.log("Looking up security by user_id:", lookupId);
+          
+          const { data, error } = await supabase
+            .from('user_security')
+            .select('google_auth_enabled, google_auth_secret, email')
+            .eq('user_id', lookupId)
+            .maybeSingle();
+            
+          if (error) {
+            console.error('Error fetching security by user_id:', error);
+          } else if (data) {
+            console.log("Found security by user_id:", data);
+            securityData = data;
+            securityError = null;
+            
+            // Update the record with email if missing
+            if (!data.email && storedEmail) {
+              console.log("Updating security record with email");
+              await supabase
                 .from('user_security')
                 .update({ email: storedEmail })
-                .eq('user_id', userData.id);
-              
-              if (updateError) {
-                console.error('Error updating security record with email:', updateError);
-              }
-              
-              // Process the security data
-              if (securityByUserId.google_auth_enabled && securityByUserId.google_auth_secret) {
-                setIs2FASetup(true);
-              } else {
-                setIs2FASetup(false);
-                setShowSetup(false);
-              }
-              
-              setIsLoading(false);
-              return;
+                .eq('user_id', lookupId);
             }
           }
         }
         
         // If 2FA is already set up
         if (securityData?.google_auth_enabled && securityData?.google_auth_secret) {
+          console.log("2FA is already set up");
           setIs2FASetup(true);
         } else {
+          console.log("2FA is not set up yet");
           // If 2FA is not set up, we need to generate a new secret
           setIs2FASetup(false);
           
           // Only show setup if the user explicitly clicks to set up
           setShowSetup(false);
           
-          // Generate secret for setup if needed
+          // Generate secret for setup
           if (!showSetup) {
+            console.log("Generating 2FA setup secret");
             const { data, error } = await supabase.functions.invoke('two-factor-auth', {
               body: { 
                 action: 'generate',
@@ -148,6 +160,7 @@ export default function TwoFactorAuth() {
               return;
             }
             
+            console.log("Successfully generated 2FA setup data");
             setQrCodeUrl(data.qrCodeUrl);
             setSecretKey(data.secret);
           }
@@ -176,7 +189,7 @@ export default function TwoFactorAuth() {
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      console.log(`Verifying Google Auth code for email: ${email}`);
+      console.log(`Verifying Google Auth code for email: ${email}, userId: ${userId}`);
       
       // Call our edge function to verify the OTP
       const { data, error } = await supabase.functions.invoke('two-factor-auth', {
@@ -200,8 +213,9 @@ export default function TwoFactorAuth() {
         variant: "default",
       });
       
-      // Clear email from session storage
+      // Clear session storage
       sessionStorage.removeItem('auth_email');
+      sessionStorage.removeItem('auth_user_id');
       
       // Redirect to dashboard
       navigate('/dashboard', { replace: true });
@@ -245,20 +259,14 @@ export default function TwoFactorAuth() {
     setIsLoading(true);
     
     try {
-      // Get the current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error("User not found. Please ensure you're logged in.");
-      }
-      
+      console.log("Setting up 2FA with code:", code);
       // Call our edge function to validate and enable 2FA
       const { data, error } = await supabase.functions.invoke('two-factor-auth', {
         body: {
           action: 'validate',
           code: code,
           secret: secretKey,
-          userId: user.id,
+          userId: userId,
           email: email
         }
       });
@@ -293,6 +301,7 @@ export default function TwoFactorAuth() {
   
   const handleBackToLogin = () => {
     sessionStorage.removeItem('auth_email');
+    sessionStorage.removeItem('auth_user_id');
     navigate('/auth/signin', { replace: true });
   };
   

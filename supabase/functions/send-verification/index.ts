@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { getSupabaseClient } from "../_shared/db-helper.ts";
@@ -47,12 +48,14 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    const { email, type, useLink = true } = requestBody;
+    const { email, type = 'signup', useLink = true } = requestBody;
     
-    if (!email || !type) {
+    console.log("Request body:", { email: !!email, type, useLink });
+    
+    if (!email) {
       console.error("Missing required fields", { email: !!email, type });
       return new Response(
-        JSON.stringify({ error: "Missing required fields: email and type are required" }),
+        JSON.stringify({ error: "Missing required field: email is required" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -233,8 +236,30 @@ serve(async (req) => {
       </div>
     `;
 
+    // Test mode - avoid sending actual emails during development
+    const isTestMode = Deno.env.get('IS_TEST_MODE') === 'true';
+    
+    if (isTestMode) {
+      console.log("Test mode enabled, skipping email send");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Verification link created (test mode, email not sent)",
+          testMode: true,
+          verificationLink,
+          verificationCode: code, // Only include in test mode
+          verificationId: verificationRecord?.id,
+        }), 
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+    
     // Now send the email
     try {
+      console.log("Sending verification email");
       const emailResponse = await resend.emails.send({
         from: `${fromName} <${fromEmail}>`,
         to: [email],
