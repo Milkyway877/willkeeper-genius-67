@@ -18,7 +18,8 @@ export const ClerkProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!isSignedIn) {
-    return <Navigate to="/auth/signin" replace />;
+    // Use Clerk's default sign-in path
+    return <Navigate to="/sign-in" replace />;
   }
 
   return <>{children}</>;
