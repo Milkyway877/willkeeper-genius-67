@@ -109,7 +109,13 @@ export default function EmailVerify() {
         
         // Automatically redirect to login
         setTimeout(() => {
-          navigate('/auth/signin?verified=true&email=' + encodeURIComponent(data.email));
+          // For signup, go to dashboard after verification
+          if (type === 'signup') {
+            navigate('/dashboard?verified=true&email=' + encodeURIComponent(data.email));
+          } else {
+            // For other verification types, go to login
+            navigate('/auth/signin?verified=true&email=' + encodeURIComponent(data.email));
+          }
         }, 2000);
       } catch (error) {
         console.error('Error during email verification:', error);
@@ -128,6 +134,10 @@ export default function EmailVerify() {
     } else {
       navigate('/auth/signin');
     }
+  };
+
+  const handleGoToDashboard = () => {
+    navigate('/dashboard');
   };
 
   const renderContent = () => {
@@ -163,15 +173,22 @@ export default function EmailVerify() {
         <div className="text-center py-8">
           <div className="bg-green-100 text-green-700 p-4 rounded-md mb-4">
             <p className="font-medium">Email verified successfully!</p>
-            <p className="text-sm mt-1">You'll be redirected to login automatically in a few seconds...</p>
+            <p className="text-sm mt-1">You'll be redirected automatically in a few seconds...</p>
           </div>
-          <Button 
-            variant="default"
-            className="mt-4"
-            onClick={handleReturnToLogin}
-          >
-            Go to login
-          </Button>
+          <div className="flex justify-center gap-4 mt-4">
+            <Button 
+              variant="outline"
+              onClick={handleReturnToLogin}
+            >
+              Go to login
+            </Button>
+            <Button 
+              variant="default"
+              onClick={handleGoToDashboard}
+            >
+              Go to dashboard
+            </Button>
+          </div>
         </div>
       );
     }

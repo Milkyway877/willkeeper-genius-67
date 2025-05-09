@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { getSupabaseClient } from "../_shared/db-helper.ts";
@@ -64,23 +63,23 @@ serve(async (req) => {
     console.log(`Sending ${type} verification ${useLink ? 'link' : 'code'} to ${email}`);
     
     // Generate verification code or token based on the request
-    const code = !useLink ? (requestBody.code || Math.floor(100000 + Math.random() * 900000).toString()) 
-                        : Math.floor(100000 + Math.random() * 900000).toString();
+    // Always create a 6-digit code as backup
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     
-    // Generate a secure token for link-based verification
-    const token = useLink ? generateSecureToken(email, type) : null;
+    // Always generate a secure token for link-based verification
+    const token = generateSecureToken(email, type);
 
     // Use consistent email subjects and messaging
-    let subject = useLink ? "Verify your email address" : "Your verification code";
+    let subject = "Verify your email address";
     let actionText = "verify your email";
     let headerText = "Verify your email";
     
     if (type === 'signup') {
-      subject = useLink ? "Complete your WillTank account setup" : "Verify your WillTank account";
+      subject = "Complete your WillTank account setup";
       actionText = "complete your account setup";
       headerText = "Welcome to WillTank";
     } else if (type === 'login') {
-      subject = useLink ? "Login verification for WillTank" : "Your login verification code";
+      subject = "Login verification for WillTank";
       actionText = "sign in to your account";
       headerText = "Login verification";
     }
@@ -125,9 +124,9 @@ serve(async (req) => {
       console.error("Error during rate limit check:", error);
     }
 
-    // Set expiration time to 30 minutes from now
+    // Set expiration time to 24 hours from now for better user experience
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+    expiresAt.setHours(expiresAt.getHours() + 24);
     
     // Delete any old unused codes/tokens for this email and type to prevent confusion
     try {
@@ -146,18 +145,17 @@ serve(async (req) => {
       // Continue regardless of cleanup success
     }
     
-    // Construct verification link for link-based verification
+    // Construct verification link
     let verificationLink = '';
     const baseUrl = Deno.env.get('PUBLIC_SITE_URL') || 'http://localhost:3000';
     
-    if (useLink) {
-      if (type === 'signup') {
-        verificationLink = `${baseUrl}/auth/verify?token=${token}&type=${type}`;
-      } else if (type === 'login') {
-        verificationLink = `${baseUrl}/auth/login-verify?token=${token}&email=${encodeURIComponent(email)}`;
-      } else {
-        verificationLink = `${baseUrl}/auth/verify?token=${token}&type=${type}`;
-      }
+    // Always use link-based verification
+    if (type === 'signup') {
+      verificationLink = `${baseUrl}/auth/verify?token=${token}&type=${type}`;
+    } else if (type === 'login') {
+      verificationLink = `${baseUrl}/auth/login-verify?token=${token}&email=${encodeURIComponent(email)}`;
+    } else {
+      verificationLink = `${baseUrl}/auth/verify?token=${token}&type=${type}`;
     }
     
     console.log("Storing verification data in database");
@@ -170,7 +168,7 @@ serve(async (req) => {
         .insert({
           email: email,
           code: code,
-          token: token, // Store the token if using link-based verification
+          token: token,
           type: type,
           expires_at: expiresAt.toISOString(),
           used: false
@@ -207,60 +205,33 @@ serve(async (req) => {
       );
     }
 
-    // Create the appropriate email content based on verification method
-    let emailHtml = '';
-    
-    if (useLink) {
-      // Link-based verification email
-      emailHtml = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1a1a1a;">${headerText}</h2>
-          <p style="color: #4a4a4a; font-size: 16px; line-height: 1.5;">
-            Please click the button below to ${actionText}:
-          </p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationLink}" style="background-color: #4F46E5; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
-              Verify My Email
-            </a>
-          </div>
-          <p style="color: #4a4a4a; font-size: 14px;">
-            If the button above doesn't work, you can copy and paste the following link into your browser:
-          </p>
-          <p style="background-color: #f4f4f4; padding: 10px; border-radius: 4px; font-size: 14px; word-break: break-all;">
-            ${verificationLink}
-          </p>
-          <p style="color: #4a4a4a; font-size: 14px;">
-            This link will expire in 30 minutes. If you didn't request this verification, please ignore this email.
-          </p>
-          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">
-          <p style="color: #666; font-size: 12px; text-align: center;">
-            © ${new Date().getFullYear()} WillTank. All rights reserved.
-          </p>
+    // Create the email content - always use link-based verification
+    const emailHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a1a;">${headerText}</h2>
+        <p style="color: #4a4a4a; font-size: 16px; line-height: 1.5;">
+          Please click the button below to ${actionText}:
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verificationLink}" style="background-color: #4F46E5; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+            Verify My Email
+          </a>
         </div>
-      `;
-    } else {
-      // Code-based verification email (fallback)
-      emailHtml = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1a1a1a;">${headerText}</h2>
-          <p style="color: #4a4a4a; font-size: 16px; line-height: 1.5;">
-            Please use the following verification code to ${actionText}:
-          </p>
-          <div style="background-color: #f4f4f4; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-            <span style="font-size: 32px; letter-spacing: 8px; font-weight: bold; color: #1a1a1a;">
-              ${code}
-            </span>
-          </div>
-          <p style="color: #4a4a4a; font-size: 14px;">
-            This code will expire in 30 minutes. If you didn't request this verification, please ignore this email.
-          </p>
-          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">
-          <p style="color: #666; font-size: 12px; text-align: center;">
-            © ${new Date().getFullYear()} WillTank. All rights reserved.
-          </p>
-        </div>
-      `;
-    }
+        <p style="color: #4a4a4a; font-size: 14px;">
+          If the button above doesn't work, you can copy and paste the following link into your browser:
+        </p>
+        <p style="background-color: #f4f4f4; padding: 10px; border-radius: 4px; font-size: 14px; word-break: break-all;">
+          ${verificationLink}
+        </p>
+        <p style="color: #4a4a4a; font-size: 14px;">
+          This link will expire in 24 hours. If you didn't request this verification, please ignore this email.
+        </p>
+        <hr style="border: none; border-top: 1px solid #eaeaea; margin: 20px 0;">
+        <p style="color: #666; font-size: 12px; text-align: center;">
+          © ${new Date().getFullYear()} WillTank. All rights reserved.
+        </p>
+      </div>
+    `;
 
     // Now send the email
     try {
@@ -276,7 +247,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Verification ${useLink ? 'link' : 'code'} sent successfully`,
+          message: "Verification link sent successfully",
           emailId: emailResponse?.id,
           verificationId: verificationRecord?.id,
         }), 

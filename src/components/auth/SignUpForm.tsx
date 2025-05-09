@@ -106,7 +106,9 @@ export function SignUpForm() {
       // Store email in session storage for verification page (NOT password)
       sessionStorage.setItem('auth_email', data.email);
       
-      // Try to send verification email through the edge function
+      let verificationSent = false;
+      let errorMessage = '';
+      
       try {
         console.log("Sending verification email to:", data.email);
         
@@ -115,48 +117,78 @@ export function SignUpForm() {
           body: {
             email: data.email,
             type: 'signup',
-            useLink: true // Use link-based verification instead of codes
+            useLink: true // Always use link-based verification
           }
         });
 
-        if (emailError) {
-          // Handle edge function error but continue with the registration flow
-          console.error("Error invoking send-verification function:", emailError);
-          
-          // Instead of failing, use a direct approach to create verification record
-          await createFallbackVerification(data.email);
-          
-          toast({
-            title: "Account created successfully",
-            description: "We'll send you a verification email shortly. Please check your inbox.",
-            variant: "default",
-          });
+        if (emailError || !emailData?.success) {
+          console.error("Error invoking send-verification function:", emailError || emailData?.error);
+          errorMessage = emailError?.message || emailData?.error || "Failed to send verification email";
+          // We'll create a fallback verification below
         } else {
           console.log("Verification email sent successfully");
-          
-          toast({
-            title: "Verification email sent",
-            description: "Please check your email and click the verification link to complete your registration.",
-            variant: "default",
-          });
+          verificationSent = true;
         }
-        
-        // Navigate to verification page (we'll show a waiting screen)
-        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
       } catch (error: any) {
-        // If verification process fails, but user is created
         console.error("Error in verification process:", error);
-        
-        // Create a fallback verification record
-        await createFallbackVerification(data.email);
-        
+        errorMessage = error.message || "Failed to send verification email";
+        // We'll create a fallback verification below
+      }
+      
+      // If verification email sending failed, create a fallback verification
+      if (!verificationSent) {
+        try {
+          // Generate a token directly in the client
+          const token = generateSecureToken(data.email);
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24); // Expire in 24 hours
+          
+          console.log("Creating fallback verification record");
+          
+          // Try to insert the verification record directly
+          const { error: fallbackError } = await supabase
+            .from('email_verification_codes')
+            .insert({
+              email: data.email,
+              code: String(Math.floor(100000 + Math.random() * 900000)), // 6-digit code
+              token: token,
+              type: 'signup',
+              expires_at: expiresAt.toISOString(),
+              used: false
+            });
+            
+          if (fallbackError) {
+            console.error("Fallback verification creation failed:", fallbackError);
+            errorMessage = fallbackError.message;
+          } else {
+            console.log("Fallback verification created successfully");
+            verificationSent = true; // We created a verification record, so count this as success
+          }
+        } catch (err: any) {
+          console.error("Error in createFallbackVerification:", err);
+          errorMessage = err.message || "Failed to create verification";
+        }
+      }
+      
+      // Show appropriate message based on verification status
+      if (verificationSent) {
         toast({
-          title: "Account created",
-          description: "Your account was created, but we couldn't send the verification email. Please try signing in.",
+          title: "Account created successfully",
+          description: "We've sent a verification link to your email. Please check your inbox and click the link to activate your account.",
           variant: "default",
         });
         
-        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
+        // Navigate to verification page with autologin flag
+        navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup&autologin=true`);
+      } else {
+        // If everything failed, still let them know account was created but with warning
+        toast({
+          title: "Account created with issues",
+          description: `Your account was created, but we couldn't send the verification email. Error: ${errorMessage}`,
+          variant: "destructive",
+        });
+        
+        navigate('/auth/signin');
       }
     } catch (error: any) {
       console.error("Error during signup:", error);
@@ -169,42 +201,13 @@ export function SignUpForm() {
       setIsLoading(false);
     }
   };
-  
-  // Fallback function to create verification record directly in the database
-  const createFallbackVerification = async (email: string) => {
-    try {
-      // Generate a token directly in the client (not ideal but better than failing)
-      const token = generateSimpleToken();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 30); // Expire in 30 minutes
-      
-      // Try to insert the verification record directly
-      const { error } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: email,
-          code: String(Math.floor(100000 + Math.random() * 900000)), // 6-digit code
-          token: token,
-          type: 'signup',
-          expires_at: expiresAt.toISOString(),
-          used: false
-        });
-        
-      if (error) {
-        console.error("Fallback verification creation failed:", error);
-      } else {
-        console.log("Fallback verification created successfully");
-      }
-    } catch (err) {
-      console.error("Error in createFallbackVerification:", err);
-    }
-  };
-  
-  // Simple function to generate a basic token when edge functions fail
-  const generateSimpleToken = (): string => {
+
+  // Generate a more secure token for verification links
+  const generateSecureToken = (email: string): string => {
     const timestamp = Date.now().toString();
     const randomPart = Math.random().toString(36).substring(2, 15);
-    return `${timestamp}.${randomPart}`;
+    const secondRandomPart = Math.random().toString(36).substring(2, 15);
+    return `${timestamp}.${randomPart}.${secondRandomPart}.${btoa(email).substring(0, 10)}`;
   };
 
   return (

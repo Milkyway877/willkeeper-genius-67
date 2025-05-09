@@ -16,12 +16,14 @@ export default function Verification() {
   const [isLoading, setIsLoading] = useState(false);
   const [remainingTime, setRemainingTime] = useState<number>(120);
   const [canResend, setCanResend] = useState<boolean>(false);
+  const [autoRedirecting, setAutoRedirecting] = useState(false);
   
   // Get email from URL query parameter or session storage
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const emailParam = params.get('email');
     const typeParam = params.get('type') || 'signup';
+    const autoLogin = params.get('autologin') === 'true';
     
     const storedEmail = emailParam || sessionStorage.getItem('auth_email');
     
@@ -34,19 +36,27 @@ export default function Verification() {
     setEmail(storedEmail);
     setType(typeParam);
     
-    // Start countdown for resend button
-    const timer = setInterval(() => {
-      setRemainingTime(prev => {
-        if (prev <= 1) {
-          setCanResend(true);
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => clearInterval(timer);
+    // If autologin is true, try to redirect to signin immediately
+    if (autoLogin) {
+      setAutoRedirecting(true);
+      setTimeout(() => {
+        navigate('/auth/signin?email=' + encodeURIComponent(storedEmail), { replace: true });
+      }, 3000);
+    } else {
+      // Start countdown for resend button
+      const timer = setInterval(() => {
+        setRemainingTime(prev => {
+          if (prev <= 1) {
+            setCanResend(true);
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
   }, [location.search, navigate]);
   
   const handleResendVerification = async () => {
@@ -114,42 +124,57 @@ export default function Verification() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       {email && (
         <>
-          <div className="w-full max-w-md mb-6">
-            <Alert>
-              <Mail className="h-4 w-4" />
-              <AlertTitle>Check your email</AlertTitle>
-              <AlertDescription>
-                We've sent a verification link to <strong>{email}</strong>
-              </AlertDescription>
-            </Alert>
-          </div>
+          {autoRedirecting ? (
+            <div className="w-full max-w-md mb-6">
+              <Alert className="bg-green-50 border-green-200">
+                <Mail className="h-4 w-4 text-green-600" />
+                <AlertTitle>Email verification sent</AlertTitle>
+                <AlertDescription className="flex flex-col items-center">
+                  <LoaderCircle className="mr-2 h-6 w-6 animate-spin mb-2" />
+                  <p>Redirecting to login page...</p>
+                </AlertDescription>
+              </Alert>
+            </div>
+          ) : (
+            <div className="w-full max-w-md mb-6">
+              <Alert>
+                <Mail className="h-4 w-4" />
+                <AlertTitle>Check your email</AlertTitle>
+                <AlertDescription>
+                  We've sent a verification link to <strong>{email}</strong>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
           
           <EmailVerificationBanner />
           
-          <div className="mt-8 flex flex-col items-center">
-            <p className="text-sm text-gray-500 mb-4">
-              {canResend ? "Didn't receive the email?" : `Resend available in ${remainingTime} seconds`}
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                variant="outline"
-                onClick={handleResendVerification}
-                disabled={!canResend || isLoading}
-              >
-                {isLoading ? (
-                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Resend Verification Email
-              </Button>
+          {!autoRedirecting && (
+            <div className="mt-8 flex flex-col items-center">
+              <p className="text-sm text-gray-500 mb-4">
+                {canResend ? "Didn't receive the email?" : `Resend available in ${remainingTime} seconds`}
+              </p>
               
-              <Button variant="ghost" onClick={handleReturnToLogin}>
-                Return to Login
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleResendVerification}
+                  disabled={!canResend || isLoading}
+                >
+                  {isLoading ? (
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  Resend Verification Email
+                </Button>
+                
+                <Button variant="ghost" onClick={handleReturnToLogin}>
+                  Return to Login
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>
