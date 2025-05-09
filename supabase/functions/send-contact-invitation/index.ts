@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { 
@@ -102,8 +101,8 @@ serve(async (req) => {
       );
     }
     
-    // Create verification URL
-    const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/trusted-contact/${verificationToken}`;
+    // Create verification URL - UPDATED to use the invitation path
+    const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/invitation/${verificationToken}`;
     
     // Generate email content based on contact type and email details
     let subject = emailDetails?.subject || '';

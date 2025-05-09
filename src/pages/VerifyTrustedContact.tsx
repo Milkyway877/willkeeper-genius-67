@@ -11,7 +11,6 @@ export default function VerifyTrustedContact() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Verifying your trusted contact status...');
-  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     const verifyToken = async () => {
@@ -43,56 +42,11 @@ export default function VerifyTrustedContact() {
           setMessage('This verification link has expired. Please ask for a new invitation.');
           return;
         }
-
-        // If verification is successful, get user name
-        const { data: userData } = await supabase
-          .from('user_profiles')
-          .select('full_name, first_name, last_name')
-          .eq('id', verification.user_id)
-          .single();
-          
-        if (userData) {
-          const displayName = userData.full_name || 
-            (userData.first_name && userData.last_name ? 
-              `${userData.first_name} ${userData.last_name}` : 'A WillTank user');
-          setUserName(displayName);
-        }
         
-        // Update verification record
-        await supabase
-          .from('contact_verifications')
-          .update({
-            responded_at: new Date().toISOString(),
-            response: 'verified'
-          })
-          .eq('verification_token', token);
-          
-        // Update contact record
-        if (verification.contact_type === 'trusted') {
-          await supabase
-            .from('trusted_contacts')
-            .update({
-              invitation_status: 'verified',
-              invitation_responded_at: new Date().toISOString()
-            })
-            .eq('id', verification.contact_id);
-        }
+        // If token is valid, redirect to the appropriate verification response page
+        // This enables the contact to explicitly accept or decline the invitation
+        navigate(`/verify/invitation/${token}`);
         
-        // Log the verification
-        await supabase
-          .from('death_verification_logs')
-          .insert({
-            user_id: verification.user_id,
-            action: 'contact_verified',
-            details: {
-              contact_id: verification.contact_id,
-              contact_type: verification.contact_type,
-              verification_token: token
-            }
-          });
-          
-        setStatus('success');
-        setMessage(`You have been successfully verified as a trusted contact for ${userName}.`);
       } catch (error) {
         console.error('Error in verification process:', error);
         setStatus('error');
@@ -101,12 +55,9 @@ export default function VerifyTrustedContact() {
     };
 
     verifyToken();
-  }, [token]);
+  }, [token, navigate]);
 
-  const handleReturnHome = () => {
-    navigate('/');
-  };
-
+  // Display a loading screen while redirecting
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <Card className="w-full max-w-md">
@@ -128,26 +79,16 @@ export default function VerifyTrustedContact() {
         <CardContent>
           <div className={`text-center p-6 ${status === 'success' ? 'text-green-700' : status === 'error' ? 'text-red-700' : 'text-blue-700'}`}>
             {message}
-            
-            {status === 'success' && (
-              <p className="mt-4 text-gray-600">
-                As a trusted contact, you may be asked to verify {userName}'s status if they stop responding to their regular check-ins. This helps protect their digital legacy.
-              </p>
-            )}
-            
-            {status === 'error' && (
-              <p className="mt-4 text-gray-600">
-                If you believe this is a mistake, please contact the person who sent you the invitation to request a new link.
-              </p>
-            )}
           </div>
         </CardContent>
         
-        <CardFooter className="flex justify-center">
-          <Button variant="default" onClick={handleReturnHome}>
-            Return to Homepage
-          </Button>
-        </CardFooter>
+        {status === 'error' && (
+          <CardFooter className="flex justify-center">
+            <Button variant="default" onClick={() => navigate('/')}>
+              Return to Homepage
+            </Button>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

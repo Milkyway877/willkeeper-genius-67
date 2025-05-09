@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import VerificationResponse from './pages/verify/VerificationResponse';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
@@ -73,9 +74,18 @@ function AppRouter() {
         <Route path="/check-ins" element={<CheckIns />} />
         <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
 
+        {/* Verification routes */}
         <Route
           path="/verify/trusted-contact/:token"
           element={<VerifyTrustedContact />}
+        />
+        <Route
+          path="/verify/invitation/:token"
+          element={<VerificationResponse />}
+        />
+        <Route
+          path="/verify/status/:token"
+          element={<VerificationResponse />}
         />
         
         <Route path="*" element={<NotFoundPage />} />

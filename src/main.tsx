@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -252,6 +251,10 @@ const router = createBrowserRouter([
       {
         path: "/verify/:token",
         element: <VerificationPortal />,
+      },
+      {
+        path: "/verify/trusted-contact/:token",
+        element: <VerifyTrustedContact />,
       },
       {
         path: "/verify/invitation/:token",

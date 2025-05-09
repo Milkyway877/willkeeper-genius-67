@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, Plus, User, Mail, Trash2, Check, AlertTriangle, Info } from 'lucide-react';
+import { Shield, Plus, User, Mail, Trash2, Check, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -15,7 +16,8 @@ import {
   createTrustedContact, 
   sendVerificationRequest, 
   deleteTrustedContact,
-  resendInvitation
+  resendInvitation,
+  checkInvitationStatus
 } from '@/services/trustedContactsService';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -242,6 +244,9 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           description: `A verification email has been sent to ${name}`
         });
         
+        // Refresh contacts list to show updated status
+        fetchTrustedContacts();
+        
         // Create success notification via fallback method
         await createSystemNotificationFallback(
           'success',
@@ -274,187 +279,197 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           title: "Contact Removed",
           description: "The contact has been removed from your trusted contacts list"
         });
-        
-        // Create info notification via fallback method
-        await createSystemNotificationFallback(
-          'info',
-          'Contact Removed',
-          'A trusted contact has been removed from your list.'
-        );
       } else {
-        throw new Error("Failed to remove trusted contact");
+        throw new Error("Failed to delete contact");
       }
     } catch (error) {
-      console.error('Error removing trusted contact:', error);
+      console.error('Error deleting contact:', error);
       toast({
         title: "Error",
-        description: "Failed to remove trusted contact",
+        description: "Failed to remove contact",
         variant: "destructive"
       });
     }
   };
-  
-  const isVerified = (contact: TrustedContact) => {
-    return contact.invitation_status === 'verified';
+
+  // Function to get appropriate status badge
+  const getStatusBadge = (status: string | null) => {
+    if (!status || status === 'not_sent') {
+      return (
+        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
+          Not Invited
+        </Badge>
+      );
+    }
+    
+    if (status === 'pending') {
+      return (
+        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+          Pending Response
+        </Badge>
+      );
+    }
+    
+    if (status === 'accepted' || status === 'verified') {
+      return (
+        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+          <Check className="h-3 w-3 mr-1" /> Verified
+        </Badge>
+      );
+    }
+    
+    if (status === 'declined') {
+      return (
+        <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
+          Declined
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
+        {status}
+      </Badge>
+    );
   };
   
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Shield className="mr-2 h-5 w-5 text-willtank-600" />
-            Trusted Verification Contacts
-          </CardTitle>
-          <CardDescription>
-            These contacts are specifically designated to verify your status and are separate from beneficiaries or executors to prevent conflicts of interest
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          <Alert className="mb-6">
-            <Info className="h-4 w-4" />
-            <AlertTitle>Enhanced Security</AlertTitle>
-            <AlertDescription>
-              Trusted contacts only verify your status and have no access to your will assets, helping prevent potential conflicts of interest. We recommend adding at least 2 trusted contacts who are not beneficiaries or executors.
-            </AlertDescription>
-          </Alert>
-
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin h-8 w-8 border-4 border-willtank-500 border-t-transparent rounded-full"></div>
-            </div>
-          ) : contacts.length === 0 ? (
-            <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No trusted contacts yet</h3>
-              <p className="text-sm text-gray-500 mb-4">Add trusted contacts who can verify your status</p>
+    <Card className="shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center">
+          <Shield className="mr-2 h-5 w-5 text-willtank-600" />
+          Trusted Contacts
+        </CardTitle>
+        <CardDescription>
+          Add trusted contacts who can verify your status if you miss check-ins
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        {loading ? (
+          <div className="flex justify-center items-center py-8">
+            <RefreshCw className="animate-spin h-8 w-8 text-willtank-600" />
+          </div>
+        ) : contacts.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <User className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+            <h3 className="font-medium mb-1">No trusted contacts yet</h3>
+            <p className="text-sm mb-4">Add trusted contacts who can verify your status if needed</p>
+            <Button variant="default" onClick={() => setFormOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Trusted Contact
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Alert variant="info" className="mb-4">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Important</AlertTitle>
+              <AlertDescription>
+                Your trusted contacts will receive an email invitation. They need to accept 
+                their role before they can verify your status.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="mb-4">
               <Button onClick={() => setFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" /> Add Trusted Contact
+                <Plus className="h-4 w-4 mr-2" />
+                Add Trusted Contact
               </Button>
             </div>
-          ) : (
-            <>
-              <div className="mb-4">
-                <Button onClick={() => setFormOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" /> Add Trusted Contact
-                </Button>
-              </div>
-              
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contacts.map(contact => (
-                    <TableRow key={contact.id}>
-                      <TableCell className="font-medium">{contact.name}</TableCell>
-                      <TableCell>{contact.email}</TableCell>
-                      <TableCell>
-                        {isVerified(contact) ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            <Check className="h-3.5 w-3.5 mr-1" /> Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                            <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Pending
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        {!isVerified(contact) && (
+            
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contacts.map(contact => (
+                  <TableRow key={contact.id}>
+                    <TableCell className="font-medium">{contact.name}</TableCell>
+                    <TableCell>{contact.email}</TableCell>
+                    <TableCell>{getStatusBadge(contact.invitation_status)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {(!contact.invitation_status || 
+                          contact.invitation_status === 'pending' || 
+                          contact.invitation_status === 'not_sent') && (
                           <Button 
-                            size="sm" 
+                            size="sm"
                             variant="outline"
                             onClick={() => handleResendVerification(contact.id, contact.name)}
                           >
-                            Resend
+                            <Mail className="h-4 w-4 mr-1" />
+                            {contact.invitation_sent_at ? 'Resend' : 'Send'} Invitation
                           </Button>
                         )}
                         <Button 
-                          size="sm" 
-                          variant="ghost" 
+                          size="sm"
+                          variant="outline"
                           onClick={() => handleDeleteContact(contact.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
+      </CardContent>
       
-      {/* Dialog for adding new trusted contacts */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Trusted Contact</DialogTitle>
             <DialogDescription>
-              Add someone you trust to verify your status who is not a beneficiary or executor of your will.
+              Add someone you trust who can verify your status if you miss check-ins.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                <Input 
-                  id="name"
-                  name="name"
-                  placeholder="John Smith"
-                  className="pl-10"
-                  value={newContact.name}
-                  onChange={handleInputChange}
-                />
-              </div>
+              <Label htmlFor="name">Contact Name</Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Full name"
+                value={newContact.name}
+                onChange={handleInputChange}
+              />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                <Input 
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  className="pl-10"
-                  value={newContact.email}
-                  onChange={handleInputChange}
-                />
-              </div>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="email@example.com"
+                value={newContact.email}
+                onChange={handleInputChange}
+              />
             </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={handleAddContact}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <span className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></span>
-                  Adding...
-                </>
-              ) : (
-                <>Add Contact</>
-              )}
+            <Button variant="outline" onClick={() => setFormOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddContact} disabled={submitting}>
+              {submitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              Add Contact
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Card>
   );
 }
