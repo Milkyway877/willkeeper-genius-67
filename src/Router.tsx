@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { UserProfile } from "@clerk/clerk-react";
+import { UserProfile, SignIn, SignUp, ClerkLoaded, ClerkLoading } from "@clerk/clerk-react";
 import { ClerkProtectedRoute } from './components/auth/ClerkProtectedRoute';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
@@ -9,6 +9,7 @@ import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import VerifyEmail from './pages/auth/VerifyEmail';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -27,6 +28,29 @@ const CheckIns = () => <div>Check-Ins Page</div>;
 const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
 
+// Define Clerk Components for routes
+const SignInPage = () => (
+  <ClerkLoading>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+    </div>
+  </ClerkLoading>
+  <ClerkLoaded>
+    <SignIn redirectUrl="/dashboard" />
+  </ClerkLoaded>
+);
+
+const SignUpPage = () => (
+  <ClerkLoading>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+    </div>
+  </ClerkLoading>
+  <ClerkLoaded>
+    <SignUp redirectUrl="/dashboard" />
+  </ClerkLoaded>
+);
+
 function AppRouter() {
   return (
     <Router>
@@ -41,6 +65,11 @@ function AppRouter() {
         <Route path="/documentation" element={<Documentation />} />
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
+        
+        {/* Direct routes for Clerk's default paths */}
+        <Route path="/sign-in" element={<SignInPage />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         
         {/* Redirect legacy auth routes to Clerk's default paths */}
         <Route path="/auth/signin" element={<Navigate to="/sign-in" replace />} />
