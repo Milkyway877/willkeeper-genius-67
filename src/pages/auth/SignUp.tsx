@@ -16,7 +16,7 @@ export default function SignUpPage() {
         routing="path"
         path="/auth/signup"
         signInUrl="/auth/signin"
-        afterSignUpUrl="/dashboard"
+        afterSignUpUrl="/verify-email"
         appearance={{
           elements: {
             formButtonPrimary: "bg-black hover:bg-gray-800 text-white rounded-xl transition-all duration-200 font-medium",
