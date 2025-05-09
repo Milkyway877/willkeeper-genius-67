@@ -11,6 +11,7 @@ import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import SignInPage from './pages/auth/SignIn';
 import SignUpPage from './pages/auth/SignUp';
+import Dashboard from './pages/Dashboard';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -20,7 +21,6 @@ const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
 const Help = () => <div>Help Center</div>;
 const NotFoundPage = () => <NotFound />;
-const Dashboard = () => <div>Dashboard Page</div>;
 const Settings = () => <div>Settings Page</div>;
 const Will = () => <div>Will Page</div>;
 const FutureMessages = () => <div>Future Messages Page</div>;

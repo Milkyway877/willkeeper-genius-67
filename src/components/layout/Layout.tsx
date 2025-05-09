@@ -52,7 +52,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     if (forceAuthenticated && !isAuthPath(location.pathname)) {
       if (isLoaded && !isSignedIn) {
         console.log("No session found, redirecting to signin");
-        navigate('/sign-in', { replace: true });
+        navigate('/auth/signin', { replace: true });
       }
     }
   }, [forceAuthenticated, location.pathname, navigate, isLoaded, isSignedIn]);
@@ -63,8 +63,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   
   // Don't show sidebar on auth pages
   const isAuthPath = (path: string): boolean => {
-    return path === '/sign-in' || 
-           path === '/sign-up' || 
+    return path === '/auth/signin' || 
+           path === '/auth/signup' || 
+           path.startsWith('/auth/signup/') ||
            path.startsWith('/sso-callback') || 
            path.startsWith('/verify');
   };
