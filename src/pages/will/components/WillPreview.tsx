@@ -10,7 +10,7 @@ interface WillPreviewProps {
   signature?: string | null;
   interactive?: boolean;
   onSectionClick?: (sectionName: string) => void;
-  useProfessionalFormat?: boolean; // New prop to control professional formatting
+  useProfessionalFormat?: boolean;
 }
 
 export function WillPreview({ 
@@ -19,7 +19,7 @@ export function WillPreview({
   signature = null,
   interactive = false,
   onSectionClick,
-  useProfessionalFormat = false // Default to false for backward compatibility
+  useProfessionalFormat = false
 }: WillPreviewProps) {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   
@@ -93,6 +93,22 @@ export function WillPreview({
     "ARTICLE VI: DIGITAL ASSETS": "Instructions for handling your online accounts and digital property"
   };
   
+  // Highlight placeholders that need to be filled in
+  const highlightPlaceholders = (text: string) => {
+    if (!interactive) return text;
+    
+    // Replace placeholders with highlighted versions
+    return text.replace(/\[(.*?)\]/g, (match) => (
+      `<span class="bg-amber-100 text-amber-800 px-1 rounded border border-amber-200 cursor-pointer shadow-sm flex items-center gap-1">
+        ${match}
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-1 text-amber-500">
+          <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+          <path d="m15 5 4 4"></path>
+        </svg>
+      </span>`
+    ));
+  };
+
   return (
     <div className="space-y-4">
       {paragraphs.map((paragraph, index) => {
@@ -113,8 +129,8 @@ export function WillPreview({
             <h4 
               key={index} 
               className={`text-md font-bold mt-5 mb-2 flex items-center group ${
-                interactive ? 'cursor-pointer hover:text-willtank-700' : ''
-              } ${isActiveSection ? 'text-willtank-700' : ''}`}
+                interactive ? 'cursor-pointer hover:text-willtank-700 hover:bg-gray-50 p-1 rounded transition-colors' : ''
+              } ${isActiveSection ? 'text-willtank-700 bg-gray-50' : ''}`}
               onClick={() => interactive && onSectionClick && onSectionClick(paragraph)}
               onMouseEnter={() => interactive && setHoveredSection(paragraph)}
               onMouseLeave={() => interactive && setHoveredSection(null)}
@@ -155,16 +171,6 @@ export function WillPreview({
             </div>
           );
         }
-        
-        // Highlight placeholders that need to be filled in
-        const highlightPlaceholders = (text: string) => {
-          if (!interactive) return text;
-          
-          // Replace placeholders with highlighted versions
-          return text.replace(/\[(.*?)\]/g, (match) => (
-            `<span class="bg-amber-100 text-amber-800 px-1 rounded border border-amber-200 cursor-pointer">${match}</span>`
-          ));
-        };
         
         // Regular paragraph
         return (

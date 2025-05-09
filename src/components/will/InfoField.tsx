@@ -41,7 +41,15 @@ export function InfoField({
             </div>
             {description && <FormDescription>{description}</FormDescription>}
             <FormControl>
-              <Input {...props} {...field} className={className} />
+              <Input 
+                {...props} 
+                {...field} 
+                className={cn(
+                  "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 transition-colors",
+                  className
+                )}
+                placeholder={props.placeholder || `Enter ${label.toLowerCase()}`} 
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -58,7 +66,16 @@ export function InfoField({
         <InfoTooltip text={tooltipText} />
       </div>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      <Input id={name} name={name} className={className} {...props} />
+      <Input 
+        id={name} 
+        name={name} 
+        className={cn(
+          "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 transition-colors",
+          className
+        )} 
+        placeholder={props.placeholder || `Enter ${label.toLowerCase()}`}
+        {...props} 
+      />
     </div>
   );
 }
