@@ -97,65 +97,66 @@ export function SignInForm() {
         return;
       }
       
-      // User exists and password is correct - check if verification is required
-      // For now, direct the user to the dashboard immediately after successful login
-      toast({
-        title: "Login successful",
-        description: "You've been signed in successfully.",
-      });
-      
-      // Navigate directly to dashboard
-      navigate('/dashboard', { replace: true });
-      
-      /* Disable verification flow temporarily 
-      // User exists and password is correct, now proceed with verification
-      // Sign out the user to require verification
-      await supabase.auth.signOut();
-      
-      // Generate and send verification code
-      const verificationCode = generateVerificationCode();
-      
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: data.email,
-          code: verificationCode,
-          type: 'login'
+      // Check if the user's email is verified
+      if (authData.user) {
+        // If email is confirmed in auth, we can proceed to login
+        if (authData.user.email_confirmed_at) {
+          toast({
+            title: "Login successful",
+            description: "You've been signed in successfully.",
+          });
+          
+          // Navigate to dashboard
+          navigate('/dashboard', { replace: true });
+        } else {
+          // User exists and password is correct, but email is not verified
+          // Generate and send verification code
+          const verificationCode = generateVerificationCode();
+          
+          const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+            body: {
+              email: data.email,
+              code: verificationCode,
+              type: 'login'
+            }
+          });
+          
+          if (emailError) {
+            throw new Error("Failed to send verification code");
+          }
+          
+          // Store verification code in database
+          const { error: storeError } = await supabase
+            .from('email_verification_codes')
+            .insert({
+              email: data.email,
+              code: verificationCode,
+              type: 'login',
+              expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+              used: false
+            });
+          
+          if (storeError) {
+            console.error("Error storing verification code:", storeError);
+            throw new Error("Failed to process verification");
+          }
+          
+          toast({
+            title: "Email verification required",
+            description: "Please verify your email address to continue.",
+          });
+          
+          // Save user credentials in session storage for verification page
+          sessionStorage.setItem('auth_email', data.email);
+          sessionStorage.setItem('auth_password', data.password);
+          
+          // Sign out to force verification
+          await supabase.auth.signOut();
+          
+          // Navigate to verification page
+          navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
         }
-      });
-      
-      if (emailError) {
-        throw new Error("Failed to send verification code");
       }
-      
-      // Store verification code in database
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: data.email,
-          code: verificationCode,
-          type: 'login',
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
-        });
-      
-      if (storeError) {
-        console.error("Error storing verification code:", storeError);
-        throw new Error("Failed to process verification");
-      }
-      
-      toast({
-        title: "Verification code sent",
-        description: "Please check your email for the verification code.",
-      });
-      
-      // Save user credentials in session storage for verification page
-      sessionStorage.setItem('auth_email', data.email);
-      sessionStorage.setItem('auth_password', data.password);
-      
-      // Navigate to verification page
-      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
-      */
-      
     } catch (error: any) {
       console.error("Sign in error:", error);
       

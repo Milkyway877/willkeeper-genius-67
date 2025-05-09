@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -25,7 +24,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  const { profile } = useUserProfile();
+  const { profile, loading } = useUserProfile();
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -57,21 +56,28 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         if (!data.session) {
           console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
-        } else if (profile && !profile.is_activated) {
-          // If the user is logged in but email is not verified and they're trying to access protected routes
+        } else if (!loading && profile) {
+          // Check if email is verified - use profile.email_verified for consistency
           const isEmailVerified = profile.email_verified;
+          
+          // Check if user account is activated
+          const isActivated = profile.is_activated;
           
           if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
             // Redirect to email verification with email as a parameter
-            console.log("User not verified, redirecting to verification");
+            console.log("User email not verified, redirecting to verification");
             navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+          } else if (!isActivated && !location.pathname.includes('/auth/activate')) {
+            // Redirect to activation page
+            console.log("User account not activated, redirecting to activation");
+            navigate('/auth/activate', { replace: true });
           }
         }
       };
       
       checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate, profile]);
+  }, [forceAuthenticated, location.pathname, navigate, profile, loading]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);

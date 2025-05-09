@@ -9,10 +9,10 @@ export interface UserProfile {
   created_at: string;
   updated_at: string;
   is_activated: boolean | null;
+  email_verified: boolean | null;
   subscription_plan: string | null;
   activation_date: string | null;
   email: string | null;
-  email_verified: boolean | null;
   gender?: 'male' | 'female' | null; // Optional gender field
 }
 
@@ -35,17 +35,20 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
     
+    // Handle both field possibilities for backwards compatibility
+    const isActivated = data.is_activated !== undefined ? data.is_activated : data.activation_complete;
+    
     return {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.activation_complete,
+      is_activated: isActivated,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date,
       email: session.user.email,
-      email_verified: session.user.email_confirmed_at !== null,
+      email_verified: data.email_verified || session.user.email_confirmed_at !== null,
       gender: data.gender || null,
     };
   } catch (error) {
@@ -64,16 +67,16 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     
     const dbUpdates: any = {...updates};
     
+    // Ensure we update both field names for backwards compatibility
     if (updates.is_activated !== undefined) {
+      dbUpdates.is_activated = updates.is_activated;
       dbUpdates.activation_complete = updates.is_activated;
-      delete dbUpdates.is_activated;
     }
     
     // These fields should not be sent to the database
     delete dbUpdates.activation_date;
     delete dbUpdates.subscription_plan;
     delete dbUpdates.email;
-    delete dbUpdates.email_verified;
     
     const { data, error } = await supabase
       .from('user_profiles')
@@ -87,17 +90,20 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw error;
     }
     
+    // Handle both field possibilities for backwards compatibility
+    const isActivated = data.is_activated !== undefined ? data.is_activated : data.activation_complete;
+    
     return {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.activation_complete,
+      is_activated: isActivated,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date || null,
       email: session.user.email,
-      email_verified: session.user.email_confirmed_at !== null,
+      email_verified: data.email_verified || session.user.email_confirmed_at !== null,
       gender: data.gender || null,
     };
   } catch (error) {

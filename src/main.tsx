@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -22,8 +21,8 @@ import BlogArticle from './pages/BlogArticle';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
-import SecureSignIn from './pages/auth/SecureSignIn';
-import SecureSignUp from './pages/auth/SecureSignUp';
+import SignIn from './pages/auth/SignIn';
+import SignUp from './pages/auth/SignUp';
 import SecureRecover from './pages/auth/SecureRecover';
 import AuthResetPassword from './pages/auth/ResetPassword';
 import AccountActivation from './pages/auth/AccountActivation';
@@ -171,11 +170,11 @@ const router = createBrowserRouter([
       },
       {
         path: "/auth/signin",
-        element: <SecureSignIn />,
+        element: <SignIn />,
       },
       {
         path: "/auth/signup",
-        element: <SecureSignUp />,
+        element: <SignUp />,
       },
       {
         path: "/auth/verification",

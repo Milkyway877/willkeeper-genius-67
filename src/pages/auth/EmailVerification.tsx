@@ -80,10 +80,14 @@ export default function EmailVerification() {
         .eq('id', verificationData.id);
 
       if (type === 'signup') {
-        // For signup flow - update user profile to mark activation as complete
+        // For signup flow - update user profile to mark email as verified and account as activated
         await supabase
           .from('user_profiles')
-          .update({ activation_complete: true, email_verified: true })
+          .update({ 
+            email_verified: true, 
+            is_activated: true,
+            activation_complete: true 
+          })
           .eq('email', email);
         
         toast({
@@ -117,6 +121,12 @@ export default function EmailVerification() {
             return;
           }
           
+          // Update user profile to mark email as verified
+          await supabase
+            .from('user_profiles')
+            .update({ email_verified: true })
+            .eq('email', email);
+            
           // Clear stored credentials
           sessionStorage.removeItem('auth_email');
           sessionStorage.removeItem('auth_password');
