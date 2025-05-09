@@ -24,6 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           card: "shadow-none"
         }
       }}
+      routingStrategy="path"
     >
       <NotificationsProvider>
         <AppRouter />

@@ -11,6 +11,7 @@ import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import SignInPage from './pages/auth/SignIn';
 import SignUpPage from './pages/auth/SignUp';
+import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -47,6 +48,10 @@ function AppRouter() {
         {/* Both auth route patterns for compatibility */}
         <Route path="/auth/signin" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
+        
+        {/* Email verification routes */}
+        <Route path="/auth/signup/verify-email-address" element={<VerifyEmailBanner />} />
+        <Route path="/verify-email" element={<VerifyEmailBanner />} />
         
         {/* Clerk's default routes - let Clerk handle these automatically */}
         {/* The /sign-in and /sign-up routes will be automatically handled by Clerk */}
