@@ -1,11 +1,17 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserButton, useAuth, useClerk } from '@clerk/clerk-react';
+import { UserAvatar } from '@/components/UserAvatar';
 import { Logo } from '@/components/ui/logo/Logo';
+import { useUserProfile } from '@/contexts/UserProfileContext';
+import { NotificationDropdown } from './NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Search,
+  LogOut,
+  Settings,
   Menu,
   Home,
   Info,
@@ -20,6 +26,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
@@ -31,17 +38,17 @@ interface NavbarProps {
 
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
   const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
-  const { isSignedIn } = useAuth();
-  const { signOut } = useClerk();
   
-  // Use Clerk's isSignedIn instead of the passed prop
-  const userIsAuthenticated = isSignedIn;
+  // Only use notifications context when authenticated
+  const notificationsData = isAuthenticated ? useNotifications() : { unreadCount: 0 };
+  const { unreadCount } = notificationsData;
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
       navigate('/auth/signin');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -72,15 +79,16 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     <div className="relative z-10">
       <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
         <div className="flex h-16 items-center px-4">
+          {/* Removed the hamburger menu button that was here */}
           
-          {(!userIsAuthenticated || isMobile) && (
+          {(!isAuthenticated || isMobile) && (
             <Link to="/" className="flex items-center">
               <Logo size={isMobile ? 'sm' : 'md'} />
             </Link>
           )}
 
           {/* Desktop Navigation Links */}
-          {!userIsAuthenticated && !isMobile && (
+          {!isAuthenticated && !isMobile && (
             <nav className="ml-8 hidden md:flex items-center space-x-6">
               {navLinks.map((link) => (
                 <Link 
@@ -97,7 +105,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           <div className="flex-grow"></div>
 
           <div className="flex items-center space-x-4">
-            {userIsAuthenticated ? (
+            {isAuthenticated ? (
               <>
                 {!showSearchInput ? (
                   <Button 
@@ -122,15 +130,33 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </form>
                 )}
 
-                {/* Replace the user dropdown with Clerk's UserButton */}
-                <UserButton 
-                  afterSignOutUrl="/auth/signin"
-                  appearance={{
-                    elements: {
-                      userButtonBox: "h-8 w-8"
-                    }
-                  }}
-                />
+                <NotificationDropdown />
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <UserAvatar />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="flex flex-col">
+                      <span className="font-semibold">{profile?.full_name || 'Guest User'}</span>
+                      <span className="text-xs text-gray-500 truncate">{profile?.email || 'No email'}</span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="w-full cursor-pointer flex items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer flex items-center">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <div className="flex items-center">

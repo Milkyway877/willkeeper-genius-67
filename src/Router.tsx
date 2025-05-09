@@ -1,26 +1,16 @@
+
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { UserProfile, SignIn, SignUp, ClerkLoaded, ClerkLoading } from "@clerk/clerk-react";
-import { ClerkProtectedRoute } from './components/auth/ClerkProtectedRoute';
+import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom';
+import { AuthLayout } from './components/auth/AuthLayout';
+import AuthCallback from './pages/auth/AuthCallback';
+import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
-import VerifyTrustedContact from './pages/VerifyTrustedContact';
-import VerifyEmail from './pages/auth/VerifyEmail';
 
-// Import actual implemented pages instead of placeholders
-import Dashboard from './pages/Dashboard';
-import Wills from './pages/wills/Wills';
-import Will from './pages/will/Will';
-import Tank from './pages/tank/Tank';
-import CheckIns from './pages/CheckIns';
-import Settings from './pages/settings/Settings';
-import IDSecurity from './pages/security/IDSecurity';
-import TestDeathVerificationPage from './pages/TestDeathVerification';
-
-// Create placeholder pages for development (only keeping what's still needed)
+// Create placeholder pages for development
 const Home = () => <Index />;
 const About = () => <div>About Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
@@ -28,36 +18,27 @@ const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
 const Help = () => <div>Help Center</div>;
 const NotFoundPage = () => <NotFound />;
+const SignIn = () => <div>Sign In Page</div>;
+const SignUp = () => <div>Sign Up Page</div>;
+const ForgotPassword = () => <div>Forgot Password Page</div>;
+const ResetPassword = () => <div>Reset Password Page</div>;
+const Dashboard = () => <div>Dashboard Page</div>;
+const Settings = () => <div>Settings Page</div>;
+const Will = () => <div>Will Page</div>;
+const FutureMessages = () => <div>Future Messages Page</div>;
+const LegacyVault = () => <div>Legacy Vault Page</div>;
+const CheckIns = () => <div>Check-Ins Page</div>;
+const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
-const Billing = () => <div>Billing Page</div>;
-const Corporate = () => <div>For Corporations Page</div>;
 
-// Define Clerk Components for routes
-const SignInPage = () => (
-  <>
-    <ClerkLoading>
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-      </div>
-    </ClerkLoading>
-    <ClerkLoaded>
-      <SignIn redirectUrl="/dashboard" />
-    </ClerkLoaded>
-  </>
-);
-
-const SignUpPage = () => (
-  <>
-    <ClerkLoading>
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-      </div>
-    </ClerkLoading>
-    <ClerkLoaded>
-      <SignUp redirectUrl="/dashboard" />
-    </ClerkLoaded>
-  </>
-);
+// Auth layout wrapper component that passes children to AuthLayout
+const AuthLayoutWrapper = () => {
+  return (
+    <AuthLayout>
+      <Outlet />
+    </AuthLayout>
+  );
+};
 
 function AppRouter() {
   return (
@@ -74,95 +55,23 @@ function AppRouter() {
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
         
-        {/* Direct routes for Clerk's default paths */}
-        <Route path="/sign-in" element={<SignInPage />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
+        {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
+        <Route element={<AuthLayoutWrapper />}>
+          <Route path="/auth" element={<SignIn />} />
+          <Route path="/auth/signin" element={<SignIn />} />
+          <Route path="/auth/signup" element={<SignUp />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+        </Route>
         
-        {/* Redirect legacy auth routes to Clerk's default paths */}
-        <Route path="/auth/signin" element={<Navigate to="/sign-in" replace />} />
-        <Route path="/auth/signup" element={<Navigate to="/sign-up" replace />} />
-        <Route path="/auth/verify-email-address" element={<Navigate to="/verify-email" replace />} />
-        <Route path="/auth/signup/verify-email-address" element={<Navigate to="/verify-email" replace />} />
-        
-        {/* Let Clerk handle all auth routes */}
-        <Route path="/user-profile" element={
-          <ClerkProtectedRoute>
-            <UserProfile />
-          </ClerkProtectedRoute>
-        } />
-        
-        {/* Protected Routes with actual implemented components */}
-        <Route path="/dashboard" element={
-          <ClerkProtectedRoute>
-            <Dashboard />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ClerkProtectedRoute>
-            <Settings />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/wills" element={
-          <ClerkProtectedRoute>
-            <Wills />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/will" element={
-          <ClerkProtectedRoute>
-            <Will />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/will/:id" element={
-          <ClerkProtectedRoute>
-            <Will />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/will/create" element={
-          <ClerkProtectedRoute>
-            <Will />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/will/edit/:id" element={
-          <ClerkProtectedRoute>
-            <Will />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/security" element={
-          <ClerkProtectedRoute>
-            <IDSecurity />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/tank" element={
-          <ClerkProtectedRoute>
-            <Tank />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/future-messages" element={
-          <ClerkProtectedRoute>
-            <Tank />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/check-ins" element={
-          <ClerkProtectedRoute>
-            <CheckIns />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/billing" element={
-          <ClerkProtectedRoute>
-            <Billing />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/corporate" element={
-          <ClerkProtectedRoute>
-            <Corporate />
-          </ClerkProtectedRoute>
-        } />
-        <Route path="/test-death-verification" element={
-          <ClerkProtectedRoute>
-            <TestDeathVerificationPage />
-          </ClerkProtectedRoute>
-        } />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/will" element={<Will />} />
+        <Route path="/future-messages" element={<FutureMessages />} />
+        <Route path="/legacy-vault" element={<LegacyVault />} />
+        <Route path="/check-ins" element={<CheckIns />} />
+        <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
 
         <Route
           path="/verify/trusted-contact/:token"
