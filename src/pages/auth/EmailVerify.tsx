@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function EmailVerify() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function EmailVerify() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -27,10 +29,12 @@ export default function EmailVerify() {
           return;
         }
         
+        console.log("Verifying token:", token);
+        
         // Get email from token
         const { data, error: validationError } = await supabase
           .from('email_verification_codes')
-          .select('email, type')
+          .select('email, type, expires_at')
           .eq('token', token)
           .eq('used', false)
           .single();
@@ -41,6 +45,17 @@ export default function EmailVerify() {
           setLoading(false);
           return;
         }
+        
+        // Check if token is expired
+        if (new Date(data.expires_at) < new Date()) {
+          console.error('Token expired:', data.expires_at);
+          setError('This verification link has expired. Please request a new one.');
+          setLoading(false);
+          return;
+        }
+        
+        // Save email for later use
+        setEmail(data.email);
         
         // Mark the verification code as used
         await supabase
@@ -86,20 +101,16 @@ export default function EmailVerify() {
         toast({
           title: "Email verified successfully",
           description: "Your email has been verified. You can now login to your account.",
+          variant: "default",
         });
         
-        // Automatically redirect to dashboard or login
-        if (type === 'signup') {
-          // For signup, let's direct them to the sign in page
-          setTimeout(() => {
-            navigate('/auth/signin?verified=true&email=' + encodeURIComponent(data.email));
-          }, 2000);
-        } else {
-          // For login verification, let's direct them to the dashboard
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 2000);
-        }
+        // Store email in sessionStorage for login
+        sessionStorage.setItem('auth_email', data.email);
+        
+        // Automatically redirect to login
+        setTimeout(() => {
+          navigate('/auth/signin?verified=true&email=' + encodeURIComponent(data.email));
+        }, 2000);
       } catch (error) {
         console.error('Error during email verification:', error);
         setError('An unexpected error occurred during verification');
@@ -111,11 +122,19 @@ export default function EmailVerify() {
     verifyEmail();
   }, [location.search, navigate]);
 
+  const handleReturnToLogin = () => {
+    if (email) {
+      navigate(`/auth/signin?email=${encodeURIComponent(email)}`);
+    } else {
+      navigate('/auth/signin');
+    }
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
         <div className="flex flex-col items-center justify-center py-8">
-          <Loader className="h-12 w-12 text-willtank-600 animate-spin" />
+          <Loader2 className="h-12 w-12 text-willtank-600 animate-spin" />
           <p className="mt-4 text-gray-600">Verifying your email address...</p>
         </div>
       );
@@ -128,12 +147,13 @@ export default function EmailVerify() {
             <p className="font-medium">Verification failed</p>
             <p className="text-sm mt-1">{error}</p>
           </div>
-          <button 
-            className="text-willtank-600 hover:text-willtank-800 underline text-sm mt-4"
-            onClick={() => navigate('/auth/signin')}
+          <Button 
+            variant="default"
+            className="mt-4"
+            onClick={handleReturnToLogin}
           >
             Return to login
-          </button>
+          </Button>
         </div>
       );
     }
@@ -143,14 +163,15 @@ export default function EmailVerify() {
         <div className="text-center py-8">
           <div className="bg-green-100 text-green-700 p-4 rounded-md mb-4">
             <p className="font-medium">Email verified successfully!</p>
-            <p className="text-sm mt-1">You'll be redirected automatically in a few seconds...</p>
+            <p className="text-sm mt-1">You'll be redirected to login automatically in a few seconds...</p>
           </div>
-          <button 
-            className="text-willtank-600 hover:text-willtank-800 underline text-sm mt-4"
-            onClick={() => navigate('/auth/signin')}
+          <Button 
+            variant="default"
+            className="mt-4"
+            onClick={handleReturnToLogin}
           >
             Go to login
-          </button>
+          </Button>
         </div>
       );
     }

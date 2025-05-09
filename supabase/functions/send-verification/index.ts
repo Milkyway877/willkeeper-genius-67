@@ -9,6 +9,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 // Generate a secure token for email verification links
@@ -31,21 +33,22 @@ const generateSecureToken = (email: string, type: string): string => {
 };
 
 serve(async (req) => {
+  console.log("Received request:", req.method, req.url);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    console.log("Responding to OPTIONS request with CORS headers");
+    return new Response("ok", { 
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/plain"
+      } 
+    });
   }
 
   try {
     const requestBody = await req.json();
     const { email, type, useLink = true } = requestBody;
-    
-    // Generate verification code or token based on the request
-    const code = !useLink ? (requestBody.code || Math.floor(100000 + Math.random() * 900000).toString()) 
-                        : Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Generate a secure token for link-based verification
-    const token = useLink ? generateSecureToken(email, type) : null;
     
     if (!email || !type) {
       console.error("Missing required fields", { email: !!email, type });
@@ -59,6 +62,13 @@ serve(async (req) => {
     }
 
     console.log(`Sending ${type} verification ${useLink ? 'link' : 'code'} to ${email}`);
+    
+    // Generate verification code or token based on the request
+    const code = !useLink ? (requestBody.code || Math.floor(100000 + Math.random() * 900000).toString()) 
+                        : Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Generate a secure token for link-based verification
+    const token = useLink ? generateSecureToken(email, type) : null;
 
     // Use consistent email subjects and messaging
     let subject = useLink ? "Verify your email address" : "Your verification code";
@@ -84,30 +94,35 @@ serve(async (req) => {
     // First check for rate limiting - has this email requested too many verifications recently?
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
     
-    const { data: recentCodes, error: countError } = await supabase
-      .from('email_verification_codes')
-      .select('created_at', { count: 'exact' })
-      .eq('email', email)
-      .eq('type', type)
-      .gt('created_at', twoMinutesAgo.toISOString())
-      .order('created_at', { ascending: false });
-      
-    if (countError) {
-      console.error("Error checking for rate limiting:", countError);
-    } else if (recentCodes && recentCodes.length > 0) {
-      console.log(`Rate limiting: ${recentCodes.length} verifications sent to ${email} in the last 2 minutes`);
-      
-      // Return a different status code for rate limiting
-      return new Response(
-        JSON.stringify({ 
-          message: "Verification already sent recently. Please check your email or try again in a few minutes.",
-          rateLimited: true
-        }),
-        {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    try {
+      const { data: recentCodes, error: countError } = await supabase
+        .from('email_verification_codes')
+        .select('created_at', { count: 'exact' })
+        .eq('email', email)
+        .eq('type', type)
+        .gt('created_at', twoMinutesAgo.toISOString())
+        .order('created_at', { ascending: false });
+        
+      if (countError) {
+        console.error("Error checking for rate limiting:", countError);
+      } else if (recentCodes && recentCodes.length > 0) {
+        console.log(`Rate limiting: ${recentCodes.length} verifications sent to ${email} in the last 2 minutes`);
+        
+        // Return a different status code for rate limiting
+        return new Response(
+          JSON.stringify({ 
+            message: "Verification already sent recently. Please check your email or try again in a few minutes.",
+            rateLimited: true
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    } catch (error) {
+      // Log but continue if rate limiting check fails
+      console.error("Error during rate limit check:", error);
     }
 
     // Set expiration time to 30 minutes from now
@@ -145,52 +160,51 @@ serve(async (req) => {
       }
     }
     
-    // Store the verification data in the database BEFORE sending the email
     console.log("Storing verification data in database");
+    let verificationRecord;
     
-    const { data: storedData, error: insertError } = await supabase
-      .from('email_verification_codes')
-      .insert({
-        email: email,
-        code: code,
-        token: token, // Store the token if using link-based verification
-        type: type,
-        expires_at: expiresAt.toISOString(),
-        used: false
-      })
-      .select();
-    
-    if (insertError) {
-      console.error("Error storing verification data:", insertError);
+    try {
+      // Store the verification data in the database BEFORE sending the email
+      const { data: storedData, error: insertError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: email,
+          code: code,
+          token: token, // Store the token if using link-based verification
+          type: type,
+          expires_at: expiresAt.toISOString(),
+          used: false
+        })
+        .select();
+      
+      if (insertError) {
+        console.error("Error storing verification data:", insertError);
+        return new Response(
+          JSON.stringify({ 
+            error: "Failed to store verification data",
+            details: insertError.message 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      console.log("Verification data stored successfully:", storedData);
+      verificationRecord = storedData?.[0];
+    } catch (dbError) {
+      console.error("Exception during database insertion:", dbError);
       return new Response(
         JSON.stringify({ 
-          error: "Failed to store verification data",
-          details: insertError.message 
+          error: "Database error during verification setup",
+          details: String(dbError)
         }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
-    }
-
-    console.log("Verification data stored successfully:", storedData);
-    
-    // Verify data was stored by querying it back
-    const { data: checkData, error: checkError } = await supabase
-      .from('email_verification_codes')
-      .select('*')
-      .eq('email', email)
-      .eq(useLink ? 'token' : 'code', useLink ? token : code)
-      .eq('type', type)
-      .eq('used', false)
-      .single();
-      
-    if (checkError || !checkData) {
-      console.error("Verification failed - data not found after insert:", { error: checkError });
-      // Continue anyway since it might still work
-    } else {
-      console.log("Verification data successfully verified in database:", checkData.id);
     }
 
     // Create the appropriate email content based on verification method
@@ -249,37 +263,55 @@ serve(async (req) => {
     }
 
     // Now send the email
-    const emailResponse = await resend.emails.send({
-      from: `${fromName} <${fromEmail}>`,
-      to: [email],
-      subject: subject,
-      html: emailHtml,
-    });
+    try {
+      const emailResponse = await resend.emails.send({
+        from: `${fromName} <${fromEmail}>`,
+        to: [email],
+        subject: subject,
+        html: emailHtml,
+      });
 
-    console.log("Email sent successfully:", { id: emailResponse?.id });
+      console.log("Email sent successfully:", { id: emailResponse?.id });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Verification ${useLink ? 'link' : 'code'} sent successfully`,
-        emailId: emailResponse?.id,
-        token: token, // Include token in response for testing purposes
-        verificationLink: verificationLink // Include link in response for testing
-      }), 
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Verification ${useLink ? 'link' : 'code'} sent successfully`,
+          emailId: emailResponse?.id,
+          verificationId: verificationRecord?.id,
+        }), 
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    } catch (emailError) {
+      console.error("Error sending email through Resend:", emailError);
+      
+      // Return partial success - we created the verification record but couldn't send the email
+      return new Response(
+        JSON.stringify({ 
+          partialSuccess: true,
+          error: "Email service error",
+          verificationId: verificationRecord?.id,
+          verificationToken: token,
+          message: "Verification record created but email delivery failed" 
+        }),
+        {
+          status: 202,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
   } catch (error) {
-    console.error("Error sending verification email:", error);
+    console.error("Unhandled error in send-verification function:", error);
     
     // Provide better error details
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
-        details: "Failed to send verification email. Please try again later."
+        details: "Failed to process verification request. Please try again."
       }),
       {
         status: 500,
