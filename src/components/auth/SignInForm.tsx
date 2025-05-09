@@ -27,32 +27,6 @@ export function SignInForm() {
   const location = useLocation();
   const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
   
-  useEffect(() => {
-    const handleAuthRedirect = async () => {
-      const searchParams = new URLSearchParams(location.search);
-      const verified = searchParams.get('verified');
-      
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (data?.session && !error) {
-        if (verified === 'true') {
-          toast({
-            title: "Email verified!",
-            description: "Your email has been verified and you are now signed in.",
-          });
-        } else {
-          toast({
-            title: "Welcome back!",
-            description: "You are now signed in.",
-          });
-        }
-        navigate('/dashboard', { replace: true });
-      }
-    };
-    
-    handleAuthRedirect();
-  }, [navigate, location]);
-  
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -81,7 +55,7 @@ export function SignInForm() {
         return;
       }
       
-      // We'll first check if the credentials are valid without signing in
+      // First check if credentials are valid without signing in fully
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -97,23 +71,25 @@ export function SignInForm() {
         return;
       }
       
+      // Sign out immediately to prevent auto-login
+      await supabase.auth.signOut();
+      
       // Check if the user's email is verified
       if (authData.user) {
-        // If email is confirmed in auth, we can proceed to login
-        if (authData.user.email_confirmed_at) {
-          toast({
-            title: "Login successful",
-            description: "You've been signed in successfully.",
-          });
+        // Get user profile to check verification status
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('email_verified, is_activated')
+          .eq('id', authData.user.id)
+          .single();
           
-          // Navigate to dashboard
-          navigate('/dashboard', { replace: true });
-        } else {
-          // User exists and password is correct, but email is not verified
-          // Generate and send verification code
+        const isEmailVerified = profileData?.email_verified || authData.user.email_confirmed_at !== null;
+        
+        if (isEmailVerified) {
+          // If email is verified, send verification code for 2-step login
           const verificationCode = generateVerificationCode();
           
-          const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
+          const { error: emailError } = await supabase.functions.invoke('send-verification', {
             body: {
               email: data.email,
               code: verificationCode,
@@ -142,19 +118,57 @@ export function SignInForm() {
           }
           
           toast({
-            title: "Email verification required",
-            description: "Please verify your email address to continue.",
+            title: "Verification code sent",
+            description: "Please check your email for a verification code to continue.",
           });
           
-          // Save user credentials in session storage for verification page
+          // Store email in session storage for verification page (NOT password)
           sessionStorage.setItem('auth_email', data.email);
-          sessionStorage.setItem('auth_password', data.password);
-          
-          // Sign out to force verification
-          await supabase.auth.signOut();
           
           // Navigate to verification page
           navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
+        } else {
+          // If email is not verified, send a verification email
+          const verificationCode = generateVerificationCode();
+          
+          const { error: emailError } = await supabase.functions.invoke('send-verification', {
+            body: {
+              email: data.email,
+              code: verificationCode,
+              type: 'signup'
+            }
+          });
+          
+          if (emailError) {
+            throw new Error("Failed to send verification code");
+          }
+          
+          // Store verification code in database
+          const { error: storeError } = await supabase
+            .from('email_verification_codes')
+            .insert({
+              email: data.email,
+              code: verificationCode,
+              type: 'signup',
+              expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
+              used: false
+            });
+          
+          if (storeError) {
+            console.error("Error storing verification code:", storeError);
+            throw new Error("Failed to process verification");
+          }
+          
+          toast({
+            title: "Email verification required",
+            description: "Your email has not been verified. Please verify your email to continue.",
+          });
+          
+          // Store email in session storage for verification page (NOT password)
+          sessionStorage.setItem('auth_email', data.email);
+          
+          // Navigate to verification page
+          navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
         }
       }
     } catch (error: any) {
@@ -215,7 +229,7 @@ export function SignInForm() {
       
       toast({
         title: "Verification email sent",
-        description: "Please check your inbox for the verification link.",
+        description: "Please check your inbox for the verification code.",
       });
     } catch (error: any) {
       console.error("Error resending verification:", error);

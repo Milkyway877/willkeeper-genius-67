@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -35,16 +34,13 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       return null;
     }
     
-    // Handle both field possibilities for backwards compatibility
-    const isActivated = data.is_activated !== undefined ? data.is_activated : data.activation_complete;
-    
     return {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: isActivated,
+      is_activated: data.is_activated || false,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date,
       email: session.user.email,
@@ -67,12 +63,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     
     const dbUpdates: any = {...updates};
     
-    // Ensure we update both field names for backwards compatibility
-    if (updates.is_activated !== undefined) {
-      dbUpdates.is_activated = updates.is_activated;
-      dbUpdates.activation_complete = updates.is_activated;
-    }
-    
     // These fields should not be sent to the database
     delete dbUpdates.activation_date;
     delete dbUpdates.subscription_plan;
@@ -90,16 +80,13 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       throw error;
     }
     
-    // Handle both field possibilities for backwards compatibility
-    const isActivated = data.is_activated !== undefined ? data.is_activated : data.activation_complete;
-    
     return {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: isActivated,
+      is_activated: data.is_activated || false,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date || null,
       email: session.user.email,

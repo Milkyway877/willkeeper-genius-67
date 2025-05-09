@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -104,6 +105,9 @@ export function SignUpForm() {
         return;
       }
 
+      // Sign out immediately to prevent auto-login
+      await supabase.auth.signOut();
+
       console.log("User account created successfully");
 
       try {
@@ -157,7 +161,10 @@ export function SignUpForm() {
           description: "Please check your email for the verification code.",
         });
         
-        // Navigate to verification page with email
+        // Store email in session storage for verification page (NOT password)
+        sessionStorage.setItem('auth_email', data.email);
+        
+        // Navigate to verification page
         navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
       } catch (error: any) {
         // If verification process fails, but user is created

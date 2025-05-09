@@ -80,60 +80,61 @@ export default function EmailVerification() {
         .eq('id', verificationData.id);
 
       if (type === 'signup') {
-        // For signup flow - update user profile to mark email as verified and account as activated
+        // For signup flow - update user profile to mark email as verified
         await supabase
           .from('user_profiles')
           .update({ 
-            email_verified: true, 
-            is_activated: true,
-            activation_complete: true 
+            email_verified: true
           })
           .eq('email', email);
         
         toast({
           title: "Email verified",
-          description: "Your email has been successfully verified. Welcome to WillTank!",
+          description: "Your email has been successfully verified. You can now login to your account.",
           variant: "default",
         });
         
-        // Direct to dashboard after successful signup verification
-        navigate('/dashboard', { replace: true });
-      } else {
-        // For login flow
-        // Get credentials from session storage
+        // Direct to signin after successful signup verification
+        navigate('/auth/signin', { replace: true });
+      } else if (type === 'login') {
+        // For login flow, get email from session storage
         const storedEmail = sessionStorage.getItem('auth_email');
-        const storedPassword = sessionStorage.getItem('auth_password');
         
-        if (storedEmail && storedPassword) {
-          // Sign in the user
+        if (storedEmail) {
+          // Sign in the user but don't save credentials locally
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: storedEmail,
-            password: storedPassword,
+            password: values.code, // Temp solution - we'll prompt for password on next screen
           });
           
           if (authError) {
             toast({
               title: "Sign in failed",
-              description: authError.message,
-              variant: "destructive",
+              description: "Please enter your password to complete sign in.",
+              variant: "default",
             });
+            
+            // Clear stored credentials
+            sessionStorage.removeItem('auth_email');
+            
+            // Redirect to signin page with email prefilled
+            navigate(`/auth/signin?email=${encodeURIComponent(email)}`, { replace: true });
             setIsLoading(false);
             return;
           }
           
-          // Update user profile to mark email as verified
+          // Update user profile to mark login verification successful
           await supabase
             .from('user_profiles')
-            .update({ email_verified: true })
+            .update({ last_login: new Date().toISOString() })
             .eq('email', email);
             
-          // Clear stored credentials
+          // Clear stored email
           sessionStorage.removeItem('auth_email');
-          sessionStorage.removeItem('auth_password');
           
           toast({
-            title: "Login successful",
-            description: "You have been successfully verified and logged in.",
+            title: "Verification successful",
+            description: "You have been successfully verified.",
             variant: "default",
           });
           

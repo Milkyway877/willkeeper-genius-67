@@ -57,20 +57,20 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
         } else if (!loading && profile) {
-          // Check if email is verified - use profile.email_verified for consistency
+          // Check if email is verified
           const isEmailVerified = profile.email_verified;
           
           // Check if user account is activated
           const isActivated = profile.is_activated;
           
-          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
-            // Redirect to email verification with email as a parameter
+          if (!isEmailVerified) {
+            // Redirect to email verification page
             console.log("User email not verified, redirecting to verification");
-            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
-          } else if (!isActivated && !location.pathname.includes('/auth/activate')) {
+            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`);
+          } else if (!isActivated) {
             // Redirect to activation page
             console.log("User account not activated, redirecting to activation");
-            navigate('/auth/activate', { replace: true });
+            navigate('/auth/activate');
           }
         }
       };

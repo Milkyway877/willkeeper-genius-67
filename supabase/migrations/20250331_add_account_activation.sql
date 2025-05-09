@@ -24,28 +24,13 @@ BEFORE UPDATE ON public.user_profiles
 FOR EACH ROW
 EXECUTE FUNCTION public.update_activation_date();
 
--- Also make sure activation_complete column exists, and add an update trigger to sync is_activated and activation_complete
-ALTER TABLE public.user_profiles 
-ADD COLUMN IF NOT EXISTS activation_complete BOOLEAN DEFAULT false;
-
--- Create a trigger to keep is_activated and activation_complete in sync
-CREATE OR REPLACE FUNCTION public.sync_activation_fields()
-RETURNS TRIGGER AS $$
+-- Remove the activation_complete column if it exists to standardize field naming
+DO $$ 
 BEGIN
-  IF TG_OP = 'UPDATE' THEN
-    IF NEW.is_activated != OLD.is_activated THEN
-      NEW.activation_complete = NEW.is_activated;
-    ELSIF NEW.activation_complete != OLD.activation_complete THEN
-      NEW.is_activated = NEW.activation_complete;
-    END IF;
+  IF EXISTS(SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'user_profiles' 
+            AND column_name = 'activation_complete') THEN
+    ALTER TABLE public.user_profiles DROP COLUMN activation_complete;
   END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS sync_activation_fields ON public.user_profiles;
-
-CREATE TRIGGER sync_activation_fields
-BEFORE UPDATE ON public.user_profiles
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_activation_fields();
+END $$;

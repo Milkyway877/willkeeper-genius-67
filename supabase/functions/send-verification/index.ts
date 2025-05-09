@@ -24,15 +24,19 @@ serve(async (req) => {
 
     console.log(`Sending ${type} verification email to ${email} with code ${code}`);
 
-    let subject = "Verify your email";
+    // Use consistent email subjects and messaging
+    let subject = "Your verification code";
     let actionText = "verify your email";
+    let headerText = "Verify your email";
     
     if (type === 'signup') {
       subject = "Verify your WillTank account";
       actionText = "complete your account setup";
+      headerText = "Welcome to WillTank";
     } else if (type === 'login') {
-      subject = "Login verification code";
-      actionText = "complete your sign-in";
+      subject = "Your login verification code";
+      actionText = "sign in to your account";
+      headerText = "Login verification";
     }
 
     // Use the verified sender domain and name
@@ -45,7 +49,7 @@ serve(async (req) => {
       subject: subject,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1a1a1a;">Welcome to WillTank</h2>
+          <h2 style="color: #1a1a1a;">${headerText}</h2>
           <p style="color: #4a4a4a; font-size: 16px; line-height: 1.5;">
             Please use the following verification code to ${actionText}:
           </p>
