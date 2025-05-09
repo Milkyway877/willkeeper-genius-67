@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -63,15 +64,10 @@ import ClerkEmailVerification from './pages/auth/ClerkEmailVerification';
 
 // Import the Clerk-Supabase AuthProvider
 import { ClerkSupabaseProvider } from './contexts/ClerkSupabaseContext';
+import { useClerkKey } from './hooks/use-clerk-key';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
-
-// Get the Clerk publishable key from environment with a default test key
-// Using a dummy key that will disable Clerk features in development mode
-// rather than throwing an error
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 
-  "pk_test_Y2xlcmsuZGV2ZWxvcG1lbnQua2V5LmRpc2FibGVkLmZvci5kZXZlbG9wbWVudA";
 
 // Create a unified router configuration
 const router = createBrowserRouter([
@@ -305,9 +301,20 @@ const router = createBrowserRouter([
   },
 ]);
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+function Root() {
+  const { publishableKey, loading } = useClerkKey();
+  
+  if (loading) {
+    return <div className="flex h-screen w-full items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mx-auto"></div>
+        <p className="mt-4 text-gray-700">Loading authentication system...</p>
+      </div>
+    </div>;
+  }
+  
+  return (
+    <ClerkProvider publishableKey={publishableKey || "pk_test_Y2xlcmsuZGV2ZWxvcG1lbnQua2V5LmRpc2FibGVkLmZvci5kZXZlbG9wbWVudA"}>
       <QueryClientProvider client={queryClient}>
         <ClerkSupabaseProvider>
           <NotificationsProvider>
@@ -316,5 +323,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </ClerkSupabaseProvider>
       </QueryClientProvider>
     </ClerkProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <Root />
   </React.StrictMode>,
 );
