@@ -11,7 +11,7 @@ export default function VerifyEmail() {
       subtitle="Please verify your email address to continue."
       rightPanel={<VerificationInfoPanel />}
     >
-      <SignUp.VerifyEmailView 
+      <SignUp 
         routing="path"
         path="/verify-email"
         redirectUrl="/dashboard"
