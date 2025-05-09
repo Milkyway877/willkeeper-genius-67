@@ -21,6 +21,16 @@ import Settings from './pages/settings/Settings';
 import Help from './pages/Help';
 import Corporate from './pages/Corporate';
 
+// Import will-related components
+import Will from './pages/will/Will';
+import WillCreation from './pages/will/WillCreation';
+import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
+import { WillVideoCreation } from './pages/will/WillVideoCreation';
+
+// Import tank-related components
+import TankCreation from './pages/tank/TankCreation';
+import TankMessageDetail from './pages/tank/TankMessageDetail';
+
 // Create placeholder pages for development
 const Home = () => <Index />;
 const About = () => <div>About Page</div>;
@@ -69,8 +79,21 @@ function AppRouter() {
         />
         <Route path="/dashboard" element={<ClerkProtectedRoute><Dashboard /></ClerkProtectedRoute>} />
         <Route path="/settings" element={<ClerkProtectedRoute><Settings /></ClerkProtectedRoute>} />
+        
+        {/* Wills section routes */}
         <Route path="/wills" element={<ClerkProtectedRoute><WillsPage /></ClerkProtectedRoute>} />
+        <Route path="/will/:id" element={<ClerkProtectedRoute><Will /></ClerkProtectedRoute>} />
+        <Route path="/will/create" element={<ClerkProtectedRoute><WillCreation /></ClerkProtectedRoute>} />
+        <Route path="/will/edit/:id" element={<ClerkProtectedRoute><WillCreation /></ClerkProtectedRoute>} />
+        <Route path="/will/template/:templateId" element={<ClerkProtectedRoute><TemplateWillCreationPage /></ClerkProtectedRoute>} />
+        <Route path="/will/video-creation/:willId" element={<ClerkProtectedRoute><WillVideoCreation /></ClerkProtectedRoute>} />
+        
+        {/* Tank section routes */}
         <Route path="/tank" element={<ClerkProtectedRoute><TankPage /></ClerkProtectedRoute>} />
+        <Route path="/tank/create" element={<ClerkProtectedRoute><TankCreation /></ClerkProtectedRoute>} />
+        <Route path="/tank/message/:id" element={<ClerkProtectedRoute><TankMessageDetail /></ClerkProtectedRoute>} />
+        
+        {/* Security routes */}
         <Route path="/pages/security/IDSecurity" element={<ClerkProtectedRoute><IDSecurityPage /></ClerkProtectedRoute>} />
         <Route path="/check-ins" element={<ClerkProtectedRoute><CheckInsPage /></ClerkProtectedRoute>} />
         <Route path="/pages/billing/Billing" element={<ClerkProtectedRoute><BillingPage /></ClerkProtectedRoute>} />
