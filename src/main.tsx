@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -29,6 +30,7 @@ import AccountActivation from './pages/auth/AccountActivation';
 import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import AuthCallback from './pages/auth/AuthCallback';
+import TwoFactorAuth from './pages/auth/TwoFactorAuth';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -199,6 +201,10 @@ const router = createBrowserRouter([
       {
         path: "/auth/callback",
         element: <AuthCallback />,
+      },
+      {
+        path: "/auth/two-factor",
+        element: <TwoFactorAuth />,
       },
       {
         path: "/dashboard",
