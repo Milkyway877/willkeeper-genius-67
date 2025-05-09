@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS public.user_security (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id),
-  email TEXT,
+  email TEXT, -- Added email field to match what's being used in the code
   google_auth_enabled BOOLEAN DEFAULT false,
   google_auth_secret TEXT,
   encryption_key TEXT,

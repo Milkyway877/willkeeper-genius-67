@@ -14,6 +14,14 @@ ON public.email_verification_codes(token);
 ALTER TABLE IF EXISTS public.user_profiles
 ADD COLUMN IF NOT EXISTS is_activated BOOLEAN DEFAULT false;
 
+-- Add email field to user_security if it doesn't exist 
+ALTER TABLE IF EXISTS public.user_security
+ADD COLUMN IF NOT EXISTS email TEXT;
+
+-- Create an index for faster email lookups in user_security
+CREATE INDEX IF NOT EXISTS idx_user_security_email
+ON public.user_security(email);
+
 -- Update RLS policies to ensure proper access
 -- Ensure anyone can select verification codes
 CREATE POLICY IF NOT EXISTS "Anyone can select email verification codes"
