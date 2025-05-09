@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { UserProfile } from "@clerk/clerk-react";
@@ -52,6 +51,7 @@ function AppRouter() {
         {/* Clerk verification routes */}
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/verify-email" element={<VerifyEmail />} />
+        <Route path="/verify-email/*" element={<VerifyEmail />} />
         
         {/* Clerk's default routes - let Clerk handle these automatically */}
         {/* The /sign-in and /sign-up routes will be automatically handled by Clerk */}

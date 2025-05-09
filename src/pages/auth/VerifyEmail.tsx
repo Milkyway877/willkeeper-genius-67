@@ -1,33 +1,29 @@
 
-import React, { useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import React from 'react';
+import { SignUp } from '@clerk/clerk-react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
+import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
 
 export default function VerifyEmail() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const navigate = useNavigate();
-  
-  // Effect to redirect after verification is complete
-  useEffect(() => {
-    if (isLoaded) {
-      // If the user is already signed in after verification, send them to dashboard
-      if (isSignedIn) {
-        navigate('/dashboard', { replace: true });
-      }
-    }
-  }, [isLoaded, isSignedIn, navigate]);
-  
-  // Show loading state while verification is being processed
   return (
     <AuthLayout 
-      title="Verifying your email" 
-      subtitle="Please wait while we verify your email address..."
+      title="Verify Your Email" 
+      subtitle="Please verify your email address to continue."
+      rightPanel={<VerificationInfoPanel />}
     >
-      <div className="flex flex-col items-center justify-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-        <p className="text-gray-600">This may take a few moments</p>
-      </div>
+      <SignUp.VerifyEmailView 
+        routing="path"
+        path="/verify-email"
+        redirectUrl="/dashboard"
+        appearance={{
+          elements: {
+            formButtonPrimary: "bg-black hover:bg-gray-800 text-white rounded-xl transition-all duration-200 font-medium",
+            formFieldInput: "rounded-lg border-2 border-gray-300",
+            footerActionLink: "font-medium text-willtank-600 hover:text-willtank-700",
+            card: "shadow-none",
+          }
+        }}
+      />
     </AuthLayout>
   );
 }
