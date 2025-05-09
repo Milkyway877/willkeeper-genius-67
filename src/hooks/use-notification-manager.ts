@@ -7,7 +7,17 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 export type NotificationPriority = 'low' | 'medium' | 'high';
 
 export function useNotificationManager() {
-  const { fetchNotifications } = useNotifications();
+  let fetchNotifications;
+  
+  try {
+    // Try to get the fetchNotifications function from the context
+    const notificationsContext = useNotifications();
+    fetchNotifications = notificationsContext.fetchNotifications;
+  } catch (error) {
+    // Handle case where context isn't available
+    console.warn('NotificationsContext not available:', error);
+    fetchNotifications = null;
+  }
 
   const notify = useCallback(async (
     eventType: EventType,

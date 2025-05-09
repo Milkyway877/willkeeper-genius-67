@@ -12,7 +12,19 @@ export function FloatingAssistant() {
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { notifyInfo } = useNotificationManager();
+  
+  // Safely use the notification manager with error handling
+  let notifyInfo;
+  try {
+    const notificationManager = useNotificationManager();
+    notifyInfo = notificationManager.notifyInfo;
+  } catch (error) {
+    console.warn('Notification manager not available:', error);
+    notifyInfo = () => {
+      console.log('Notification would be shown here');
+      return Promise.resolve(null);
+    };
+  }
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -86,7 +98,9 @@ export function FloatingAssistant() {
       
       // Try to create a notification for this interaction, but don't block if it fails
       try {
-        notifyInfo('Skyler', 'You received a new response from Skyler.', 'low');
+        if (notifyInfo) {
+          notifyInfo('Skyler', 'You received a new response from Skyler.', 'low');
+        }
       } catch (notifyError) {
         console.warn('Could not create notification:', notifyError);
       }
