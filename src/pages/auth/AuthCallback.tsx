@@ -23,7 +23,7 @@ export default function AuthCallback() {
         navigate('/dashboard');
       } catch (error) {
         console.error('Error in auth callback:', error);
-        navigate('/sign-in');
+        navigate('/auth/signin');
       }
     };
     

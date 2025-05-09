@@ -24,6 +24,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           card: "shadow-none"
         }
       }}
+      signInUrl="/auth/signin"
+      signUpUrl="/auth/signup"
+      redirectUrl="/dashboard"
     >
       <NotificationsProvider>
         <AppRouter />

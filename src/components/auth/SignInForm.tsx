@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -294,7 +295,7 @@ export function SignInForm() {
         <div className="space-y-4 mt-4">
           <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:justify-between">
             <Link 
-              to="/sign-in/reset-password" 
+              to="/auth/recover" 
               className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
             >
               Forgot password?
