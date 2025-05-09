@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { SignIn, SignUp, UserProfile, useAuth } from "@clerk/clerk-react";
 import { AuthLayout } from './components/auth/AuthLayout';
 import { ClerkProtectedRoute } from './components/auth/ClerkProtectedRoute';
@@ -10,6 +10,9 @@ import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import SecureSignIn from './pages/auth/SecureSignIn';
+import SecureSignUp from './pages/auth/SecureSignUp';
+import SecureRecover from './pages/auth/SecureRecover';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -49,7 +52,7 @@ const ProtectedRoute = ({ children }) => {
   }
   
   if (!isSignedIn) {
-    return <Navigate to="/sign-in" replace />;
+    return <Navigate to="/auth/signin" replace />;
   }
   
   return <>{children}</>;
@@ -86,6 +89,11 @@ function AppRouter() {
             <UserProfile routing="path" path="/user-profile" />
           </ProtectedRoute>
         } />
+        
+        {/* Custom Auth Routes */}
+        <Route path="/auth/signin" element={<SecureSignIn />} />
+        <Route path="/auth/signup" element={<SecureSignUp />} />
+        <Route path="/auth/recover" element={<SecureRecover />} />
         
         {/* Protected Routes */}
         <Route path="/dashboard" element={

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserButton, useAuth, useClerk } from '@clerk/clerk-react';
@@ -41,7 +42,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const handleSignOut = async () => {
     try {
       await signOut();
-      navigate('/sign-in');
+      navigate('/auth/signin');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -123,7 +124,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
 
                 {/* Replace the user dropdown with Clerk's UserButton */}
                 <UserButton 
-                  afterSignOutUrl="/sign-in"
+                  afterSignOutUrl="/auth/signin"
                   appearance={{
                     elements: {
                       userButtonBox: "h-8 w-8"
@@ -151,19 +152,19 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       ))}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link to="/sign-in" className="w-full">Sign in</Link>
+                        <Link to="/auth/signin" className="w-full">Sign in</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/sign-up" className="w-full">Sign up</Link>
+                        <Link to="/auth/signup" className="w-full">Sign up</Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
                   <>
-                    <Link to="/sign-in" className="ml-4">
+                    <Link to="/auth/signin" className="ml-4">
                       <Button variant="ghost">Sign in</Button>
                     </Link>
-                    <Link to="/sign-up">
+                    <Link to="/auth/signup">
                       <Button>Sign up</Button>
                     </Link>
                   </>
