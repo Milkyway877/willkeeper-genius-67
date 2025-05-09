@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { UserProfile } from "@clerk/clerk-react";
@@ -10,7 +11,6 @@ import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import SignInPage from './pages/auth/SignIn';
 import SignUpPage from './pages/auth/SignUp';
-import VerifyEmail from './pages/auth/VerifyEmail';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -48,13 +48,12 @@ function AppRouter() {
         <Route path="/auth/signin" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
         
-        {/* Clerk verification routes */}
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/auth/verify-email" element={<VerifyEmail />} />
-        <Route path="/verify-email/*" element={<VerifyEmail />} />
+        {/* Let Clerk handle its own routes */}
+        <Route path="/sign-in/*" element={<SignInPage />} />
+        <Route path="/sign-up/*" element={<SignUpPage />} />
         
-        {/* Clerk's default routes - let Clerk handle these automatically */}
-        {/* The /sign-in and /sign-up routes will be automatically handled by Clerk */}
+        {/* All verification paths should be handled by Clerk */}
+        <Route path="/verify-*" element={<SignUpPage />} />
         
         <Route path="/user-profile" element={
           <ClerkProtectedRoute>
