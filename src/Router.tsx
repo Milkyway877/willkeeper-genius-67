@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { SignIn, SignUp, UserProfile, useAuth } from "@clerk/clerk-react";
+import { UserProfile, useAuth } from "@clerk/clerk-react";
 import { AuthLayout } from './components/auth/AuthLayout';
 import { ClerkProtectedRoute } from './components/auth/ClerkProtectedRoute';
 import Documentation from './pages/Documentation';
@@ -10,6 +10,8 @@ import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import SignInPage from './pages/auth/SignIn';
+import SignUpPage from './pages/auth/SignUp';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -28,18 +30,6 @@ const CheckIns = () => <div>Check-Ins Page</div>;
 const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
 
-// Auth layout wrapper component that passes children to AuthLayout
-const AuthLayoutWrapper = ({ children }) => {
-  return (
-    <AuthLayout
-      title="Access Your Account"
-      subtitle="Secure authentication with Clerk"
-    >
-      {children}
-    </AuthLayout>
-  );
-};
-
 function AppRouter() {
   return (
     <Router>
@@ -55,33 +45,18 @@ function AppRouter() {
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
         
-        {/* Clerk Authentication Routes */}
-        <Route path="/sign-in" element={
-          <AuthLayoutWrapper>
-            <SignIn routing="path" path="/sign-in" redirectUrl="/dashboard" />
-          </AuthLayoutWrapper>
-        } />
-        <Route path="/sign-up" element={
-          <AuthLayoutWrapper>
-            <SignUp routing="path" path="/sign-up" redirectUrl="/dashboard" />
-          </AuthLayoutWrapper>
-        } />
+        {/* Standardized Authentication Routes */}
+        <Route path="/auth/signin" element={<SignInPage />} />
+        <Route path="/auth/signup" element={<SignUpPage />} />
+        
+        {/* Redirect old auth routes to new ones */}
+        <Route path="/sign-in" element={<Navigate to="/auth/signin" replace />} />
+        <Route path="/sign-up" element={<Navigate to="/auth/signup" replace />} />
+        
         <Route path="/user-profile" element={
           <ClerkProtectedRoute>
             <UserProfile routing="path" path="/user-profile" />
           </ClerkProtectedRoute>
-        } />
-        
-        {/* Auth Routes with /auth prefix - Using Clerk components */}
-        <Route path="/auth/signin" element={
-          <AuthLayoutWrapper>
-            <SignIn routing="path" path="/auth/signin" redirectUrl="/dashboard" />
-          </AuthLayoutWrapper>
-        } />
-        <Route path="/auth/signup" element={
-          <AuthLayoutWrapper>
-            <SignUp routing="path" path="/auth/signup" redirectUrl="/dashboard" />
-          </AuthLayoutWrapper>
         } />
         
         {/* Protected Routes */}

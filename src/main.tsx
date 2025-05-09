@@ -1,7 +1,6 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
 import './index.css'
 import { ClerkProvider } from "@clerk/clerk-react";
 import { CLERK_PUBLISHABLE_KEY } from './config/env.ts';
@@ -19,7 +18,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       publishableKey={CLERK_PUBLISHABLE_KEY}
       appearance={{
         elements: {
-          formButtonPrimary: "bg-black hover:bg-gray-800 text-white",
+          formButtonPrimary: "bg-black hover:bg-gray-800 text-white rounded-xl transition-all duration-200 font-medium",
+          formFieldInput: "rounded-lg border-2 border-gray-300",
           footerActionLink: "text-willtank-600 hover:text-willtank-700",
           card: "shadow-none"
         }
