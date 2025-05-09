@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -7,6 +6,7 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
+import { ClerkProvider } from "@clerk/clerk-react";
 import CheckIns from './pages/CheckIns.tsx';
 import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
@@ -22,14 +22,6 @@ import BlogArticle from './pages/BlogArticle';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
-import SecureSignIn from './pages/auth/SecureSignIn';
-import SecureSignUp from './pages/auth/SecureSignUp';
-import SecureRecover from './pages/auth/SecureRecover';
-import AuthResetPassword from './pages/auth/ResetPassword';
-import AccountActivation from './pages/auth/AccountActivation';
-import EmailVerification from './pages/auth/EmailVerification';
-import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
-import AuthCallback from './pages/auth/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -55,8 +47,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
-
-// Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
 import UserGuides from './pages/documentation/UserGuides';
 import ApiReference from './pages/documentation/ApiReference';
@@ -64,8 +54,25 @@ import SecurityDocs from './pages/documentation/Security';
 import Integrations from './pages/documentation/Integrations';
 import UpdatesArchive from './pages/documentation/UpdatesArchive';
 
+// New auth components with Clerk
+import ClerkSignIn from './pages/auth/ClerkSignIn';
+import ClerkSignUp from './pages/auth/ClerkSignUp';
+import ClerkRecover from './pages/auth/ClerkRecover';
+import ClerkResetPassword from './pages/auth/ClerkResetPassword';
+import ClerkEmailVerification from './pages/auth/ClerkEmailVerification';
+
+// Import the Clerk-Supabase AuthProvider
+import { ClerkSupabaseProvider } from './contexts/ClerkSupabaseContext';
+
 // Create a QueryClient instance
 const queryClient = new QueryClient();
+
+// Get the Clerk publishable key from environment
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "MISSING_CLERK_PUBLISHABLE_KEY";
+
+if (!CLERK_PUBLISHABLE_KEY || CLERK_PUBLISHABLE_KEY === "MISSING_CLERK_PUBLISHABLE_KEY") {
+  console.error("VITE_CLERK_PUBLISHABLE_KEY is missing. Please add it to your Supabase secrets.");
+}
 
 // Create a unified router configuration
 const router = createBrowserRouter([
@@ -169,37 +176,39 @@ const router = createBrowserRouter([
         path: "/faq",
         element: <FAQ />,
       },
+      // Updated auth routes to use Clerk components
       {
         path: "/auth/signin",
-        element: <SecureSignIn />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/signup",
-        element: <SecureSignUp />,
+        element: <ClerkSignUp />,
       },
       {
         path: "/auth/verification",
-        element: <EmailVerification />,
+        element: <ClerkEmailVerification />,
       },
       {
         path: "/auth/forgot-password",
-        element: <SecureRecover />,
+        element: <ClerkRecover />,
       },
       {
         path: "/auth/reset-password",
-        element: <AuthResetPassword />,
+        element: <ClerkResetPassword />,
       },
+      // Keep the existing paths for backward compatibility
       {
         path: "/auth/activate",
-        element: <AccountActivation />,
+        element: <ClerkEmailVerification />,
       },
       {
         path: "/auth/verify-email",
-        element: <VerifyEmailBanner />,
+        element: <ClerkEmailVerification />,
       },
       {
         path: "/auth/callback",
-        element: <AuthCallback />,
+        element: <Dashboard />,  // Redirect to dashboard after auth
       },
       {
         path: "/dashboard",
@@ -299,10 +308,14 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <NotificationsProvider>
-        <RouterProvider router={router} />
-      </NotificationsProvider>
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <ClerkSupabaseProvider>
+          <NotificationsProvider>
+            <RouterProvider router={router} />
+          </NotificationsProvider>
+        </ClerkSupabaseProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
   </React.StrictMode>,
-)
+);

@@ -1,12 +1,14 @@
 
 import React from 'react';
-import { useUserProfile } from '@/contexts/UserProfileContext';
+import { useClerkSupabase } from '@/contexts/ClerkSupabaseContext';
 import { Check, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useUser } from '@clerk/clerk-react';
 
 export function ProfileForm() {
-  const { profile } = useUserProfile();
+  const { profile } = useClerkSupabase();
+  const { user } = useUser();
   
   return (
     <div className="space-y-6">
@@ -15,9 +17,9 @@ export function ProfileForm() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium mb-2">Full Name</h3>
-              <p className="text-base font-medium">{profile?.full_name || "Not available"}</p>
+              <p className="text-base font-medium">{profile?.full_name || user?.fullName || "Not available"}</p>
               <p className="text-xs text-gray-500 mt-1">
-                Contact support to update your name information
+                You can update your name in your account settings
               </p>
             </div>
             
@@ -25,9 +27,9 @@ export function ProfileForm() {
             
             <div>
               <h3 className="text-sm font-medium mb-2">Email Address</h3>
-              <p className="text-base font-medium">{profile?.email || "Not available"}</p>
+              <p className="text-base font-medium">{profile?.email || user?.primaryEmailAddress?.emailAddress || "Not available"}</p>
               <div className="mt-1">
-                {profile?.email_verified ? (
+                {(profile?.email_verified || user?.primaryEmailAddress?.verification?.status === "verified") ? (
                   <span className="text-xs text-green-600 flex items-center">
                     <Check className="h-3 w-3 mr-1" />
                     Email verified
@@ -39,9 +41,6 @@ export function ProfileForm() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Contact support to update your email address
-              </p>
             </div>
           </div>
         </CardContent>
