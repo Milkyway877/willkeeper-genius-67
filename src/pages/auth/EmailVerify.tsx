@@ -1,260 +1,176 @@
 
 import React, { useState, useEffect } from 'react';
-import { AuthLayout } from '@/components/auth/AuthLayout';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
+import { Loader } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export default function EmailVerify() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
-  const type = searchParams.get('type') || 'signup';
-  const email = searchParams.get('email');
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
-  const { toast } = useToast();
+  const location = useLocation();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      setVerificationStatus('error');
-      setErrorMessage('Invalid verification link. No token provided.');
-      setIsLoading(false);
-      return;
-    }
-    
-    verifyToken();
-  }, [token, type]);
-
-  const verifyToken = async () => {
-    try {
-      setIsLoading(true);
-      
-      // First check if the token is valid using the database function
-      if (email) {
-        const { data: isValid, error: functionError } = await supabase.rpc(
-          'is_verification_token_valid',
-          { check_email: email, check_token: token, check_type: type }
-        );
+    const verifyEmail = async () => {
+      try {
+        // Get token and type from URL params
+        const searchParams = new URLSearchParams(location.search);
+        const token = searchParams.get('token');
+        const type = searchParams.get('type') || 'signup';
         
-        if (functionError) {
-          console.error("Error checking token validity:", functionError);
-          // Proceed with manual check if function fails
-        } else if (isValid === true) {
-          // Token is valid, proceed with verification
-          await processVerification(token, email);
+        if (!token) {
+          setError('Verification token is missing');
+          setLoading(false);
           return;
         }
-      }
-      
-      // If we couldn't use the function or if we don't have an email, try to find the token in the database
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('email_verification_codes')
-        .select('*')
-        .eq('token', token)
-        .eq('type', type)
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
         
-      if (tokenError) {
-        console.error("Error querying token:", tokenError);
-        throw new Error("Failed to verify email. Please try again.");
-      }
-      
-      if (!tokenData) {
-        setVerificationStatus('error');
-        setErrorMessage('This verification link is invalid or has expired. Please request a new verification email.');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Process the verification
-      await processVerification(token, tokenData.email);
-    } catch (error: any) {
-      console.error("Verification error:", error);
-      setVerificationStatus('error');
-      setErrorMessage(error.message || "An error occurred during verification. Please try again.");
-      setIsLoading(false);
-      
-      toast({
-        title: "Verification failed",
-        description: error.message || "Failed to verify your email. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const processVerification = async (token: string, userEmail: string) => {
-    try {
-      // Mark the token as used
-      const { error: updateError } = await supabase
-        .from('email_verification_codes')
-        .update({ used: true })
-        .eq('token', token);
+        // Get email from token
+        const { data, error: validationError } = await supabase
+          .from('email_verification_codes')
+          .select('email, type')
+          .eq('token', token)
+          .eq('used', false)
+          .single();
         
-      if (updateError) {
-        console.warn("Error marking token as used:", updateError);
-        // Continue anyway since we can still verify the user
-      }
-      
-      if (type === 'signup') {
-        // For signup flow - update user profile to mark email as verified
-        const { error: profileError } = await supabase
+        if (validationError || !data) {
+          console.error('Error validating token:', validationError);
+          setError('Invalid or expired verification token');
+          setLoading(false);
+          return;
+        }
+        
+        // Mark the verification code as used
+        await supabase
+          .from('email_verification_codes')
+          .update({ used: true })
+          .eq('token', token);
+        
+        // Get the user associated with this email
+        const { data: userData, error: userError } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('email', data.email)
+          .single();
+        
+        if (userError || !userData) {
+          console.error('Error finding user:', userError);
+          setError('Could not find your user account');
+          setLoading(false);
+          return;
+        }
+        
+        // Update the user's email_verified status
+        const { error: updateError } = await supabase
           .from('user_profiles')
           .update({ 
-            email_verified: true 
+            email_verified: true,
+            is_activated: true,
+            updated_at: new Date().toISOString()
           })
-          .eq('email', userEmail);
+          .eq('email', data.email);
         
-        if (profileError) {
-          console.error("Error updating user profile:", profileError);
-          throw new Error("Your email was verified, but we couldn't update your profile. Please contact support.");
+        if (updateError) {
+          console.error('Error updating user profile:', updateError);
+          setError('Could not verify your email');
+          setLoading(false);
+          return;
         }
         
-        // Success!
-        setVerificationStatus('success');
-        setIsLoading(false);
+        // Set success state
+        setSuccess(true);
         
+        // Show success message
         toast({
-          title: "Email verified",
-          description: "Your email has been successfully verified. You can now log in to your account.",
+          title: "Email verified successfully",
+          description: "Your email has been verified. You can now login to your account.",
         });
-      } else if (type === 'login') {
-        // For login flow - process the login verification
-        const { error: loginError } = await supabase
-          .from('user_profiles')
-          .update({ last_login: new Date().toISOString() })
-          .eq('email', userEmail);
-          
-        if (loginError) {
-          console.error("Error updating login timestamp:", loginError);
-          // Non-critical error, continue
+        
+        // Automatically redirect to dashboard or login
+        if (type === 'signup') {
+          // For signup, let's direct them to the sign in page
+          setTimeout(() => {
+            navigate('/auth/signin?verified=true&email=' + encodeURIComponent(data.email));
+          }, 2000);
+        } else {
+          // For login verification, let's direct them to the dashboard
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 2000);
         }
-        
-        // Success!
-        setVerificationStatus('success');
-        setIsLoading(false);
-        
-        toast({
-          title: "Login verified",
-          description: "Your login has been verified. You will be redirected to the dashboard.",
-        });
-        
-        // Automatically redirect to dashboard after login verification
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 2000);
+      } catch (error) {
+        console.error('Error during email verification:', error);
+        setError('An unexpected error occurred during verification');
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      console.error("Error processing verification:", error);
-      setVerificationStatus('error');
-      setErrorMessage(error.message || "An error occurred during verification. Please try again.");
-      setIsLoading(false);
-      
-      toast({
-        title: "Verification failed",
-        description: error.message || "Failed to verify your email. Please try again.",
-        variant: "destructive",
-      });
+    };
+    
+    verifyEmail();
+  }, [location.search, navigate]);
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8">
+          <Loader className="h-12 w-12 text-willtank-600 animate-spin" />
+          <p className="mt-4 text-gray-600">Verifying your email address...</p>
+        </div>
+      );
     }
-  };
-  
-  const handleSignIn = () => {
-    navigate('/auth/signin', { replace: true });
-  };
-  
-  const handleDashboard = () => {
-    navigate('/dashboard', { replace: true });
-  };
-  
-  const handleRetry = () => {
-    setVerificationStatus('loading');
-    setIsLoading(true);
-    verifyToken();
+    
+    if (error) {
+      return (
+        <div className="text-center py-8">
+          <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4">
+            <p className="font-medium">Verification failed</p>
+            <p className="text-sm mt-1">{error}</p>
+          </div>
+          <button 
+            className="text-willtank-600 hover:text-willtank-800 underline text-sm mt-4"
+            onClick={() => navigate('/auth/signin')}
+          >
+            Return to login
+          </button>
+        </div>
+      );
+    }
+    
+    if (success) {
+      return (
+        <div className="text-center py-8">
+          <div className="bg-green-100 text-green-700 p-4 rounded-md mb-4">
+            <p className="font-medium">Email verified successfully!</p>
+            <p className="text-sm mt-1">You'll be redirected automatically in a few seconds...</p>
+          </div>
+          <button 
+            className="text-willtank-600 hover:text-willtank-800 underline text-sm mt-4"
+            onClick={() => navigate('/auth/signin')}
+          >
+            Go to login
+          </button>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
-    <AuthLayout
-      title={verificationStatus === 'loading' ? "Verifying Your Email" : 
-             verificationStatus === 'success' ? "Email Verified" : "Verification Failed"}
-      subtitle={verificationStatus === 'loading' ? "Please wait while we verify your email address..." :
-               verificationStatus === 'success' ? "Your email has been successfully verified." : 
-               errorMessage}
-      rightPanel={<VerificationInfoPanel />}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="w-full"
-      >
-        <div className="space-y-6">
-          {verificationStatus === 'loading' && (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-              <p className="text-center text-muted-foreground">
-                Please wait while we verify your email address...
-              </p>
-            </div>
-          )}
-          
-          {verificationStatus === 'success' && (
-            <div className="flex flex-col items-center justify-center py-8">
-              <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
-              <p className="text-center text-green-700 font-medium text-xl mb-2">
-                Verification Successful!
-              </p>
-              <p className="text-center text-muted-foreground mb-6">
-                {type === 'signup' 
-                  ? "Your email has been verified. You can now sign in to your account."
-                  : "Your login has been verified. You will be redirected to the dashboard."}
-              </p>
-              
-              <div className="flex space-x-4">
-                {type === 'signup' && (
-                  <Button onClick={handleSignIn}>
-                    Sign In
-                  </Button>
-                )}
-                
-                {type === 'login' && (
-                  <Button onClick={handleDashboard}>
-                    Go to Dashboard
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {verificationStatus === 'error' && (
-            <div className="flex flex-col items-center justify-center py-8">
-              <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
-              <p className="text-center text-red-700 font-medium text-xl mb-2">
-                Verification Failed
-              </p>
-              <p className="text-center text-muted-foreground mb-6">
-                {errorMessage}
-              </p>
-              
-              <div className="flex space-x-4">
-                <Button variant="outline" onClick={handleRetry}>
-                  Retry Verification
-                </Button>
-                <Button onClick={handleSignIn}>
-                  Return to Sign In
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </AuthLayout>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card>
+          <CardHeader className="text-center">
+            <h1 className="text-2xl font-bold">Email Verification</h1>
+            <p className="text-gray-500 text-sm mt-1">Verifying your email address</p>
+          </CardHeader>
+          <CardContent>
+            {renderContent()}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

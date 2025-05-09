@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { getDashboardSummary } from '@/services/dashboardService';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
+import { TwoFactorSecurityBanner } from '@/components/security/TwoFactorSecurityBanner';
 
 export default function Dashboard() {
   const { data: dashboardSummary, isLoading } = useQuery({
@@ -19,6 +20,9 @@ export default function Dashboard() {
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+        
+        {/* 2FA Security Banner - will only show if 2FA is not enabled */}
+        <TwoFactorSecurityBanner />
         
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Security Status Card */}

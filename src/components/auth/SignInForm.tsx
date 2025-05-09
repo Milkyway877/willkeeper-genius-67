@@ -91,120 +91,16 @@ export function SignInForm() {
           .eq('email', data.email)
           .maybeSingle();
 
-        if (securityData?.google_auth_enabled && securityData?.google_auth_secret) {
-          // If user has 2FA enabled, redirect to 2FA page
-          sessionStorage.setItem('auth_email', data.email);
-          navigate('/auth/two-factor');
-          return;
-        }
-          
-        // Get user profile to check verification status
-        const { data: profileData } = await supabase
-          .from('user_profiles')
-          .select('email_verified, is_activated')
-          .eq('id', authData.user.id)
-          .single();
-          
-        const isEmailVerified = profileData?.email_verified || authData.user.email_confirmed_at !== null;
-        
-        if (isEmailVerified) {
-          // If email is verified, send verification link for login
-          // Call the send-verification function with useLink=true
-          const { data: verificationData, error: emailError } = await supabase.functions.invoke('send-verification', {
-            body: {
-              email: data.email,
-              type: 'login',
-              useLink: true
-            }
-          });
-          
-          if (emailError) {
-            throw new Error("Failed to send verification link");
-          }
-          
-          toast({
-            title: "Verification email sent",
-            description: "Please check your email and click the link to verify your login.",
-          });
-          
-          // Store email in session storage for verification page (NOT password)
-          sessionStorage.setItem('auth_email', data.email);
-          
-          // Show "check email" message
-          navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
-        } else {
-          // If email is not verified, send a verification link
-          const { data: verificationData, error: emailError } = await supabase.functions.invoke('send-verification', {
-            body: {
-              email: data.email,
-              type: 'signup',
-              useLink: true
-            }
-          });
-          
-          if (emailError) {
-            throw new Error("Failed to send verification link");
-          }
-          
-          toast({
-            title: "Email verification required",
-            description: "Your email has not been verified. Please check your email and click the link to verify your account.",
-          });
-          
-          // Store email in session storage for verification page (NOT password)
-          sessionStorage.setItem('auth_email', data.email);
-          
-          // Navigate to verification page
-          navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=signup`);
-        }
+        // Always redirect to 2FA page regardless of whether it's enabled
+        // If not enabled, the user should be prompted to enable it
+        sessionStorage.setItem('auth_email', data.email);
+        navigate('/auth/two-factor');
       }
     } catch (error: any) {
       console.error("Sign in error:", error);
       
       toast({
         title: "Sign in failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    const email = form.getValues().email;
-    if (!email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address to resend verification.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: email,
-          type: 'login',
-          useLink: true
-        }
-      });
-      
-      if (emailError) {
-        throw new Error("Failed to send verification link");
-      }
-      
-      toast({
-        title: "Verification email sent",
-        description: "Please check your inbox for the verification link.",
-      });
-    } catch (error: any) {
-      console.error("Error resending verification:", error);
-      toast({
-        title: "Failed to resend verification",
         description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
@@ -288,7 +184,7 @@ export function SignInForm() {
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">After signing in, you'll receive a verification link via email to complete your login.</p>
+            <p className="font-medium">After entering your credentials, you'll need to provide a verification code from your authenticator app to complete login.</p>
           </div>
         </div>
       </form>
