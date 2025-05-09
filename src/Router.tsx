@@ -17,6 +17,9 @@ import TankPage from './pages/tank/Tank';
 import CheckInsPage from './pages/CheckIns';
 import IDSecurityPage from './pages/security/IDSecurity';
 import BillingPage from './pages/billing/Billing';
+import Settings from './pages/settings/Settings';
+import Help from './pages/Help';
+import Corporate from './pages/Corporate';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -24,9 +27,7 @@ const About = () => <div>About Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
 const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
-const Help = () => <div>Help Center</div>;
 const NotFoundPage = () => <NotFound />;
-const Settings = () => <div>Settings Page</div>;
 const TestDeathVerificationPage = () => <div>Test Death Verification Page</div>;
 const SearchPage = () => <div>Search Page</div>;
 
@@ -45,6 +46,7 @@ function AppRouter() {
         <Route path="/documentation" element={<Documentation />} />
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
+        <Route path="/corporate" element={<Corporate />} />
         
         {/* Auth routes */}
         <Route path="/auth/signin" element={<SignInPage />} />
