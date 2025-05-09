@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { UserProfile, useAuth } from "@clerk/clerk-react";
@@ -12,6 +11,9 @@ import FAQ from './pages/FAQ';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import SignInPage from './pages/auth/SignIn';
 import SignUpPage from './pages/auth/SignUp';
+
+// Import Clerk verification component
+import { EmailLinkErrorRoute, UserProfile as ClerkUserProfile } from "@clerk/clerk-react";
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -49,13 +51,17 @@ function AppRouter() {
         <Route path="/auth/signin" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
         
+        {/* Add Clerk Verification Routes */}
+        <Route path="/auth/verify-email-address" element={<EmailLinkErrorRoute />} />
+        <Route path="/auth/signup/verify-email-address" element={<EmailLinkErrorRoute />} />
+        
         {/* Redirect old auth routes to new ones */}
         <Route path="/sign-in" element={<Navigate to="/auth/signin" replace />} />
         <Route path="/sign-up" element={<Navigate to="/auth/signup" replace />} />
         
         <Route path="/user-profile" element={
           <ClerkProtectedRoute>
-            <UserProfile routing="path" path="/user-profile" />
+            <ClerkUserProfile routing="path" path="/user-profile" />
           </ClerkProtectedRoute>
         } />
         

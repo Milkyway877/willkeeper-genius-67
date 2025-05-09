@@ -24,6 +24,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           card: "shadow-none"
         }
       }}
+      // Configure navigation handling for email verification
+      signInUrl="/auth/signin"
+      signUpUrl="/auth/signup"
+      redirectUrl="/dashboard"
+      // Handle email verification paths
+      emailLinkHandlerPath="/auth/verify-email-address"
     >
       <NotificationsProvider>
         <AppRouter />
