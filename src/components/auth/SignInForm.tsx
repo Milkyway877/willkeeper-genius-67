@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -93,11 +94,11 @@ export function SignInForm() {
         // Check if user has 2FA enabled by looking up security record
         const { data: securityData } = await supabase
           .from('user_security')
-          .select('google_auth_enabled, google_auth_secret, user_id')
+          .select('google_auth_enabled, google_auth_secret, user_id, email')
           .eq('user_id', authData.user.id)
           .maybeSingle();
           
-        // If security record exists but doesn't have the email, update it
+        // If security record exists but doesn't have email field, update it
         if (securityData && !securityData.email && data.email) {
           await supabase
             .from('user_security')
