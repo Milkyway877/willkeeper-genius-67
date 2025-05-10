@@ -185,15 +185,10 @@ export default function VerificationResponse() {
           }
         }
         
-        details = { ...data, contact: contactInfo };
+        let details = { ...data, contact: contactInfo };
+        setVerificationDetails(details);
       }
       
-      if (!details) {
-        setError('Unable to find verification details');
-        return;
-      }
-      
-      setVerificationDetails(details);
     } catch (error) {
       console.error('Error fetching verification details:', error);
       setError('An error occurred while fetching verification details');
