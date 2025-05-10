@@ -1,2 +1,5 @@
 
-project_id = "vllfjcdtsnvnzrbceyss"
+project_id = "ksiinmxsycosnpchutuw"
+
+[functions.verify-trusted-contact]
+verify_jwt = false

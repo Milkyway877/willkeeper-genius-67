@@ -123,10 +123,16 @@ CREATE POLICY "Users can delete their own trusted contacts"
 -- contact_verifications table
 ALTER TABLE public.contact_verifications ENABLE ROW LEVEL SECURITY;
 
--- Only edge functions can use this table, no direct user access
-CREATE POLICY "Edge function access to contact verifications"
+-- Update policies for contact_verifications table to allow user inserts
+CREATE POLICY "Users can view their own contact verifications"
   ON public.contact_verifications
-  USING (true);
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own contact verifications"
+  ON public.contact_verifications
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
 
 -- death_verification_settings table
 ALTER TABLE public.death_verification_settings ENABLE ROW LEVEL SECURITY;

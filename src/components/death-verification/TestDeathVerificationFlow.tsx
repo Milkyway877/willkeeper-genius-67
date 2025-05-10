@@ -17,10 +17,12 @@ export default function TestDeathVerificationFlow() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [emailPreview, setEmailPreview] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   
   const sendTestStatusCheck = async () => {
     try {
       setSending(true);
+      setErrorDetails(null);
       
       const success = await sendStatusCheck();
       
@@ -39,9 +41,10 @@ export default function TestDeathVerificationFlow() {
       }
     } catch (error) {
       console.error('Error sending test status check:', error);
+      setErrorDetails(error.message || "Unknown error occurred");
       toast({
         title: "Error",
-        description: "Failed to send test status check emails.",
+        description: "Failed to send test status check emails. Check console for details.",
         variant: "destructive"
       });
     } finally {
@@ -140,6 +143,7 @@ export default function TestDeathVerificationFlow() {
   const createTestVerification = async () => {
     try {
       setSending(true);
+      setErrorDetails(null);
       
       // Get the current user
       const { data: { session } } = await supabase.auth.getSession();
@@ -155,66 +159,68 @@ export default function TestDeathVerificationFlow() {
         .limit(1);
         
       if (contactsError || !contacts || contacts.length === 0) {
-        throw new Error('No trusted contacts found');
+        throw new Error('No trusted contacts found. Please add a trusted contact first.');
       }
       
       const contact = contacts[0];
       
-      // Create a verification token
-      const verificationToken = crypto.randomUUID();
-      
-      // Set expiration date to 7 days from now
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      
-      // Create verification record
-      const { data: verification, error: verificationError } = await supabase
-        .from('contact_verifications')
-        .insert({
-          contact_id: contact.id,
-          contact_type: 'trusted',
-          verification_token: verificationToken,
-          expires_at: expiresAt.toISOString(),
-          user_id: session.user.id
+      // Call the send-contact-invitation edge function instead of directly inserting
+      const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          contact: {
+            contactId: contact.id,
+            contactType: 'trusted',
+            name: contact.name,
+            email: contact.email,
+            userId: session.user.id
+          },
+          emailDetails: {
+            subject: 'TEST: Invitation to be a Trusted Contact',
+            includeVerificationInstructions: true,
+            customMessage: 'This is a test invitation sent from the WillTank test system.'
+          }
         })
-        .select()
-        .single();
+      });
       
-      if (verificationError) {
-        throw verificationError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API Error: ${errorData.message || response.statusText}`);
       }
       
-      // Create direct action URLs
+      const responseData = await response.json();
+      
+      // Create example verification URLs for preview purposes
       const baseUrl = window.location.origin;
       const apiUrl = `${baseUrl}/functions/v1`;
-      
-      const directAcceptUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=accept`;
-      const directDeclineUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=decline`;
-      
-      // Return verification URL for legacy UI
-      const legacyVerificationUrl = `${baseUrl}/verify/trusted-contact/${verificationToken}`;
+      const verificationToken = crypto.randomUUID(); // Example token
       
       setResult({
-        verification,
         contact,
-        directAcceptUrl,
-        directDeclineUrl,
-        legacyVerificationUrl
+        directAcceptUrl: `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=accept`,
+        directDeclineUrl: `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=decline`,
+        legacyVerificationUrl: `${baseUrl}/verify/invitation/${verificationToken}`,
+        apiResponse: responseData
       });
       
       // Generate email preview HTML
       setEmailPreview(generateInvitationEmailPreview());
       
       toast({
-        title: "Test Verification Created",
-        description: "A test verification link has been generated.",
+        title: "Test Invitation Sent",
+        description: "A test invitation has been sent to your trusted contact.",
         variant: "default"
       });
     } catch (error) {
       console.error('Error creating test verification:', error);
+      setErrorDetails(error.message || "Unknown error occurred");
       toast({
         title: "Error",
-        description: "Failed to create test verification.",
+        description: error.message || "Failed to create test verification.",
         variant: "destructive"
       });
     } finally {
@@ -255,6 +261,16 @@ export default function TestDeathVerificationFlow() {
                 This will send real emails to all contacts you've configured (beneficiaries, executors, trusted contacts)
                 with buttons they can click directly to respond to the status check, without needing to sign in.
               </p>
+              
+              {errorDetails && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription className="text-sm whitespace-pre-wrap font-mono">
+                    {errorDetails}
+                  </AlertDescription>
+                </Alert>
+              )}
               
               {emailPreview && (
                 <div className="mt-6">
@@ -316,17 +332,28 @@ export default function TestDeathVerificationFlow() {
             
             <CardContent>
               <p className="text-gray-600 mb-4">
-                This will create a test verification record and generate direct action links that you can use
-                to simulate a contact responding to a verification request via email.
+                This will send a test invitation to one of your trusted contacts with direct action links that they can use
+                to accept or decline the invitation directly from their email.
               </p>
+              
+              {errorDetails && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription className="text-sm whitespace-pre-wrap font-mono">
+                    {errorDetails}
+                  </AlertDescription>
+                </Alert>
+              )}
               
               {result && (
                 <div className="mt-4">
                   <Alert className="bg-blue-50 border-blue-200 mb-4">
                     <Info className="h-4 w-4 text-blue-600" />
-                    <AlertTitle className="text-blue-800">Test Verification Created</AlertTitle>
+                    <AlertTitle className="text-blue-800">Test Invitation Sent</AlertTitle>
                     <AlertDescription className="text-blue-700">
-                      Use the links below to test the direct action verification process. This simulates a contact clicking the button in their email.
+                      A test invitation has been sent to {result.contact.name} ({result.contact.email}).
+                      They will receive an email with direct action buttons.
                     </AlertDescription>
                   </Alert>
                   
@@ -355,7 +382,7 @@ export default function TestDeathVerificationFlow() {
                     <Separator />
                     
                     <div className="pt-2">
-                      <Label className="text-sm text-gray-500">Test Direct Action Links</Label>
+                      <Label className="text-sm text-gray-500">Example Direct Action Links</Label>
                       <div className="space-y-2 mt-2">
                         <Button 
                           size="sm" 
@@ -363,7 +390,7 @@ export default function TestDeathVerificationFlow() {
                           className="w-full justify-start"
                           onClick={() => window.open(result.directAcceptUrl, '_blank')}
                         >
-                          Test Direct Accept (Simulates Email Button)
+                          Example Direct Accept Link
                         </Button>
                         <Button 
                           size="sm" 
@@ -371,9 +398,12 @@ export default function TestDeathVerificationFlow() {
                           className="w-full justify-start"
                           onClick={() => window.open(result.directDeclineUrl, '_blank')}
                         >
-                          Test Direct Decline (Simulates Email Button)
+                          Example Direct Decline Link
                         </Button>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        These are example links. The actual links in the email will contain the correct verification token.
+                      </p>
                     </div>
                     
                     <Separator />
@@ -398,7 +428,7 @@ export default function TestDeathVerificationFlow() {
                         </Button>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">
-                        This is the traditional verification link that requires users to visit the website.
+                        This is an example of the traditional verification link that requires users to visit the website.
                       </p>
                     </div>
                   </div>
@@ -415,10 +445,10 @@ export default function TestDeathVerificationFlow() {
                 {sending ? (
                   <>
                     <span className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></span>
-                    Creating Test Verification...
+                    Sending Test Invitation...
                   </>
                 ) : (
-                  'Generate Test Verification'
+                  'Send Test Invitation Email'
                 )}
               </Button>
             </CardFooter>
