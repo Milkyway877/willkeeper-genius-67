@@ -53,3 +53,5 @@ verify_jwt = true
 [functions.send-status-check]
 verify_jwt = true
 
+[functions.verify-trusted-contact]
+verify_jwt = false

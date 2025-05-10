@@ -17,12 +17,16 @@ export default function TestDeathVerificationFlow() {
   const [sendingStatusCheck, setSendingStatusCheck] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [errorDetails, setErrorDetails] = useState<any>(null);
   
   const sendTestStatusCheck = async () => {
     try {
       setSendingStatusCheck(true);
+      setErrorDetails(null);
       
+      console.log("Calling sendStatusCheck function...");
       const success = await sendStatusCheck();
+      console.log("sendStatusCheck result:", success);
       
       if (success) {
         toast({
@@ -35,6 +39,11 @@ export default function TestDeathVerificationFlow() {
       }
     } catch (error) {
       console.error('Error sending test status check:', error);
+      setErrorDetails({
+        context: "status_check",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString()
+      });
       toast({
         title: "Error",
         description: "Failed to send test status check emails. " + (error instanceof Error ? error.message : "Unknown error"),
@@ -48,11 +57,20 @@ export default function TestDeathVerificationFlow() {
   const createTestVerification = async () => {
     try {
       setSendingVerification(true);
+      setErrorDetails(null);
       
       // Use the utility function from verificationTester
+      console.log("Creating test verification for trusted contact...");
       const verificationResult = await createTestVerificationToken('trusted');
+      console.log("Verification result:", verificationResult);
       
       if (!verificationResult.success) {
+        setErrorDetails({
+          context: "verification_creation",
+          error: verificationResult.error || "Failed to create test verification",
+          errorDetails: verificationResult.errorDetails,
+          timestamp: new Date().toISOString()
+        });
         throw new Error(verificationResult.error || "Failed to create test verification");
       }
       
@@ -105,6 +123,23 @@ export default function TestDeathVerificationFlow() {
           This page is for testing the death verification system only. Use these tools to validate your setup before deploying to production.
         </AlertDescription>
       </Alert>
+      
+      {errorDetails && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertTitle className="text-red-800">Error Details</AlertTitle>
+          <AlertDescription className="text-red-700 whitespace-pre-wrap">
+            <p><strong>Context:</strong> {errorDetails.context}</p>
+            <p><strong>Error:</strong> {errorDetails.error}</p>
+            {errorDetails.errorDetails && (
+              <>
+                <p><strong>Code:</strong> {errorDetails.errorDetails.code || 'N/A'}</p>
+                <p><strong>Details:</strong> {JSON.stringify(errorDetails.errorDetails.details || {}, null, 2)}</p>
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       
       <Card>
         <CardHeader>

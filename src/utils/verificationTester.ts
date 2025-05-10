@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Generates a test verification URL for the specified path
@@ -35,26 +36,52 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     invitation: string;
   };
   error?: any;
+  errorDetails?: {
+    code?: string;
+    message?: string;
+    details?: any;
+  };
 }> => {
   try {
     // Get current user
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return { 
+        success: false, 
+        error: 'Authentication error', 
+        errorDetails: sessionError 
+      };
+    }
+    
     if (!session?.user) {
       return { success: false, error: 'Not authenticated' };
     }
     
     // Get a test contact if available
+    const tableName = contactType === 'trusted' ? 'trusted_contacts' : 
+                      contactType === 'executor' ? 'will_executors' : 
+                      'will_beneficiaries';
+    
+    console.log(`Fetching contact from table: ${tableName}`);
+    
     const { data: contacts, error: contactsError } = await supabase
-      .from(contactType === 'trusted' ? 'trusted_contacts' : 
-            contactType === 'executor' ? 'will_executors' : 
-            'will_beneficiaries')
+      .from(tableName)
       .select('id')
       .eq('user_id', session.user.id)
       .limit(1);
       
     if (contactsError) {
-      console.error('Error fetching contacts:', contactsError);
-      return { success: false, error: contactsError.message };
+      console.error(`Error fetching contacts from ${tableName}:`, contactsError);
+      return { 
+        success: false, 
+        error: contactsError.message,
+        errorDetails: {
+          code: contactsError.code,
+          message: contactsError.message,
+          details: contactsError.details
+        }
+      };
     }
       
     if (!contacts || contacts.length === 0) {
@@ -72,6 +99,14 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     expiresAt.setDate(expiresAt.getDate() + 30);
     
     // Create verification record
+    console.log('Creating verification record with data:', {
+      user_id: session.user.id,
+      contact_id: contacts[0].id,
+      contact_type: contactType,
+      verification_token: token,
+      expires_at: expiresAt.toISOString()
+    });
+    
     const { data: verification, error: verificationError } = await supabase
       .from('contact_verifications')
       .insert({
@@ -86,14 +121,15 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     if (verificationError) {
       console.error('Error creating verification record:', verificationError);
       
-      if (verificationError.code === 'PGRST301') {
-        return { 
-          success: false, 
-          error: 'Permission denied. The current user does not have access to create verification records.' 
-        };
-      }
-      
-      return { success: false, error: verificationError.message };
+      return { 
+        success: false, 
+        error: verificationError.message,
+        errorDetails: {
+          code: verificationError.code,
+          message: verificationError.message,
+          details: verificationError.details
+        }
+      };
     }
 
     // Generate various test URLs
@@ -116,7 +152,8 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     console.error('Error creating test verification token:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error creating test verification token' 
+      error: error instanceof Error ? error.message : 'Unknown error creating test verification token',
+      errorDetails: error
     };
   }
 };
