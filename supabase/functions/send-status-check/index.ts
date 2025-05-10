@@ -126,6 +126,10 @@ serve(async (req) => {
     // Get resend client
     const resend = getResendClient();
     
+    // Get the base URL for verification links
+    const baseUrl = req.headers.get("origin") || "https://willtank.com";
+    const apiUrl = baseUrl.replace(/\/$/, '') + "/functions/v1";
+    
     // Send status check emails to all contacts
     const results = await Promise.all(contacts.map(async (contact) => {
       try {
@@ -154,21 +158,46 @@ serve(async (req) => {
           return { success: false, contact, error: verificationError.message };
         }
         
-        // Create verification URL
-        const statusUrl = `https://willtank.com/verify/status/${verificationToken}`;
+        // Create direct action API URLs (for email buttons)
+        const aliveActionUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=status&response=alive`;
+        const deceasedActionUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=status&response=deceased`;
         
-        // Generate email content
+        // Create verification URL (fallback for when buttons don't work)
+        const statusUrl = `${baseUrl}/verify/status/${verificationToken}`;
+        
+        // Generate email content with direct action buttons
         const content = `
           <h1>Status Check Request</h1>
           <p>Hello ${contact.name},</p>
           <p>We're reaching out as part of WillTank's regular status check system. ${userFullName} has you listed as a ${contact.type} in their will.</p>
           <p>We'd like to confirm that ${userFullName} is still alive and well. Please click the appropriate button below:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${statusUrl}?response=alive" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">YES, STILL ALIVE</a>
-            <a href="${statusUrl}?response=deceased" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">NO, DECEASED</a>
-          </div>
-          <p>This is a routine check and part of WillTank's death verification system. Your response helps ensure that ${userFullName}'s will is only accessible at the appropriate time.</p>
+          
+          <table width="100%" border="0" cellspacing="0" cellpadding="0">
+            <tr>
+              <td>
+                <table border="0" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td align="center" style="border-radius: 5px;" bgcolor="#10b981">
+                      <a href="${aliveActionUrl}" target="_blank" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; padding: 12px 25px; border: 1px solid #10b981; display: inline-block; font-weight: bold;">YES, STILL ALIVE</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+              <td>
+                <table border="0" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td align="center" style="border-radius: 5px;" bgcolor="#ef4444">
+                      <a href="${deceasedActionUrl}" target="_blank" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; padding: 12px 25px; border: 1px solid #ef4444; display: inline-block; font-weight: bold;">NO, DECEASED</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          
+          <p style="margin-top: 30px;">This is a routine check and part of WillTank's death verification system. Your response helps ensure that ${userFullName}'s will is only accessible at the appropriate time.</p>
           <p>If you're not sure about ${userFullName}'s status, please try to contact them directly before responding.</p>
+          <p>If the buttons above don't work, you can also <a href="${statusUrl}">click here</a> to respond.</p>
         `;
         
         // Send the email
