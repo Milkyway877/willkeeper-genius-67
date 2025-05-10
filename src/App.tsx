@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
+import { NotificationsProvider } from '@/contexts/NotificationsContext';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
@@ -142,10 +143,12 @@ export default function App({ children }: AppProps) {
         `}
       </style>
       
-      {children}
-      <Toaster />
-      <FloatingAssistant />
-      <ReactQueryDevtools initialIsOpen={false} />
+      <NotificationsProvider>
+        {children}
+        <Toaster />
+        <FloatingAssistant />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </NotificationsProvider>
     </QueryClientProvider>
   );
 }
