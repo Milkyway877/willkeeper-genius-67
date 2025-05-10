@@ -10,23 +10,17 @@ import { Shield, Send, AlertTriangle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { sendStatusCheck } from '@/services/deathVerificationService';
-import { createTestVerificationToken } from '@/utils/verificationTester';
 
 export default function TestDeathVerificationFlow() {
   const { toast } = useToast();
-  const [sendingStatusCheck, setSendingStatusCheck] = useState(false);
-  const [sendingVerification, setSendingVerification] = useState(false);
+  const [sending, setSending] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [errorDetails, setErrorDetails] = useState<any>(null);
   
   const sendTestStatusCheck = async () => {
     try {
-      setSendingStatusCheck(true);
-      setErrorDetails(null);
+      setSending(true);
       
-      console.log("Calling sendStatusCheck function...");
       const success = await sendStatusCheck();
-      console.log("sendStatusCheck result:", success);
       
       if (success) {
         toast({
@@ -39,62 +33,70 @@ export default function TestDeathVerificationFlow() {
       }
     } catch (error) {
       console.error('Error sending test status check:', error);
-      setErrorDetails({
-        context: "status_check",
-        error: error instanceof Error ? error.message : "Unknown error",
-        timestamp: new Date().toISOString()
-      });
       toast({
         title: "Error",
-        description: "Failed to send test status check emails. " + (error instanceof Error ? error.message : "Unknown error"),
+        description: "Failed to send test status check emails.",
         variant: "destructive"
       });
     } finally {
-      setSendingStatusCheck(false);
+      setSending(false);
     }
   };
   
   const createTestVerification = async () => {
     try {
-      setSendingVerification(true);
-      setErrorDetails(null);
+      setSending(true);
       
-      // Use the utility function from verificationTester
-      console.log("Creating test verification for trusted contact...");
-      const verificationResult = await createTestVerificationToken('trusted');
-      console.log("Verification result:", verificationResult);
-      
-      if (!verificationResult.success) {
-        setErrorDetails({
-          context: "verification_creation",
-          error: verificationResult.error || "Failed to create test verification",
-          errorDetails: verificationResult.errorDetails,
-          timestamp: new Date().toISOString()
-        });
-        throw new Error(verificationResult.error || "Failed to create test verification");
-      }
-      
-      // Get the current user for additional context
+      // Get the current user
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
         throw new Error('No authenticated user found');
       }
       
-      // Get trusted contact details for the created verification
-      const { data: contact } = await supabase
+      // Get trusted contacts
+      const { data: contacts, error: contactsError } = await supabase
         .from('trusted_contacts')
         .select('*')
-        .eq('id', verificationResult.contactId)
+        .eq('user_id', session.user.id)
+        .limit(1);
+        
+      if (contactsError || !contacts || contacts.length === 0) {
+        throw new Error('No trusted contacts found');
+      }
+      
+      const contact = contacts[0];
+      
+      // Create a verification token
+      const verificationToken = crypto.randomUUID();
+      
+      // Set expiration date to 7 days from now
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      
+      // Create verification record
+      const { data: verification, error: verificationError } = await supabase
+        .from('contact_verifications')
+        .insert({
+          contact_id: contact.id,
+          contact_type: 'trusted',
+          verification_token: verificationToken,
+          expires_at: expiresAt.toISOString(),
+          user_id: session.user.id
+        })
+        .select()
         .single();
       
-      // Format the result for display
+      if (verificationError) {
+        throw verificationError;
+      }
+      
+      // Return the verification data and URL
+      const verificationUrl = `${window.location.origin}/verify/trusted-contact/${verificationToken}`;
+      
       setResult({
-        verification: {
-          token: verificationResult.token
-        },
+        verification,
         contact,
-        verificationUrl: verificationResult.urls?.invitation,
-        allUrls: verificationResult.urls
+        verificationUrl
       });
       
       toast({
@@ -106,11 +108,11 @@ export default function TestDeathVerificationFlow() {
       console.error('Error creating test verification:', error);
       toast({
         title: "Error",
-        description: "Failed to create test verification. " + (error instanceof Error ? error.message : "Unknown error"),
+        description: "Failed to create test verification.",
         variant: "destructive"
       });
     } finally {
-      setSendingVerification(false);
+      setSending(false);
     }
   };
   
@@ -123,23 +125,6 @@ export default function TestDeathVerificationFlow() {
           This page is for testing the death verification system only. Use these tools to validate your setup before deploying to production.
         </AlertDescription>
       </Alert>
-      
-      {errorDetails && (
-        <Alert className="bg-red-50 border-red-200">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertTitle className="text-red-800">Error Details</AlertTitle>
-          <AlertDescription className="text-red-700 whitespace-pre-wrap">
-            <p><strong>Context:</strong> {errorDetails.context}</p>
-            <p><strong>Error:</strong> {errorDetails.error}</p>
-            {errorDetails.errorDetails && (
-              <>
-                <p><strong>Code:</strong> {errorDetails.errorDetails.code || 'N/A'}</p>
-                <p><strong>Details:</strong> {JSON.stringify(errorDetails.errorDetails.details || {}, null, 2)}</p>
-              </>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
       
       <Card>
         <CardHeader>
@@ -162,10 +147,10 @@ export default function TestDeathVerificationFlow() {
         <CardFooter>
           <Button 
             onClick={sendTestStatusCheck} 
-            disabled={sendingStatusCheck}
+            disabled={sending}
             className="w-full"
           >
-            {sendingStatusCheck ? (
+            {sending ? (
               <>
                 <span className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></span>
                 Sending Test Emails...
@@ -207,7 +192,7 @@ export default function TestDeathVerificationFlow() {
               <div className="space-y-4 border rounded-md p-4 bg-gray-50">
                 <div className="space-y-1">
                   <Label className="text-sm text-gray-500">Contact</Label>
-                  <p className="text-sm">{result.contact?.name} ({result.contact?.email})</p>
+                  <p className="text-sm">{result.contact.name} ({result.contact.email})</p>
                 </div>
                 
                 <div className="space-y-1">
@@ -240,25 +225,17 @@ export default function TestDeathVerificationFlow() {
                       size="sm" 
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => window.open(result.allUrls?.invitation, '_blank')}
+                      onClick={() => window.open(`${result.verificationUrl}?response=accept`, '_blank')}
                     >
-                      Test Invitation Response Link
+                      Test Accept Verification
                     </Button>
                     <Button 
                       size="sm" 
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => window.open(result.allUrls?.trusted, '_blank')}
+                      onClick={() => window.open(`${result.verificationUrl}?response=decline`, '_blank')}
                     >
-                      Test Trusted Contact Link
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => window.open(result.allUrls?.direct, '_blank')}
-                    >
-                      Test Direct Link
+                      Test Decline Verification
                     </Button>
                   </div>
                 </div>
@@ -270,10 +247,10 @@ export default function TestDeathVerificationFlow() {
         <CardFooter>
           <Button 
             onClick={createTestVerification} 
-            disabled={sendingVerification}
+            disabled={sending}
             className="w-full"
           >
-            {sendingVerification ? (
+            {sending ? (
               <>
                 <span className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></span>
                 Creating Test Verification...

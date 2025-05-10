@@ -301,17 +301,6 @@ const router = createBrowserRouter([
   },
 ]);
 
-// Check if there's a redirect path in sessionStorage (from 404.html handling)
-// This allows deep linking to work properly with static hosting
-const redirectPath = sessionStorage.getItem('redirect_path');
-if (redirectPath) {
-  console.log('Redirecting from sessionStorage path:', redirectPath);
-  // Clear the redirect path from sessionStorage
-  sessionStorage.removeItem('redirect_path');
-  // Use history.replaceState to change the URL without reloading
-  window.history.replaceState(null, '', redirectPath);
-}
-
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
