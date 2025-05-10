@@ -1,5 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { generateVerificationEmailTemplate, generatePlainTextVerificationEmail } from '@/utils/emailTemplates';
 
 export interface TrustedContact {
   id: string;
@@ -154,78 +156,81 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Attempt to call the edge function but with better error handling
-    try {
-      // Update the contact with the invitation sent timestamp first
-      // This way we at least mark an attempt was made
-      await supabase
-        .from('trusted_contacts')
-        .update({
-          invitation_sent_at: new Date().toISOString(),
-          invitation_status: 'pending'
-        })
-        .eq('id', contactId);
-        
-      // Create the invitation request to be sent via edge function
-      const invitationRequest = {
-        contact: {
-          contactId: contact.id,
-          contactType: 'trusted',
-          name: contact.name,
-          email: contact.email,
-          userId: session.user.id,
-          userFullName
-        },
-        emailDetails: {
-          subject: `Important: ${userFullName} has named you as a trusted contact`,
-          includeVerificationInstructions: true,
-          includeUserBio: true,
-          priority: 'high'
-        }
-      };
+    // Update the contact with the invitation sent timestamp
+    await supabase
+      .from('trusted_contacts')
+      .update({
+        invitation_sent_at: new Date().toISOString(),
+        invitation_status: 'pending'
+      })
+      .eq('id', contactId);
       
+    // Prepare the email content with direct verification links
+    const baseUrl = window.location.origin;
+    const htmlContent = generateVerificationEmailTemplate(
+      contact.name,
+      userFullName,
+      contactId, // Using contactId directly as the verification token for simplicity
+      baseUrl
+    );
+    const textContent = generatePlainTextVerificationEmail(
+      contact.name,
+      userFullName,
+      contactId,
+      baseUrl
+    );
+    
+    // Attempt to send the email
+    try {
       // First try using fetch with the edge function
+      const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+        },
+        body: JSON.stringify({
+          to: contact.email,
+          subject: `Important: ${userFullName} has named you as a trusted contact`,
+          htmlContent,
+          textContent,
+          priority: 'high'
+        })
+      });
+      
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json();
+        console.error('Error from email edge function:', errorData);
+        throw new Error('Edge function error');
+      }
+      
+      return true;
+    } catch (fetchError) {
+      console.error('Error sending email:', fetchError);
+      
+      // Try direct functions invoke as a fallback
       try {
-        const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-          },
-          body: JSON.stringify(invitationRequest)
+        const { data, error: fnError } = await supabase.functions.invoke('send-email', {
+          body: {
+            to: contact.email,
+            subject: `Important: ${userFullName} has named you as a trusted contact`,
+            htmlContent,
+            textContent,
+            priority: 'high'
+          }
         });
         
-        if (!emailResponse.ok) {
-          const errorData = await emailResponse.json();
-          console.error('Error from invitation edge function:', errorData);
-          throw new Error('Edge function error');
+        if (fnError) {
+          console.error('Error from functions.invoke:', fnError);
+          throw new Error('Functions invoke error');
         }
         
         return true;
-      } catch (fetchError) {
-        console.error('Fetch error with edge function:', fetchError);
-        
-        // Try direct functions invoke as a fallback
-        try {
-          const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
-            body: invitationRequest
-          });
-          
-          if (fnError) {
-            console.error('Error from functions.invoke:', fnError);
-            throw new Error('Functions invoke error');
-          }
-          
-          return true;
-        } catch (invokeError) {
-          console.error('Error with functions.invoke:', invokeError);
-          throw new Error('All email sending methods failed');
-        }
+      } catch (invokeError) {
+        console.error('Error with functions.invoke:', invokeError);
+        return false;
       }
-    } catch (error) {
-      console.error('Error sending verification request:', error);
-      return false;
     }
   } catch (error) {
     console.error('Error in sendVerificationRequest:', error);
