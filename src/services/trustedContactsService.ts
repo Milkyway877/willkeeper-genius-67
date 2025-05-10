@@ -182,8 +182,8 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
     
     // Attempt to send the email
     try {
-      // First try using fetch with the edge function
-      const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-email`, {
+      // Use send-contact-invitation instead of send-email
+      const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,11 +191,19 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
           'apikey': SUPABASE_PUBLISHABLE_KEY || ''
         },
         body: JSON.stringify({
-          to: contact.email,
-          subject: `Important: ${userFullName} has named you as a trusted contact`,
-          htmlContent,
-          textContent,
-          priority: 'high'
+          contact: {
+            contactId,
+            contactType: 'trusted',
+            name: contact.name,
+            email: contact.email,
+            userId: session.user.id,
+            userFullName
+          },
+          emailDetails: {
+            subject: `Important: ${userFullName} has named you as a trusted contact`,
+            includeVerificationInstructions: true,
+            priority: 'high'
+          }
         })
       });
       
@@ -211,13 +219,21 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       
       // Try direct functions invoke as a fallback
       try {
-        const { data, error: fnError } = await supabase.functions.invoke('send-email', {
+        const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
           body: {
-            to: contact.email,
-            subject: `Important: ${userFullName} has named you as a trusted contact`,
-            htmlContent,
-            textContent,
-            priority: 'high'
+            contact: {
+              contactId,
+              contactType: 'trusted',
+              name: contact.name,
+              email: contact.email,
+              userId: session.user.id,
+              userFullName
+            },
+            emailDetails: {
+              subject: `Important: ${userFullName} has named you as a trusted contact`,
+              includeVerificationInstructions: true,
+              priority: 'high'
+            }
           }
         });
         

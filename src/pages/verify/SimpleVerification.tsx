@@ -25,6 +25,8 @@ export default function SimpleVerification() {
       }
       
       try {
+        console.log('Processing verification for token:', token, 'with response:', response);
+        
         // First, find the verification record
         const { data: verification, error: verificationError } = await supabase
           .from('contact_verifications')
@@ -33,6 +35,7 @@ export default function SimpleVerification() {
           .single();
           
         if (verificationError || !verification) {
+          console.log('No verification record found, trying trusted_contacts directly');
           // Try to find in trusted_contacts directly as fallback
           const { data: contact, error: contactError } = await supabase
             .from('trusted_contacts')
@@ -41,21 +44,30 @@ export default function SimpleVerification() {
             .single();
             
           if (contactError || !contact) {
+            console.error('Error finding contact:', contactError);
             setError('Invalid or expired verification link');
             return;
           }
             
+          console.log('Found contact, updating status');
           // Update trusted contact status directly
-          await supabase
+          const { error: updateError } = await supabase
             .from('trusted_contacts')
             .update({
               invitation_status: response === 'accept' ? 'accepted' : 'declined',
               invitation_responded_at: new Date().toISOString()
             })
             .eq('id', token);
+            
+          if (updateError) {
+            console.error('Error updating contact:', updateError);
+            setError('Failed to update your response. Please try again.');
+            return;
+          }
         } else {
+          console.log('Found verification record, updating');
           // Update the verification record
-          await supabase
+          const { error: updateError } = await supabase
             .from('contact_verifications')
             .update({
               response: response,
@@ -63,15 +75,27 @@ export default function SimpleVerification() {
             })
             .eq('verification_token', token);
             
+          if (updateError) {
+            console.error('Error updating verification:', updateError);
+            setError('Failed to update your response. Please try again.');
+            return;
+          }
+            
           // If it's a trusted contact verification, also update the contact
-          if (verification.contact_type === 'trusted') {
-            await supabase
+          if (verification.contact_type === 'trusted' && verification.contact_id) {
+            console.log('Updating associated trusted contact');
+            const { error: contactUpdateError } = await supabase
               .from('trusted_contacts')
               .update({
                 invitation_status: response === 'accept' ? 'accepted' : 'declined',
                 invitation_responded_at: new Date().toISOString()
               })
               .eq('id', verification.contact_id);
+              
+            if (contactUpdateError) {
+              console.error('Error updating contact from verification:', contactUpdateError);
+              // Don't set an error here since we already updated the verification record
+            }
           }
         }
         

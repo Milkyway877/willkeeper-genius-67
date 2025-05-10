@@ -50,7 +50,7 @@ export const generateVerificationEmailTemplate = (
           color: white;
         }
         .decline {
-          background-color: #white;
+          background-color: white;
           color: #ef4444;
           border: 1px solid #ef4444;
         }
