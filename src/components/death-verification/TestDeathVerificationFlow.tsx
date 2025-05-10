@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Shield, Send, AlertTriangle, Info, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { sendStatusCheck } from '@/services/deathVerificationService';
+import { sendStatusCheck, sendTrustedContactInvitation } from '@/services/deathVerificationService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function TestDeathVerificationFlow() {
@@ -25,44 +25,12 @@ export default function TestDeathVerificationFlow() {
       setErrorDetails(null);
       setResponseData(null);
       
-      // Get the current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('No authenticated user found');
-      }
+      console.log('Sending test status check using direct email service...');
       
-      console.log('Sending test status check...');
+      // Use our modified sendStatusCheck function that uses the direct email service
+      const success = await sendStatusCheck();
       
-      // Call the edge function directly with error handling
-      const response = await fetch(`${window.location.origin}/functions/v1/send-status-check`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          userId: session.user.id
-        })
-      });
-      
-      // Store the HTTP status for better error reporting
-      const status = response.status;
-      let data;
-      
-      try {
-        data = await response.json();
-        console.log('Status check response:', data);
-        setResponseData(data);
-      } catch (jsonError) {
-        console.error('Error parsing JSON response:', jsonError);
-        throw new Error(`API returned status ${status} but with invalid JSON. The API might not be deployed correctly.`);
-      }
-      
-      if (!response.ok) {
-        throw new Error(`API Error (${status}): ${data?.message || data?.error || response.statusText}`);
-      }
-      
-      if (data?.success) {
+      if (success) {
         toast({
           title: "Status Check Sent",
           description: "Test status check emails have been sent to your contacts.",
@@ -73,13 +41,13 @@ export default function TestDeathVerificationFlow() {
         const previewHtml = generateStatusCheckEmailPreview();
         setEmailPreview(previewHtml);
         
-        setResult(data);
+        setResult({ success: true });
       } else {
-        throw new Error(data?.message || "Failed to send status check emails");
+        throw new Error("Failed to send status check emails");
       }
     } catch (error) {
       console.error('Error sending test status check:', error);
-      setErrorDetails(error.message || "Unknown error occurred");
+      setErrorDetails(error instanceof Error ? error.message : "Unknown error occurred");
       toast({
         title: "Error",
         description: "Failed to send test status check emails. See details below.",
@@ -204,57 +172,27 @@ export default function TestDeathVerificationFlow() {
       const contact = contacts[0];
       console.log('Creating test verification for contact:', contact);
       
-      // Call the send-contact-invitation edge function
-      const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          contact: {
-            contactId: contact.id,
-            contactType: 'trusted',
-            name: contact.name,
-            email: contact.email,
-            userId: session.user.id
-          },
-          emailDetails: {
-            subject: 'TEST: Invitation to be a Trusted Contact',
-            includeVerificationInstructions: true,
-            customMessage: 'This is a test invitation sent from the WillTank test system.'
-          }
-        })
-      });
+      // Call our new function to send the invitation
+      const result = await sendTrustedContactInvitation(
+        contact.id,
+        contact.name,
+        contact.email,
+        'This is a test invitation sent from the WillTank test system.'
+      );
       
-      // Store the HTTP status for better error reporting
-      const status = response.status;
-      let data;
-      
-      try {
-        data = await response.json();
-        console.log('Invitation response:', data);
-        setResponseData(data);
-      } catch (jsonError) {
-        console.error('Error parsing JSON response:', jsonError);
-        throw new Error(`API returned status ${status} but with invalid JSON. The API might not be deployed correctly.`);
-      }
-      
-      if (!response.ok) {
-        throw new Error(`API Error (${status}): ${data?.message || data?.error || response.statusText}`);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send invitation');
       }
       
       // Create example verification URLs for preview purposes
       const baseUrl = window.location.origin;
-      const apiUrl = `${baseUrl}/functions/v1`;
       const verificationToken = crypto.randomUUID(); // Example token
       
       setResult({
         contact,
-        directAcceptUrl: `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=accept`,
-        directDeclineUrl: `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=decline`,
+        directAcceptUrl: `${baseUrl}/verify/invitation-response?token=${verificationToken}&response=accept&direct=true`,
+        directDeclineUrl: `${baseUrl}/verify/invitation-response?token=${verificationToken}&response=decline&direct=true`,
         legacyVerificationUrl: `${baseUrl}/verify/invitation/${verificationToken}`,
-        apiResponse: data
       });
       
       // Generate email preview HTML
@@ -267,10 +205,10 @@ export default function TestDeathVerificationFlow() {
       });
     } catch (error) {
       console.error('Error creating test verification:', error);
-      setErrorDetails(error.message || "Unknown error occurred");
+      setErrorDetails(error instanceof Error ? error.message : "Unknown error occurred");
       toast({
         title: "Error",
-        description: error.message || "Failed to create test verification.",
+        description: error instanceof Error ? error.message : "Failed to create test verification.",
         variant: "destructive"
       });
     } finally {

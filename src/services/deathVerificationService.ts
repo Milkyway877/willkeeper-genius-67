@@ -1,4 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
+import * as directEmailService from '@/services/directEmailService';
 
 export interface DeathVerificationSettings {
   id?: string;
@@ -281,40 +283,277 @@ export const sendStatusCheck = async (): Promise<boolean> => {
       return false;
     }
     
-    console.log('Calling send-status-check edge function...');
+    // Get user profile info
+    const { data: userProfile, error: userError } = await supabase
+      .from('user_profiles')
+      .select('first_name, last_name, full_name')
+      .eq('id', session.user.id)
+      .single();
     
-    // Call the edge function to send status check emails
-    const response = await fetch(`${window.location.origin}/functions/v1/send-status-check`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({
-        userId: session.user.id
-      })
-    });
-    
-    if (!response.ok) {
-      let errorMessage = `API error: ${response.status} ${response.statusText}`;
-      
-      try {
-        const errorData = await response.json();
-        console.error('Error from status check edge function:', errorData);
-        errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch (e) {
-        console.error('Could not parse error response as JSON:', e);
-      }
-      
-      throw new Error(errorMessage);
+    if (userError || !userProfile) {
+      console.error('Error fetching user profile:', userError);
+      throw new Error("User profile not found");
     }
     
-    const data = await response.json();
-    console.log('Status check response:', data);
+    const userFullName = userProfile.full_name || 
+      (userProfile.first_name && userProfile.last_name 
+        ? `${userProfile.first_name} ${userProfile.last_name}` 
+        : 'A WillTank user');
     
-    return data.success === true;
+    // Get all contacts for this user
+    interface Contact {
+      id: string;
+      type: 'beneficiary' | 'executor' | 'trusted';
+      name: string;
+      email: string;
+    }
+    
+    const contacts: Contact[] = [];
+    
+    // Get beneficiaries
+    const { data: beneficiaries, error: beneficiariesError } = await supabase
+      .from('will_beneficiaries')
+      .select('id, beneficiary_name, email')
+      .eq('user_id', session.user.id)
+      .not('email', 'is', null);
+    
+    if (beneficiariesError) {
+      console.error('Error fetching beneficiaries:', beneficiariesError);
+    }
+    
+    if (!beneficiariesError && beneficiaries) {
+      beneficiaries.forEach(b => {
+        contacts.push({
+          id: b.id,
+          type: 'beneficiary',
+          name: b.beneficiary_name,
+          email: b.email
+        });
+      });
+    }
+    
+    // Get executors
+    const { data: executors, error: executorsError } = await supabase
+      .from('will_executors')
+      .select('id, name, email')
+      .eq('user_id', session.user.id)
+      .not('email', 'is', null);
+    
+    if (executorsError) {
+      console.error('Error fetching executors:', executorsError);
+    }
+    
+    if (!executorsError && executors) {
+      executors.forEach(e => {
+        contacts.push({
+          id: e.id,
+          type: 'executor',
+          name: e.name,
+          email: e.email
+        });
+      });
+    }
+    
+    // Get trusted contacts
+    const { data: trustedContacts, error: trustedError } = await supabase
+      .from('trusted_contacts')
+      .select('id, name, email')
+      .eq('user_id', session.user.id);
+    
+    if (trustedError) {
+      console.error('Error fetching trusted contacts:', trustedError);
+    }
+    
+    if (!trustedError && trustedContacts) {
+      trustedContacts.forEach(t => {
+        contacts.push({
+          id: t.id,
+          type: 'trusted',
+          name: t.name,
+          email: t.email
+        });
+      });
+    }
+    
+    if (contacts.length === 0) {
+      console.log('No contacts found for user:', session.user.id);
+      return false;
+    }
+    
+    console.log(`Found ${contacts.length} contacts for status check`);
+    
+    // Get the base URL for verification links
+    const baseUrl = window.location.origin;
+    
+    // Send status check emails to all contacts
+    const results = await Promise.all(contacts.map(async (contact) => {
+      try {
+        // Generate a verification token
+        const verificationToken = await directEmailService.createVerificationToken(
+          session.user.id,
+          contact.id,
+          contact.type as 'beneficiary' | 'executor' | 'trusted',
+          'status'
+        );
+        
+        if (!verificationToken) {
+          return { success: false, contact, error: "Failed to create verification token" };
+        }
+        
+        // Generate email content
+        const emailTemplate = directEmailService.generateStatusCheckEmail(
+          {
+            id: contact.id,
+            name: contact.name,
+            email: contact.email,
+            type: contact.type as 'beneficiary' | 'executor' | 'trusted'
+          },
+          userFullName,
+          verificationToken,
+          baseUrl
+        );
+        
+        // Send the email
+        const emailResult = await directEmailService.sendEmail(
+          contact.email,
+          emailTemplate.subject,
+          emailTemplate.html,
+          'WillTank Status Check <verify@willtank.com>'
+        );
+        
+        if (!emailResult.success) {
+          console.error(`Error sending status check to ${contact.email}:`, emailResult.error);
+          return { success: false, contact, error: emailResult.error };
+        }
+        
+        console.log(`Successfully sent status check to ${contact.email}`);
+        
+        // Log the status check
+        await supabase.from('death_verification_logs').insert({
+          user_id: session.user.id,
+          action: 'status_check_sent',
+          details: {
+            contact_id: contact.id,
+            contact_type: contact.type,
+            contact_name: contact.name,
+            contact_email: contact.email,
+            email_id: emailResult.emailId,
+          }
+        });
+        
+        return { success: true, contact, emailId: emailResult.emailId };
+      } catch (error) {
+        console.error(`Error sending status check to ${contact.email}:`, error);
+        return { success: false, contact, error: error instanceof Error ? error.message : "Unknown error" };
+      }
+    }));
+    
+    // Count successes and failures
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+    
+    console.log(`Status check complete: ${successful} successful, ${failed} failed`);
+    
+    return successful > 0;
   } catch (error) {
-    console.error('Error in sendStatusCheck:', error);
-    throw error; // Propagate the error so it can be handled by the component
+    console.error("Error sending status check emails:", error);
+    throw error;
+  }
+};
+
+// New function to send invitation email to trusted contact
+export const sendTrustedContactInvitation = async (
+  contactId: string,
+  contactName: string,
+  contactEmail: string,
+  customMessage?: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Get current authenticated session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('No authenticated user found');
+      return { success: false, error: 'Not authenticated' };
+    }
+    
+    // Get user profile for name
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('first_name, last_name, full_name')
+      .eq('id', session.user.id)
+      .single();
+      
+    const userFullName = userProfile?.full_name || 
+      (userProfile?.first_name && userProfile?.last_name ? 
+        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
+    
+    // First mark the contact as having an invitation sent 
+    await supabase
+      .from('trusted_contacts')
+      .update({
+        invitation_sent_at: new Date().toISOString(),
+        invitation_status: 'sent'
+      })
+      .eq('id', contactId);
+    
+    // Create verification token
+    const verificationToken = await directEmailService.createVerificationToken(
+      session.user.id,
+      contactId,
+      'trusted',
+      'invitation'
+    );
+    
+    if (!verificationToken) {
+      return { success: false, error: 'Failed to create verification token' };
+    }
+    
+    // Get the base URL for verification links
+    const baseUrl = window.location.origin;
+    
+    // Generate email content
+    const emailTemplate = directEmailService.generateInvitationEmail(
+      {
+        id: contactId,
+        name: contactName,
+        email: contactEmail,
+        type: 'trusted'
+      },
+      userFullName,
+      verificationToken,
+      baseUrl,
+      customMessage
+    );
+    
+    // Send the email
+    const emailResult = await directEmailService.sendEmail(
+      contactEmail,
+      emailTemplate.subject,
+      emailTemplate.html,
+      'WillTank Trusted Contact <trusted@willtank.com>'
+    );
+    
+    if (!emailResult.success) {
+      console.error(`Error sending invitation to ${contactEmail}:`, emailResult.error);
+      return { success: false, error: emailResult.error };
+    }
+    
+    // Log the invitation sent
+    await supabase.from('death_verification_logs').insert({
+      user_id: session.user.id,
+      action: 'trusted_contact_invitation_sent',
+      details: {
+        contact_id: contactId,
+        contact_name: contactName,
+        contact_email: contactEmail,
+        email_id: emailResult.emailId,
+      }
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in sendTrustedContactInvitation:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 };
