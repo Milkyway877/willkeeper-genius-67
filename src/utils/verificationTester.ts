@@ -28,6 +28,7 @@ export const generateTestUrl = (basePath: string, token: string): string => {
 export const createTestVerificationToken = async (contactType: 'trusted' | 'executor' | 'beneficiary'): Promise<{
   success: boolean;
   token?: string;
+  contactId?: string;
   urls?: {
     direct: string;
     trusted: string;
@@ -43,13 +44,18 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     }
     
     // Get a test contact if available
-    const { data: contacts } = await supabase
+    const { data: contacts, error: contactsError } = await supabase
       .from(contactType === 'trusted' ? 'trusted_contacts' : 
             contactType === 'executor' ? 'will_executors' : 
             'will_beneficiaries')
       .select('id')
       .eq('user_id', session.user.id)
       .limit(1);
+      
+    if (contactsError) {
+      console.error('Error fetching contacts:', contactsError);
+      return { success: false, error: contactsError.message };
+    }
       
     if (!contacts || contacts.length === 0) {
       return { 
@@ -66,7 +72,7 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     expiresAt.setDate(expiresAt.getDate() + 30);
     
     // Create verification record
-    await supabase
+    const { data: verification, error: verificationError } = await supabase
       .from('contact_verifications')
       .insert({
         user_id: session.user.id,
@@ -74,7 +80,21 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
         contact_type: contactType,
         verification_token: token,
         expires_at: expiresAt.toISOString()
-      });
+      })
+      .select();
+    
+    if (verificationError) {
+      console.error('Error creating verification record:', verificationError);
+      
+      if (verificationError.code === 'PGRST301') {
+        return { 
+          success: false, 
+          error: 'Permission denied. The current user does not have access to create verification records.' 
+        };
+      }
+      
+      return { success: false, error: verificationError.message };
+    }
 
     // Generate various test URLs
     const directUrl = generateTestUrl('verify', token);
@@ -85,6 +105,7 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     return {
       success: true,
       token,
+      contactId: contacts[0].id,
       urls: {
         direct: directUrl,
         trusted: trustedUrl,
@@ -93,7 +114,10 @@ export const createTestVerificationToken = async (contactType: 'trusted' | 'exec
     };
   } catch (error) {
     console.error('Error creating test verification token:', error);
-    return { success: false, error };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error creating test verification token' 
+    };
   }
 };
 
@@ -127,6 +151,7 @@ export const validateVerificationToken = async (token: string): Promise<{
   expired?: boolean;
   responded?: boolean;
   details?: any;
+  error?: string;
 }> => {
   try {
     // Check token in database
@@ -136,8 +161,13 @@ export const validateVerificationToken = async (token: string): Promise<{
       .eq('verification_token', token)
       .single();
       
-    if (error || !data) {
-      return { valid: false };
+    if (error) {
+      console.error('Error validating token:', error);
+      return { valid: false, error: error.message };
+    }
+    
+    if (!data) {
+      return { valid: false, error: 'Token not found' };
     }
     
     // Check if token is expired
@@ -154,7 +184,10 @@ export const validateVerificationToken = async (token: string): Promise<{
     };
   } catch (error) {
     console.error('Error validating token:', error);
-    return { valid: false };
+    return { 
+      valid: false, 
+      error: error instanceof Error ? error.message : 'Unknown error validating token' 
+    };
   }
 };
 
