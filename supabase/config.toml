@@ -49,3 +49,12 @@ verify_jwt = true
 
 [functions.send-contact-invitation]
 verify_jwt = true
+
+[functions.send-status-check]
+verify_jwt = true
+
+[functions.process-verification-response]
+verify_jwt = false
+
+[functions.verify-trusted-contact]
+verify_jwt = false

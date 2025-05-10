@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,15 +17,52 @@ export default function TestDeathVerificationFlow() {
   const [result, setResult] = useState<any>(null);
   const [emailPreview, setEmailPreview] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [responseData, setResponseData] = useState<any>(null);
   
   const sendTestStatusCheck = async () => {
     try {
       setSending(true);
       setErrorDetails(null);
+      setResponseData(null);
       
-      const success = await sendStatusCheck();
+      // Get the current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('No authenticated user found');
+      }
       
-      if (success) {
+      console.log('Sending test status check...');
+      
+      // Call the edge function directly with error handling
+      const response = await fetch(`${window.location.origin}/functions/v1/send-status-check`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          userId: session.user.id
+        })
+      });
+      
+      // Store the HTTP status for better error reporting
+      const status = response.status;
+      let data;
+      
+      try {
+        data = await response.json();
+        console.log('Status check response:', data);
+        setResponseData(data);
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+        throw new Error(`API returned status ${status} but with invalid JSON. The API might not be deployed correctly.`);
+      }
+      
+      if (!response.ok) {
+        throw new Error(`API Error (${status}): ${data?.message || data?.error || response.statusText}`);
+      }
+      
+      if (data?.success) {
         toast({
           title: "Status Check Sent",
           description: "Test status check emails have been sent to your contacts.",
@@ -36,15 +72,17 @@ export default function TestDeathVerificationFlow() {
         // Generate email preview HTML
         const previewHtml = generateStatusCheckEmailPreview();
         setEmailPreview(previewHtml);
+        
+        setResult(data);
       } else {
-        throw new Error("Failed to send status check emails");
+        throw new Error(data?.message || "Failed to send status check emails");
       }
     } catch (error) {
       console.error('Error sending test status check:', error);
       setErrorDetails(error.message || "Unknown error occurred");
       toast({
         title: "Error",
-        description: "Failed to send test status check emails. Check console for details.",
+        description: "Failed to send test status check emails. See details below.",
         variant: "destructive"
       });
     } finally {
@@ -144,6 +182,7 @@ export default function TestDeathVerificationFlow() {
     try {
       setSending(true);
       setErrorDetails(null);
+      setResponseData(null);
       
       // Get the current user
       const { data: { session } } = await supabase.auth.getSession();
@@ -163,8 +202,9 @@ export default function TestDeathVerificationFlow() {
       }
       
       const contact = contacts[0];
+      console.log('Creating test verification for contact:', contact);
       
-      // Call the send-contact-invitation edge function instead of directly inserting
+      // Call the send-contact-invitation edge function
       const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
         method: 'POST',
         headers: {
@@ -187,12 +227,22 @@ export default function TestDeathVerificationFlow() {
         })
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`API Error: ${errorData.message || response.statusText}`);
+      // Store the HTTP status for better error reporting
+      const status = response.status;
+      let data;
+      
+      try {
+        data = await response.json();
+        console.log('Invitation response:', data);
+        setResponseData(data);
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+        throw new Error(`API returned status ${status} but with invalid JSON. The API might not be deployed correctly.`);
       }
       
-      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(`API Error (${status}): ${data?.message || data?.error || response.statusText}`);
+      }
       
       // Create example verification URLs for preview purposes
       const baseUrl = window.location.origin;
@@ -204,7 +254,7 @@ export default function TestDeathVerificationFlow() {
         directAcceptUrl: `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=accept`,
         directDeclineUrl: `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=decline`,
         legacyVerificationUrl: `${baseUrl}/verify/invitation/${verificationToken}`,
-        apiResponse: responseData
+        apiResponse: data
       });
       
       // Generate email preview HTML
@@ -268,6 +318,18 @@ export default function TestDeathVerificationFlow() {
                   <AlertTitle>Error</AlertTitle>
                   <AlertDescription className="text-sm whitespace-pre-wrap font-mono">
                     {errorDetails}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {responseData && (
+                <Alert className="mb-4 bg-gray-50 border-gray-200">
+                  <Info className="h-4 w-4 text-gray-600" />
+                  <AlertTitle>API Response</AlertTitle>
+                  <AlertDescription>
+                    <pre className="text-xs whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded mt-2 max-h-40 overflow-auto">
+                      {JSON.stringify(responseData, null, 2)}
+                    </pre>
                   </AlertDescription>
                 </Alert>
               )}
@@ -346,11 +408,23 @@ export default function TestDeathVerificationFlow() {
                 </Alert>
               )}
               
+              {responseData && (
+                <Alert className="mb-4 bg-gray-50 border-gray-200">
+                  <Info className="h-4 w-4 text-gray-600" />
+                  <AlertTitle>API Response</AlertTitle>
+                  <AlertDescription>
+                    <pre className="text-xs whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded mt-2 max-h-40 overflow-auto">
+                      {JSON.stringify(responseData, null, 2)}
+                    </pre>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               {result && (
                 <div className="mt-4">
                   <Alert className="bg-blue-50 border-blue-200 mb-4">
                     <Info className="h-4 w-4 text-blue-600" />
-                    <AlertTitle className="text-blue-800">Test Invitation Sent</AlertTitle>
+                    <AlertTitle>Test Invitation Sent</AlertTitle>
                     <AlertDescription className="text-blue-700">
                       A test invitation has been sent to {result.contact.name} ({result.contact.email}).
                       They will receive an email with direct action buttons.

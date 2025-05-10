@@ -8,11 +8,7 @@ import {
   isEmailSendSuccess, 
   formatResendError 
 } from "../_shared/email-helper.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
@@ -36,10 +32,12 @@ serve(async (req) => {
     
     if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Missing user ID" }),
+        JSON.stringify({ success: false, error: "Missing user ID" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log('Processing status check for user:', userId);
     
     // Get user profile info
     const { data: userProfile, error: userError } = await supabase
@@ -49,8 +47,9 @@ serve(async (req) => {
       .single();
     
     if (userError || !userProfile) {
+      console.error('Error fetching user profile:', userError);
       return new Response(
-        JSON.stringify({ error: "User not found" }),
+        JSON.stringify({ success: false, error: "User not found", details: userError }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -70,6 +69,10 @@ serve(async (req) => {
       .eq('user_id', userId)
       .not('email', 'is', null);
     
+    if (beneficiariesError) {
+      console.error('Error fetching beneficiaries:', beneficiariesError);
+    }
+    
     if (!beneficiariesError && beneficiaries) {
       beneficiaries.forEach(b => {
         contacts.push({
@@ -88,6 +91,10 @@ serve(async (req) => {
       .eq('user_id', userId)
       .not('email', 'is', null);
     
+    if (executorsError) {
+      console.error('Error fetching executors:', executorsError);
+    }
+    
     if (!executorsError && executors) {
       executors.forEach(e => {
         contacts.push({
@@ -105,6 +112,10 @@ serve(async (req) => {
       .select('id, name, email')
       .eq('user_id', userId);
     
+    if (trustedError) {
+      console.error('Error fetching trusted contacts:', trustedError);
+    }
+    
     if (!trustedError && trustedContacts) {
       trustedContacts.forEach(t => {
         contacts.push({
@@ -117,11 +128,14 @@ serve(async (req) => {
     }
     
     if (contacts.length === 0) {
+      console.log('No contacts found for user:', userId);
       return new Response(
         JSON.stringify({ success: false, message: "No contacts found" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log(`Found ${contacts.length} contacts for status check`);
     
     // Get resend client
     const resend = getResendClient();
@@ -200,6 +214,8 @@ serve(async (req) => {
           <p>If the buttons above don't work, you can also <a href="${statusUrl}">click here</a> to respond.</p>
         `;
         
+        console.log(`Sending status check email to ${contact.email} (${contact.type})`);
+        
         // Send the email
         const emailResponse = await resend.emails.send({
           from: "WillTank Status Check <status@willtank.com>",
@@ -213,6 +229,8 @@ serve(async (req) => {
           console.error(`Error sending status check to ${contact.email}:`, errorMessage);
           return { success: false, contact, error: errorMessage };
         }
+        
+        console.log(`Successfully sent status check to ${contact.email}`);
         
         // Log the status check
         await supabase.from('death_verification_logs').insert({
@@ -238,6 +256,8 @@ serve(async (req) => {
     // Count successes and failures
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
+    
+    console.log(`Status check complete: ${successful} successful, ${failed} failed`);
     
     return new Response(
       JSON.stringify({

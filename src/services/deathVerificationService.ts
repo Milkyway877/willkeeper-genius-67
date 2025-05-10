@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DeathVerificationSettings {
@@ -282,6 +281,8 @@ export const sendStatusCheck = async (): Promise<boolean> => {
       return false;
     }
     
+    console.log('Calling send-status-check edge function...');
+    
     // Call the edge function to send status check emails
     const response = await fetch(`${window.location.origin}/functions/v1/send-status-check`, {
       method: 'POST',
@@ -295,14 +296,25 @@ export const sendStatusCheck = async (): Promise<boolean> => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error from status check edge function:', errorData);
-      return false;
+      let errorMessage = `API error: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        console.error('Error from status check edge function:', errorData);
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) {
+        console.error('Could not parse error response as JSON:', e);
+      }
+      
+      throw new Error(errorMessage);
     }
     
-    return true;
+    const data = await response.json();
+    console.log('Status check response:', data);
+    
+    return data.success === true;
   } catch (error) {
     console.error('Error in sendStatusCheck:', error);
-    return false;
+    throw error; // Propagate the error so it can be handled by the component
   }
 };
