@@ -8,7 +8,11 @@ import {
   isEmailSendSuccess, 
   formatResendError 
 } from "../_shared/email-helper.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
@@ -32,12 +36,10 @@ serve(async (req) => {
     
     if (!userId) {
       return new Response(
-        JSON.stringify({ success: false, error: "Missing user ID" }),
+        JSON.stringify({ error: "Missing user ID" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    console.log('Processing status check for user:', userId);
     
     // Get user profile info
     const { data: userProfile, error: userError } = await supabase
@@ -47,9 +49,8 @@ serve(async (req) => {
       .single();
     
     if (userError || !userProfile) {
-      console.error('Error fetching user profile:', userError);
       return new Response(
-        JSON.stringify({ success: false, error: "User not found", details: userError }),
+        JSON.stringify({ error: "User not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -69,10 +70,6 @@ serve(async (req) => {
       .eq('user_id', userId)
       .not('email', 'is', null);
     
-    if (beneficiariesError) {
-      console.error('Error fetching beneficiaries:', beneficiariesError);
-    }
-    
     if (!beneficiariesError && beneficiaries) {
       beneficiaries.forEach(b => {
         contacts.push({
@@ -91,10 +88,6 @@ serve(async (req) => {
       .eq('user_id', userId)
       .not('email', 'is', null);
     
-    if (executorsError) {
-      console.error('Error fetching executors:', executorsError);
-    }
-    
     if (!executorsError && executors) {
       executors.forEach(e => {
         contacts.push({
@@ -112,10 +105,6 @@ serve(async (req) => {
       .select('id, name, email')
       .eq('user_id', userId);
     
-    if (trustedError) {
-      console.error('Error fetching trusted contacts:', trustedError);
-    }
-    
     if (!trustedError && trustedContacts) {
       trustedContacts.forEach(t => {
         contacts.push({
@@ -128,21 +117,14 @@ serve(async (req) => {
     }
     
     if (contacts.length === 0) {
-      console.log('No contacts found for user:', userId);
       return new Response(
         JSON.stringify({ success: false, message: "No contacts found" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    console.log(`Found ${contacts.length} contacts for status check`);
-    
     // Get resend client
     const resend = getResendClient();
-    
-    // Get the base URL for verification links
-    const baseUrl = req.headers.get("origin") || "https://willtank.com";
-    const apiUrl = baseUrl.replace(/\/$/, '') + "/functions/v1";
     
     // Send status check emails to all contacts
     const results = await Promise.all(contacts.map(async (contact) => {
@@ -172,49 +154,22 @@ serve(async (req) => {
           return { success: false, contact, error: verificationError.message };
         }
         
-        // Create direct action API URLs (for email buttons)
-        const aliveActionUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=status&response=alive`;
-        const deceasedActionUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=status&response=deceased`;
+        // Create verification URL
+        const statusUrl = `https://willtank.com/verify/status/${verificationToken}`;
         
-        // Create verification URL (fallback for when buttons don't work)
-        const statusUrl = `${baseUrl}/verify/status/${verificationToken}`;
-        
-        // Generate email content with direct action buttons
+        // Generate email content
         const content = `
           <h1>Status Check Request</h1>
           <p>Hello ${contact.name},</p>
           <p>We're reaching out as part of WillTank's regular status check system. ${userFullName} has you listed as a ${contact.type} in their will.</p>
           <p>We'd like to confirm that ${userFullName} is still alive and well. Please click the appropriate button below:</p>
-          
-          <table width="100%" border="0" cellspacing="0" cellpadding="0">
-            <tr>
-              <td>
-                <table border="0" cellspacing="0" cellpadding="0">
-                  <tr>
-                    <td align="center" style="border-radius: 5px;" bgcolor="#10b981">
-                      <a href="${aliveActionUrl}" target="_blank" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; padding: 12px 25px; border: 1px solid #10b981; display: inline-block; font-weight: bold;">YES, STILL ALIVE</a>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-              <td>
-                <table border="0" cellspacing="0" cellpadding="0">
-                  <tr>
-                    <td align="center" style="border-radius: 5px;" bgcolor="#ef4444">
-                      <a href="${deceasedActionUrl}" target="_blank" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; padding: 12px 25px; border: 1px solid #ef4444; display: inline-block; font-weight: bold;">NO, DECEASED</a>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-          
-          <p style="margin-top: 30px;">This is a routine check and part of WillTank's death verification system. Your response helps ensure that ${userFullName}'s will is only accessible at the appropriate time.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${statusUrl}?response=alive" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">YES, STILL ALIVE</a>
+            <a href="${statusUrl}?response=deceased" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">NO, DECEASED</a>
+          </div>
+          <p>This is a routine check and part of WillTank's death verification system. Your response helps ensure that ${userFullName}'s will is only accessible at the appropriate time.</p>
           <p>If you're not sure about ${userFullName}'s status, please try to contact them directly before responding.</p>
-          <p>If the buttons above don't work, you can also <a href="${statusUrl}">click here</a> to respond.</p>
         `;
-        
-        console.log(`Sending status check email to ${contact.email} (${contact.type})`);
         
         // Send the email
         const emailResponse = await resend.emails.send({
@@ -229,8 +184,6 @@ serve(async (req) => {
           console.error(`Error sending status check to ${contact.email}:`, errorMessage);
           return { success: false, contact, error: errorMessage };
         }
-        
-        console.log(`Successfully sent status check to ${contact.email}`);
         
         // Log the status check
         await supabase.from('death_verification_logs').insert({
@@ -256,8 +209,6 @@ serve(async (req) => {
     // Count successes and failures
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
-    
-    console.log(`Status check complete: ${successful} successful, ${failed} failed`);
     
     return new Response(
       JSON.stringify({

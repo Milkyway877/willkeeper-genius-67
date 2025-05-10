@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { 
@@ -102,22 +101,8 @@ serve(async (req) => {
       );
     }
     
-    // Get base URLs
-    const baseUrl = req.headers.get("origin") || "https://willtank.com";
-    const apiUrl = baseUrl.replace(/\/$/, '') + "/functions/v1";
-    
-    // Create direct action API URLs (for email buttons)
-    const acceptActionUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=accept`;
-    const declineActionUrl = `${apiUrl}/process-verification-response?direct=true&token=${verificationToken}&type=invitation&response=decline`;
-    
-    // Create verification URL (fallback for when buttons don't work)
-    const verificationUrl = `${baseUrl}/verify/invitation/${verificationToken}`;
-    
-    console.log("Generated verification URLs:", {
-      acceptActionUrl,
-      declineActionUrl,
-      verificationUrl
-    });
+    // Create direct verification URL - Link directly to the invitation response page
+    const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/invitation/${verificationToken}`;
     
     // Generate email content based on contact type and email details
     let subject = emailDetails?.subject || '';
@@ -170,7 +155,7 @@ serve(async (req) => {
       // Add cases for other contact types as needed
     }
     
-    // Build the complete email content with direct action buttons
+    // Build the complete email content
     content = `
       <h1>Important Role Invitation</h1>
       <p>Hello ${contact.name},</p>
@@ -181,34 +166,12 @@ serve(async (req) => {
       
       ${roleDetailedDescription}
       
-      <p>Please use the buttons below to accept or decline this role:</p>
-      
-      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0;">
-        <tr>
-          <td>
-            <table border="0" cellspacing="0" cellpadding="0">
-              <tr>
-                <td align="center" style="border-radius: 5px;" bgcolor="#4a6cf7">
-                  <a href="${acceptActionUrl}" target="_blank" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 5px; padding: 12px 25px; border: 1px solid #4a6cf7; display: inline-block; font-weight: bold;">ACCEPT ROLE</a>
-                </td>
-              </tr>
-            </table>
-          </td>
-          <td>
-            <table border="0" cellspacing="0" cellpadding="0">
-              <tr>
-                <td align="center" style="border-radius: 5px;" bgcolor="#f5f5f5">
-                  <a href="${declineActionUrl}" target="_blank" style="font-size: 16px; font-family: Helvetica, Arial, sans-serif; color: #666666; text-decoration: none; border-radius: 5px; padding: 12px 25px; border: 1px solid #dddddd; display: inline-block; font-weight: bold;">DECLINE ROLE</a>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+      <p>Please click the button below to accept or decline this role:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${verificationUrl}" style="background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">RESPOND TO INVITATION</a>
+      </div>
       
       <p>This invitation will expire on ${expirationDate.toLocaleDateString()}.</p>
-      
-      <p>If the buttons above don't work, you can also <a href="${verificationUrl}">click here</a> to respond.</p>
       
       <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
       

@@ -1,24 +1,16 @@
 
-import React, { ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
-import { NotificationsProvider } from '@/contexts/NotificationsContext';
+import { Outlet } from 'react-router-dom';
 
 // Add global mobile responsive styles
 import './MobileStyles.css';
 
-// Create a client
-const queryClient = new QueryClient();
-
-interface AppProps {
-  children: ReactNode;
-}
-
-export default function App({ children }: AppProps) {
+export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       {/* Add Google Fonts for professional will document */}
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" />
       
@@ -91,7 +83,7 @@ export default function App({ children }: AppProps) {
           }
           
           /* Enhanced input field styling */
-          .focus\\:shadow-input:focus {
+          .focus\:shadow-input:focus {
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
           }
           
@@ -143,12 +135,10 @@ export default function App({ children }: AppProps) {
         `}
       </style>
       
-      <NotificationsProvider>
-        {children}
-        <Toaster />
-        <FloatingAssistant />
-        <ReactQueryDevtools initialIsOpen={false} />
-      </NotificationsProvider>
-    </QueryClientProvider>
+      <Outlet />
+      <Toaster />
+      <FloatingAssistant />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </>
   );
 }

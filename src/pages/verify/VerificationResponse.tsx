@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -24,8 +23,6 @@ export default function VerificationResponse() {
   const path = window.location.pathname;
   const type = path.includes('/invitation/') ? 'invitation' : path.includes('/status/') ? 'status' : null;
   
-  console.log('VerificationResponse - Mounted with token:', token, 'type:', type, 'path:', path);
-  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -35,27 +32,23 @@ export default function VerificationResponse() {
   
   useEffect(() => {
     if (!token || !type) {
-      console.error('VerificationResponse - Missing token or type:', { token, type, path });
       setError('Invalid verification token or type');
       setLoading(false);
       return;
     }
     
     if (type !== 'invitation' && type !== 'status') {
-      console.error('VerificationResponse - Invalid type:', type);
       setError('Invalid verification type');
       setLoading(false);
       return;
     }
     
-    console.log('VerificationResponse - Fetching verification details for token:', token);
     fetchVerificationDetails();
   }, [token, type]);
   
   // Auto-submit if response is in URL params (for status checks)
   useEffect(() => {
     if (autoResponse && type === 'status' && token && verificationDetails && !processing && !success) {
-      console.log('VerificationResponse - Auto-submitting response:', autoResponse);
       if (autoResponse === 'alive' || autoResponse === 'deceased') {
         handleSubmit(autoResponse);
       }
@@ -69,7 +62,6 @@ export default function VerificationResponse() {
       if (type === 'invitation') {
         // First try to get the verification from contact_verifications
         try {
-          console.log('VerificationResponse - Fetching invitation details from contact_verifications');
           const { data, error } = await supabase
             .from('contact_verifications')
             .select('*, trusted_contacts(*)')
@@ -77,18 +69,14 @@ export default function VerificationResponse() {
             .single();
           
           if (!error && data) {
-            console.log('VerificationResponse - Found verification data:', data);
-            
             // Check if expired
             if (new Date(data.expires_at) < new Date()) {
-              console.error('VerificationResponse - Token expired:', data.expires_at);
               setError('This invitation link has expired');
               setLoading(false);
               return;
             }
 
             if (data.responded_at) {
-              console.log('VerificationResponse - Already responded at:', data.responded_at);
               setSuccess(true);
               setVerificationDetails(data);
               setLoading(false);
@@ -107,18 +95,16 @@ export default function VerificationResponse() {
               user_name: userData?.full_name || 'a WillTank user'
             };
             
-            console.log('VerificationResponse - Processed verification details:', details);
             setVerificationDetails(details);
             setLoading(false);
             return;
           }
         } catch (e) {
-          console.error('VerificationResponse - Error fetching from contact_verifications:', e);
+          console.error('Error fetching from contact_verifications:', e);
         }
         
         // Fall back to using the logs if direct query failed
         try {
-          console.log('VerificationResponse - Falling back to death_verification_logs for token:', token);
           const { data, error } = await supabase
             .from('death_verification_logs')
             .select('details')
@@ -127,23 +113,21 @@ export default function VerificationResponse() {
             .single();
           
           if (error || !data) {
-            console.error('VerificationResponse - Error fetching invitation details from logs:', error);
+            console.error('Error fetching invitation details:', error);
             setError('This invitation link is invalid or has expired');
             setLoading(false);
             return;
           }
           
-          console.log('VerificationResponse - Found details in logs:', data.details);
           setVerificationDetails(data.details);
           setLoading(false);
         } catch (e) {
-          console.error('VerificationResponse - Error fetching from logs:', e);
+          console.error('Error fetching from logs:', e);
           setError('Unable to find invitation details');
           setLoading(false);
         }
       } else if (type === 'status') {
         // For status checks, we look in the contact_verifications table
-        console.log('VerificationResponse - Fetching status check details');
         const { data, error } = await supabase
           .from('contact_verifications')
           .select('*')
@@ -151,19 +135,17 @@ export default function VerificationResponse() {
           .single();
         
         if (error || !data) {
-          console.error('VerificationResponse - Error fetching verification details:', error);
+          console.error('Error fetching verification details:', error);
           setError('This verification link is invalid or has expired');
           return;
         }
         
         if (new Date(data.expires_at) < new Date()) {
-          console.error('VerificationResponse - Token expired:', data.expires_at);
           setError('This verification link has expired');
           return;
         }
         
         if (data.responded_at) {
-          console.log('VerificationResponse - Already responded at:', data.responded_at);
           setSuccess(true);
           setVerificationDetails(data);
           return;
@@ -203,13 +185,17 @@ export default function VerificationResponse() {
           }
         }
         
-        let details = { ...data, contact: contactInfo };
-        console.log('VerificationResponse - Processed status check details:', details);
-        setVerificationDetails(details);
+        details = { ...data, contact: contactInfo };
       }
       
+      if (!details) {
+        setError('Unable to find verification details');
+        return;
+      }
+      
+      setVerificationDetails(details);
     } catch (error) {
-      console.error('VerificationResponse - Error fetching verification details:', error);
+      console.error('Error fetching verification details:', error);
       setError('An error occurred while fetching verification details');
     } finally {
       setLoading(false);
@@ -218,7 +204,6 @@ export default function VerificationResponse() {
   
   const handleSubmit = async (response: string) => {
     try {
-      console.log('VerificationResponse - Submitting response:', response);
       setProcessing(true);
       
       const { data, error } = await supabase.functions.invoke('process-verification-response', {
@@ -231,17 +216,16 @@ export default function VerificationResponse() {
       });
       
       if (error) {
-        console.error('VerificationResponse - Error processing response:', error);
+        console.error('Error processing response:', error);
         setError('An error occurred while processing your response');
         setProcessing(false);
         return;
       }
       
-      console.log('VerificationResponse - Response processed successfully:', data);
       setSuccess(true);
       setProcessing(false);
     } catch (error) {
-      console.error('VerificationResponse - Error submitting response:', error);
+      console.error('Error submitting response:', error);
       setError('An error occurred while submitting your response');
       setProcessing(false);
     }
