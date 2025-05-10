@@ -91,12 +91,18 @@ export default function TestDeathVerificationFlow() {
       }
       
       // Return the verification data and URL
-      const verificationUrl = `${window.location.origin}/verify/trusted-contact/${verificationToken}`;
+      const baseUrl = window.location.origin;
+      const verificationUrl = `${baseUrl}/verify/invitation/${verificationToken}`;
       
       setResult({
         verification,
         contact,
-        verificationUrl
+        verificationUrl,
+        allUrls: {
+          invitation: verificationUrl,
+          trusted: `${baseUrl}/verify/trusted-contact/${verificationToken}`,
+          direct: `${baseUrl}/verify/${verificationToken}`
+        }
       });
       
       toast({
@@ -225,17 +231,25 @@ export default function TestDeathVerificationFlow() {
                       size="sm" 
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => window.open(`${result.verificationUrl}?response=accept`, '_blank')}
+                      onClick={() => window.open(result.allUrls.invitation, '_blank')}
                     >
-                      Test Accept Verification
+                      Test Invitation Response Link
                     </Button>
                     <Button 
                       size="sm" 
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => window.open(`${result.verificationUrl}?response=decline`, '_blank')}
+                      onClick={() => window.open(result.allUrls.trusted, '_blank')}
                     >
-                      Test Decline Verification
+                      Test Trusted Contact Link
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => window.open(result.allUrls.direct, '_blank')}
+                    >
+                      Test Direct Link
                     </Button>
                   </div>
                 </div>
