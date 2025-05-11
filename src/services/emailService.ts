@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 
@@ -21,57 +20,105 @@ export const sendEmail = async (options: EmailOptions): Promise<{ success: boole
       return { success: false, error: 'Not authenticated' };
     }
     
-    // Call the edge function for sending emails
-    try {
-      const response = await fetch(`${window.location.origin}/functions/v1/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-        },
-        body: JSON.stringify(options)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error sending email:', errorData);
-        throw new Error(errorData.message || 'Failed to send email');
-      }
-      
-      const data = await response.json();
-      return { success: true, emailId: data.emailId };
-    } catch (fetchError) {
-      console.error('Error with fetch to send-email:', fetchError);
-      
-      // Try using supabase functions invoke as fallback
+    // Try multiple methods to ensure delivery
+    const methods = [
+      sendViaEdgeFunction,
+      sendViaFunctionsInvoke,
+      sendViaNotificationEmail
+    ];
+    
+    let lastError = '';
+    
+    // Try each method in sequence until one succeeds
+    for (const method of methods) {
       try {
-        const { data, error: fnError } = await supabase.functions.invoke('send-email', {
-          body: options
-        });
-        
-        if (fnError || !data?.success) {
-          console.error('Error from functions.invoke:', fnError);
-          return { 
-            success: false, 
-            error: fnError?.message || data?.error || 'Failed to send email via functions invoke'
-          };
+        const result = await method(options, session.access_token);
+        if (result.success) {
+          console.log(`Email sent successfully via ${method.name}`);
+          return result;
+        } else {
+          console.warn(`Email delivery failed via ${method.name}: ${result.error}`);
+          lastError = result.error || 'Unknown error';
         }
-        
-        return { success: true, emailId: data.emailId };
-      } catch (invokeError) {
-        console.error('Error with functions.invoke:', invokeError);
-        return { 
-          success: false, 
-          error: invokeError instanceof Error ? invokeError.message : 'Unknown error with email delivery'
-        };
+      } catch (methodError) {
+        console.warn(`Exception in ${method.name}:`, methodError);
+        lastError = methodError instanceof Error ? methodError.message : 'Unknown error';
       }
     }
+    
+    // If we get here, all methods failed
+    console.error('All email delivery methods failed. Last error:', lastError);
+    return { success: false, error: `All delivery methods failed. Last error: ${lastError}` };
   } catch (error) {
     console.error('Error in sendEmail:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 };
+
+// Method 1: Try the standard edge function
+async function sendViaEdgeFunction(options: EmailOptions, token: string): Promise<{ success: boolean; emailId?: string; error?: string }> {
+  const response = await fetch(`${window.location.origin}/functions/v1/send-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+    },
+    body: JSON.stringify(options)
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || `Failed to send email (HTTP ${response.status})`);
+  }
+  
+  const data = await response.json();
+  return { success: true, emailId: data.emailId };
+}
+
+// Method 2: Try Supabase functions.invoke
+async function sendViaFunctionsInvoke(options: EmailOptions): Promise<{ success: boolean; emailId?: string; error?: string }> {
+  const { data, error: fnError } = await supabase.functions.invoke('send-email', {
+    body: options
+  });
+  
+  if (fnError || !data?.success) {
+    throw new Error(fnError?.message || data?.error || 'Failed to send email via functions invoke');
+  }
+  
+  return { success: true, emailId: data.emailId };
+}
+
+// Method 3: Try our new notification email function as last resort
+async function sendViaNotificationEmail(options: EmailOptions, token: string): Promise<{ success: boolean; emailId?: string; error?: string }> {
+  // Convert EmailOptions to the format expected by send-notification-email
+  const to = Array.isArray(options.to) ? options.to[0] : options.to;
+  
+  const response = await fetch(`${window.location.origin}/functions/v1/send-notification-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+    },
+    body: JSON.stringify({
+      to,
+      subject: options.subject,
+      content: options.htmlContent || "No content provided.",
+      priority: options.priority || 'normal',
+      contentType: 'notification',
+      emailType: 'system'
+    })
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || `Notification email failed (HTTP ${response.status})`);
+  }
+  
+  const data = await response.json();
+  return { success: true, emailId: data.emailId };
+}
 
 /**
  * Send an invitation to a trusted contact
