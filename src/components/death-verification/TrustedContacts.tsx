@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -279,25 +278,10 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
 
   // Function to get appropriate status badge with improved styling
   const getStatusBadge = (status: string | null) => {
-    if (!status) {
-      return (
-        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
-          Not Added
-        </Badge>
-      );
-    }
-    
-    if (status === 'added') {
-      return (
-        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-          Added
-        </Badge>
-      );
-    }
-    
+    // Simplified badge system - only show "Added" status
     return (
-      <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
-        {status}
+      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+        Added
       </Badge>
     );
   };
@@ -335,8 +319,9 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
               <Info className="h-4 w-4" />
               <AlertTitle>Information</AlertTitle>
               <AlertDescription>
-                Your trusted contacts will receive an email with instructions. They will be contacted if you 
-                miss scheduled check-ins and will be given your executor's contact information.
+                Your trusted contacts will receive an email with instructions if you miss scheduled check-ins.
+                They will be provided with your executor's contact information to help determine your status.
+                No verification or action is required from them.
               </AlertDescription>
             </Alert>
             
@@ -388,6 +373,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
             <DialogTitle>Add Trusted Contact</DialogTitle>
             <DialogDescription>
               Add someone you trust who will be notified if you miss check-ins.
+              They will only receive informational emails - no verification is required.
             </DialogDescription>
           </DialogHeader>
           

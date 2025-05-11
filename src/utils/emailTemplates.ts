@@ -1,4 +1,3 @@
-
 /**
  * Generates a simple HTML email template with instructions for trusted contacts
  */
@@ -67,7 +66,7 @@ export const generateVerificationEmailTemplate = (
       
       <div class="info-box">
         <p><strong>What does this mean?</strong></p>
-        <p>As a trusted contact, you may be contacted if ${userFullName} misses their regular check-ins in the WillTank system. Your role is to help verify their status and, if necessary, assist the executor with the death verification process.</p>
+        <p>As a trusted contact, you may be contacted if ${userFullName} misses their regular check-ins in the WillTank system. Your role is simply to receive this notification and, if necessary, contact the executor to help determine ${userFullName}'s status.</p>
       </div>
       
       ${executorInfo ? `
@@ -112,7 +111,7 @@ Hello ${name},
 ${userFullName} has added you as their ${contactType} on WillTank.
 
 WHAT DOES THIS MEAN?
-As a trusted contact, you may be contacted if ${userFullName} misses their regular check-ins in the WillTank system. Your role is to help verify their status and, if necessary, assist the executor with the death verification process.
+As a trusted contact, you may be contacted if ${userFullName} misses their regular check-ins in the WillTank system. Your role is simply to receive this notification and, if necessary, contact the executor to help determine ${userFullName}'s status.
 
 ${executorInfo ? `
 EXECUTOR INFORMATION:

@@ -59,7 +59,7 @@ export const createTrustedContact = async (contact: {
       name: contact.name,
       email: contact.email,
       user_id: session.user.id,
-      invitation_status: 'pending' // will be updated to 'added' after email is sent
+      invitation_status: 'added' // directly set to 'added' since no verification is needed
     };
     
     const { data, error } = await supabase

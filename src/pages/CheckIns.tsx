@@ -7,6 +7,7 @@ import { DeathVerificationWidget } from '@/components/death-verification/DeathVe
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
