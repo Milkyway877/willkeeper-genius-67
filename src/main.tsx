@@ -53,6 +53,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
+import VerifyTrustedContact from './pages/verify/VerifyTrustedContact';
+import VerificationResponse from './pages/verify/VerificationResponse';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
