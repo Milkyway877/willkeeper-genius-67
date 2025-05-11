@@ -1,20 +1,16 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom';
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
+import VerifyTrustedContact from './pages/VerifyTrustedContact';
+import VerificationResponse from './pages/verify/VerificationResponse';
+import SimpleVerification from './pages/verify/SimpleVerification';
+import SimpleThankYou from './pages/verify/SimpleThankYou';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
-
-// Import executor pages
-import ExecutorRolePage from './pages/ExecutorRolePage';
-import ExecutorLoginPage from './pages/executor/ExecutorLoginPage';
-import ExecutorVerificationPage from './pages/executor/ExecutorVerificationPage';
-import ExecutorDocumentsPage from './pages/executor/ExecutorDocumentsPage';
-import DownloadCompletePage from './pages/executor/DownloadCompletePage';
 
 // Create placeholder pages for development
 const Home = () => <Index />;
@@ -61,13 +57,6 @@ function AppRouter() {
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
         
-        {/* Executor Routes */}
-        <Route path="/executor/info" element={<ExecutorRolePage />} />
-        <Route path="/executor/login" element={<ExecutorLoginPage />} />
-        <Route path="/executor/verify/:verificationId" element={<ExecutorVerificationPage />} />
-        <Route path="/executor/documents/:verificationId" element={<ExecutorDocumentsPage />} />
-        <Route path="/executor/download-complete" element={<DownloadCompletePage />} />
-        
         {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
         <Route element={<AuthLayoutWrapper />}>
           <Route path="/auth" element={<SignIn />} />
@@ -85,8 +74,30 @@ function AppRouter() {
         <Route path="/legacy-vault" element={<LegacyVault />} />
         <Route path="/check-ins" element={<CheckIns />} />
         <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
+
+        {/* New simplified verification routes */}
+        <Route
+          path="/verify/simple/:token"
+          element={<SimpleVerification />}
+        />
+        <Route
+          path="/verify/thank-you"
+          element={<SimpleThankYou />}
+        />
         
-        {/* Removed verification routes as per new requirements */}
+        {/* Legacy verification routes - keeping for backward compatibility */}
+        <Route
+          path="/verify/trusted-contact/:token"
+          element={<VerifyTrustedContact />}
+        />
+        <Route
+          path="/verify/invitation/:token"
+          element={<VerificationResponse />}
+        />
+        <Route
+          path="/verify/status/:token"
+          element={<VerificationResponse />}
+        />
         
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

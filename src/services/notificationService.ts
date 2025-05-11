@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -22,8 +21,8 @@ export type EventType =
   | 'document_uploaded' 
   | 'document_deleted' 
   | 'document_shared'
-  | 'will_document_added'
-  | 'will_document_removed'
+  | 'will_document_added'  // Added new event type
+  | 'will_document_removed'  // Added new event type
   | 'beneficiary_added'
   | 'executor_added'
   | 'contact_verified'

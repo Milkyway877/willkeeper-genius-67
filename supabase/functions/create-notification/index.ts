@@ -1,129 +1,184 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { corsHeaders } from "../_shared/cors.ts";
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
 interface NotificationRequest {
   title: string;
   description: string;
-  type: 'success' | 'info' | 'warning' | 'security';
+  type: "success" | "warning" | "info" | "security";
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   try {
-    // Get the authenticated user from the request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    console.log("Processing create-notification request");
+    
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase environment variables");
       return new Response(
-        JSON.stringify({ success: false, error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Server configuration error" }),
+        { 
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
+    
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get the current user from the request
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("Missing authorization header");
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { 
+          status: 401,
+          headers: { "Content-Type": "application/json" }
+        }
       );
     }
 
-    // Get user ID using the auth header
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Verify the user's JWT token
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     
     if (userError || !user) {
+      console.error("Invalid token or user not found:", userError);
       return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Invalid token or user not found" }),
+        { 
+          status: 401,
+          headers: { "Content-Type": "application/json" }
+        }
       );
     }
 
     // Parse the request body
-    const { title, description, type } = await req.json() as NotificationRequest;
-    
-    if (!title || !description || !type) {
+    let requestBody: NotificationRequest;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
       return new Response(
-        JSON.stringify({ success: false, error: "Missing required fields: title, description, or type" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
+    
+    const { title, description, type } = requestBody;
+
+    if (!title || !description || !type) {
+      console.error("Missing required fields in request");
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: title, description, or type" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        }
       );
     }
 
-    // Use the create_notification RPC function if available
-    try {
-      console.log("Attempting to create notification via RPC...");
-      const { data: notificationId, error: rpcError } = await supabase.rpc(
-        'create_notification',
-        {
-          p_user_id: user.id,
-          p_title: title,
-          p_description: description,
-          p_type: type
+    // Validate notification type
+    const validTypes = ["success", "warning", "info", "security"];
+    if (!validTypes.includes(type)) {
+      console.error("Invalid notification type:", type);
+      return new Response(
+        JSON.stringify({ error: "Invalid notification type. Must be one of: success, warning, info, security" }),
+        { 
+          status: 400,
+          headers: { "Content-Type": "application/json" }
         }
       );
+    }
 
-      if (rpcError) {
-        console.warn("RPC method failed:", rpcError);
-        throw new Error("RPC method failed");
+    console.log(`Creating notification for user ${user.id}: ${title}`);
+
+    // Create the notification using our database function
+    const { data: notificationId, error: rpcError } = await supabaseClient.rpc(
+      "create_notification",
+      {
+        p_user_id: user.id,
+        p_title: title,
+        p_description: description,
+        p_type: type
       }
+    );
 
-      console.log("Notification created successfully via RPC with ID:", notificationId);
+    if (rpcError) {
+      console.error("Error creating notification via RPC:", rpcError);
       
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          notification_id: notificationId,
-          message: "Notification created successfully" 
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } catch (rpcError) {
-      console.error("Error using RPC for notification:", rpcError);
-      
-      // Fall back to direct insert
+      // Try direct insert as fallback
       try {
-        console.log("Falling back to direct insert...");
-        const { data: notification, error: insertError } = await supabase
-          .from('notifications')
+        console.log("Attempting direct insert as fallback");
+        const { data: insertData, error: insertError } = await supabaseClient
+          .from("notifications")
           .insert({
             user_id: user.id,
-            title,
-            description,
-            type,
-            read: false
+            title: title,
+            description: description,
+            type: type,
+            read: false,
           })
-          .select()
+          .select("id")
           .single();
-
+          
         if (insertError) {
+          console.error("Direct insert failed:", insertError);
           throw insertError;
         }
-
-        console.log("Notification created successfully via direct insert:", notification);
         
+        console.log("Direct insert succeeded:", insertData);
         return new Response(
           JSON.stringify({ 
             success: true, 
-            notification_id: notification.id,
-            message: "Notification created successfully via direct insert" 
+            message: "Notification created successfully via direct insert",
+            notification_id: insertData.id
           }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 200,
+          }
         );
-      } catch (insertError) {
-        console.error("Error with direct insert:", insertError);
-        throw new Error("Failed to create notification via all methods");
+      } catch (insertFallbackError) {
+        console.error("Both RPC and direct insert failed:", insertFallbackError);
+        return new Response(
+          JSON.stringify({ error: "Failed to create notification" }),
+          { 
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
       }
     }
-  } catch (error) {
-    console.error("Error in create-notification:", error);
-    
+
+    console.log("Notification created successfully:", notificationId);
+
     return new Response(
       JSON.stringify({ 
-        success: false, 
-        error: error.message || "Internal server error",
+        success: true, 
+        message: "Notification created successfully",
+        notification_id: notificationId
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { 
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
     );
   }
 });

@@ -9,7 +9,9 @@ import {
 import CheckIns from './pages/CheckIns.tsx';
 import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
+import VerificationResponse from './pages/verify/VerificationResponse.tsx';
 import VerificationPortal from './pages/verify/VerificationPortal.tsx';
+import VerifyTrustedContact from './pages/VerifyTrustedContact.tsx';
 import Home from './pages/Index';
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -53,8 +55,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
-import VerifyTrustedContact from './pages/verify/VerifyTrustedContact';
-import VerificationResponse from './pages/verify/VerificationResponse';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';

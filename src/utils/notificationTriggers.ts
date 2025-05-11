@@ -1,3 +1,4 @@
+
 import { createSystemNotification } from '@/services/notificationService';
 
 // ============ Will Management Notifications ============
@@ -82,6 +83,24 @@ export const triggerContactVerifiedNotification = async (name?: string) => {
     description: name 
       ? `${name} has verified their contact information.` 
       : 'A contact has verified their information.'
+  });
+};
+
+export const triggerTrustedContactAddedNotification = async (name?: string) => {
+  return await createSystemNotification('trusted_contact_added', {
+    title: 'Trusted Contact Added',
+    description: name 
+      ? `${name} has been added as a trusted contact.` 
+      : 'A new trusted contact has been added.'
+  });
+};
+
+export const triggerTrustedContactVerifiedNotification = async (name?: string) => {
+  return await createSystemNotification('trusted_contact_verified', {
+    title: 'Trusted Contact Verified',
+    description: name 
+      ? `${name} has verified their role as a trusted contact.` 
+      : 'A trusted contact has verified their role.'
   });
 };
 
@@ -199,32 +218,5 @@ export const triggerCheckInScheduledNotification = async (date?: string) => {
     description: date 
       ? `Your next check-in is scheduled for ${date}.` 
       : 'Your next check-in has been scheduled.'
-  });
-};
-
-// ============ Trusted Contact Notifications ============
-export const triggerTrustedContactAddedNotification = async (name?: string) => {
-  return await createSystemNotification('trusted_contact_added', {
-    title: 'Trusted Contact Added',
-    description: name 
-      ? `${name} has been added as a trusted contact.` 
-      : 'A new trusted contact has been added.'
-  });
-};
-
-export const triggerTrustedContactsNotifiedNotification = async (count: number) => {
-  // Using 'info' as the event type instead of 'trusted_contacts_notified'
-  return await createSystemNotification('info', {
-    title: 'Trusted Contacts Notified',
-    description: `${count} trusted contact${count !== 1 ? 's have' : ' has'} been notified about your missed check-in.`
-  });
-};
-
-// New notification for testing missed check-in flow
-export const triggerTestNotificationSentNotification = async (count: number) => {
-  // Using 'info' as the event type instead of 'test_notification_sent'
-  return await createSystemNotification('info', {
-    title: 'Test Notification Sent',
-    description: `Test notification successfully sent to ${count} trusted contact${count !== 1 ? 's' : ''}.`
   });
 };
