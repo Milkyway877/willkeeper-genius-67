@@ -9,6 +9,13 @@ import Index from './pages/Index';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 
+// Import executor pages
+import ExecutorRolePage from './pages/ExecutorRolePage';
+import ExecutorLoginPage from './pages/executor/ExecutorLoginPage';
+import ExecutorVerificationPage from './pages/executor/ExecutorVerificationPage';
+import ExecutorDocumentsPage from './pages/executor/ExecutorDocumentsPage';
+import DownloadCompletePage from './pages/executor/DownloadCompletePage';
+
 // Create placeholder pages for development
 const Home = () => <Index />;
 const About = () => <div>About Page</div>;
@@ -53,6 +60,13 @@ function AppRouter() {
         <Route path="/documentation" element={<Documentation />} />
         <Route path="/api" element={<API />} />
         <Route path="/help" element={<Help />} />
+        
+        {/* Executor Routes */}
+        <Route path="/executor/info" element={<ExecutorRolePage />} />
+        <Route path="/executor/login" element={<ExecutorLoginPage />} />
+        <Route path="/executor/verify/:verificationId" element={<ExecutorVerificationPage />} />
+        <Route path="/executor/documents/:verificationId" element={<ExecutorDocumentsPage />} />
+        <Route path="/executor/download-complete" element={<DownloadCompletePage />} />
         
         {/* Fix the AuthLayout route by using AuthLayoutWrapper */}
         <Route element={<AuthLayoutWrapper />}>
