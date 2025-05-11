@@ -36,14 +36,60 @@ export default function ExecutorLogin() {
     setError('');
     
     try {
-      // Check if executor and deceased user combination exists
-      // Use a placeholder session ID for now - in production this would check against the database
+      // Check if executor email exists in the system
+      const { data: executors, error: executorError } = await supabase
+        .from('will_executors')
+        .select('*')
+        .eq('email', executorEmail.toLowerCase().trim())
+        .limit(1);
+        
+      if (executorError) {
+        console.error('Error checking executor:', executorError);
+        throw new Error('Error verifying executor information');
+      }
+      
+      if (!executors || executors.length === 0) {
+        setError('No executor found with this email address');
+        setLoading(false);
+        return;
+      }
+      
+      // Check if the deceased name matches any users
+      const { data: users, error: userError } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .ilike('full_name', `%${deceasedName.trim()}%`);
+        
+      if (userError) {
+        console.error('Error checking user:', userError);
+        throw new Error('Error verifying user information');
+      }
+      
+      if (!users || users.length === 0) {
+        setError('No WillTank user found with this name');
+        setLoading(false);
+        return;
+      }
+      
+      // Generate a session ID for the executor verification process
       const sessionId = `exe-${Date.now()}`;
       
-      // In a real implementation, this would verify against the database and trigger PIN emails
+      // Log the attempt
+      await supabase.from('executor_access_logs').insert({
+        session_id: sessionId,
+        executor_email: executorEmail.toLowerCase().trim(),
+        deceased_name: deceasedName.trim(),
+        status: 'initiated',
+        created_at: new Date().toISOString()
+      });
       
       // For now, navigate to the PIN verification page with the session ID
-      navigate(`/executor/verify/${sessionId}`, { state: { executorEmail, deceasedName } });
+      navigate(`/executor/verify/${sessionId}`, { 
+        state: { 
+          executorEmail, 
+          deceasedName 
+        } 
+      });
       
     } catch (error) {
       console.error('Error in executor login:', error);

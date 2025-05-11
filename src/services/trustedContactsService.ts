@@ -63,7 +63,7 @@ export const createTrustedContact = async (contact: {
       name: contact.name,
       email: contact.email,
       user_id: session.user.id,
-      invitation_status: 'delivered' // Updated status for new flow
+      invitation_status: 'delivered' // Set status to delivered by default
     };
     
     const { data, error } = await supabase
