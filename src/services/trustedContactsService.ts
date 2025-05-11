@@ -1,7 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
-import { generateVerificationEmailTemplate, generatePlainTextVerificationEmail } from '@/utils/emailTemplates';
+import { 
+  generateTrustedContactEmailTemplate, 
+  generatePlainTextTrustedContactEmail 
+} from '@/utils/emailTemplates';
 
 export interface TrustedContact {
   id: string;
@@ -60,7 +63,7 @@ export const createTrustedContact = async (contact: {
       name: contact.name,
       email: contact.email,
       user_id: session.user.id,
-      invitation_status: 'pending'
+      invitation_status: 'delivered' // Updated status for new flow
     };
     
     const { data, error } = await supabase
@@ -73,9 +76,6 @@ export const createTrustedContact = async (contact: {
       console.error('Error creating trusted contact:', error);
       return null;
     }
-    
-    // We'll handle notifications in the component now
-    // using the createSystemNotificationFallback function
     
     return data;
   } catch (error) {
@@ -124,7 +124,11 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
   }
 };
 
-export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
+/**
+ * Send informational email to a trusted contact
+ * No verification needed in the new flow
+ */
+export const sendContactInformation = async (contactId: string): Promise<boolean> => {
   try {
     // Get contact details
     const { data: contact, error: contactError } = await supabase
@@ -156,33 +160,31 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Update the contact with the invitation sent timestamp
+    // Update the contact with the information sent timestamp
     await supabase
       .from('trusted_contacts')
       .update({
         invitation_sent_at: new Date().toISOString(),
-        invitation_status: 'pending'
+        invitation_status: 'delivered'
       })
       .eq('id', contactId);
       
-    // Prepare the email content with direct verification links
+    // Prepare the email content with the new informational templates
     const baseUrl = window.location.origin;
-    const htmlContent = generateVerificationEmailTemplate(
+    const htmlContent = generateTrustedContactEmailTemplate(
       contact.name,
       userFullName,
-      contactId, // Using contactId directly as the verification token for simplicity
       baseUrl
     );
-    const textContent = generatePlainTextVerificationEmail(
+    const textContent = generatePlainTextTrustedContactEmail(
       contact.name,
       userFullName,
-      contactId,
       baseUrl
     );
     
     // Attempt to send the email
     try {
-      // Use send-contact-invitation instead of send-email
+      // Use send-contact-invitation but with the new informational content
       const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
         method: 'POST',
         headers: {
@@ -200,9 +202,13 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
             userFullName
           },
           emailDetails: {
-            subject: `Important: ${userFullName} has named you as a trusted contact`,
-            includeVerificationInstructions: true,
-            priority: 'high'
+            subject: `Important: ${userFullName} has added you as a trusted contact`,
+            includeVerificationInstructions: false, // No verification buttons in new flow
+            priority: 'high',
+            customContent: {
+              html: htmlContent,
+              text: textContent
+            }
           }
         })
       });
@@ -230,9 +236,13 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
               userFullName
             },
             emailDetails: {
-              subject: `Important: ${userFullName} has named you as a trusted contact`,
-              includeVerificationInstructions: true,
-              priority: 'high'
+              subject: `Important: ${userFullName} has added you as a trusted contact`,
+              includeVerificationInstructions: false, // No verification buttons in new flow
+              priority: 'high',
+              customContent: {
+                html: htmlContent,
+                text: textContent
+              }
             }
           }
         });
@@ -249,47 +259,25 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       }
     }
   } catch (error) {
-    console.error('Error in sendVerificationRequest:', error);
+    console.error('Error in sendContactInformation:', error);
     return false;
   }
 };
 
-// Method to check invitation status
-export const checkInvitationStatus = async (contactId: string): Promise<string> => {
+// Method to resend information email
+export const resendInformation = async (contactId: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
-      .from('trusted_contacts')
-      .select('invitation_status, invitation_sent_at, invitation_responded_at')
-      .eq('id', contactId)
-      .single();
-      
-    if (error || !data) {
-      console.error('Error checking invitation status:', error);
-      return 'unknown';
-    }
-    
-    return data.invitation_status || 'not_sent';
-  } catch (error) {
-    console.error('Error in checkInvitationStatus:', error);
-    return 'error';
-  }
-};
-
-// Method to resend an invitation
-export const resendInvitation = async (contactId: string): Promise<boolean> => {
-  try {
-    // Reset invitation status
+    // Reset email status
     await supabase
       .from('trusted_contacts')
       .update({
-        invitation_status: 'pending',
         invitation_sent_at: null
       })
       .eq('id', contactId);
       
-    return await sendVerificationRequest(contactId);
+    return await sendContactInformation(contactId);
   } catch (error) {
-    console.error('Error in resendInvitation:', error);
+    console.error('Error in resendInformation:', error);
     return false;
   }
 };
