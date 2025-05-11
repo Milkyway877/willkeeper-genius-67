@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -348,7 +347,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     if (missing.length === 0) return null;
     
     return (
-      <Alert variant="warning" className="mb-4">
+      <Alert variant="destructive" className="mb-4">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Prerequisites Not Met</AlertTitle>
         <AlertDescription>
