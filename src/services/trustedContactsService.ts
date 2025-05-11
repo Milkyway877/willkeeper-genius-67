@@ -1,8 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { 
-  generateInformationalEmailTemplate, 
-  generatePlainTextInformationalEmail 
+  generateTrustedContactEmailTemplate, 
+  generatePlainTextTrustedContactEmail 
 } from '@/utils/emailTemplates';
 
 export interface TrustedContact {
@@ -62,7 +63,6 @@ export const createTrustedContact = async (contact: {
       name: contact.name,
       email: contact.email,
       user_id: session.user.id,
-      // Initialize as "not_sent" since informational email will be sent separately
       invitation_status: 'not_sent'
     };
     
@@ -156,29 +156,18 @@ export const sendInformationalEmail = async (contactId: string): Promise<boolean
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Update the contact status to 'delivered' since we're not using verification anymore
+    // Update the contact status to 'delivered' immediately
     await supabase
       .from('trusted_contacts')
       .update({
         invitation_sent_at: new Date().toISOString(),
         invitation_status: 'delivered',
-        // Set responded time as well to mark it as complete
         invitation_responded_at: new Date().toISOString()
       })
       .eq('id', contactId);
       
-    // Prepare the email content with informational text only
+    // Prepare the email content with trusted contact template
     const baseUrl = window.location.origin;
-    const htmlContent = generateInformationalEmailTemplate(
-      contact.name,
-      userFullName,
-      baseUrl
-    );
-    const textContent = generatePlainTextInformationalEmail(
-      contact.name,
-      userFullName,
-      baseUrl
-    );
     
     // Attempt to send the email
     try {
@@ -201,7 +190,6 @@ export const sendInformationalEmail = async (contactId: string): Promise<boolean
           },
           emailDetails: {
             subject: `Important: Information about your role as ${userFullName}'s trusted contact`,
-            includeVerificationInstructions: false,
             isInformationalOnly: true,
             priority: 'high'
           }
@@ -232,7 +220,6 @@ export const sendInformationalEmail = async (contactId: string): Promise<boolean
             },
             emailDetails: {
               subject: `Important: Information about your role as ${userFullName}'s trusted contact`,
-              includeVerificationInstructions: false,
               isInformationalOnly: true,
               priority: 'high'
             }

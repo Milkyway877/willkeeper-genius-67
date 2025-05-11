@@ -5,19 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, Plus, User, Mail, Trash2, Check, AlertTriangle, Info, RefreshCw, X } from 'lucide-react';
+import { Shield, Plus, User, Mail, Trash2, Check, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   TrustedContact, 
   getTrustedContacts, 
   createTrustedContact, 
   sendInformationalEmail,
   deleteTrustedContact,
-  resendInvitation,
-  checkInvitationStatus
+  resendInvitation
 } from '@/services/trustedContactsService';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -38,10 +37,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const [submitting, setSubmitting] = useState(false);
   
   useEffect(() => {
-    // Initial fetch
     fetchTrustedContacts();
-    
-    // No need for polling since we don't have pending statuses anymore
   }, []);
   
   const fetchTrustedContacts = async () => {
@@ -79,7 +75,6 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     description: string
   ) => {
     try {
-      // Check if session exists
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
@@ -87,7 +82,6 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         return;
       }
       
-      // Direct insert as fallback since RPC might not be available yet
       await supabase
         .from('notifications')
         .insert({
@@ -305,42 +299,10 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       );
     }
     
-    if (status === 'delivered') {
-      return (
-        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-          <Check className="h-3 w-3 mr-1" /> Information Sent
-        </Badge>
-      );
-    }
-    
-    // Legacy statuses for backward compatibility
-    if (status === 'pending') {
-      return (
-        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-          <Info className="h-3 w-3 mr-1" /> Email Sent
-        </Badge>
-      );
-    }
-    
-    if (status === 'accepted' || status === 'verified') {
-      return (
-        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-          <Check className="h-3 w-3 mr-1" /> Information Sent
-        </Badge>
-      );
-    }
-    
-    if (status === 'declined') {
-      return (
-        <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
-          <AlertTriangle className="h-3 w-3 mr-1" /> Needs Follow-up
-        </Badge>
-      );
-    }
-    
+    // All other statuses show as "Information Sent"
     return (
-      <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
-        {status}
+      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+        <Check className="h-3 w-3 mr-1" /> Information Sent
       </Badge>
     );
   };
@@ -408,7 +370,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                     <TableCell>
                       <div className="flex gap-2">
                         {(!contact.invitation_status ||
-                          contact.invitation_status === 'not_sent') && (
+                          contact.invitation_status === 'not_sent') ? (
                           <Button 
                             size="sm"
                             variant="outline"
@@ -417,11 +379,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                             <Mail className="h-4 w-4 mr-1" />
                             Send Information
                           </Button>
-                        )}
-                        {(contact.invitation_status === 'delivered' ||
-                          contact.invitation_status === 'accepted' ||
-                          contact.invitation_status === 'verified' ||
-                          contact.invitation_status === 'pending') && (
+                        ) : (
                           <Button 
                             size="sm"
                             variant="outline"
