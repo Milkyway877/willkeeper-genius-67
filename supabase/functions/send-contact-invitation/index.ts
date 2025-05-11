@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { 
@@ -90,24 +91,65 @@ serve(async (req) => {
     
     // Generate email content based on contact type
     let subject = emailDetails?.subject || '';
+    let htmlContent = '';
+    
+    // Determine origin for base URL
+    const baseUrl = new URL(req.url).origin;
     
     switch (contact.contactType) {
       case 'beneficiary':
         subject = subject || `You've been named as a beneficiary by ${userFullName}`;
+        // For non-trusted contacts that need verification, use verification template
+        const { data: verificationData } = await supabase.rpc('create_contact_verification', {
+          p_contact_id: contact.contactId,
+          p_contact_type: contact.contactType,
+          p_user_id: contact.userId
+        });
+        
+        const verificationToken = verificationData?.verification_token;
+        if (verificationToken) {
+          // Import the verification template
+          const { generateVerificationEmailTemplate } = await import("../../../src/utils/emailTemplates.ts");
+          htmlContent = generateVerificationEmailTemplate(
+            contact.name,
+            userFullName || 'A WillTank user',
+            baseUrl,
+            verificationToken
+          );
+        }
         break;
       case 'executor':
         subject = subject || `You've been named as an executor by ${userFullName}`;
+        // For non-trusted contacts that need verification, use verification template
+        const { data: execVerificationData } = await supabase.rpc('create_contact_verification', {
+          p_contact_id: contact.contactId,
+          p_contact_type: contact.contactType,
+          p_user_id: contact.userId
+        });
+        
+        const execVerificationToken = execVerificationData?.verification_token;
+        if (execVerificationToken) {
+          // Import the verification template
+          const { generateVerificationEmailTemplate } = await import("../../../src/utils/emailTemplates.ts");
+          htmlContent = generateVerificationEmailTemplate(
+            contact.name, 
+            userFullName || 'A WillTank user', 
+            baseUrl, 
+            execVerificationToken
+          );
+        }
         break;
       case 'trusted':
         subject = subject || `You've been named as a trusted contact by ${userFullName}`;
+        // For trusted contacts, always use informational template
+        const { generateTrustedContactEmailTemplate } = await import("../../../src/utils/emailTemplates.ts");
+        htmlContent = generateTrustedContactEmailTemplate(
+          contact.name,
+          userFullName || 'A WillTank user',
+          baseUrl
+        );
         break;
     }
-    
-    // Add user bio if available
-    const bioSection = userBio ? 
-      `<div style="margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #4a6cf7;">
-        <p style="font-style: italic;">"${userBio}"</p>
-       </div>` : '';
     
     // Add custom message if provided
     const customMessageSection = emailDetails?.customMessage ? 
@@ -115,41 +157,16 @@ serve(async (req) => {
         <p>${emailDetails.customMessage}</p>
        </div>` : '';
     
-    // Generate content for trusted contacts - always informational
-    let content = '';
-    
-    if (contact.contactType === 'trusted') {
-      content = `
-        <h1>Important Information</h1>
-        <p>Hello ${contact.name},</p>
-        <p>${userFullName} has named you as a trusted contact for their death verification system in their WillTank account.</p>
-        
-        ${bioSection}
-        ${customMessageSection}
-        
-        <h2>What does being a trusted contact mean?</h2>
-        <p>As a trusted contact, your role is crucial. If ${userFullName} fails to respond to regular check-ins in our system, you may be contacted to confirm their status. This is an important safeguard that helps verify if they're still able to manage their digital legacy.</p>
-        <p>Your responsibilities include:</p>
-        <ul>
-          <li>Responding to verification requests if ${userFullName} misses check-ins</li>
-          <li>Providing accurate information about ${userFullName}'s status when contacted</li>
-          <li>Maintaining confidentiality about your role and any information you receive</li>
-        </ul>
-        
-        <p>No action is required from you at this time. This email is for informational purposes only.</p>
-        
-        <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
-        
-        <p>Thank you for being a trusted part of ${userFullName}'s digital legacy plan.</p>
-      `;
-    } else {
-      // For other contact types (keeping some basic structure)
-      content = `
+    // If we couldn't generate specific HTML content, use a default template
+    if (!htmlContent) {
+      htmlContent = `
         <h1>Important Information</h1>
         <p>Hello ${contact.name},</p>
         <p>${userFullName} has named you as a ${contact.contactType} in their WillTank account.</p>
         
-        ${bioSection}
+        ${userBio ? `<div style="margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #4a6cf7;">
+          <p style="font-style: italic;">"${userBio}"</p>
+         </div>` : ''}
         ${customMessageSection}
         
         <p>This is an informational email to let you know about your role.</p>
@@ -158,6 +175,10 @@ serve(async (req) => {
         
         <p>Thank you for being part of ${userFullName}'s digital legacy plan.</p>
       `;
+    } else if (customMessageSection) {
+      // Add custom message to generated HTML
+      htmlContent = htmlContent.replace('</div>\n      \n      <p>If you have any questions', 
+        `</div>\n      ${customMessageSection}\n      <p>If you have any questions`);
     }
     
     // Get resend client to send the email
@@ -177,7 +198,7 @@ serve(async (req) => {
       from: "WillTank <invitations@willtank.com>",
       to: [contact.email],
       subject: subject,
-      html: buildDefaultEmailLayout(content),
+      html: htmlContent, // Use our generated HTML directly
       ...emailPriority,
       tags: [
         {
@@ -186,7 +207,7 @@ serve(async (req) => {
         },
         {
           name: 'email_type',
-          value: 'informational'
+          value: emailDetails?.isInformationalOnly ? 'informational' : 'verification'
         }
       ]
     });

@@ -15,6 +15,7 @@ import FAQ from './pages/FAQ';
 // Create placeholder pages for development
 const Home = () => <Index />;
 const About = () => <div>About Page</div>;
+const Contact = () => <div>Contact Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
 const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
@@ -48,6 +49,7 @@ function AppRouter() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/terms" element={<Terms />} />
@@ -75,7 +77,7 @@ function AppRouter() {
         <Route path="/check-ins" element={<CheckIns />} />
         <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
 
-        {/* New simplified verification routes */}
+        {/* Verification routes */}
         <Route
           path="/verify/simple/:token"
           element={<SimpleVerification />}

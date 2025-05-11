@@ -14,13 +14,21 @@ export default function SimpleVerification() {
   
   useEffect(() => {
     const processVerification = async () => {
-      if (!token || !response) {
-        setError('Invalid verification parameters');
+      if (!token) {
+        setError('Invalid verification token');
+        navigate(`/verify/thank-you?error=${encodeURIComponent('Invalid verification token')}`);
+        return;
+      }
+      
+      if (!response) {
+        // No response in URL, show the verification options page
+        navigate(`/verify/invitation/${token}`);
         return;
       }
       
       if (response !== 'accept' && response !== 'decline') {
         setError('Invalid response type');
+        navigate(`/verify/thank-you?error=${encodeURIComponent('Invalid response type')}`);
         return;
       }
       
@@ -46,6 +54,7 @@ export default function SimpleVerification() {
           if (contactError || !contact) {
             console.error('Error finding contact:', contactError);
             setError('Invalid or expired verification link');
+            navigate(`/verify/thank-you?error=${encodeURIComponent('Invalid or expired verification link')}`);
             return;
           }
             
@@ -62,6 +71,7 @@ export default function SimpleVerification() {
           if (updateError) {
             console.error('Error updating contact:', updateError);
             setError('Failed to update your response. Please try again.');
+            navigate(`/verify/thank-you?error=${encodeURIComponent('Failed to update your response. Please try again.')}`);
             return;
           }
         } else {
@@ -78,6 +88,7 @@ export default function SimpleVerification() {
           if (updateError) {
             console.error('Error updating verification:', updateError);
             setError('Failed to update your response. Please try again.');
+            navigate(`/verify/thank-you?error=${encodeURIComponent('Failed to update your response. Please try again.')}`);
             return;
           }
             
@@ -104,17 +115,12 @@ export default function SimpleVerification() {
       } catch (error) {
         console.error('Error processing verification:', error);
         setError('An error occurred while processing your response');
+        navigate(`/verify/thank-you?error=${encodeURIComponent('An error occurred while processing your response')}`);
       }
     };
     
     processVerification();
   }, [token, response, navigate]);
-  
-  if (error) {
-    // Redirect to thank you page with error
-    navigate(`/verify/thank-you?error=${encodeURIComponent(error)}`);
-    return null;
-  }
   
   // Show loading while processing
   return (
