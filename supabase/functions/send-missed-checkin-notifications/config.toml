@@ -1,0 +1,4 @@
+
+[functions.send-missed-checkin-notifications]
+verify_jwt = false
+

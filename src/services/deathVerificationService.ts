@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { notifyAllTrustedContacts } from './trustedContactsService';
 
 export interface DeathVerificationSettings {
   id?: string;
@@ -238,7 +238,7 @@ export const performCheckin = async (notes?: string): Promise<DeathVerificationC
     const nextCheckIn = new Date();
     nextCheckIn.setDate(now.getDate() + settings.check_in_frequency);
     
-    // Create the check-in record - Changed 'active' to 'alive'
+    // Create the check-in record
     const { data, error } = await supabase
       .from('death_verification_checkins')
       .insert({
@@ -303,6 +303,171 @@ export const sendStatusCheck = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error in sendStatusCheck:', error);
+    return false;
+  }
+};
+
+/**
+ * Check if a user has missed their check-in and notify trusted contacts if needed
+ */
+export const checkMissedCheckins = async (): Promise<{
+  missed: boolean;
+  daysOverdue?: number;
+  notificationSent?: boolean;
+}> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('No authenticated user found');
+      return { missed: false };
+    }
+    
+    // Get latest check-in
+    const latestCheckin = await getLatestCheckin();
+    
+    if (!latestCheckin) {
+      // No check-ins yet, nothing to check
+      return { missed: false };
+    }
+    
+    // Get settings
+    const settings = await getDeathVerificationSettings();
+    if (!settings || !settings.check_in_enabled) {
+      // Check-ins not enabled
+      return { missed: false };
+    }
+    
+    const now = new Date();
+    const nextCheckInDate = new Date(latestCheckin.next_check_in);
+    const gracePeriodDays = settings.grace_period || 7;
+    
+    // Add grace period to next check-in date
+    const finalDeadline = new Date(nextCheckInDate);
+    finalDeadline.setDate(finalDeadline.getDate() + gracePeriodDays);
+    
+    if (now <= finalDeadline) {
+      // Not overdue yet
+      return { missed: false };
+    }
+    
+    // Check-in is missed
+    const daysOverdue = Math.floor((now.getTime() - finalDeadline.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Check if we've already notified for this missed check-in
+    const { data: notificationLogs } = await supabase
+      .from('death_verification_logs')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('action', 'missed_checkin_notification_sent')
+      .gte('created_at', nextCheckInDate.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1);
+      
+    if (notificationLogs && notificationLogs.length > 0) {
+      // Already sent notification for this missed check-in
+      return { 
+        missed: true, 
+        daysOverdue,
+        notificationSent: true 
+      };
+    }
+    
+    // Need to send notifications - first get executor information
+    const { data: executor } = await supabase
+      .from('executors')
+      .select('name, email, phone')
+      .eq('user_id', session.user.id)
+      .single();
+      
+    if (!executor) {
+      console.error('No executor found for user');
+      // Log this issue
+      await supabase.from('death_verification_logs').insert({
+        user_id: session.user.id,
+        action: 'missed_checkin_no_executor',
+        details: {
+          checked_in_at: latestCheckin.checked_in_at,
+          next_check_in: latestCheckin.next_check_in,
+          days_overdue: daysOverdue
+        }
+      });
+      
+      return { 
+        missed: true, 
+        daysOverdue,
+        notificationSent: false 
+      };
+    }
+    
+    // Format the missed since date
+    const missedSinceDate = new Date(latestCheckin.next_check_in);
+    const missedSince = missedSinceDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    // Notify trusted contacts
+    const notificationResult = await notifyAllTrustedContacts(
+      missedSince,
+      {
+        name: executor.name,
+        email: executor.email,
+        phone: executor.phone
+      }
+    );
+    
+    // Log the notification attempt regardless of success
+    await supabase.from('death_verification_logs').insert({
+      user_id: session.user.id,
+      action: 'missed_checkin_notifications_attempted',
+      details: {
+        checked_in_at: latestCheckin.checked_in_at,
+        next_check_in: latestCheckin.next_check_in,
+        days_overdue: daysOverdue,
+        notification_success: notificationResult.success,
+        notified_count: notificationResult.notifiedCount,
+        total_contacts: notificationResult.totalCount
+      }
+    });
+    
+    return { 
+      missed: true, 
+      daysOverdue,
+      notificationSent: notificationResult.success 
+    };
+  } catch (error) {
+    console.error('Error checking for missed check-ins:', error);
+    return { missed: false };
+  }
+};
+
+/**
+ * Manually trigger notifications to trusted contacts for testing
+ */
+export const testNotifyTrustedContacts = async (
+  executorInfo: { name: string; email: string; phone?: string }
+): Promise<boolean> => {
+  try {
+    const today = new Date();
+    const testDate = new Date(today);
+    testDate.setDate(today.getDate() - 14); // Simulate 2 weeks ago
+    
+    const formattedDate = testDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const result = await notifyAllTrustedContacts(
+      formattedDate,
+      executorInfo
+    );
+    
+    return result.success;
+  } catch (error) {
+    console.error('Error in testNotifyTrustedContacts:', error);
     return false;
   }
 };
