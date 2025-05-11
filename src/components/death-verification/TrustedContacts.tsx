@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import {
   TrustedContact, 
   getTrustedContacts, 
   createTrustedContact, 
-  sendVerificationRequest, 
+  sendInformationalEmail,
   deleteTrustedContact,
   resendInvitation,
   checkInvitationStatus
@@ -40,16 +41,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     // Initial fetch
     fetchTrustedContacts();
     
-    // Set up a polling mechanism to check for status changes every 10 seconds
-    const statusCheckInterval = setInterval(() => {
-      if (contacts.some(contact => contact.invitation_status === 'pending')) {
-        fetchTrustedContacts();
-      }
-    }, 10000);
-    
-    return () => {
-      clearInterval(statusCheckInterval);
-    };
+    // No need for polling since we don't have pending statuses anymore
   }, []);
   
   const fetchTrustedContacts = async () => {
@@ -166,9 +158,9 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       fetchTrustedContacts();
       onContactsChange();
       
-      // Attempt to send verification email with enhanced error handling
+      // Send informational email with enhanced error handling
       try {
-        const success = await sendVerificationRequest(contact.id);
+        const success = await sendInformationalEmail(contact.id);
         
         if (success) {
           // Create notification via fallback method
@@ -180,13 +172,13 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           
           toast({
             title: "Contact Added",
-            description: `${newContact.name} has been added to your trusted contacts list and a verification email has been sent.`
+            description: `${newContact.name} has been added to your trusted contacts list and an informational email has been sent.`
           });
         } else {
           // User feedback for email sending failure
           toast({
             title: "Contact Added",
-            description: `${contact.name} has been added, but we couldn't send the verification email. You can resend it later.`,
+            description: `${contact.name} has been added, but we couldn't send the informational email. You can resend it later.`,
             variant: "default"
           });
           
@@ -194,22 +186,22 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           await createSystemNotificationFallback(
             'warning',
             'Email Delivery Issue',
-            `We couldn't send the verification email to ${contact.name}. You can try resending it later.`
+            `We couldn't send the informational email to ${contact.name}. You can try resending it later.`
           );
         }
       } catch (emailError) {
-        console.error('Error sending verification email:', emailError);
+        console.error('Error sending informational email:', emailError);
         
         toast({
           title: "Contact Added",
-          description: `${contact.name} has been added, but we couldn't send the verification email. You can resend it later.`,
+          description: `${contact.name} has been added, but we couldn't send the informational email. You can resend it later.`,
         });
         
         // Create warning notification via fallback method
         await createSystemNotificationFallback(
           'warning',
           'Email Delivery Issue',
-          `We couldn't send the verification email to ${contact.name}. You can try resending it later.`
+          `We couldn't send the informational email to ${contact.name}. You can try resending it later.`
         );
       }
     } catch (error) {
@@ -224,14 +216,14 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     }
   };
   
-  const handleResendVerification = async (contactId: string, name: string) => {
+  const handleResendEmail = async (contactId: string, name: string) => {
     try {
       toast({
         title: "Sending...",
-        description: `Attempting to send verification email to ${name}`,
+        description: `Attempting to send informational email to ${name}`,
       });
       
-      // First try the regular invitation method
+      // Try to send informational email
       let success = false;
       
       try {
@@ -240,19 +232,19 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         console.error('Error using resendInvitation:', error);
       }
       
-      // If that fails, try the direct sendVerificationRequest method
+      // If that fails, try the direct method
       if (!success) {
         try {
-          success = await sendVerificationRequest(contactId);
+          success = await sendInformationalEmail(contactId);
         } catch (error) {
-          console.error('Error using sendVerificationRequest:', error); 
+          console.error('Error using sendInformationalEmail:', error); 
         }
       }
       
       if (success) {
         toast({
-          title: "Verification Email Sent",
-          description: `A verification email has been sent to ${name}`
+          title: "Email Sent",
+          description: `Informational email has been sent to ${name}`
         });
         
         // Refresh contacts list to show updated status
@@ -261,17 +253,17 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         // Create success notification via fallback method
         await createSystemNotificationFallback(
           'success',
-          'Verification Email Sent',
-          `A new verification email has been sent to ${name}.`
+          'Email Sent',
+          `An informational email has been sent to ${name}.`
         );
       } else {
-        throw new Error("Failed to send verification email");
+        throw new Error("Failed to send informational email");
       }
     } catch (error) {
-      console.error('Error sending verification email:', error);
+      console.error('Error sending informational email:', error);
       toast({
         title: "Error",
-        description: "Failed to send verification email. Please try again later.",
+        description: "Failed to send email. Please try again later.",
         variant: "destructive"
       });
     }
@@ -308,15 +300,24 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     if (!status || status === 'not_sent') {
       return (
         <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
-          Not Invited
+          Not Notified
         </Badge>
       );
     }
     
+    if (status === 'delivered') {
+      return (
+        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+          <Check className="h-3 w-3 mr-1" /> Information Sent
+        </Badge>
+      );
+    }
+    
+    // Legacy statuses for backward compatibility
     if (status === 'pending') {
       return (
         <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-          <AlertTriangle className="h-3 w-3 mr-1" /> Pending Response
+          <Info className="h-3 w-3 mr-1" /> Email Sent
         </Badge>
       );
     }
@@ -324,7 +325,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     if (status === 'accepted' || status === 'verified') {
       return (
         <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-          <Check className="h-3 w-3 mr-1" /> Verified
+          <Check className="h-3 w-3 mr-1" /> Information Sent
         </Badge>
       );
     }
@@ -332,7 +333,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     if (status === 'declined') {
       return (
         <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
-          <X className="h-3 w-3 mr-1" /> Declined
+          <AlertTriangle className="h-3 w-3 mr-1" /> Needs Follow-up
         </Badge>
       );
     }
@@ -377,8 +378,8 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
               <Info className="h-4 w-4" />
               <AlertTitle>Important</AlertTitle>
               <AlertDescription>
-                Your trusted contacts will receive an email invitation. They need to accept 
-                their role before they can verify your status.
+                Your trusted contacts will receive an informational email about their role.
+                No action is required from them at this time.
               </AlertDescription>
             </Alert>
             
@@ -406,16 +407,28 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                     <TableCell>{getStatusBadge(contact.invitation_status)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        {(!contact.invitation_status || 
-                          contact.invitation_status === 'pending' || 
+                        {(!contact.invitation_status ||
                           contact.invitation_status === 'not_sent') && (
                           <Button 
                             size="sm"
                             variant="outline"
-                            onClick={() => handleResendVerification(contact.id, contact.name)}
+                            onClick={() => handleResendEmail(contact.id, contact.name)}
                           >
                             <Mail className="h-4 w-4 mr-1" />
-                            {contact.invitation_sent_at ? 'Resend' : 'Send'} Invitation
+                            Send Information
+                          </Button>
+                        )}
+                        {(contact.invitation_status === 'delivered' ||
+                          contact.invitation_status === 'accepted' ||
+                          contact.invitation_status === 'verified' ||
+                          contact.invitation_status === 'pending') && (
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleResendEmail(contact.id, contact.name)}
+                          >
+                            <Mail className="h-4 w-4 mr-1" />
+                            Resend Information
                           </Button>
                         )}
                         <Button 

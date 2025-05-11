@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { 
@@ -26,6 +27,7 @@ interface EmailDetails {
   subject?: string;
   includeVerificationInstructions?: boolean;
   includeUserBio?: boolean;
+  isInformationalOnly?: boolean; // New flag for informational-only emails
   priority?: 'normal' | 'high';
   customMessage?: string;
 }
@@ -77,32 +79,49 @@ serve(async (req) => {
       }
     }
     
-    // Generate a verification token
-    const verificationToken = crypto.randomUUID();
-    const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + 30); // Token expires in 30 days
-    
-    // Store the verification token in the database
-    const { error: tokenError } = await supabase
-      .from('contact_verifications')
-      .insert({
-        user_id: contact.userId,
-        contact_id: contact.contactId,
-        contact_type: contact.contactType,
-        verification_token: verificationToken,
-        expires_at: expirationDate.toISOString()
-      });
+    // If this is an informational-only email, don't generate verification tokens
+    let verificationToken = null;
+    if (!emailDetails?.isInformationalOnly) {
+      // Generate a verification token
+      verificationToken = crypto.randomUUID();
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + 30); // Token expires in 30 days
       
-    if (tokenError) {
-      console.error('Error storing verification token:', tokenError);
-      return new Response(
-        JSON.stringify({ success: false, message: "Failed to create verification token" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Store the verification token in the database
+      const { error: tokenError } = await supabase
+        .from('contact_verifications')
+        .insert({
+          user_id: contact.userId,
+          contact_id: contact.contactId,
+          contact_type: contact.contactType,
+          verification_token: verificationToken,
+          expires_at: expirationDate.toISOString()
+        });
+        
+      if (tokenError) {
+        console.error('Error storing verification token:', tokenError);
+        return new Response(
+          JSON.stringify({ success: false, message: "Failed to create verification token" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      // For informational-only emails, update the contact status directly
+      if (contact.contactType === 'trusted') {
+        await supabase
+          .from('trusted_contacts')
+          .update({
+            invitation_status: 'delivered',
+            invitation_sent_at: new Date().toISOString(),
+            invitation_responded_at: new Date().toISOString()  // Mark as responded immediately
+          })
+          .eq('id', contact.contactId);
+      }
     }
     
-    // Create direct verification URL - Link directly to the invitation response page
-    const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/invitation/${verificationToken}`;
+    // Create verification URL if needed
+    const verificationUrl = verificationToken ? 
+      `${req.headers.get("origin") || "https://willtank.com"}/verify/invitation/${verificationToken}` : null;
     
     // Generate email content based on contact type and email details
     let subject = emailDetails?.subject || '';
@@ -156,27 +175,48 @@ serve(async (req) => {
     }
     
     // Build the complete email content
-    content = `
-      <h1>Important Role Invitation</h1>
-      <p>Hello ${contact.name},</p>
-      <p>${userFullName} has named you as a ${roleDescription} in their WillTank account.</p>
-      
-      ${bioSection}
-      ${customMessageSection}
-      
-      ${roleDetailedDescription}
-      
-      <p>Please click the button below to accept or decline this role:</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${verificationUrl}" style="background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">RESPOND TO INVITATION</a>
-      </div>
-      
-      <p>This invitation will expire on ${expirationDate.toLocaleDateString()}.</p>
-      
-      <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
-      
-      <p>Thank you for being a trusted part of ${userFullName}'s digital legacy plan.</p>
-    `;
+    if (emailDetails?.isInformationalOnly) {
+      // Informational-only email without verification buttons
+      content = `
+        <h1>Important Information</h1>
+        <p>Hello ${contact.name},</p>
+        <p>${userFullName} has named you as a ${roleDescription} in their WillTank account.</p>
+        
+        ${bioSection}
+        ${customMessageSection}
+        
+        ${roleDetailedDescription}
+        
+        <p>No action is required from you at this time. This email is for informational purposes only.</p>
+        
+        <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
+        
+        <p>Thank you for being a trusted part of ${userFullName}'s digital legacy plan.</p>
+      `;
+    } else {
+      // Traditional verification email with buttons
+      content = `
+        <h1>Important Role Invitation</h1>
+        <p>Hello ${contact.name},</p>
+        <p>${userFullName} has named you as a ${roleDescription} in their WillTank account.</p>
+        
+        ${bioSection}
+        ${customMessageSection}
+        
+        ${roleDetailedDescription}
+        
+        ${emailDetails?.includeVerificationInstructions !== false && verificationUrl ? `
+          <p>Please click the button below to accept or decline this role:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" style="background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">RESPOND TO INVITATION</a>
+          </div>
+        ` : ''}
+        
+        <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
+        
+        <p>Thank you for being a trusted part of ${userFullName}'s digital legacy plan.</p>
+      `;
+    }
     
     // Get resend client to send the email
     const resend = getResendClient();
@@ -190,7 +230,7 @@ serve(async (req) => {
     } : {};
     
     // Send the email
-    console.log("Sending invitation email to:", contact.email);
+    console.log("Sending email to:", contact.email);
     const emailResponse = await resend.emails.send({
       from: "WillTank <invitations@willtank.com>",
       to: [contact.email],
@@ -203,15 +243,15 @@ serve(async (req) => {
           value: contact.contactType
         },
         {
-          name: 'invitation',
-          value: 'true'
+          name: 'email_type',
+          value: emailDetails?.isInformationalOnly ? 'informational' : 'invitation'
         }
       ]
     });
     
     if (!isEmailSendSuccess(emailResponse)) {
       const errorMessage = formatResendError(emailResponse);
-      console.error('Error sending invitation email:', errorMessage);
+      console.error('Error sending email:', errorMessage);
       
       // Create a system notification about the failed email
       await supabase.rpc(
@@ -219,23 +259,23 @@ serve(async (req) => {
         {
           p_user_id: contact.userId,
           p_title: 'Email Delivery Failed',
-          p_description: `We couldn't send the invitation email to ${contact.name}. Please try again later.`,
+          p_description: `We couldn't send the email to ${contact.name}. Please try again later.`,
           p_type: 'warning'
         }
       );
       
       return new Response(
-        JSON.stringify({ success: false, message: "Failed to send invitation email", error: errorMessage }),
+        JSON.stringify({ success: false, message: "Failed to send email", error: errorMessage }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    console.log('Invitation email sent successfully:', emailResponse.id);
+    console.log('Email sent successfully:', emailResponse.id);
     
-    // Store the verification event in logs
+    // Store the event in logs
     await supabase.from('death_verification_logs').insert({
       user_id: contact.userId,
-      action: 'invitation_sent',
+      action: emailDetails?.isInformationalOnly ? 'information_sent' : 'invitation_sent',
       details: {
         contact_id: contact.contactId,
         contact_type: contact.contactType,
@@ -251,8 +291,8 @@ serve(async (req) => {
       'create_notification',
       {
         p_user_id: contact.userId,
-        p_title: 'Invitation Sent',
-        p_description: `An invitation email has been sent to ${contact.name} for the role of ${contact.contactType}.`,
+        p_title: 'Email Sent',
+        p_description: `An email has been sent to ${contact.name} for the role of ${contact.contactType}.`,
         p_type: 'success'
       }
     );
@@ -260,17 +300,17 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Invitation email sent successfully",
+        message: "Email sent successfully",
         emailId: emailResponse.id 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error sending invitation email:", error);
+    console.error("Error sending email:", error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: "Failed to process invitation",
+        message: "Failed to process request",
         error: error.message || "Internal server error" 
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
