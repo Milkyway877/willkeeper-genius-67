@@ -28,10 +28,6 @@ interface EmailDetails {
   includeUserBio?: boolean;
   priority?: 'normal' | 'high';
   customMessage?: string;
-  customContent?: {
-    html: string;
-    text: string;
-  };
 }
 
 serve(async (req) => {
@@ -81,110 +77,106 @@ serve(async (req) => {
       }
     }
     
-    // If we're using the new flow without verification, we don't need to create a verification token
-    let htmlContent = '';
-    let textContent = '';
+    // Generate a verification token
+    const verificationToken = crypto.randomUUID();
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 30); // Token expires in 30 days
     
-    // If custom content is provided, use it directly
-    if (emailDetails?.customContent) {
-      htmlContent = emailDetails.customContent.html;
-      textContent = emailDetails.customContent.text;
-    }
-    // Otherwise build content based on contact type and email details
-    else {
-      // Add user bio if requested
-      const bioSection = userBio ? 
-        `<div style="margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #4a6cf7;">
-          <p style="font-style: italic;">"${userBio}"</p>
-         </div>` : '';
+    // Store the verification token in the database
+    const { error: tokenError } = await supabase
+      .from('contact_verifications')
+      .insert({
+        user_id: contact.userId,
+        contact_id: contact.contactId,
+        contact_type: contact.contactType,
+        verification_token: verificationToken,
+        expires_at: expirationDate.toISOString()
+      });
       
-      // Add custom message if provided
-      const customMessageSection = emailDetails?.customMessage ? 
-        `<div style="margin: 20px 0;">
-          <p>${emailDetails.customMessage}</p>
-         </div>` : '';
-      
-      // Detailed role descriptions
-      let roleDescription = '';
-      let roleDetailedDescription = '';
-      
-      switch (contact.contactType) {
-        case 'trusted':
-          roleDescription = 'trusted contact';
-          roleDetailedDescription = `
-            <h2>What does being a trusted contact mean?</h2>
-            <p>As a trusted contact, your role is important. If ${userFullName} fails to respond to regular check-ins in our system, you will receive an email notification. If you confirm that ${userFullName} has passed away, you should contact their executor.</p>
-            <p>Your responsibilities include:</p>
-            <ul>
-              <li>Being aware that you're a trusted contact for ${userFullName}</li>
-              <li>Attempting to contact ${userFullName} directly if notified of missed check-ins</li>
-              <li>Contacting the executor if you confirm ${userFullName}'s passing</li>
-              <li>Providing a PIN code to the executor if requested</li>
-            </ul>
-            <p>No action is required from you at this time. This email is simply to inform you of your role.</p>
-          `;
-          break;
-        case 'beneficiary':
-          roleDescription = 'beneficiary in their will';
-          roleDetailedDescription = `
-            <h2>What does being a beneficiary mean?</h2>
-            <p>As a beneficiary, ${userFullName} has named you to receive certain assets or possessions in their will. You don't need to take any action at this time.</p>
-            <p>If ${userFullName} passes away, their executor will contact you with more information about your inheritance.</p>
-          `;
-          break;
-        case 'executor':
-          roleDescription = 'executor of their will';
-          roleDetailedDescription = `
-            <h2>What does being an executor mean?</h2>
-            <p>As an executor, you have an important responsibility. If ${userFullName} passes away, you'll be responsible for carrying out their wishes as specified in their will.</p>
-            <p>In the event of ${userFullName}'s passing, you'll need to:</p>
-            <ul>
-              <li>Visit the WillTank executor portal</li>
-              <li>Collect PIN codes from trusted contacts to verify your identity</li>
-              <li>Access and download the will documents</li>
-              <li>Follow the instructions in the will to distribute assets</li>
-            </ul>
-          `;
-          break;
-      }
-      
-      // Build the complete email content
-      htmlContent = `
-        <h1>Important Role Information</h1>
-        <p>Hello ${contact.name},</p>
-        <p>${userFullName} has named you as a ${roleDescription} in their WillTank account.</p>
-        
-        ${bioSection}
-        ${customMessageSection}
-        
-        ${roleDetailedDescription}
-        
-        <p>Thank you for being a trusted part of ${userFullName}'s digital legacy plan.</p>
-      `;
-      
-      // Simple text version
-      textContent = `
-Hello ${contact.name},
-
-${userFullName} has named you as a ${roleDescription} in their WillTank account.
-
-${userBio ? `"${userBio}"` : ''}
-${emailDetails?.customMessage || ''}
-
-No action is required from you at this time. This email is simply to inform you of your role.
-
-Thank you for being a trusted part of ${userFullName}'s digital legacy plan.
-      `.trim();
+    if (tokenError) {
+      console.error('Error storing verification token:', tokenError);
+      return new Response(
+        JSON.stringify({ success: false, message: "Failed to create verification token" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
-    // Update contact status in database
-    await supabase
-      .from('trusted_contacts')
-      .update({
-        invitation_sent_at: new Date().toISOString(),
-        invitation_status: 'delivered'
-      })
-      .eq('id', contact.contactId);
+    // Create direct verification URL - Link directly to the invitation response page
+    const verificationUrl = `${req.headers.get("origin") || "https://willtank.com"}/verify/invitation/${verificationToken}`;
+    
+    // Generate email content based on contact type and email details
+    let subject = emailDetails?.subject || '';
+    let content = '';
+    let roleDescription = '';
+    
+    switch (contact.contactType) {
+      case 'beneficiary':
+        subject = subject || `You've been named as a beneficiary by ${userFullName}`;
+        roleDescription = 'beneficiary in their will';
+        break;
+      case 'executor':
+        subject = subject || `You've been named as an executor by ${userFullName}`;
+        roleDescription = 'executor of their will';
+        break;
+      case 'trusted':
+        subject = subject || `You've been named as a trusted contact by ${userFullName}`;
+        roleDescription = 'trusted contact for their death verification system';
+        break;
+    }
+    
+    // Add user bio if requested
+    const bioSection = userBio ? 
+      `<div style="margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #4a6cf7;">
+        <p style="font-style: italic;">"${userBio}"</p>
+       </div>` : '';
+    
+    // Add custom message if provided
+    const customMessageSection = emailDetails?.customMessage ? 
+      `<div style="margin: 20px 0;">
+        <p>${emailDetails.customMessage}</p>
+       </div>` : '';
+    
+    // Detailed role descriptions
+    let roleDetailedDescription = '';
+    
+    switch (contact.contactType) {
+      case 'trusted':
+        roleDetailedDescription = `
+          <h2>What does being a trusted contact mean?</h2>
+          <p>As a trusted contact, your role is crucial. If ${userFullName} fails to respond to regular check-ins in our system, you may be contacted to confirm their status. This is an important safeguard that helps verify if they're still able to manage their digital legacy.</p>
+          <p>Your responsibilities include:</p>
+          <ul>
+            <li>Responding to verification requests if ${userFullName} misses check-ins</li>
+            <li>Providing accurate information about ${userFullName}'s status when contacted</li>
+            <li>Maintaining confidentiality about your role and any information you receive</li>
+          </ul>
+        `;
+        break;
+      // Add cases for other contact types as needed
+    }
+    
+    // Build the complete email content
+    content = `
+      <h1>Important Role Invitation</h1>
+      <p>Hello ${contact.name},</p>
+      <p>${userFullName} has named you as a ${roleDescription} in their WillTank account.</p>
+      
+      ${bioSection}
+      ${customMessageSection}
+      
+      ${roleDetailedDescription}
+      
+      <p>Please click the button below to accept or decline this role:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${verificationUrl}" style="background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">RESPOND TO INVITATION</a>
+      </div>
+      
+      <p>This invitation will expire on ${expirationDate.toLocaleDateString()}.</p>
+      
+      <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
+      
+      <p>Thank you for being a trusted part of ${userFullName}'s digital legacy plan.</p>
+    `;
     
     // Get resend client to send the email
     const resend = getResendClient();
@@ -197,17 +189,13 @@ Thank you for being a trusted part of ${userFullName}'s digital legacy plan.
       } 
     } : {};
     
-    // Prepare the email subject
-    const subject = emailDetails?.subject || `Important: ${userFullName} has named you as a ${contact.contactType}`;
-    
     // Send the email
-    console.log("Sending information email to:", contact.email);
+    console.log("Sending invitation email to:", contact.email);
     const emailResponse = await resend.emails.send({
-      from: "WillTank <notifications@willtank.com>",
+      from: "WillTank <invitations@willtank.com>",
       to: [contact.email],
       subject: subject,
-      html: buildDefaultEmailLayout(htmlContent),
-      text: textContent,
+      html: buildDefaultEmailLayout(content),
       ...emailPriority,
       tags: [
         {
@@ -215,7 +203,7 @@ Thank you for being a trusted part of ${userFullName}'s digital legacy plan.
           value: contact.contactType
         },
         {
-          name: 'notification',
+          name: 'invitation',
           value: 'true'
         }
       ]
@@ -223,7 +211,7 @@ Thank you for being a trusted part of ${userFullName}'s digital legacy plan.
     
     if (!isEmailSendSuccess(emailResponse)) {
       const errorMessage = formatResendError(emailResponse);
-      console.error('Error sending information email:', errorMessage);
+      console.error('Error sending invitation email:', errorMessage);
       
       // Create a system notification about the failed email
       await supabase.rpc(
@@ -231,28 +219,29 @@ Thank you for being a trusted part of ${userFullName}'s digital legacy plan.
         {
           p_user_id: contact.userId,
           p_title: 'Email Delivery Failed',
-          p_description: `We couldn't send the information email to ${contact.name}. Please try again later.`,
+          p_description: `We couldn't send the invitation email to ${contact.name}. Please try again later.`,
           p_type: 'warning'
         }
       );
       
       return new Response(
-        JSON.stringify({ success: false, message: "Failed to send information email", error: errorMessage }),
+        JSON.stringify({ success: false, message: "Failed to send invitation email", error: errorMessage }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    console.log('Information email sent successfully:', emailResponse.id);
+    console.log('Invitation email sent successfully:', emailResponse.id);
     
-    // Store the email event in logs
+    // Store the verification event in logs
     await supabase.from('death_verification_logs').insert({
       user_id: contact.userId,
-      action: 'contact_email_sent',
+      action: 'invitation_sent',
       details: {
         contact_id: contact.contactId,
         contact_type: contact.contactType,
         contact_name: contact.name,
         contact_email: contact.email,
+        verification_token: verificationToken,
         email_id: emailResponse.id,
       }
     });
@@ -262,8 +251,8 @@ Thank you for being a trusted part of ${userFullName}'s digital legacy plan.
       'create_notification',
       {
         p_user_id: contact.userId,
-        p_title: 'Information Email Sent',
-        p_description: `An information email has been sent to ${contact.name}.`,
+        p_title: 'Invitation Sent',
+        p_description: `An invitation email has been sent to ${contact.name} for the role of ${contact.contactType}.`,
         p_type: 'success'
       }
     );
@@ -271,17 +260,17 @@ Thank you for being a trusted part of ${userFullName}'s digital legacy plan.
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Information email sent successfully",
+        message: "Invitation email sent successfully",
         emailId: emailResponse.id 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error sending information email:", error);
+    console.error("Error sending invitation email:", error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: "Failed to process email",
+        message: "Failed to process invitation",
         error: error.message || "Internal server error" 
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
