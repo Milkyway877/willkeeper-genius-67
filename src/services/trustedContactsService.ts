@@ -161,6 +161,9 @@ export const sendMissedCheckInNotification = async (
     
     // Attempt to send the email via the edge function
     try {
+      // Import these functions from emailTemplates.ts explicitly
+      const { generateMissedCheckInEmailTemplate, generatePlainTextMissedCheckInEmail } = await import('@/utils/emailTemplates');
+      
       const response = await fetch(`${window.location.origin}/functions/v1/send-email`, {
         method: 'POST',
         headers: {

@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import * as notificationTriggers from '@/utils/notificationTriggers';
 
@@ -48,7 +47,7 @@ export function useNotificationTriggers() {
   }, []);
 
   const triggerTrustedContactVerified = useCallback(async (name?: string) => {
-    return await notificationTriggers.triggerTrustedContactVerifiedNotification(name);
+    return await notificationTriggers.triggerContactVerifiedNotification(name);
   }, []);
 
   const triggerSecurityKeyGenerated = useCallback(async () => {

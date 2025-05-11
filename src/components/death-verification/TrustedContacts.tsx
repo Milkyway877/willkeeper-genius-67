@@ -16,7 +16,7 @@ import {
   createTrustedContact,
   deleteTrustedContact,
 } from '@/services/trustedContactsService';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { useNotificationManager } from '@/hooks/use-notification-manager';
 
 interface TrustedContactsProps {
