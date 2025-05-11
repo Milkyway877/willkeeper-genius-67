@@ -60,7 +60,8 @@ export async function testEmailDelivery(recipientEmail?: string): Promise<void> 
         toast({
           title: "Email Test Succeeded",
           description: "Standard email function is working correctly.",
-          variant: "success",
+          // Change from "success" to "default" to match allowed variants
+          variant: "default",
         });
         return;
       } else {
@@ -102,7 +103,8 @@ export async function testEmailDelivery(recipientEmail?: string): Promise<void> 
       toast({
         title: "Fallback Email Test Succeeded",
         description: "Fallback notification email system is working.",
-        variant: "success",
+        // Change from "success" to "default" to match allowed variants
+        variant: "default",
       });
       return;
     } catch (finalError) {
@@ -154,7 +156,8 @@ export async function checkNotificationSystem(): Promise<void> {
       toast({
         title: "Notification System Working",
         description: "Successfully created a notification via database function",
-        variant: "success",
+        // Change from "success" to "default" to match allowed variants
+        variant: "default",
       });
     } catch (error) {
       console.error("Error checking notification system:", error);
