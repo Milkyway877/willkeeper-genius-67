@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, Plus, User, Mail, Trash2, Info, RefreshCw } from 'lucide-react';
+import { Shield, Plus, User, Mail, Trash2, Info, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -14,9 +15,11 @@ import {
   getTrustedContacts, 
   createTrustedContact,
   deleteTrustedContact,
+  checkTrustedContactPrerequisites
 } from '@/services/trustedContactsService';
 import { supabase, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { useNotificationManager } from '@/hooks/use-notification-manager';
+import { getExecutors } from '@/services/executorService';
 
 interface TrustedContactsProps {
   onContactsChange: () => void;
@@ -34,10 +37,21 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   });
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [prerequisites, setPrerequisites] = useState<{
+    hasExecutors: boolean;
+    hasBeneficiaries: boolean;
+    hasActiveWill: boolean;
+    error?: string;
+  }>({
+    hasExecutors: false,
+    hasBeneficiaries: false,
+    hasActiveWill: false
+  });
   
   useEffect(() => {
     // Initial fetch
     fetchTrustedContacts();
+    checkPrerequisites();
   }, []);
   
   const fetchTrustedContacts = async () => {
@@ -54,6 +68,21 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const checkPrerequisites = async () => {
+    try {
+      const result = await checkTrustedContactPrerequisites();
+      setPrerequisites(result);
+    } catch (error) {
+      console.error('Error checking prerequisites:', error);
+      setPrerequisites({
+        hasExecutors: false,
+        hasBeneficiaries: false,
+        hasActiveWill: false,
+        error: 'Failed to check prerequisites'
+      });
     }
   };
   
@@ -102,6 +131,15 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   
   const handleAddContact = async () => {
     try {
+      if (!prerequisites.hasExecutors || !prerequisites.hasBeneficiaries || !prerequisites.hasActiveWill) {
+        toast({
+          title: "Prerequisites Not Met",
+          description: "You need at least one executor, one beneficiary, and an active will before adding trusted contacts.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       if (!newContact.name.trim()) {
         toast({
           title: "Missing Information",
@@ -172,6 +210,20 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         const userFullName = userProfile?.full_name || 
           (userProfile?.first_name && userProfile?.last_name ? 
             `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
+        
+        // Get executor information
+        const executors = await getExecutors();
+        const primaryExecutor = executors.find(e => e.primary_executor) || executors[0];
+        
+        if (!primaryExecutor) {
+          throw new Error('No executor information available');
+        }
+        
+        const executorInfo = {
+          name: primaryExecutor.name,
+          email: primaryExecutor.email || '',
+          phone: primaryExecutor.phone
+        };
             
         // Send email via edge function
         const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
@@ -193,7 +245,8 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
             emailDetails: {
               subject: `Important: ${userFullName} has added you as a trusted contact`,
               includeUserBio: true,
-              priority: 'high'
+              priority: 'high',
+              executorInfo
             }
           })
         });
@@ -286,6 +339,26 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     );
   };
   
+  const getPrerequisitesStatus = () => {
+    const missing = [];
+    if (!prerequisites.hasExecutors) missing.push("an executor");
+    if (!prerequisites.hasBeneficiaries) missing.push("a beneficiary");
+    if (!prerequisites.hasActiveWill) missing.push("an active will");
+    
+    if (missing.length === 0) return null;
+    
+    return (
+      <Alert variant="warning" className="mb-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Prerequisites Not Met</AlertTitle>
+        <AlertDescription>
+          Before adding trusted contacts, you need {missing.join(", and ")}.
+          Trusted contacts need this information to help verify your status if you miss check-ins.
+        </AlertDescription>
+      </Alert>
+    );
+  };
+  
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-2">
@@ -303,18 +376,10 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           <div className="flex justify-center items-center py-8">
             <RefreshCw className="animate-spin h-8 w-8 text-willtank-600" />
           </div>
-        ) : contacts.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <User className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-            <h3 className="font-medium mb-1">No trusted contacts yet</h3>
-            <p className="text-sm mb-4">Add trusted contacts who will be notified if you miss check-ins</p>
-            <Button variant="default" onClick={() => setFormOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Trusted Contact
-            </Button>
-          </div>
         ) : (
           <>
+            {getPrerequisitesStatus()}
+            
             <Alert variant="default" className="mb-4">
               <Info className="h-4 w-4" />
               <AlertTitle>Information</AlertTitle>
@@ -326,43 +391,58 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
             </Alert>
             
             <div className="mb-4">
-              <Button onClick={() => setFormOpen(true)}>
+              <Button 
+                onClick={() => setFormOpen(true)} 
+                disabled={!prerequisites.hasExecutors || !prerequisites.hasBeneficiaries || !prerequisites.hasActiveWill}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Trusted Contact
               </Button>
             </div>
             
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contacts.map(contact => (
-                  <TableRow key={contact.id}>
-                    <TableCell className="font-medium">{contact.name}</TableCell>
-                    <TableCell>{contact.email}</TableCell>
-                    <TableCell>{getStatusBadge(contact.invitation_status)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteContact(contact.id)}
-                          className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {contacts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <User className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                <h3 className="font-medium mb-1">No trusted contacts yet</h3>
+                <p className="text-sm mb-4">
+                  {prerequisites.hasExecutors && prerequisites.hasBeneficiaries && prerequisites.hasActiveWill 
+                    ? "Add trusted contacts who will be notified if you miss check-ins" 
+                    : "Complete the prerequisites above before adding trusted contacts"}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {contacts.map(contact => (
+                    <TableRow key={contact.id}>
+                      <TableCell className="font-medium">{contact.name}</TableCell>
+                      <TableCell>{contact.email}</TableCell>
+                      <TableCell>{getStatusBadge(contact.invitation_status)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteContact(contact.id)}
+                            className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </>
         )}
       </CardContent>
@@ -406,7 +486,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
             <Button variant="outline" onClick={() => setFormOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddContact} disabled={submitting}>
+            <Button onClick={handleAddContact} disabled={submitting || !prerequisites.hasExecutors || !prerequisites.hasBeneficiaries || !prerequisites.hasActiveWill}>
               {submitting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               Add Contact
             </Button>

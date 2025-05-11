@@ -16,6 +16,96 @@ export interface TrustedContact {
   updated_at?: string;
 }
 
+/**
+ * Check if prerequisites are met before adding trusted contacts
+ * (requires executors, beneficiaries, and active will)
+ */
+export const checkTrustedContactPrerequisites = async (): Promise<{
+  hasExecutors: boolean;
+  hasBeneficiaries: boolean;
+  hasActiveWill: boolean;
+  error?: string;
+}> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      return {
+        hasExecutors: false,
+        hasBeneficiaries: false,
+        hasActiveWill: false,
+        error: 'No authenticated user found'
+      };
+    }
+
+    // Check for executors
+    const { data: executors, error: executorsError } = await supabase
+      .from('will_executors')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .limit(1);
+      
+    if (executorsError) {
+      console.error('Error checking executors:', executorsError);
+      return {
+        hasExecutors: false,
+        hasBeneficiaries: false,
+        hasActiveWill: false,
+        error: 'Failed to check executors'
+      };
+    }
+    
+    // Check for beneficiaries
+    const { data: beneficiaries, error: beneficiariesError } = await supabase
+      .from('will_beneficiaries')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .limit(1);
+      
+    if (beneficiariesError) {
+      console.error('Error checking beneficiaries:', beneficiariesError);
+      return {
+        hasExecutors: executors && executors.length > 0,
+        hasBeneficiaries: false,
+        hasActiveWill: false,
+        error: 'Failed to check beneficiaries'
+      };
+    }
+    
+    // Check for active will
+    const { data: wills, error: willsError } = await supabase
+      .from('wills')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('status', 'active')
+      .limit(1);
+      
+    if (willsError) {
+      console.error('Error checking wills:', willsError);
+      return {
+        hasExecutors: executors && executors.length > 0,
+        hasBeneficiaries: beneficiaries && beneficiaries.length > 0,
+        hasActiveWill: false,
+        error: 'Failed to check wills'
+      };
+    }
+    
+    return {
+      hasExecutors: executors && executors.length > 0,
+      hasBeneficiaries: beneficiaries && beneficiaries.length > 0,
+      hasActiveWill: wills && wills.length > 0
+    };
+  } catch (error) {
+    console.error('Error in checkTrustedContactPrerequisites:', error);
+    return {
+      hasExecutors: false,
+      hasBeneficiaries: false,
+      hasActiveWill: false,
+      error: 'Failed to check prerequisites'
+    };
+  }
+};
+
 export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -52,6 +142,14 @@ export const createTrustedContact = async (contact: {
     
     if (!session?.user) {
       console.error('No authenticated user found');
+      return null;
+    }
+    
+    // Check prerequisites before creating contact
+    const prerequisites = await checkTrustedContactPrerequisites();
+    
+    if (!prerequisites.hasExecutors || !prerequisites.hasBeneficiaries || !prerequisites.hasActiveWill) {
+      console.error('Prerequisites not met for creating a trusted contact:', prerequisites);
       return null;
     }
     
@@ -129,6 +227,12 @@ export const sendMissedCheckInNotification = async (
   executorInfo: { name: string; email: string; phone?: string } 
 ): Promise<boolean> => {
   try {
+    // Verify executor information
+    if (!executorInfo.name || !executorInfo.email) {
+      console.error('Missing executor information for missed check-in notification');
+      return false;
+    }
+    
     // Get contact details
     const { data: contact, error: contactError } = await supabase
       .from('trusted_contacts')
@@ -230,6 +334,16 @@ export const notifyAllTrustedContacts = async (
   executorInfo: { name: string; email: string; phone?: string }
 ): Promise<{success: boolean; notifiedCount: number; totalCount: number}> => {
   try {
+    // Verify executor information
+    if (!executorInfo.name || !executorInfo.email) {
+      console.error('Missing executor information for missed check-in notifications');
+      return {
+        success: false,
+        notifiedCount: 0,
+        totalCount: 0
+      };
+    }
+    
     const contacts = await getTrustedContacts();
     let notifiedCount = 0;
     

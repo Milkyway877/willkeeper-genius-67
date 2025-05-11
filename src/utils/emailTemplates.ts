@@ -1,3 +1,4 @@
+
 /**
  * Generates a simple HTML email template with instructions for trusted contacts
  */
@@ -7,7 +8,7 @@ export const generateVerificationEmailTemplate = (
   contactId: string,
   baseUrl: string,
   contactType: string = 'trusted contact',
-  executorInfo?: { name?: string; email?: string; phone?: string }
+  executorInfo: { name?: string; email?: string; phone?: string } = {}
 ): string => {
   
   return `
@@ -69,7 +70,7 @@ export const generateVerificationEmailTemplate = (
         <p>As a trusted contact, you may be contacted if ${userFullName} misses their regular check-ins in the WillTank system. Your role is simply to receive this notification and, if necessary, contact the executor to help determine ${userFullName}'s status.</p>
       </div>
       
-      ${executorInfo ? `
+      ${executorInfo?.name ? `
       <p><strong>Executor Information:</strong></p>
       <div class="executor-info">
         <p>Name: ${executorInfo.name || 'Not provided'}</p>
@@ -102,7 +103,7 @@ export const generatePlainTextVerificationEmail = (
   contactId: string,
   baseUrl: string,
   contactType: string = 'trusted contact',
-  executorInfo?: { name?: string; email?: string; phone?: string }
+  executorInfo: { name?: string; email?: string; phone?: string } = {}
 ): string => {
   
   return `
@@ -113,7 +114,7 @@ ${userFullName} has added you as their ${contactType} on WillTank.
 WHAT DOES THIS MEAN?
 As a trusted contact, you may be contacted if ${userFullName} misses their regular check-ins in the WillTank system. Your role is simply to receive this notification and, if necessary, contact the executor to help determine ${userFullName}'s status.
 
-${executorInfo ? `
+${executorInfo?.name ? `
 EXECUTOR INFORMATION:
 Name: ${executorInfo.name || 'Not provided'}
 Email: ${executorInfo.email || 'Not provided'}

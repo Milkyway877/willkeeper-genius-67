@@ -22,6 +22,7 @@ import {
 } from '@/services/deathVerificationService';
 import { Executor, Beneficiary, getExecutors, getBeneficiaries } from '@/services/executorService';
 import { TrustedContacts } from '@/components/death-verification/TrustedContacts';
+import { checkTrustedContactPrerequisites } from '@/services/trustedContactsService';
 
 export default function CheckIns() {
   const { toast } = useToast();
@@ -33,6 +34,11 @@ export default function CheckIns() {
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [prerequisites, setPrerequisites] = useState({
+    hasExecutors: false,
+    hasBeneficiaries: false,
+    hasActiveWill: false
+  });
 
   useEffect(() => {
     fetchData();
@@ -60,6 +66,10 @@ export default function CheckIns() {
       const fetchedBeneficiaries = await getBeneficiaries();
       setExecutors(fetchedExecutors);
       setBeneficiaries(fetchedBeneficiaries);
+      
+      // Check prerequisites
+      const prereqStatus = await checkTrustedContactPrerequisites();
+      setPrerequisites(prereqStatus);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -161,13 +171,9 @@ export default function CheckIns() {
                             <TableCell className="font-medium">{executor.name}</TableCell>
                             <TableCell>{executor.email}</TableCell>
                             <TableCell>
-                              {executor.isVerified ? (
-                                <span className="flex items-center text-green-600">
-                                  <Check className="h-4 w-4 mr-1" /> Verified
-                                </span>
-                              ) : (
-                                <span className="text-amber-600">Pending</span>
-                              )}
+                              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                                Added
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -209,13 +215,9 @@ export default function CheckIns() {
                             <TableCell className="font-medium">{beneficiary.name}</TableCell>
                             <TableCell>{beneficiary.email}</TableCell>
                             <TableCell>
-                              {beneficiary.isVerified ? (
-                                <span className="flex items-center text-green-600">
-                                  <Check className="h-4 w-4 mr-1" /> Verified
-                                </span>
-                              ) : (
-                                <span className="text-amber-600">Pending</span>
-                              )}
+                              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                                Added
+                              </Badge>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -261,9 +263,9 @@ export default function CheckIns() {
                             {format(parseISO(checkin.checked_in_at), 'PPP')}
                           </TableCell>
                           <TableCell>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
                               {checkin.status}
-                            </span>
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             {format(parseISO(checkin.next_check_in), 'PPP')}
