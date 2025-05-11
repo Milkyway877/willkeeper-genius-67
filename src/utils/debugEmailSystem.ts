@@ -60,7 +60,6 @@ export async function testEmailDelivery(recipientEmail?: string): Promise<void> 
         toast({
           title: "Email Test Succeeded",
           description: "Standard email function is working correctly.",
-          // Change from "success" to "default" to match allowed variants
           variant: "default",
         });
         return;
@@ -103,7 +102,6 @@ export async function testEmailDelivery(recipientEmail?: string): Promise<void> 
       toast({
         title: "Fallback Email Test Succeeded",
         description: "Fallback notification email system is working.",
-        // Change from "success" to "default" to match allowed variants
         variant: "default",
       });
       return;
@@ -156,7 +154,6 @@ export async function checkNotificationSystem(): Promise<void> {
       toast({
         title: "Notification System Working",
         description: "Successfully created a notification via database function",
-        // Change from "success" to "default" to match allowed variants
         variant: "default",
       });
     } catch (error) {
@@ -170,4 +167,58 @@ export async function checkNotificationSystem(): Promise<void> {
   } catch (error) {
     console.error("Error in checkNotificationSystem:", error);
   }
+}
+
+// New function to perform a comprehensive diagnostic test of all email and notification systems
+export async function runDiagnostics(): Promise<void> {
+  console.log("Running comprehensive diagnostics on email and notification systems...");
+  toast({
+    title: "Diagnostics Started",
+    description: "Running comprehensive system diagnostics...",
+  });
+  
+  // Step 1: Check if we have a valid session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session || !session.user) {
+    console.error("No authenticated user session found");
+    toast({
+      title: "Diagnostics Failed",
+      description: "No authenticated user session found. Please log in first.",
+      variant: "destructive",
+    });
+    return;
+  }
+  
+  // Step 2: Check for required environment variables
+  try {
+    const { data: envCheck, error: envError } = await supabase.functions.invoke('send-notification-email', {
+      body: { checkEnv: true }
+    });
+    
+    if (envError || !envCheck?.success) {
+      console.error("Environment check failed:", envError || envCheck?.error);
+      toast({
+        title: "Environment Check Failed",
+        description: "Required environment variables may be missing. Check the logs.",
+        variant: "destructive",
+      });
+    } else {
+      console.log("Environment check passed:", envCheck);
+      toast({
+        title: "Environment Check Passed",
+        description: "All required environment variables are set.",
+        variant: "default",
+      });
+    }
+  } catch (envCheckError) {
+    console.error("Error checking environment:", envCheckError);
+  }
+  
+  // Step 3: Test notification system
+  await checkNotificationSystem();
+  
+  // Step 4: Test email delivery
+  await testEmailDelivery(session.user.email);
+  
+  console.log("Diagnostics complete");
 }

@@ -25,6 +25,7 @@ interface NotificationEmailRequest {
   priority?: 'normal' | 'high';
   contentType?: 'notification' | 'verification' | 'alert';
   emailType?: string;
+  checkEnv?: boolean; // New flag to check environment variables
 }
 
 serve(async (req) => {
@@ -36,6 +37,27 @@ serve(async (req) => {
   try {
     // Parse the request body
     const requestData = await req.json() as NotificationEmailRequest;
+    
+    // Special case: Check environment variables
+    if (requestData.checkEnv) {
+      const resendApiKey = Deno.env.get("RESEND_API_KEY");
+      const envCheck = {
+        RESEND_API_KEY: !!resendApiKey,
+        SUPABASE_URL: !!supabaseUrl,
+        SUPABASE_SERVICE_ROLE_KEY: !!supabaseServiceKey
+      };
+      
+      console.log("Environment check:", envCheck);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: envCheck.RESEND_API_KEY && envCheck.SUPABASE_URL && envCheck.SUPABASE_SERVICE_ROLE_KEY,
+          envCheck
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const { to, subject, content, userId, priority = 'normal', contentType = 'notification', emailType } = requestData;
     
     if (!to || !subject || !content) {
