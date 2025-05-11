@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileText, Download, Folder, FileArchive, Clock, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
+import { FileText, Download, Folder, FileArchive, Clock, RefreshCw, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 
@@ -121,12 +121,12 @@ export function ExecutorDocumentsPage() {
       }
       
       // Create an invisible anchor and trigger download
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = data.url;
       a.download = document.name;
-      document.body.appendChild(a);
+      window.document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
       
       toast({
         title: "Download Started",
@@ -157,12 +157,12 @@ export function ExecutorDocumentsPage() {
       }
       
       // Create an invisible anchor and trigger download
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = data.url;
       a.download = `${userDetails?.name || 'WillTank'}_Documents.zip`;
-      document.body.appendChild(a);
+      window.document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
       
       toast({
         title: "Download Started",
@@ -326,7 +326,7 @@ export function ExecutorDocumentsPage() {
                 </div>
               ) : (
                 <Alert>
-                  <Info className="h-4 w-4" />
+                  <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>No Supporting Documents</AlertTitle>
                   <AlertDescription>
                     No additional documents were found.
