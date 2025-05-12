@@ -82,7 +82,7 @@ serve(async (req) => {
       }
     }
     
-    // Generate a notification token (for tracking only)
+    // Generate a notification token (for tracking only, no verification needed)
     const notificationToken = crypto.randomUUID();
     
     // Store the notification record in the database
@@ -102,34 +102,6 @@ serve(async (req) => {
         JSON.stringify({ success: false, message: "Failed to create notification record" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    }
-    
-    // Create notification URL - information only, no verification
-    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, "") || "https://willtank.com";
-    const notificationType = contact.contactType === 'trusted' ? 'trusted' : 'invitation';
-    const cacheBuster = Date.now();
-    const notificationUrl = `${origin}/verify/${notificationType}/${notificationToken}?t=${cacheBuster}`;
-    
-    console.log("Generated notification URL:", notificationUrl);
-    
-    // Generate email content based on contact type and email details
-    let subject = emailDetails?.subject || '';
-    let content = '';
-    let roleDescription = '';
-    
-    switch (contact.contactType) {
-      case 'beneficiary':
-        subject = subject || `You've been named as a beneficiary by ${userFullName}`;
-        roleDescription = 'beneficiary in their will';
-        break;
-      case 'executor':
-        subject = subject || `You've been named as an executor by ${userFullName}`;
-        roleDescription = 'executor of their will';
-        break;
-      case 'trusted':
-        subject = subject || `You've been named as a trusted contact by ${userFullName}`;
-        roleDescription = 'trusted contact for their death verification system';
-        break;
     }
     
     // Add user bio if requested
@@ -166,7 +138,27 @@ serve(async (req) => {
       }
     }
     
-    // Create content for each contact type - information only, no verification needed
+    // Generate subject based on contact type and email details
+    let subject = emailDetails?.subject || '';
+    let content = '';
+    let roleDescription = '';
+    
+    switch (contact.contactType) {
+      case 'beneficiary':
+        subject = subject || `You've been named as a beneficiary by ${userFullName}`;
+        roleDescription = 'beneficiary in their will';
+        break;
+      case 'executor':
+        subject = subject || `You've been named as an executor by ${userFullName}`;
+        roleDescription = 'executor of their will';
+        break;
+      case 'trusted':
+        subject = subject || `You've been named as a trusted contact by ${userFullName}`;
+        roleDescription = 'trusted contact for their death verification system';
+        break;
+    }
+    
+    // Create content for each contact type - INFORMATION ONLY, NO BUTTONS OR ACTION LINKS
     if (contact.contactType === 'trusted') {
       content = `
         <h1>You've been named as a Trusted Contact</h1>
@@ -177,13 +169,15 @@ serve(async (req) => {
         ${customMessageSection}
         
         <h2>What does this mean?</h2>
-        <p>As a trusted contact, you'll receive notifications when ${userFullName} misses their scheduled check-ins in the WillTank system. These notifications are for your information only - no action is required from you.</p>
+        <p>As a trusted contact, you'll receive notifications when ${userFullName} misses their scheduled check-ins in the WillTank system. These notifications are for your information only.</p>
+        
+        <div style="margin: 20px 0; padding: 15px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px;">
+          <h3 style="margin-top: 0; color: #0369a1;">INFORMATION ONLY - NO ACTION REQUIRED</h3>
+          <p>This is an information-only notification. You do not need to click any links, verify any information, or take any action.</p>
+          <p>All future communications will also be for information purposes only.</p>
+        </div>
         
         <p>In case of multiple missed check-ins, you'll receive more detailed information and contact details for the executor.</p>
-        
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${notificationUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View More Information</a>
-        </div>
         
         ${executorInfo}
         
@@ -202,10 +196,9 @@ serve(async (req) => {
         <h2>Your Role as an Executor</h2>
         <p>As an executor, you'll have important responsibilities regarding ${userFullName}'s estate in the event of their passing. ${userFullName} will be in touch with you directly to discuss these responsibilities in detail.</p>
         
-        <p>In case of emergency, you'll receive secure access instructions to view and download essential documents.</p>
-        
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${notificationUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View More Information</a>
+        <div style="margin: 20px 0; padding: 15px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px;">
+          <h3 style="margin-top: 0; color: #0369a1;">INFORMATION ONLY - NO ACTION REQUIRED</h3>
+          <p>This is an information-only notification. You do not need to click any links, verify any information, or take any action at this time.</p>
         </div>
         
         <h3>The PIN System</h3>
@@ -224,11 +217,12 @@ serve(async (req) => {
         ${bioSection}
         ${customMessageSection}
         
-        <p>This is simply a notification to let you know about your inclusion in ${userFullName}'s estate planning. No action is required from you at this time.</p>
-        
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${notificationUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View More Information</a>
+        <div style="margin: 20px 0; padding: 15px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px;">
+          <h3 style="margin-top: 0; color: #0369a1;">INFORMATION ONLY - NO ACTION REQUIRED</h3>
+          <p>This is an information-only notification. No action is required from you at this time.</p>
         </div>
+        
+        <p>This is simply a notification to let you know about your inclusion in ${userFullName}'s estate planning.</p>
         
         <p>You don't need to create an account or verify anything. This is an information-only email.</p>
         <p>If you have any questions, please contact ${userFullName} directly.</p>

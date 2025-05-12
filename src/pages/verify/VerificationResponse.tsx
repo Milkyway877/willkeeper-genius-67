@@ -17,10 +17,10 @@ export default function VerificationResponse() {
             <Shield className="h-12 w-12 text-willtank-600" />
           </div>
           <CardTitle className="text-center">
-            Status Notification
+            Information Only - No Action Required
           </CardTitle>
           <CardDescription className="text-center">
-            Important information about WillTank notifications
+            This is a notification-only system - no action is needed from you
           </CardDescription>
         </CardHeader>
         
@@ -28,10 +28,10 @@ export default function VerificationResponse() {
           <div className="space-y-6">
             <Alert variant="default" className="bg-blue-50 border-blue-200">
               <InfoIcon className="h-5 w-5 text-blue-500" />
-              <AlertTitle>Information Only</AlertTitle>
+              <AlertTitle>Information Only System</AlertTitle>
               <AlertDescription>
                 This is a notification-only email system. You will receive updates about the user's status,
-                but no verification action is required from you.
+                but no verification or action is required from you.
               </AlertDescription>
             </Alert>
             
@@ -40,15 +40,16 @@ export default function VerificationResponse() {
               <h3 className="text-lg font-medium text-center mb-2">Notification System</h3>
               <p className="text-gray-600 mb-4">
                 The WillTank system will send you notifications when the user misses their regular check-ins.
-                These notifications are for your information only.
+                These notifications are for your information only - no action is required.
               </p>
               
               <h4 className="font-medium mb-2">What to expect:</h4>
               <ul className="list-disc ml-5 space-y-2 text-gray-600">
                 <li>Notification emails when the user misses scheduled check-ins</li>
                 <li>Potential emergency contact details if needed</li>
-                <li>No need to verify or respond to any links in these emails</li>
+                <li><strong>No need to verify or respond to any links in these emails</strong></li>
                 <li>In case of confirmed emergency, executor contact information will be provided</li>
+                <li>All emails are for information purposes only</li>
               </ul>
             </div>
             

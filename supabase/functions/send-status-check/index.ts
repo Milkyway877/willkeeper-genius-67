@@ -145,12 +145,7 @@ serve(async (req) => {
             </div>
           `;
         }
-        
-        // Create a simple information URL (no verification actions)
-        // We use the origin from the request or default to willtank.com
-        const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, "") || "https://willtank.com";
-        const infoUrl = `${origin}/verify/status/${notificationToken}`;
-        
+                
         // Generate email content based on contact type
         let subject = '';
         let content = '';
@@ -162,6 +157,12 @@ serve(async (req) => {
             <p>Hello ${contact.name},</p>
             <p>This is a notification regarding ${userFullName}, who has named you as an executor in their will.</p>
             <p>${userFullName} has missed their scheduled check-in in the WillTank system. This may simply indicate they forgot to check in, or it could potentially indicate an emergency situation.</p>
+            
+            <div style="margin: 20px 0; padding: 15px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px;">
+              <h3 style="margin-top: 0; color: #0369a1;">INFORMATION ONLY - NO ACTION REQUIRED</h3>
+              <p>This is an informational notification only. No action is required in the WillTank system at this time.</p>
+            </div>
+            
             <p>As an executor, you may need to take action if this situation continues. Here's what you should know:</p>
             <ul>
               <li>This is the first notification for a missed check-in</li>
@@ -169,10 +170,6 @@ serve(async (req) => {
               <li>If multiple check-ins are missed, you will receive instructions to access the will portal</li>
             </ul>
             <p>At this time, we recommend trying to contact ${userFullName} directly to confirm they're okay.</p>
-            <div style="margin: 30px 0; text-align: center;">
-              <a href="${infoUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Status Information</a>
-            </div>
-            <p>This is an informational notification only. No action is required in the WillTank system at this time.</p>
           `;
         } else {
           subject = `Status Check Notification for ${userFullName}`;
@@ -181,12 +178,14 @@ serve(async (req) => {
             <p>Hello ${contact.name},</p>
             <p>You're receiving this email because you're listed as a trusted contact for ${userFullName}.</p>
             <p>${userFullName} has missed their scheduled check-in in the WillTank system. This is just an informational notification to keep you informed.</p>
-            <p>As a trusted contact, no action is required from you at this time. This notification is being sent to all trusted contacts as part of ${userFullName}'s status monitoring plan.</p>
-            <div style="margin: 30px 0; text-align: center;">
-              <a href="${infoUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View Notification Details</a>
+            
+            <div style="margin: 20px 0; padding: 15px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px;">
+              <h3 style="margin-top: 0; color: #0369a1;">INFORMATION ONLY - NO ACTION REQUIRED</h3>
+              <p>As a trusted contact, no action is required from you at this time.</p>
+              <p>This notification is being sent to all trusted contacts as part of ${userFullName}'s status monitoring plan.</p>
             </div>
+            
             ${executorInfo}
-            <p>This is an informational notification only. No action is required from you at this time.</p>
           `;
         }
         
