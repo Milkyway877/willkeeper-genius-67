@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { 
@@ -11,7 +10,7 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { AlertTriangle, Check, X, Loader2 } from 'lucide-react';
+import { AlertTriangle, Check, X, Loader2, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function VerificationResponse() {

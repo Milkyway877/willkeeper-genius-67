@@ -63,6 +63,7 @@ export default function VerifyTrustedContact() {
 
   const handleProceedToResponse = () => {
     console.log('VerifyTrustedContact - User clicked to proceed to response page');
+    // This needs to match the path pattern in both routers
     navigate(`/verify/invitation/${token}`);
   };
 
