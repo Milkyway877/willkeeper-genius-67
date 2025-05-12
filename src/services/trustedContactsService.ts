@@ -1,10 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
-import { 
-  generateTrustedContactEmailTemplate, 
-  generatePlainTextTrustedContactEmail 
-} from '@/utils/emailTemplates';
 
 export interface TrustedContact {
   id: string;
@@ -63,7 +58,7 @@ export const createTrustedContact = async (contact: {
       name: contact.name,
       email: contact.email,
       user_id: session.user.id,
-      invitation_status: 'not_sent'
+      invitation_status: 'pending'
     };
     
     const { data, error } = await supabase
@@ -76,6 +71,9 @@ export const createTrustedContact = async (contact: {
       console.error('Error creating trusted contact:', error);
       return null;
     }
+    
+    // We'll handle notifications in the component now
+    // using the createSystemNotificationFallback function
     
     return data;
   } catch (error) {
@@ -124,7 +122,7 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
   }
 };
 
-export const sendInformationalEmail = async (contactId: string): Promise<boolean> => {
+export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
   try {
     // Get contact details
     const { data: contact, error: contactError } = await supabase
@@ -156,97 +154,83 @@ export const sendInformationalEmail = async (contactId: string): Promise<boolean
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Update the contact status to 'delivered' immediately
-    await supabase
-      .from('trusted_contacts')
-      .update({
-        invitation_sent_at: new Date().toISOString(),
-        invitation_status: 'delivered',
-        invitation_responded_at: new Date().toISOString()
-      })
-      .eq('id', contactId);
-      
-    // Prepare the email content with trusted contact template
-    const baseUrl = window.location.origin;
-    
-    // Attempt to send the email
+    // Attempt to call the edge function but with better error handling
     try {
-      // Use send-contact-invitation with informational flag
-      const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-        },
-        body: JSON.stringify({
-          contact: {
-            contactId,
-            contactType: 'trusted',
-            name: contact.name,
-            email: contact.email,
-            userId: session.user.id,
-            userFullName
-          },
-          emailDetails: {
-            subject: `Important: Information about your role as ${userFullName}'s trusted contact`,
-            isInformationalOnly: true,
-            priority: 'high'
-          }
+      // Update the contact with the invitation sent timestamp first
+      // This way we at least mark an attempt was made
+      await supabase
+        .from('trusted_contacts')
+        .update({
+          invitation_sent_at: new Date().toISOString(),
+          invitation_status: 'pending'
         })
-      });
+        .eq('id', contactId);
+        
+      // Create the invitation request to be sent via edge function
+      const invitationRequest = {
+        contact: {
+          contactId: contact.id,
+          contactType: 'trusted',
+          name: contact.name,
+          email: contact.email,
+          userId: session.user.id,
+          userFullName
+        },
+        emailDetails: {
+          subject: `Important: ${userFullName} has named you as a trusted contact`,
+          includeVerificationInstructions: true,
+          includeUserBio: true,
+          priority: 'high'
+        }
+      };
       
-      if (!emailResponse.ok) {
-        const errorData = await emailResponse.json();
-        console.error('Error from email edge function:', errorData);
-        throw new Error('Edge function error');
-      }
-      
-      return true;
-    } catch (fetchError) {
-      console.error('Error sending email:', fetchError);
-      
-      // Try direct functions invoke as a fallback
+      // First try using fetch with the edge function
       try {
-        const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
-          body: {
-            contact: {
-              contactId,
-              contactType: 'trusted',
-              name: contact.name,
-              email: contact.email,
-              userId: session.user.id,
-              userFullName
-            },
-            emailDetails: {
-              subject: `Important: Information about your role as ${userFullName}'s trusted contact`,
-              isInformationalOnly: true,
-              priority: 'high'
-            }
-          }
+        const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+          },
+          body: JSON.stringify(invitationRequest)
         });
         
-        if (fnError) {
-          console.error('Error from functions.invoke:', fnError);
-          throw new Error('Functions invoke error');
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json();
+          console.error('Error from invitation edge function:', errorData);
+          throw new Error('Edge function error');
         }
         
         return true;
-      } catch (invokeError) {
-        console.error('Error with functions.invoke:', invokeError);
-        return false;
+      } catch (fetchError) {
+        console.error('Fetch error with edge function:', fetchError);
+        
+        // Try direct functions invoke as a fallback
+        try {
+          const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
+            body: invitationRequest
+          });
+          
+          if (fnError) {
+            console.error('Error from functions.invoke:', fnError);
+            throw new Error('Functions invoke error');
+          }
+          
+          return true;
+        } catch (invokeError) {
+          console.error('Error with functions.invoke:', invokeError);
+          throw new Error('All email sending methods failed');
+        }
       }
+    } catch (error) {
+      console.error('Error sending verification request:', error);
+      return false;
     }
   } catch (error) {
-    console.error('Error in sendInformationalEmail:', error);
+    console.error('Error in sendVerificationRequest:', error);
     return false;
   }
-};
-
-// Legacy method kept for backward compatibility
-export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
-  // Call the new method instead
-  return await sendInformationalEmail(contactId);
 };
 
 // Method to check invitation status
@@ -277,13 +261,12 @@ export const resendInvitation = async (contactId: string): Promise<boolean> => {
     await supabase
       .from('trusted_contacts')
       .update({
-        invitation_status: 'not_sent',
-        invitation_sent_at: null,
-        invitation_responded_at: null
+        invitation_status: 'pending',
+        invitation_sent_at: null
       })
       .eq('id', contactId);
       
-    return await sendInformationalEmail(contactId);
+    return await sendVerificationRequest(contactId);
   } catch (error) {
     console.error('Error in resendInvitation:', error);
     return false;

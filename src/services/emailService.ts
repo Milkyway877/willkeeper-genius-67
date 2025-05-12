@@ -74,7 +74,7 @@ export const sendEmail = async (options: EmailOptions): Promise<{ success: boole
 };
 
 /**
- * Send an informational email to a trusted contact
+ * Send an invitation to a trusted contact
  */
 export const sendTrustedContactInvitation = async (
   contactId: string, 
@@ -103,16 +103,16 @@ export const sendTrustedContactInvitation = async (
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
     // First mark the contact as having an invitation sent 
+    // This ensures we don't lose track even if the email fails
     await supabase
       .from('trusted_contacts')
       .update({
         invitation_sent_at: new Date().toISOString(),
-        invitation_status: 'delivered',
-        invitation_responded_at: new Date().toISOString() // Mark as completed
+        invitation_status: 'sent'
       })
       .eq('id', contactId);
     
-    // Send information via edge function
+    // Send invitation via edge function with better error handling
     try {
       const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
         method: 'POST',
@@ -131,8 +131,9 @@ export const sendTrustedContactInvitation = async (
             userFullName
           },
           emailDetails: {
-            subject: `Important: Information about your role as ${userFullName}'s trusted contact`,
-            isInformationalOnly: true,
+            subject: `Important: ${userFullName} has named you as a trusted contact`,
+            includeVerificationInstructions: true,
+            includeUserBio: true,
             priority: 'high',
             customMessage
           }
@@ -141,8 +142,8 @@ export const sendTrustedContactInvitation = async (
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error sending trusted contact information:', errorData);
-        throw new Error(errorData.message || 'Failed to send information');
+        console.error('Error sending trusted contact invitation:', errorData);
+        throw new Error(errorData.message || 'Failed to send invitation');
       }
       
       return { success: true };
@@ -162,8 +163,9 @@ export const sendTrustedContactInvitation = async (
               userFullName
             },
             emailDetails: {
-              subject: `Important: Information about your role as ${userFullName}'s trusted contact`,
-              isInformationalOnly: true,
+              subject: `Important: ${userFullName} has named you as a trusted contact`,
+              includeVerificationInstructions: true,
+              includeUserBio: true,
               priority: 'high',
               customMessage
             }
@@ -174,7 +176,7 @@ export const sendTrustedContactInvitation = async (
           console.error('Error from functions.invoke:', fnError);
           return { 
             success: false, 
-            error: fnError?.message || data?.error || 'Failed to send information via functions invoke'
+            error: fnError?.message || data?.error || 'Failed to send invitation via functions invoke'
           };
         }
         
@@ -183,7 +185,7 @@ export const sendTrustedContactInvitation = async (
         console.error('Error with functions.invoke:', invokeError);
         return { 
           success: false, 
-          error: invokeError instanceof Error ? invokeError.message : 'Unknown error with sending information'
+          error: invokeError instanceof Error ? invokeError.message : 'Unknown error with invitation'
         };
       }
     }
@@ -216,7 +218,7 @@ export const sendReminderToTrustedContact = async (
       contactId, 
       contact.name, 
       contact.email,
-      customMessage || "This is a reminder about your role as a trusted contact."
+      customMessage || "This is a reminder about the invitation that was sent earlier."
     );
   } catch (error) {
     console.error('Error in sendReminderToTrustedContact:', error);

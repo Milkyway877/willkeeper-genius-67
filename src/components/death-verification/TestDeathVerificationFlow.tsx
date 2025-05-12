@@ -66,21 +66,42 @@ export default function TestDeathVerificationFlow() {
       
       const contact = contacts[0];
       
-      // Generate a verification URL using our simplified approach
-      const verificationUrl = `${window.location.origin}/verify/simple/${contact.id}`;
-      const acceptUrl = `${verificationUrl}?response=accept`;
-      const declineUrl = `${verificationUrl}?response=decline`;
+      // Create a verification token
+      const verificationToken = crypto.randomUUID();
+      
+      // Set expiration date to 7 days from now
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      
+      // Create verification record
+      const { data: verification, error: verificationError } = await supabase
+        .from('contact_verifications')
+        .insert({
+          contact_id: contact.id,
+          contact_type: 'trusted',
+          verification_token: verificationToken,
+          expires_at: expiresAt.toISOString(),
+          user_id: session.user.id
+        })
+        .select()
+        .single();
+      
+      if (verificationError) {
+        throw verificationError;
+      }
+      
+      // Return the verification data and URL
+      const verificationUrl = `${window.location.origin}/verify/trusted-contact/${verificationToken}`;
       
       setResult({
+        verification,
         contact,
-        verificationUrl,
-        acceptUrl,
-        declineUrl
+        verificationUrl
       });
       
       toast({
         title: "Test Verification Created",
-        description: "Test verification links have been generated.",
+        description: "A test verification link has been generated.",
         variant: "default"
       });
     } catch (error) {
@@ -154,7 +175,8 @@ export default function TestDeathVerificationFlow() {
         
         <CardContent>
           <p className="text-gray-600 mb-4">
-            This will generate test verification links that you can use to simulate a trusted contact responding to a verification request.
+            This will create a test verification record and generate a verification link that you can use
+            to simulate a trusted contact responding to a verification request.
           </p>
           
           {result && (
@@ -163,7 +185,7 @@ export default function TestDeathVerificationFlow() {
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertTitle className="text-blue-800">Test Verification Created</AlertTitle>
                 <AlertDescription className="text-blue-700">
-                  Use the links below to test the verification process. This simulates a contact clicking the link in their email.
+                  Use the link below to test the verification process. This simulates a contact clicking the link in their email.
                 </AlertDescription>
               </Alert>
               
@@ -174,42 +196,23 @@ export default function TestDeathVerificationFlow() {
                 </div>
                 
                 <div className="space-y-1">
-                  <Label className="text-sm text-gray-500">Verification URLs</Label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Input 
-                        value={result.acceptUrl} 
-                        readOnly 
-                        className="text-xs font-mono"
-                      />
-                      <Button 
-                        size="sm" 
-                        onClick={() => {
-                          navigator.clipboard.writeText(result.acceptUrl);
-                          toast({ title: "Accept URL copied to clipboard" });
-                        }}
-                        variant="outline"
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input 
-                        value={result.declineUrl} 
-                        readOnly 
-                        className="text-xs font-mono"
-                      />
-                      <Button 
-                        size="sm" 
-                        onClick={() => {
-                          navigator.clipboard.writeText(result.declineUrl);
-                          toast({ title: "Decline URL copied to clipboard" });
-                        }}
-                        variant="outline"
-                      >
-                        Copy
-                      </Button>
-                    </div>
+                  <Label className="text-sm text-gray-500">Verification URL</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={result.verificationUrl} 
+                      readOnly 
+                      className="text-xs font-mono"
+                    />
+                    <Button 
+                      size="sm" 
+                      onClick={() => {
+                        navigator.clipboard.writeText(result.verificationUrl);
+                        toast({ title: "Copied to clipboard" });
+                      }}
+                      variant="outline"
+                    >
+                      Copy
+                    </Button>
                   </div>
                 </div>
                 
@@ -222,7 +225,7 @@ export default function TestDeathVerificationFlow() {
                       size="sm" 
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => window.open(result.acceptUrl, '_blank')}
+                      onClick={() => window.open(`${result.verificationUrl}?response=accept`, '_blank')}
                     >
                       Test Accept Verification
                     </Button>
@@ -230,7 +233,7 @@ export default function TestDeathVerificationFlow() {
                       size="sm" 
                       variant="outline"
                       className="w-full justify-start"
-                      onClick={() => window.open(result.declineUrl, '_blank')}
+                      onClick={() => window.open(`${result.verificationUrl}?response=decline`, '_blank')}
                     >
                       Test Decline Verification
                     </Button>

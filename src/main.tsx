@@ -11,8 +11,6 @@ import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
 import VerificationResponse from './pages/verify/VerificationResponse.tsx';
 import VerificationPortal from './pages/verify/VerificationPortal.tsx';
-import SimpleVerification from './pages/verify/SimpleVerification.tsx';
-import SimpleThankYou from './pages/verify/SimpleThankYou.tsx';
 import VerifyTrustedContact from './pages/VerifyTrustedContact.tsx';
 import Home from './pages/Index';
 import About from './pages/About';
@@ -294,14 +292,6 @@ const router = createBrowserRouter([
       {
         path: "/notifications",
         element: <Notifications />,
-      },
-      {
-        path: "/verify/simple/:token",
-        element: <SimpleVerification />,
-      },
-      {
-        path: "/verify/thank-you",
-        element: <SimpleThankYou />,
       },
       {
         path: "*",

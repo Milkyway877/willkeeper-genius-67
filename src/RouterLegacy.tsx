@@ -1,11 +1,10 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Outlet } from 'react-router-dom';
 import { AuthLayout } from './components/auth/AuthLayout';
 import AuthCallback from './pages/auth/AuthCallback';
 import VerifyTrustedContact from './pages/VerifyTrustedContact';
 import VerificationResponse from './pages/verify/VerificationResponse';
-import SimpleVerification from './pages/verify/SimpleVerification';
-import SimpleThankYou from './pages/verify/SimpleThankYou';
 import Documentation from './pages/Documentation';
 import NotFound from './pages/NotFound';
 import Index from './pages/Index';
@@ -15,7 +14,6 @@ import FAQ from './pages/FAQ';
 // Create placeholder pages for development
 const Home = () => <Index />;
 const About = () => <div>About Page</div>;
-const Contact = () => <div>Contact Page</div>;
 const Pricing = () => <div>Pricing Page</div>;
 const Terms = () => <div>Terms Page</div>;
 const Privacy = () => <div>Privacy Page</div>;
@@ -49,7 +47,6 @@ function AppRouter() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/terms" element={<Terms />} />
@@ -77,17 +74,7 @@ function AppRouter() {
         <Route path="/check-ins" element={<CheckIns />} />
         <Route path="/test-death-verification" element={<TestDeathVerificationPage />} />
 
-        {/* Verification routes */}
-        <Route
-          path="/verify/simple/:token"
-          element={<SimpleVerification />}
-        />
-        <Route
-          path="/verify/thank-you"
-          element={<SimpleThankYou />}
-        />
-        
-        {/* Legacy verification routes - keeping for backward compatibility */}
+        {/* Verification routes - ensure proper ordering */}
         <Route
           path="/verify/trusted-contact/:token"
           element={<VerifyTrustedContact />}

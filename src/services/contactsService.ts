@@ -167,6 +167,7 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
     }
     
     // For other contact types, use the general edge function
+    // Call the edge function to send the invitation
     const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
       method: 'POST',
       headers: {
@@ -174,12 +175,7 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': SUPABASE_PUBLISHABLE_KEY || ''
       },
-      body: JSON.stringify({ 
-        contact,
-        emailDetails: {
-          isInformationalOnly: true
-        }
-      })
+      body: JSON.stringify({ contact })
     });
     
     if (!response.ok) {
@@ -188,47 +184,44 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       
       // Create notification about failure
       await createSystemNotification('warning', {
-        title: 'Information Not Sent',
-        description: `We couldn't send information to ${contact.name}. Please try again later.`
+        title: 'Invitation Not Sent',
+        description: `We couldn't send an invitation to ${contact.name}. Please try again later.`
       });
       
       return false;
     }
     
-    // Update status in the appropriate table as delivered
+    // Update status in the appropriate table
     if (contact.contactType === 'beneficiary') {
       await supabase
         .from('will_beneficiaries')
         .update({ 
-          invitation_status: 'delivered', 
-          invitation_sent_at: new Date().toISOString(),
-          invitation_responded_at: new Date().toISOString()
+          invitation_status: 'sent', 
+          invitation_sent_at: new Date().toISOString() 
         })
         .eq('id', contact.contactId);
     } else if (contact.contactType === 'executor') {
       await supabase
         .from('will_executors')
         .update({ 
-          invitation_status: 'delivered', 
-          invitation_sent_at: new Date().toISOString(),
-          invitation_responded_at: new Date().toISOString()
+          invitation_status: 'sent', 
+          invitation_sent_at: new Date().toISOString() 
         })
         .eq('id', contact.contactId);
     } else if (contact.contactType === 'trusted') {
       await supabase
         .from('trusted_contacts')
         .update({ 
-          invitation_status: 'delivered', 
-          invitation_sent_at: new Date().toISOString(),
-          invitation_responded_at: new Date().toISOString()
+          invitation_status: 'sent', 
+          invitation_sent_at: new Date().toISOString() 
         })
         .eq('id', contact.contactId);
     }
 
     // Create notification about success
     await createSystemNotification('info', {
-      title: 'Information Sent',
-      description: `Information sent to ${contact.name} about their role as ${contact.contactType}`
+      title: 'Invitation Sent',
+      description: `Invitation sent to ${contact.name} for role: ${contact.contactType}`
     });
     
     const responseData = await response.json();
@@ -238,8 +231,8 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
     
     // Create notification about error
     await createSystemNotification('warning', {
-      title: 'Email Failed',
-      description: `There was an error sending information to ${contact.name}`
+      title: 'Invitation Failed',
+      description: `There was an error sending an invitation to ${contact.name}`
     });
     
     return false;
