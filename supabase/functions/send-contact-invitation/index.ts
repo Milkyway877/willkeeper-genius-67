@@ -101,8 +101,7 @@ serve(async (req) => {
       );
     }
     
-    // Create direct verification URL that goes directly to the invitation response page
-    // IMPORTANT: Use the correct path that matches our routing structure
+    // Create verification URL using the unified verification route structure
     const baseUrl = req.headers.get("origin") || "https://willtank.com";
     const verificationUrl = `${baseUrl}/verify/invitation/${verificationToken}`;
     console.log("Generated verification URL:", verificationUrl);

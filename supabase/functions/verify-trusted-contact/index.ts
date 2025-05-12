@@ -14,7 +14,11 @@ serve(async (req) => {
   }
 
   try {
-    const { token, response } = await req.json() as { token: string; response: 'accept' | 'decline' };
+    const { token, response, message } = await req.json() as { 
+      token: string; 
+      response: 'accept' | 'decline'; 
+      message?: string;
+    };
     
     if (!token) {
       return new Response(
@@ -54,7 +58,8 @@ serve(async (req) => {
       .from('contact_verifications')
       .update({
         responded_at: new Date().toISOString(),
-        response: response
+        response: response,
+        response_message: message
       })
       .eq('verification_token', token);
     
@@ -64,7 +69,8 @@ serve(async (req) => {
       .from('trusted_contacts')
       .update({
         invitation_status: status,
-        invitation_responded_at: new Date().toISOString()
+        invitation_responded_at: new Date().toISOString(),
+        notes: message
       })
       .eq('id', verificationData.contact_id);
     
@@ -75,7 +81,26 @@ serve(async (req) => {
       details: {
         contact_id: verificationData.contact_id,
         verification_id: verificationData.id,
+        response_message: message
       }
+    });
+    
+    // Create a notification for the user
+    await supabase.rpc(
+      'create_notification',
+      {
+        p_user_id: verificationData.user_id,
+        p_title: response === 'accept' 
+          ? 'Trusted Contact Accepted Invitation' 
+          : 'Trusted Contact Declined Invitation',
+        p_description: message 
+          ? `Response message: ${message}` 
+          : 'No additional message was provided.',
+        p_type: response === 'accept' ? 'success' : 'info'
+      }
+    ).catch(err => {
+      console.error('Error creating notification:', err);
+      // Continue execution even if notification creation fails
     });
     
     return new Response(

@@ -11,6 +11,7 @@ import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
 import VerificationResponse from './pages/verify/VerificationResponse.tsx';
 import VerificationPortal from './pages/verify/VerificationPortal.tsx';
+import UnifiedVerificationPage from './pages/verify/UnifiedVerificationPage.tsx';
 import VerifyTrustedContact from './pages/VerifyTrustedContact.tsx';
 import Home from './pages/Index';
 import About from './pages/About';
@@ -250,8 +251,8 @@ const router = createBrowserRouter([
         element: <TankCreation />,
       },
       {
-        path: "/verify/:token",
-        element: <VerificationPortal />,
+        path: "/verify/:type/:token",
+        element: <UnifiedVerificationPage />,
       },
       {
         path: "/verify/trusted-contact/:token",
