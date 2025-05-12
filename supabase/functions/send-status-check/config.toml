@@ -1,5 +1,0 @@
-
-project_id = "vllfjcdtsnvnzrbceyss"
-
-[functions.send-status-check]
-verify_jwt = true

@@ -7,10 +7,7 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
-import CheckIns from './pages/CheckIns.tsx';
 import Settings from './pages/settings/Settings.tsx';
-import TestDeathVerification from './pages/TestDeathVerification.tsx';
-import UnifiedVerificationPage from './pages/verify/UnifiedVerificationPage.tsx';
 import Home from './pages/Index';
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -213,10 +210,6 @@ const router = createBrowserRouter([
         element: <Activity />,
       },
       {
-        path: "/check-ins",
-        element: <CheckIns />,
-      },
-      {
         path: "/pages/security/IDSecurity",
         element: <IDSecurity />,
       },
@@ -247,14 +240,6 @@ const router = createBrowserRouter([
       {
         path: "/tank/edit/:id",
         element: <TankCreation />,
-      },
-      {
-        path: "/verify/:type/:token",
-        element: <UnifiedVerificationPage />,
-      },
-      {
-        path: "/test-death-verification",
-        element: <TestDeathVerification />,
       },
       {
         path: "/wills",
