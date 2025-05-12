@@ -51,6 +51,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
+import RedirectFromCheckIns from './pages/CheckIns';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
@@ -200,6 +201,10 @@ const router = createBrowserRouter([
       {
         path: "/dashboard",
         element: <Dashboard />,
+      },
+      {
+        path: "/check-ins",
+        element: <RedirectFromCheckIns />,
       },
       {
         path: "/settings",
