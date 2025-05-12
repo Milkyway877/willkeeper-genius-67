@@ -21,6 +21,7 @@ export default function UnifiedVerificationPage() {
   const [userInfo, setUserInfo] = useState<any>(null);
 
   useEffect(() => {
+    console.log('UnifiedVerificationPage mounted with:', { type, token });
     const verifyToken = async () => {
       if (!token) {
         setStatus('error');
@@ -98,6 +99,7 @@ export default function UnifiedVerificationPage() {
     
     try {
       setSubmitting(true);
+      console.log('Submitting response:', accept ? 'accept' : 'decline', 'for token:', token);
       
       // Call our Edge Function to handle the verification response
       const response = await fetch(`${window.location.origin}/functions/v1/verify-trusted-contact`, {
@@ -113,6 +115,7 @@ export default function UnifiedVerificationPage() {
       });
       
       const result = await response.json();
+      console.log('Response from verify-trusted-contact:', result);
       
       if (result.success) {
         setStatus('success');

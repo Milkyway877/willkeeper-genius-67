@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader, Shield } from 'lucide-react';
@@ -7,12 +7,21 @@ import { Loader, Shield } from 'lucide-react';
 export default function VerificationResponse() {
   const { token } = useParams();
   const navigate = useNavigate();
+  const [redirecting, setRedirecting] = useState(true);
 
   useEffect(() => {
-    // Simply redirect to the unified verification page
+    console.log('VerificationResponse - Received token:', token);
+    
     if (token) {
       console.log('VerificationResponse - Redirecting to unified verification page');
-      navigate(`/verify/invitation/${token}`, { replace: true });
+      // Use a short timeout to ensure the navigation happens after component mount
+      const timer = setTimeout(() => {
+        navigate(`/verify/invitation/${token}`, { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setRedirecting(false);
     }
   }, [token, navigate]);
 
@@ -24,15 +33,26 @@ export default function VerificationResponse() {
           <div className="mx-auto mb-4">
             <Shield className="h-12 w-12 text-willtank-600" />
           </div>
-          <CardTitle className="text-center">Redirecting...</CardTitle>
+          <CardTitle className="text-center">
+            {redirecting ? "Redirecting..." : "Verification Error"}
+          </CardTitle>
           <CardDescription className="text-center">
-            Please wait while we redirect you to the verification page
+            {redirecting 
+              ? "Please wait while we redirect you to the verification page"
+              : "We couldn't find the verification token you're looking for"}
           </CardDescription>
         </CardHeader>
         
         <CardContent>
           <div className="flex justify-center items-center py-8">
-            <Loader className="h-8 w-8 animate-spin text-blue-500" />
+            {redirecting ? (
+              <Loader className="h-8 w-8 animate-spin text-blue-500" />
+            ) : (
+              <p className="text-center text-gray-600">
+                The verification link appears to be invalid or missing a token.
+                Please check your email and try the link again.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

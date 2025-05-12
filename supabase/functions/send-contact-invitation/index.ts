@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { 
@@ -103,6 +104,7 @@ serve(async (req) => {
     
     // Create verification URL using the unified verification route structure
     const baseUrl = req.headers.get("origin") || "https://willtank.com";
+    // UPDATED: Use the direct route to the UnifiedVerificationPage
     const verificationUrl = `${baseUrl}/verify/invitation/${verificationToken}`;
     console.log("Generated verification URL:", verificationUrl);
     

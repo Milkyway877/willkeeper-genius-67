@@ -256,7 +256,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/verify/trusted-contact/:token",
-        element: <VerifyTrustedContact />,
+        element: <VerificationResponse />,
       },
       {
         path: "/verify/invitation/:token",
