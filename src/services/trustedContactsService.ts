@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 
@@ -72,9 +73,6 @@ export const createTrustedContact = async (contact: {
       return null;
     }
     
-    // We'll handle notifications in the component now
-    // using the createSystemNotificationFallback function
-    
     return data;
   } catch (error) {
     console.error('Error in createTrustedContact:', error);
@@ -122,7 +120,7 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
   }
 };
 
-export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
+export const sendContactNotification = async (contactId: string): Promise<boolean> => {
   try {
     // Get contact details
     const { data: contact, error: contactError } = await supabase
@@ -154,20 +152,19 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Attempt to call the edge function but with better error handling
+    // Try to call the edge function with better error handling
     try {
       // Update the contact with the invitation sent timestamp first
-      // This way we at least mark an attempt was made
       await supabase
         .from('trusted_contacts')
         .update({
           invitation_sent_at: new Date().toISOString(),
-          invitation_status: 'pending'
+          invitation_status: 'sent'
         })
         .eq('id', contactId);
         
-      // Create the invitation request to be sent via edge function
-      const invitationRequest = {
+      // Create the notification request
+      const notificationRequest = {
         contact: {
           contactId: contact.id,
           contactType: 'trusted',
@@ -178,7 +175,6 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         },
         emailDetails: {
           subject: `Important: ${userFullName} has named you as a trusted contact`,
-          includeVerificationInstructions: true,
           includeUserBio: true,
           priority: 'high'
         }
@@ -193,7 +189,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
             'Authorization': `Bearer ${session.access_token}`,
             'apikey': SUPABASE_PUBLISHABLE_KEY || ''
           },
-          body: JSON.stringify(invitationRequest)
+          body: JSON.stringify(notificationRequest)
         });
         
         if (!emailResponse.ok) {
@@ -209,7 +205,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         // Try direct functions invoke as a fallback
         try {
           const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
-            body: invitationRequest
+            body: notificationRequest
           });
           
           if (fnError) {
@@ -224,11 +220,11 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         }
       }
     } catch (error) {
-      console.error('Error sending verification request:', error);
+      console.error('Error sending notification:', error);
       return false;
     }
   } catch (error) {
-    console.error('Error in sendVerificationRequest:', error);
+    console.error('Error in sendContactNotification:', error);
     return false;
   }
 };
@@ -266,7 +262,7 @@ export const resendInvitation = async (contactId: string): Promise<boolean> => {
       })
       .eq('id', contactId);
       
-    return await sendVerificationRequest(contactId);
+    return await sendContactNotification(contactId);
   } catch (error) {
     console.error('Error in resendInvitation:', error);
     return false;

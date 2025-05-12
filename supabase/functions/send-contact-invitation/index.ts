@@ -7,7 +7,11 @@ import {
   isEmailSendSuccess, 
   formatResendError 
 } from "../_shared/email-helper.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 // Create a Supabase client with the service role key
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
@@ -78,35 +82,35 @@ serve(async (req) => {
       }
     }
     
-    // Generate a verification token
-    const verificationToken = crypto.randomUUID();
-    const expirationDate = new Date();
-    expirationDate.setDate(expirationDate.getDate() + 30); // Token expires in 30 days
+    // Generate a notification token (for tracking only)
+    const notificationToken = crypto.randomUUID();
     
-    // Store the verification token in the database
+    // Store the notification record in the database
     const { error: tokenError } = await supabase
-      .from('contact_verifications')
+      .from('contact_notifications')
       .insert({
         user_id: contact.userId,
         contact_id: contact.contactId,
         contact_type: contact.contactType,
-        verification_token: verificationToken,
-        expires_at: expirationDate.toISOString()
+        notification_token: notificationToken,
+        notification_type: 'invitation'
       });
       
     if (tokenError) {
-      console.error('Error storing verification token:', tokenError);
+      console.error('Error storing notification token:', tokenError);
       return new Response(
-        JSON.stringify({ success: false, message: "Failed to create verification token" }),
+        JSON.stringify({ success: false, message: "Failed to create notification record" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    // Create verification URL using the unified verification route structure
-    const baseUrl = req.headers.get("origin") || "https://willtank.com";
-    // UPDATED: Use the direct route to the UnifiedVerificationPage
-    const verificationUrl = `${baseUrl}/verify/invitation/${verificationToken}`;
-    console.log("Generated verification URL:", verificationUrl);
+    // Create notification URL - information only, no verification
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.replace(/\/[^/]*$/, "") || "https://willtank.com";
+    const notificationType = contact.contactType === 'trusted' ? 'trusted' : 'invitation';
+    const cacheBuster = Date.now();
+    const notificationUrl = `${origin}/verify/${notificationType}/${notificationToken}?t=${cacheBuster}`;
+    
+    console.log("Generated notification URL:", notificationUrl);
     
     // Generate email content based on contact type and email details
     let subject = emailDetails?.subject || '';
@@ -140,75 +144,113 @@ serve(async (req) => {
         <p>${emailDetails.customMessage}</p>
        </div>` : '';
     
-    // Detailed role descriptions
-    let roleDetailedDescription = '';
-    
-    switch (contact.contactType) {
-      case 'trusted':
-        roleDetailedDescription = `
-          <h2>What does being a trusted contact mean?</h2>
-          <p>As a trusted contact, your role is crucial. If ${userFullName} fails to respond to regular check-ins in our system, you may be contacted to confirm their status. This is an important safeguard that helps verify if they're still able to manage their digital legacy.</p>
-          <p>Your responsibilities include:</p>
-          <ul>
-            <li>Responding to verification requests if ${userFullName} misses check-ins</li>
-            <li>Providing accurate information about ${userFullName}'s status when contacted</li>
-            <li>Maintaining confidentiality about your role and any information you receive</li>
-          </ul>
+    // Get executors list for trusted contacts
+    let executorInfo = '';
+    if (contact.contactType === 'trusted') {
+      const { data: executors } = await supabase
+        .from('will_executors')
+        .select('name, email')
+        .eq('user_id', contact.userId)
+        .limit(1);
+        
+      if (executors && executors.length > 0) {
+        const executor = executors[0];
+        executorInfo = `
+          <div style="margin-top: 20px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+            <h3 style="margin-top: 0; color: #334155;">Executor Contact Information:</h3>
+            <p style="margin-bottom: 8px;">In case of emergency, please contact the executor:</p>
+            <p style="margin-bottom: 5px;"><strong>Name:</strong> ${executor.name}</p>
+            <p style="margin-bottom: 5px;"><strong>Email:</strong> ${executor.email}</p>
+          </div>
         `;
-        break;
-      // Add cases for other contact types as needed
+      }
     }
     
-    // Build the complete email content
-    content = `
-      <h1>Important Role Invitation</h1>
-      <p>Hello ${contact.name},</p>
-      <p>${userFullName} has named you as a ${roleDescription} in their WillTank account.</p>
-      
-      ${bioSection}
-      ${customMessageSection}
-      
-      ${roleDetailedDescription}
-      
-      <p>Please click the button below to accept or decline this role:</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${verificationUrl}" style="background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">RESPOND TO INVITATION</a>
-      </div>
-      
-      <p>This invitation will expire on ${expirationDate.toLocaleDateString()}.</p>
-      
-      <p>If you have any questions about this role, please contact ${userFullName} directly.</p>
-      
-      <p>Thank you for being a trusted part of ${userFullName}'s digital legacy plan.</p>
-    `;
+    // Create content for each contact type - information only, no verification needed
+    if (contact.contactType === 'trusted') {
+      content = `
+        <h1>You've been named as a Trusted Contact</h1>
+        <p>Hello ${contact.name},</p>
+        <p>${userFullName} has added you as a <strong>trusted contact</strong> in their WillTank account.</p>
+        
+        ${bioSection}
+        ${customMessageSection}
+        
+        <h2>What does this mean?</h2>
+        <p>As a trusted contact, you'll receive notifications when ${userFullName} misses their scheduled check-ins in the WillTank system. These notifications are for your information only - no action is required from you.</p>
+        
+        <p>In case of multiple missed check-ins, you'll receive more detailed information and contact details for the executor.</p>
+        
+        <div style="margin: 30px 0; text-align: center;">
+          <a href="${notificationUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View More Information</a>
+        </div>
+        
+        ${executorInfo}
+        
+        <p>You don't need to create an account or verify anything. This is an information-only email.</p>
+        <p>If you have any questions, please contact ${userFullName} directly.</p>
+      `;
+    } else if (contact.contactType === 'executor') {
+      content = `
+        <h1>You've been named as an Executor</h1>
+        <p>Hello ${contact.name},</p>
+        <p>${userFullName} has named you as an <strong>executor</strong> for their will on WillTank.</p>
+        
+        ${bioSection}
+        ${customMessageSection}
+        
+        <h2>Your Role as an Executor</h2>
+        <p>As an executor, you'll have important responsibilities regarding ${userFullName}'s estate in the event of their passing. ${userFullName} will be in touch with you directly to discuss these responsibilities in detail.</p>
+        
+        <p>In case of emergency, you'll receive secure access instructions to view and download essential documents.</p>
+        
+        <div style="margin: 30px 0; text-align: center;">
+          <a href="${notificationUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View More Information</a>
+        </div>
+        
+        <h3>The PIN System</h3>
+        <p>In the event of ${userFullName}'s passing, you'll receive a special email with instructions to access their documents through a secure portal. The system uses a multi-factor PIN verification for maximum security.</p>
+        
+        <p>You don't need to create an account or verify anything at this time. This is an information-only email.</p>
+        <p>If you have any questions, please contact ${userFullName} directly.</p>
+      `;
+    } else {
+      // Beneficiary content
+      content = `
+        <h1>You've been named as a Beneficiary</h1>
+        <p>Hello ${contact.name},</p>
+        <p>${userFullName} has named you as a <strong>beneficiary</strong> in their will on WillTank.</p>
+        
+        ${bioSection}
+        ${customMessageSection}
+        
+        <p>This is simply a notification to let you know about your inclusion in ${userFullName}'s estate planning. No action is required from you at this time.</p>
+        
+        <div style="margin: 30px 0; text-align: center;">
+          <a href="${notificationUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">View More Information</a>
+        </div>
+        
+        <p>You don't need to create an account or verify anything. This is an information-only email.</p>
+        <p>If you have any questions, please contact ${userFullName} directly.</p>
+      `;
+    }
     
-    // Get resend client to send the email
+    // Initialize Resend client and send the email
     const resend = getResendClient();
     
-    // Set email priority headers
-    const emailPriority = emailDetails?.priority === 'high' ? { 
-      headers: { 
-        "X-Priority": "1",
-        "Importance": "high" 
-      } 
-    } : {};
-    
-    // Send the email
-    console.log("Sending invitation email to:", contact.email);
     const emailResponse = await resend.emails.send({
-      from: "WillTank <invitations@willtank.com>",
+      from: "WillTank <notifications@willtank.com>",
       to: [contact.email],
       subject: subject,
       html: buildDefaultEmailLayout(content),
-      ...emailPriority,
       tags: [
         {
-          name: 'contact_type',
+          name: 'contactType',
           value: contact.contactType
         },
         {
-          name: 'invitation',
-          value: 'true'
+          name: 'category',
+          value: 'invitation'
         }
       ]
     });
@@ -216,67 +258,50 @@ serve(async (req) => {
     if (!isEmailSendSuccess(emailResponse)) {
       const errorMessage = formatResendError(emailResponse);
       console.error('Error sending invitation email:', errorMessage);
-      
-      // Create a system notification about the failed email
-      await supabase.rpc(
-        'create_notification',
-        {
-          p_user_id: contact.userId,
-          p_title: 'Email Delivery Failed',
-          p_description: `We couldn't send the invitation email to ${contact.name}. Please try again later.`,
-          p_type: 'warning'
-        }
-      );
-      
       return new Response(
-        JSON.stringify({ success: false, message: "Failed to send invitation email", error: errorMessage }),
+        JSON.stringify({ success: false, message: `Failed to send email: ${errorMessage}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
     console.log('Invitation email sent successfully:', emailResponse.id);
     
-    // Store the verification event in logs
+    // Update the contact record to mark invitation as sent
+    if (contact.contactType === 'trusted') {
+      await supabase
+        .from('trusted_contacts')
+        .update({
+          invitation_sent_at: new Date().toISOString(),
+          invitation_status: 'sent'
+        })
+        .eq('id', contact.contactId);
+    }
+    
+    // Log the invitation
     await supabase.from('death_verification_logs').insert({
       user_id: contact.userId,
-      action: 'invitation_sent',
+      action: `${contact.contactType}_invitation_sent`,
       details: {
         contact_id: contact.contactId,
-        contact_type: contact.contactType,
         contact_name: contact.name,
         contact_email: contact.email,
-        verification_token: verificationToken,
         email_id: emailResponse.id,
       }
     });
     
-    // Create a notification for the user about successful email
-    await supabase.rpc(
-      'create_notification',
-      {
-        p_user_id: contact.userId,
-        p_title: 'Invitation Sent',
-        p_description: `An invitation email has been sent to ${contact.name} for the role of ${contact.contactType}.`,
-        p_type: 'success'
-      }
-    );
-    
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Invitation email sent successfully",
-        emailId: emailResponse.id 
+      JSON.stringify({
+        success: true,
+        message: `Invitation email sent successfully to ${contact.name}`,
+        emailId: emailResponse.id
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error sending invitation email:", error);
+    console.error('Error processing contact invitation:', error);
+    
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        message: "Failed to process invitation",
-        error: error.message || "Internal server error" 
-      }),
+      JSON.stringify({ success: false, message: `Error processing invitation: ${error.message}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
