@@ -7,6 +7,7 @@ import { AlertTriangle, Shield } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { getDashboardSummary } from '@/services/dashboardService';
+import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 
 export default function Dashboard() {
   const { data: dashboardSummary, isLoading } = useQuery({
@@ -43,6 +44,27 @@ export default function Dashboard() {
               <Link to="/settings">
                 <Button variant="outline" className="w-full">
                   Security Settings
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+          
+          {/* Death Verification Widget */}
+          <DeathVerificationWidget />
+          
+          {/* Death Verification Testing Card */}
+          <Card className="border rounded-lg shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center mb-4">
+                <AlertTriangle className="mr-2 h-5 w-5 text-amber-500" />
+                <h3 className="font-medium text-lg">Death Verification Testing</h3>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Test the death verification flow to ensure your will is properly protected and can be accessed when needed.
+              </p>
+              <Link to="/test-death-verification">
+                <Button variant="outline" className="w-full">
+                  Test Death Verification Flow
                 </Button>
               </Link>
             </CardContent>

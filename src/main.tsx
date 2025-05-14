@@ -7,7 +7,10 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
+import CheckIns from './pages/CheckIns.tsx';
 import Settings from './pages/settings/Settings.tsx';
+import TestDeathVerification from './pages/TestDeathVerification.tsx';
+import UnifiedVerificationPage from './pages/verify/UnifiedVerificationPage.tsx';
 import Home from './pages/Index';
 import About from './pages/About';
 import Contact from './pages/Contact';
@@ -51,7 +54,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
-import RedirectFromCheckIns from './pages/CheckIns';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
@@ -203,16 +205,16 @@ const router = createBrowserRouter([
         element: <Dashboard />,
       },
       {
-        path: "/check-ins",
-        element: <RedirectFromCheckIns />,
-      },
-      {
         path: "/settings",
         element: <Settings />,
       },
       {
         path: "/activity",
         element: <Activity />,
+      },
+      {
+        path: "/check-ins",
+        element: <CheckIns />,
       },
       {
         path: "/pages/security/IDSecurity",
@@ -245,6 +247,14 @@ const router = createBrowserRouter([
       {
         path: "/tank/edit/:id",
         element: <TankCreation />,
+      },
+      {
+        path: "/verify/:type/:token",
+        element: <UnifiedVerificationPage />,
+      },
+      {
+        path: "/test-death-verification",
+        element: <TestDeathVerification />,
       },
       {
         path: "/wills",
