@@ -63,7 +63,25 @@ serve(async (req) => {
     // Get all contacts for this user
     const contacts: Contact[] = [];
     
-    // Get executors (primary recipients)
+    // Get beneficiaries
+    const { data: beneficiaries, error: beneficiariesError } = await supabase
+      .from('will_beneficiaries')
+      .select('id, beneficiary_name, email')
+      .eq('user_id', userId)
+      .not('email', 'is', null);
+    
+    if (!beneficiariesError && beneficiaries) {
+      beneficiaries.forEach(b => {
+        contacts.push({
+          id: b.id,
+          type: 'beneficiary',
+          name: b.beneficiary_name,
+          email: b.email
+        });
+      });
+    }
+    
+    // Get executors
     const { data: executors, error: executorsError } = await supabase
       .from('will_executors')
       .select('id, name, email')
@@ -81,7 +99,7 @@ serve(async (req) => {
       });
     }
     
-    // Get trusted contacts (secondary recipients)
+    // Get trusted contacts
     const { data: trustedContacts, error: trustedError } = await supabase
       .from('trusted_contacts')
       .select('id, name, email')
@@ -108,92 +126,56 @@ serve(async (req) => {
     // Get resend client
     const resend = getResendClient();
     
-    // Send informational status check emails to all contacts
+    // Send status check emails to all contacts
     const results = await Promise.all(contacts.map(async (contact) => {
       try {
-        // Generate a token just for tracking purposes
-        const notificationToken = crypto.randomUUID();
+        // Generate a verification token
+        const verificationToken = crypto.randomUUID();
         
-        // Create notification record
-        const { data: notification, error: notificationError } = await supabase
-          .from('contact_notifications')
+        // Set expiration date to 7 days from now
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+        
+        // Create verification record
+        const { data: verification, error: verificationError } = await supabase
+          .from('contact_verifications')
           .insert({
             contact_id: contact.id,
             contact_type: contact.type,
-            notification_token: notificationToken,
-            notification_type: 'status_check',
+            verification_token: verificationToken,
+            expires_at: expiresAt.toISOString(),
             user_id: userId
           })
           .select()
           .single();
         
-        if (notificationError) {
-          console.error('Error creating notification record:', notificationError);
-          return { success: false, contact, error: notificationError.message };
+        if (verificationError) {
+          console.error('Error creating verification record:', verificationError);
+          return { success: false, contact, error: verificationError.message };
         }
         
-        // Get executor contact info if this is a trusted contact
-        let executorInfo = '';
-        if (contact.type === 'trusted' && executors && executors.length > 0) {
-          const primaryExecutor = executors[0];
-          executorInfo = `
-            <div style="margin-top: 20px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
-              <h3 style="margin-top: 0; color: #334155;">Executor Contact Information:</h3>
-              <p style="margin-bottom: 8px;">In case of emergency, please contact the executor:</p>
-              <p style="margin-bottom: 5px;"><strong>Name:</strong> ${primaryExecutor.name}</p>
-              <p style="margin-bottom: 5px;"><strong>Email:</strong> ${primaryExecutor.email}</p>
-            </div>
-          `;
-        }
-                
-        // Generate email content based on contact type
-        let subject = '';
-        let content = '';
+        // Create verification URL
+        const statusUrl = `https://willtank.com/verify/status/${verificationToken}`;
         
-        if (contact.type === 'executor') {
-          subject = `IMPORTANT: Status Check for ${userFullName}`;
-          content = `
-            <h1>Status Check Notification</h1>
-            <p>Hello ${contact.name},</p>
-            <p>This is a notification regarding ${userFullName}, who has named you as an executor in their will.</p>
-            <p>${userFullName} has missed their scheduled check-in in the WillTank system. This may simply indicate they forgot to check in, or it could potentially indicate an emergency situation.</p>
-            
-            <div style="margin: 20px 0; padding: 15px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px;">
-              <h3 style="margin-top: 0; color: #0369a1;">INFORMATION ONLY - NO ACTION REQUIRED</h3>
-              <p>This is an informational notification only. No action is required in the WillTank system at this time.</p>
-            </div>
-            
-            <p>As an executor, you may need to take action if this situation continues. Here's what you should know:</p>
-            <ul>
-              <li>This is the first notification for a missed check-in</li>
-              <li>Additional notifications will be sent if check-ins continue to be missed</li>
-              <li>If multiple check-ins are missed, you will receive instructions to access the will portal</li>
-            </ul>
-            <p>At this time, we recommend trying to contact ${userFullName} directly to confirm they're okay.</p>
-          `;
-        } else {
-          subject = `Status Check Notification for ${userFullName}`;
-          content = `
-            <h1>Status Check Notification</h1>
-            <p>Hello ${contact.name},</p>
-            <p>You're receiving this email because you're listed as a trusted contact for ${userFullName}.</p>
-            <p>${userFullName} has missed their scheduled check-in in the WillTank system. This is just an informational notification to keep you informed.</p>
-            
-            <div style="margin: 20px 0; padding: 15px; background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px;">
-              <h3 style="margin-top: 0; color: #0369a1;">INFORMATION ONLY - NO ACTION REQUIRED</h3>
-              <p>As a trusted contact, no action is required from you at this time.</p>
-              <p>This notification is being sent to all trusted contacts as part of ${userFullName}'s status monitoring plan.</p>
-            </div>
-            
-            ${executorInfo}
-          `;
-        }
+        // Generate email content
+        const content = `
+          <h1>Status Check Request</h1>
+          <p>Hello ${contact.name},</p>
+          <p>We're reaching out as part of WillTank's regular status check system. ${userFullName} has you listed as a ${contact.type} in their will.</p>
+          <p>We'd like to confirm that ${userFullName} is still alive and well. Please click the appropriate button below:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${statusUrl}?response=alive" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">YES, STILL ALIVE</a>
+            <a href="${statusUrl}?response=deceased" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">NO, DECEASED</a>
+          </div>
+          <p>This is a routine check and part of WillTank's death verification system. Your response helps ensure that ${userFullName}'s will is only accessible at the appropriate time.</p>
+          <p>If you're not sure about ${userFullName}'s status, please try to contact them directly before responding.</p>
+        `;
         
         // Send the email
         const emailResponse = await resend.emails.send({
           from: "WillTank Status Check <status@willtank.com>",
           to: [contact.email],
-          subject: subject,
+          subject: `Status Check for ${userFullName}`,
           html: buildDefaultEmailLayout(content),
         });
         
@@ -208,7 +190,7 @@ serve(async (req) => {
           user_id: userId,
           action: 'status_check_sent',
           details: {
-            notification_id: notification.id,
+            verification_id: verification.id,
             contact_id: contact.id,
             contact_type: contact.type,
             contact_name: contact.name,
