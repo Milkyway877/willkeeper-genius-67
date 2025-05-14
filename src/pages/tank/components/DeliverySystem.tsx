@@ -1,9 +1,11 @@
+
 import { useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCheck, Clock } from "lucide-react";
+import { CheckCheck, Clock, Bell } from "lucide-react";
 import { FutureMessage } from "@/services/tankService";
 import { supabase } from "@/integrations/supabase/client";
 import { useNotificationManager } from '@/hooks/use-notification-manager';
+import { FrequencyInterval } from '../types';
 
 interface DeliverySystemProps {
   message?: FutureMessage;
@@ -41,17 +43,37 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
     }
   }, [message, onDeliveryComplete, notifySuccess]);
 
+  const getFrequencyLabel = (frequency?: FrequencyInterval | null) => {
+    if (!frequency) return 'regularly';
+    
+    switch(frequency) {
+      case 'daily': return 'daily';
+      case 'weekly': return 'weekly';
+      case 'monthly': return 'monthly';
+      case 'quarterly': return 'every 3 months';
+      case 'yearly': return 'yearly';
+      default: return 'regularly';
+    }
+  };
+
   const getStatusDisplay = () => {
     if (!message) return null;
+    
+    const isCheckIn = message.message_type === 'check-in';
     
     switch (message.status) {
       case 'delivered':
         return (
           <Alert className="bg-green-50 border-green-200">
             <CheckCheck className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800">Message Marked as Delivered</AlertTitle>
+            <AlertTitle className="text-green-800">
+              {isCheckIn ? 'Check-In Sent' : 'Message Marked as Delivered'}
+            </AlertTitle>
             <AlertDescription className="text-green-700">
-              This message has been successfully processed for delivery to {message.recipient_email}.
+              {isCheckIn 
+                ? `Your check-in has been sent to ${message.recipient_email}. A response is required to confirm well-being.`
+                : `This message has been successfully processed for delivery to ${message.recipient_email}.`
+              }
               {message.status === 'delivered' && (
                 <div className="mt-2 text-xs border-l-2 border-green-300 pl-2 italic">
                   Note: If you don't see the email in your inbox, check your spam folder.
@@ -64,10 +86,14 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
         return (
           <Alert className="bg-blue-50 border-blue-200">
             <Clock className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800">Message Scheduled</AlertTitle>
+            <AlertTitle className="text-blue-800">
+              {isCheckIn ? 'Check-In Scheduled' : 'Message Scheduled'}
+            </AlertTitle>
             <AlertDescription className="text-blue-700">
-              This message is scheduled for delivery on{' '}
-              {new Date(message.delivery_date).toLocaleString()}.
+              {isCheckIn && message.frequency
+                ? `This check-in is set to be delivered ${getFrequencyLabel(message.frequency as FrequencyInterval)}, starting on ${new Date(message.delivery_date).toLocaleDateString()}.`
+                : `This message is scheduled for delivery on ${new Date(message.delivery_date).toLocaleDateString()}.`
+              }
             </AlertDescription>
           </Alert>
         );
@@ -77,7 +103,10 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
             <Clock className="h-4 w-4 text-amber-600 animate-spin" />
             <AlertTitle className="text-amber-800">Processing</AlertTitle>
             <AlertDescription className="text-amber-700">
-              This message is currently being processed for delivery.
+              {isCheckIn 
+                ? 'Your check-in is currently being processed for delivery.' 
+                : 'This message is currently being processed for delivery.'
+              }
             </AlertDescription>
           </Alert>
         );
@@ -89,6 +118,23 @@ const DeliverySystem = ({ message, onDeliveryComplete }: DeliverySystemProps) =>
   return (
     <div className="space-y-6">
       {message && getStatusDisplay()}
+      
+      {message?.message_type === 'check-in' && (
+        <Alert className="bg-amber-50 border-amber-200">
+          <Bell className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800">Check-In Information</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            <p className="mb-2">
+              This is a recurring check-in message. When delivered, you'll need to respond by clicking a link in the email to confirm your well-being.
+            </p>
+            {message.frequency && (
+              <p>
+                Frequency: <strong>{getFrequencyLabel(message.frequency as FrequencyInterval)}</strong>
+              </p>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       
       {message?.message_type === 'video' && message?.message_url && (
         <div className="mt-6">

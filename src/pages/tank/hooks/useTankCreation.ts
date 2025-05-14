@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createFutureMessage } from '@/services/tankService';
-import { MessageType, MessageCategory, DeliveryTrigger } from '../types';
+import { MessageType, MessageCategory, DeliveryTrigger, FrequencyInterval } from '../types';
 import { useToast } from '@/hooks/use-toast';
 
 export const useTankCreation = () => {
@@ -18,9 +18,17 @@ export const useTankCreation = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [messageUrl, setMessageUrl] = useState<string | null>(null);
+  const [frequency, setFrequency] = useState<FrequencyInterval>('monthly');
   
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Set default delivery type for check-ins
+  useEffect(() => {
+    if (creationType === 'check-in' && !deliveryType) {
+      setDeliveryType('recurring');
+    }
+  }, [creationType, deliveryType]);
 
   const handleNext = () => {
     if (currentStep === 0 && !creationType) {
@@ -47,9 +55,14 @@ export const useTankCreation = () => {
         });
         return;
       }
+      
+      // Set default delivery type for check-ins
+      if (creationType === 'check-in') {
+        setDeliveryType('recurring');
+      }
     }
     
-    if (currentStep === 2 && !deliveryType) {
+    if (currentStep === 2 && !deliveryType && creationType !== 'check-in') {
       toast({
         title: 'Missing Selection',
         description: 'Please select a delivery method to continue.'
@@ -74,7 +87,7 @@ export const useTankCreation = () => {
         return;
       }
       
-      if (deliveryType === 'date' && !recipientEmail.trim()) {
+      if ((deliveryType === 'date' || deliveryType === 'recurring') && !recipientEmail.trim()) {
         toast({
           title: 'Missing Email',
           description: 'Please enter the recipient email address.'
@@ -131,6 +144,7 @@ export const useTankCreation = () => {
         delivery_date: effectiveDeliveryDate.toISOString(),
         delivery_event: null,
         category: messageCategory,
+        frequency: deliveryType === 'recurring' ? frequency : null,
         user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
       };
 
@@ -179,6 +193,7 @@ export const useTankCreation = () => {
     isGenerating,
     progress,
     messageUrl,
+    frequency,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -188,6 +203,7 @@ export const useTankCreation = () => {
     setMessageCategory,
     setDeliveryDate,
     setMessageUrl,
+    setFrequency,
     setCurrentStep,
     handleNext,
     handlePrev,

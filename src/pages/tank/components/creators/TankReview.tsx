@@ -1,10 +1,9 @@
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DeliveryTrigger, MessageType } from '../../types';
-import { Check, Clock, Mail, FileCheck, Video, FileText, UserRound, Info } from 'lucide-react';
+import { MessageType, DeliveryTrigger, FrequencyInterval } from '../../types';
 
 interface TankReviewProps {
   messageType: MessageType;
@@ -13,11 +12,43 @@ interface TankReviewProps {
   recipientEmail: string;
   deliveryType: DeliveryTrigger;
   deliveryDate: string;
+  frequency?: FrequencyInterval;
+  onFinalize: () => Promise<void>;
   isGenerating: boolean;
   progress: number;
-  onFinalize: () => void;
-  isForWill?: boolean;
-  willTitle?: string;
+}
+
+function formatDate(dateString: string): string {
+  try {
+    return new Date(dateString).toLocaleDateString(undefined, { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric'
+    });
+  } catch (e) {
+    return 'Invalid date';
+  }
+}
+
+function formatFrequency(frequency: FrequencyInterval): string {
+  switch (frequency) {
+    case 'daily': return 'Every day';
+    case 'weekly': return 'Once a week';
+    case 'monthly': return 'Once a month';
+    case 'quarterly': return 'Every 3 months';
+    case 'yearly': return 'Once a year';
+    default: return frequency;
+  }
+}
+
+function formatDeliveryType(type: DeliveryTrigger): string {
+  switch (type) {
+    case 'date': return 'Specific Date';
+    case 'event': return 'Life Event';
+    case 'posthumous': return 'Posthumous Delivery';
+    case 'recurring': return 'Recurring Check-In';
+    default: return type;
+  }
 }
 
 export const TankReview: React.FC<TankReviewProps> = ({
@@ -27,157 +58,87 @@ export const TankReview: React.FC<TankReviewProps> = ({
   recipientEmail,
   deliveryType,
   deliveryDate,
-  isGenerating,
-  progress,
+  frequency,
   onFinalize,
-  isForWill = false,
-  willTitle = ""
+  isGenerating,
+  progress
 }) => {
-  const formatDeliveryType = (type: DeliveryTrigger) => {
-    switch (type) {
-      case 'date': return 'On Specific Date';
-      case 'event': return 'Upon Event Trigger';
-      case 'posthumous': return 'Posthumous Delivery';
-      default: return type;
-    }
+  const isCheckIn = messageType === 'check-in';
+  
+  const getCheckInDetails = () => {
+    if (!isCheckIn) return null;
+    
+    return (
+      <div className="mt-4 bg-amber-50 border border-amber-200 rounded-md p-4">
+        <h3 className="font-medium text-amber-800">Check-In Details</h3>
+        <ul className="mt-2 space-y-1 text-sm text-amber-700">
+          <li><span className="font-medium">First check-in:</span> {formatDate(deliveryDate)}</li>
+          <li><span className="font-medium">Frequency:</span> {frequency && formatFrequency(frequency)}</li>
+          <li><span className="font-medium">Recipient:</span> {recipientEmail}</li>
+        </ul>
+        <p className="mt-2 text-xs text-amber-800">
+          {frequency && frequency !== 'daily' ? `You will receive check-in requests ${formatFrequency(frequency).toLowerCase()}.` : 
+          'You will receive daily check-in requests.'} If you don't respond, your trusted contacts will be notified.
+        </p>
+      </div>
+    );
   };
   
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-medium">Review Your Message</h2>
-      
       <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div>
-            <h3 className="font-medium text-gray-800">Message Details</h3>
-            <div className="mt-2 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Type:</span>
-                <span className="font-medium capitalize">{messageType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Title:</span>
-                <span className="font-medium">{title}</span>
-              </div>
-              {isForWill && (
-                <div className="bg-green-50 border border-green-100 rounded-md p-3 mt-2">
-                  <div className="flex items-center">
-                    <FileCheck className="h-5 w-5 text-green-600 mr-2" />
-                    <div>
-                      <p className="font-medium text-green-800">Will Testament</p>
-                      <p className="text-sm text-green-700">
-                        This {messageType === 'video' ? 'video' : 'message'} will be attached to{' '}
-                        <span className="font-medium">{willTitle || "your will"}</span> and will be available to your executors and beneficiaries.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+        <CardHeader>
+          <CardTitle>Review Your {isCheckIn ? 'Check-In' : 'Message'} Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Message Type</h3>
+              <p className="text-lg capitalize">{messageType}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Title</h3>
+              <p className="text-lg">{title || 'Untitled'}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Recipient Name</h3>
+              <p className="text-lg">{recipient}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Recipient Email</h3>
+              <p className="text-lg">{recipientEmail}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Delivery Type</h3>
+              <p className="text-lg">{formatDeliveryType(deliveryType)}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">{isCheckIn ? "First Check-In" : "Delivery Date"}</h3>
+              <p className="text-lg">{formatDate(deliveryDate)}</p>
             </div>
           </div>
           
-          <div>
-            <h3 className="font-medium text-gray-800">
-              {isForWill ? "Will Viewers" : "Recipient Information"}
-            </h3>
-            <div className="mt-2 space-y-2">
-              {isForWill ? (
-                <div className="bg-blue-50 border border-blue-100 rounded-md p-3">
-                  <div className="flex items-start">
-                    <UserRound className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-blue-800">Will Executors and Beneficiaries</p>
-                      <p className="text-sm text-blue-700">
-                        This testament will be viewable by the executors and beneficiaries of your will after your passing. 
-                        {recipient && recipient !== "All Beneficiaries" && ` Your intended audience is: ${recipient}.`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">{recipient}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Email:</span>
-                    <span className="font-medium">{recipientEmail}</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          {getCheckInDetails()}
           
-          <div>
-            <h3 className="font-medium text-gray-800">Delivery Information</h3>
-            <div className="mt-2 space-y-2">
-              {!isForWill && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Method:</span>
-                  <span className="font-medium">{formatDeliveryType(deliveryType)}</span>
-                </div>
-              )}
-              
-              {/* Only show delivery date for non-will videos with date-based delivery */}
-              {deliveryType === 'date' && deliveryDate && !isForWill && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Scheduled For:</span>
-                  <span className="font-medium">{new Date(deliveryDate).toLocaleDateString()}</span>
-                </div>
-              )}
-              
-              {isForWill && (
-                <div className="bg-amber-50 border border-amber-100 rounded-md p-3">
-                  <div className="flex items-start">
-                    <Clock className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-amber-700">Posthumous Delivery</p>
-                      <p className="text-sm text-amber-700">
-                        This testament will be delivered to your will executors and beneficiaries upon confirmation of your passing, alongside your will document.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </CardContent>
       </Card>
       
-      <div className="flex flex-col items-center justify-center pt-4">
-        {!isGenerating && (
-          <Button 
-            onClick={onFinalize}
-            className="w-full md:w-auto md:min-w-[200px] bg-willtank-600 hover:bg-willtank-700 text-white"
-          >
-            {isForWill ? (
-              <>
-                <FileCheck className="mr-2 h-4 w-4" />
-                Finalize and Attach to Will
-              </>
-            ) : (
-              <>
-                Finalize and Schedule
-              </>
-            )}
-          </Button>
-        )}
-        
-        {isGenerating && (
-          <div className="w-full space-y-4 text-center">
-            <Progress value={progress} className="w-full" />
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-              {progress < 50 && <Clock className="animate-pulse h-4 w-4" />}
-              {progress >= 50 && progress < 100 && <Mail className="animate-bounce h-4 w-4" />}
-              {progress === 100 && <Check className="text-green-500 h-4 w-4" />}
-              
-              {progress < 50 && "Preparing your message..."}
-              {progress >= 50 && progress < 100 && (isForWill ? "Attaching to will..." : "Setting up delivery...")}
-              {progress === 100 && (isForWill ? "Message attached successfully!" : "Message scheduled successfully!")}
-            </div>
-          </div>
-        )}
+      <div className="flex justify-end">
+        <Button 
+          onClick={onFinalize} 
+          disabled={isGenerating} 
+          className="bg-willtank-600 hover:bg-willtank-700"
+          size="lg"
+        >
+          {isGenerating ? (
+            <>
+              <span className="mr-2">Processing...</span>
+              <Progress value={progress} className="h-2 w-20" />
+            </>
+          ) : (
+            `Finalize ${isCheckIn ? 'Check-In' : 'Message'}`
+          )}
+        </Button>
       </div>
     </div>
   );

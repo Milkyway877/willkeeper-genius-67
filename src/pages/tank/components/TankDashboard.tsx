@@ -31,7 +31,8 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Video, Mic, File, Eye, Plus, Trash2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileText, Video, Mic, File, Eye, Plus, Trash2, Bell } from 'lucide-react';
 import { getFutureMessages, deleteFutureMessage, checkScheduledMessages } from '@/services/tankService';
 import { MessagePreview } from './preview/MessagePreview';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +48,7 @@ interface Message {
   preview: string;
   category?: string;
   messageUrl?: string;
+  frequency?: string;
 }
 
 export const TankDashboard: React.FC = () => {
@@ -55,6 +57,7 @@ export const TankDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [previewMessage, setPreviewMessage] = useState<Message | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   const { toast } = useToast();
   const { notifyInfo, notifySuccess, notifyWarning } = useNotificationManager();
   
@@ -103,7 +106,8 @@ export const TankDashboard: React.FC = () => {
         status: msg.status,
         preview: msg.preview || 'No preview available',
         category: msg.category || undefined,
-        messageUrl: msg.message_url || undefined
+        messageUrl: msg.message_url || undefined,
+        frequency: msg.frequency || undefined
       }));
       
       console.log('Formatted messages with URLs:', formattedMessages);
@@ -174,6 +178,7 @@ export const TankDashboard: React.FC = () => {
       case 'video': return <Video className="h-4 w-4 text-blue-500" />;
       case 'audio': return <Mic className="h-4 w-4 text-green-500" />;
       case 'document': return <File className="h-4 w-4 text-amber-500" />;
+      case 'check-in': return <Bell className="h-4 w-4 text-purple-500" />;
       default: return <FileText className="h-4 w-4 text-purple-500" />;
     }
   };
@@ -185,6 +190,23 @@ export const TankDashboard: React.FC = () => {
       case 'processing': return 'bg-blue-500';
       case 'failed': return 'bg-red-500';
       default: return 'bg-gray-500';
+    }
+  };
+  
+  const filteredMessages = activeTab === 'all' 
+    ? messages 
+    : activeTab === 'check-ins' 
+      ? messages.filter(msg => msg.type === 'check-in')
+      : messages.filter(msg => msg.type !== 'check-in');
+  
+  const getFrequencyLabel = (frequency: string) => {
+    switch(frequency) {
+      case 'daily': return 'Daily';
+      case 'weekly': return 'Weekly';
+      case 'monthly': return 'Monthly';
+      case 'quarterly': return 'Every 3 months';
+      case 'yearly': return 'Yearly';
+      default: return 'Custom';
     }
   };
   
@@ -215,9 +237,16 @@ export const TankDashboard: React.FC = () => {
             <CardDescription>
               View and manage your future messages
             </CardDescription>
+            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-4">
+              <TabsList>
+                <TabsTrigger value="all">All Messages</TabsTrigger>
+                <TabsTrigger value="standard">Standard Messages</TabsTrigger>
+                <TabsTrigger value="check-ins">Check-Ins</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardHeader>
           <CardContent>
-            {messages.length === 0 ? (
+            {filteredMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <FileText className="h-12 w-12 text-gray-400 mb-3" />
                 <h3 className="font-medium text-lg mb-1">No Messages Yet</h3>
@@ -236,13 +265,15 @@ export const TankDashboard: React.FC = () => {
                       <TableHead>Title</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Recipient</TableHead>
-                      <TableHead>Delivery Date</TableHead>
+                      <TableHead>
+                        {activeTab === 'check-ins' ? 'Frequency' : 'Delivery Date'}
+                      </TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {messages.map((message) => (
+                    {filteredMessages.map((message) => (
                       <TableRow key={message.id}>
                         <TableCell className="font-medium">{message.title}</TableCell>
                         <TableCell>
@@ -252,7 +283,13 @@ export const TankDashboard: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{message.recipient}</TableCell>
-                        <TableCell>{new Date(message.deliveryDate).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {message.type === 'check-in' && message.frequency ? (
+                            getFrequencyLabel(message.frequency)
+                          ) : (
+                            new Date(message.deliveryDate).toLocaleDateString()
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge className={`${getStatusColor(message.status)} text-white`}>
                             {message.status}
@@ -313,7 +350,9 @@ export const TankDashboard: React.FC = () => {
           </CardContent>
           <CardFooter>
             <p className="text-sm text-gray-500">
-              Messages will be delivered according to your specified schedule.
+              {activeTab === 'check-ins' 
+                ? 'Check-ins will be delivered at the specified frequency, requiring your response.'
+                : 'Messages will be delivered according to your specified schedule.'}
             </p>
           </CardFooter>
         </Card>

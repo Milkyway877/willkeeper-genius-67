@@ -1,7 +1,8 @@
-export type MessageType = 'letter' | 'video' | 'audio' | 'document';
+
+export type MessageType = 'letter' | 'video' | 'audio' | 'document' | 'check-in';
 export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
-export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
-export type MessageCategory = 'letter' | 'story' | 'confession' | 'wishes' | 'advice';
+export type DeliveryTrigger = 'date' | 'event' | 'posthumous' | 'recurring';
+export type MessageCategory = 'letter' | 'story' | 'confession' | 'wishes' | 'advice' | 'check-in';
 
 export interface Message {
   id: string;
@@ -13,6 +14,7 @@ export interface Message {
   preview: string;
   category: MessageCategory;
   messageUrl?: string;
+  frequency?: string;
 }
 
 export type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
@@ -29,3 +31,5 @@ export interface PlanDetails {
 }
 
 export type SubscriptionPlan = 'starter' | 'gold' | 'platinum' | 'enterprise';
+
+export type FrequencyInterval = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';

@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
-import { MessageCategory } from "@/pages/tank/types";
+import { MessageCategory, FrequencyInterval } from "@/pages/tank/types";
 import { EventType } from "@/services/notificationService";
 import { toast } from "@/hooks/use-toast";
 
@@ -23,6 +23,9 @@ export interface FutureMessage {
   updated_at: string | null;
   is_encrypted: boolean;
   category: MessageCategory | null;
+  frequency: FrequencyInterval | null;
+  last_check_in_response?: string | null;
+  trusted_contacts?: string[] | null;
 }
 
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {

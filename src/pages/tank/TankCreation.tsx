@@ -13,9 +13,10 @@ import { TankLetterCreator } from './components/creators/TankLetterCreator';
 import { TankVideoCreator } from './components/creators/TankVideoCreator';
 import { TankAudioCreator } from './components/creators/TankAudioCreator';
 import { TankDocumentCreator } from './components/creators/TankDocumentCreator';
+import { TankCheckInCreator } from './components/creators/TankCheckInCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
-import { MessageCategory, DeliveryTrigger } from './types';
+import { MessageCategory, DeliveryTrigger, FrequencyInterval } from './types';
 
 // Define steps for regular future messages
 const standardSteps = [
@@ -60,6 +61,7 @@ export default function TankCreation() {
     isGenerating,
     progress,
     messageUrl,
+    frequency,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -69,6 +71,7 @@ export default function TankCreation() {
     setMessageCategory,
     setDeliveryDate,
     setMessageUrl,
+    setFrequency,
     handleNext,
     handlePrev,
     handleCancel,
@@ -85,6 +88,13 @@ export default function TankCreation() {
       window.location.href = `/will/video-creation/${willIdParam}`;
     }
   }, []);
+  
+  // Set appropriate delivery type for check-ins
+  useEffect(() => {
+    if (creationType === 'check-in') {
+      setDeliveryType('recurring');
+    }
+  }, [creationType, setDeliveryType]);
 
   const renderCreationComponent = () => {
     switch (creationType) {
@@ -119,6 +129,14 @@ export default function TankCreation() {
                  onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                  onDocumentUrlChange={setMessageUrl}
                />;
+      case 'check-in':
+        return <TankCheckInCreator
+                 onContentChange={setMessageContent}
+                 onTitleChange={setMessageTitle}
+                 onRecipientChange={setRecipientName}
+                 onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
+                 onFrequencyChange={(frequency: FrequencyInterval) => setFrequency(frequency)}
+               />;
       default:
         return <div>Please select a message type</div>;
     }
@@ -131,14 +149,22 @@ export default function TankCreation() {
       case 1:
         return renderCreationComponent();
       case 2:
+        // Skip delivery method selection for check-ins
+        if (creationType === 'check-in') {
+          handleNext();
+          return <div>Loading...</div>;
+        }
         return <DeliveryMethodSelector onSelect={setDeliveryType} />;
       case 3:
         return <TankDeliverySettings 
                  deliveryType={deliveryType as DeliveryTrigger} 
                  deliveryDate={deliveryDate}
                  recipientEmail={recipientEmail}
+                 frequency={frequency}
+                 isCheckIn={creationType === 'check-in'}
                  onDateChange={(date: Date) => setDeliveryDate(date)}
                  onEmailChange={setRecipientEmail}
+                 onFrequencyChange={(freq: FrequencyInterval) => setFrequency(freq)}
                />;
       case 4:
         return <TankReview 
@@ -148,6 +174,7 @@ export default function TankCreation() {
                  recipientEmail={recipientEmail}
                  deliveryType={deliveryType as DeliveryTrigger}
                  deliveryDate={deliveryDate ? deliveryDate.toISOString() : ''}
+                 frequency={frequency}
                  onFinalize={handleFinalize}
                  isGenerating={isGenerating}
                  progress={progress}
