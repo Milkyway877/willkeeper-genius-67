@@ -55,7 +55,8 @@ export const useTankCreation = () => {
       }
     }
 
-    if (currentStep === 2 && !deliveryType && creationType !== 'check-in') {
+    // Fix the comparison by using a type guard to narrow the type
+    if (currentStep === 2 && !deliveryType && creationType !== 'check-in' as MessageType) {
       toast({
         title: "Select Delivery Method",
         description: "Please select how you want your message delivered",
@@ -65,7 +66,7 @@ export const useTankCreation = () => {
     }
 
     if (currentStep === 3) {
-      if (creationType !== 'check-in' && !recipientEmail) {
+      if (creationType !== 'check-in' as MessageType && !recipientEmail) {
         toast({
           title: "Missing Recipient",
           description: "Please provide a recipient email address",
