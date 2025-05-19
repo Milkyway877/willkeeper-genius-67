@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Bell, AlertTriangle, Check, Clock, Info, Share2, UserPlus } from 'lucide-react';
+import { Bell, AlertTriangle, Check, Clock, Info, Share2, UserPlus, Plus } from 'lucide-react';
 import { FrequencyInterval, Message } from '../types';
 import { Link } from 'react-router-dom';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
@@ -24,7 +23,7 @@ export const TankCheckIns = ({ checkIns, onRefresh }: TankCheckInsProps) => {
   const [sendingStatusChecks, setSendingStatusChecks] = useState(false);
   
   // Filter messages that are check-ins
-  const checkInMessages = checkIns.filter(msg => msg.type === 'check-in');
+  const checkInMessages = checkIns.filter(msg => msg.message_type === 'check-in');
   
   const handleConfirmCheckIn = async (id: string) => {
     setLoading(true);
@@ -95,13 +94,13 @@ export const TankCheckIns = ({ checkIns, onRefresh }: TankCheckInsProps) => {
   };
 
   const getLastResponseDate = (message: Message) => {
-    if (!message.messageUrl) return null;
+    if (!message.message_url) return null;
     
     try {
-      const date = parseISO(message.messageUrl);
+      const date = parseISO(message.message_url);
       return formatDistanceToNow(date, { addSuffix: true });
     } catch (error) {
-      return message.messageUrl;
+      return message.message_url;
     }
   };
 

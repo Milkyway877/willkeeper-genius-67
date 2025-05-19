@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getFutureMessages, checkScheduledMessages, sendStatusChecks } from '@/services/tankService';
 import { RefreshCw, Check, AlertTriangle, Bell, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { FrequencyInterval } from '../types';
+import { FrequencyInterval, adaptFutureMessageToMessage } from '../types';
 
 export const TankAnalytics = () => {
   const { toast } = useToast();
@@ -93,7 +92,7 @@ export const TankAnalytics = () => {
     
     messages.forEach(msg => {
       // Count by type
-      const type = msg.type || 'unknown';
+      const type = msg.message_type || 'unknown';
       stats.byType[type] = (stats.byType[type] || 0) + 1;
       
       // Count by status
@@ -105,14 +104,14 @@ export const TankAnalytics = () => {
       stats.byCategory[category] = (stats.byCategory[category] || 0) + 1;
       
       // Check-in specific stats
-      if (msg.type === 'check-in') {
+      if (msg.message_type === 'check-in') {
         stats.checkInStats.total++;
         
         if (msg.status === 'delivered' || msg.status === 'scheduled') {
           stats.checkInStats.active++;
         }
         
-        if (msg.messageUrl) {
+        if (msg.message_url) {
           // Using messageUrl to track last response for check-ins
           stats.checkInStats.responded++;
         }

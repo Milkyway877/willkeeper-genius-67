@@ -24,24 +24,24 @@ export const TankDashboard = () => {
   
   const filteredMessages = useMemo(() => {
     if (filter === 'all') return messages;
-    return messages.filter(msg => msg.type === filter);
+    return messages.filter(msg => msg.message_type === filter);
   }, [messages, filter]);
   
   // Group messages by type for counts
   const messageCountsByType = useMemo(() => {
     const counts = {
-      letters: messages.filter(m => m.type === 'letter').length,
-      videos: messages.filter(m => m.type === 'video').length,
-      audios: messages.filter(m => m.type === 'audio').length,
-      documents: messages.filter(m => m.type === 'document').length,
-      checkins: messages.filter(m => m.type === 'check-in').length,
+      letters: messages.filter(m => m.message_type === 'letter').length,
+      videos: messages.filter(m => m.message_type === 'video').length,
+      audios: messages.filter(m => m.message_type === 'audio').length,
+      documents: messages.filter(m => m.message_type === 'document').length,
+      checkins: messages.filter(m => m.message_type === 'check-in').length,
       all: messages.length
     };
     return counts;
   }, [messages]);
   
   const checkInMessages = useMemo(() => {
-    return messages.filter(msg => msg.type === 'check-in');
+    return messages.filter(msg => msg.message_type === 'check-in');
   }, [messages]);
 
   const refreshMessages = () => {
@@ -137,7 +137,7 @@ export const TankDashboard = () => {
           </div>
           
           <MessageList 
-            messages={filteredMessages} 
+            messages={filteredMessages as unknown as Message[]} 
             isLoading={isLoading} 
             onRefresh={refreshMessages}
           />
@@ -145,7 +145,7 @@ export const TankDashboard = () => {
         
         <TabsContent value="check-ins" className="space-y-6 mt-6">
           <TankCheckIns 
-            checkIns={checkInMessages}
+            checkIns={checkInMessages as unknown as Message[]}
             onRefresh={refreshMessages}
           />
         </TabsContent>

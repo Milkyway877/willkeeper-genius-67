@@ -9,9 +9,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { Toaster } from 'sonner';
 import { TrustedContacts } from '@/components/death-verification/TrustedContacts';
+import { useLocation } from 'react-router-dom';
 
 export default function Tank() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const initialTab = location.state?.activeTab || 'dashboard';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const { fetchNotifications } = useNotifications();
   
   useEffect(() => {
