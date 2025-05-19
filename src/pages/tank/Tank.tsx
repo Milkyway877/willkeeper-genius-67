@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { TimerReset } from 'lucide-react';
+import { TimerReset, Shield } from 'lucide-react';
 import { TankDashboard } from './components/TankDashboard';
 import { TankAnalytics } from './components/TankAnalytics';
+import { TrustedContactsSection } from './components/TrustedContactsSection';
+import { StatusChecksSection } from './components/StatusChecksSection';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -36,6 +38,10 @@ export default function Tank() {
           <TabsList className="mb-6">
             <TabsTrigger value="dashboard">Messages Dashboard</TabsTrigger>
             <TabsTrigger value="analytics">Analytics & Status</TabsTrigger>
+            <TabsTrigger value="verification">
+              <Shield className="h-4 w-4 mr-2" />
+              Verification & Contacts
+            </TabsTrigger>
           </TabsList>
           
           <AnimatePresence mode="wait">
@@ -52,6 +58,11 @@ export default function Tank() {
               
               <TabsContent value="analytics" className="space-y-6">
                 <TankAnalytics />
+              </TabsContent>
+              
+              <TabsContent value="verification" className="space-y-8">
+                <StatusChecksSection />
+                <TrustedContactsSection />
               </TabsContent>
             </motion.div>
           </AnimatePresence>

@@ -1,4 +1,5 @@
-export type MessageType = 'letter' | 'video' | 'audio' | 'document';
+
+export type MessageType = 'letter' | 'video' | 'audio' | 'document' | 'check-in';
 export type MessageStatus = 'draft' | 'scheduled' | 'delivered' | 'verified';
 export type DeliveryTrigger = 'date' | 'event' | 'posthumous';
 export type MessageCategory = 'letter' | 'story' | 'confession' | 'wishes' | 'advice';

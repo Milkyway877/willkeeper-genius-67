@@ -7,7 +7,7 @@ import { DeathVerificationWidget } from '@/components/death-verification/DeathVe
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History, Shield } from 'lucide-react';
+import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History, Shield, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +20,8 @@ import {
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
 import { Executor, Beneficiary, getExecutors, getBeneficiaries } from '@/services/executorService';
-import { TrustedContacts } from '@/components/death-verification/TrustedContacts';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Link } from 'react-router-dom';
 
 export default function CheckIns() {
   const { toast } = useToast();
@@ -81,7 +82,7 @@ export default function CheckIns() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Check-ins</h1>
-          <p className="text-gray-600">Manage your check-in settings, contacts, and verification status.</p>
+          <p className="text-gray-600">Manage your check-in settings and verification status.</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -103,6 +104,21 @@ export default function CheckIns() {
                 <li>PIN-protected will access</li>
                 <li>Trusted contact oversight</li>
               </ul>
+              
+              <Alert className="mt-4 bg-willtank-100 border-willtank-200">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Trusted Contacts</AlertTitle>
+                <AlertDescription className="text-sm">
+                  Manage your trusted contacts in the Tank page under Verification & Contacts tab.
+                  <div className="mt-2">
+                    <Link to="/tank">
+                      <Button variant="outline" size="sm">
+                        Go to Tank
+                      </Button>
+                    </Link>
+                  </div>
+                </AlertDescription>
+              </Alert>
             </div>
           </div>
         </div>
@@ -110,20 +126,12 @@ export default function CheckIns() {
         <Tabs defaultValue="settings">
           <TabsList className="mb-6 border-b w-full justify-start rounded-none pb-0">
             <TabsTrigger value="settings" className="rounded-t-lg rounded-b-none border-b-0">Settings</TabsTrigger>
-            <TabsTrigger value="trusted" className="rounded-t-lg rounded-b-none border-b-0">
-              <Shield className="h-4 w-4 mr-2" />
-              Trusted Verifiers
-            </TabsTrigger>
             <TabsTrigger value="contacts" className="rounded-t-lg rounded-b-none border-b-0">Manage Contacts</TabsTrigger>
             <TabsTrigger value="history" className="rounded-t-lg rounded-b-none border-b-0">Check-in History</TabsTrigger>
           </TabsList>
           
           <TabsContent value="settings">
             <DeathVerification onSettingsChange={handleSettingsChange} />
-          </TabsContent>
-
-          <TabsContent value="trusted">
-            <TrustedContacts onContactsChange={handleSettingsChange} />
           </TabsContent>
 
           <TabsContent value="contacts">
