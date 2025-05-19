@@ -71,6 +71,19 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [forceAuthenticated, location.pathname, navigate, profile]);
   
+  // Handle tab selection from state
+  useEffect(() => {
+    if (location.state?.activeTab && location.pathname === '/tank') {
+      const tankTabElement = document.querySelector(`[data-value="${location.state.activeTab}"]`);
+      if (tankTabElement && 'click' in tankTabElement) {
+        (tankTabElement as HTMLElement).click();
+      }
+      
+      // Clear the state to avoid repeated clicks
+      window.history.replaceState(null, '');
+    }
+  }, [location]);
+  
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
   };

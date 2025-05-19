@@ -1,373 +1,155 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Video, Mic, File, Eye, Plus, Trash2, Bell } from 'lucide-react';
-import { getFutureMessages, deleteFutureMessage, checkScheduledMessages } from '@/services/tankService';
-import { MessagePreview } from './preview/MessagePreview';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Plus, FileText, Video, FileAudio, File, Bell, Filter, RefreshCcw } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { useNotificationManager } from '@/hooks/use-notification-manager';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getFutureMessages } from '@/services/tankService';
+import { Message, MessageType } from '../types';
+import { MessageList } from './MessageList';
+import { TankCheckIns } from './TankCheckIns';
+import { Link } from 'react-router-dom';
 
-interface Message {
-  id: string;
-  type: string;
-  title: string;
-  recipient: string;
-  deliveryDate: string;
-  status: string;
-  preview: string;
-  category?: string;
-  messageUrl?: string;
-  frequency?: string;
-}
-
-export const TankDashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [previewMessage, setPreviewMessage] = useState<Message | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('all');
+export const TankDashboard = () => {
   const { toast } = useToast();
-  const { notifyInfo, notifySuccess, notifyWarning } = useNotificationManager();
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<MessageType | 'all'>('all');
   
-  useEffect(() => {
-    fetchMessages();
-  }, []);
+  const { data: messages = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['futureMessages'],
+    queryFn: getFutureMessages,
+  });
   
-  useEffect(() => {
-    const checkForScheduledMessages = async () => {
-      try {
-        const result = await checkScheduledMessages();
-        if (result && result.processed > 0) {
-          toast({
-            title: 'Message Delivery Check',
-            description: `Checked ${result.processed} messages: ${result.successful} delivered, ${result.failed} failed.`,
-          });
-          
-          if (result.successful > 0) {
-            notifySuccess(
-              "Messages Delivered", 
-              `${result.successful} messages have been successfully delivered.`,
-              "high"
-            );
-          }
-          
-          fetchMessages();
-        }
-      } catch (error) {
-        console.error('Error checking scheduled messages:', error);
-      }
+  const filteredMessages = useMemo(() => {
+    if (filter === 'all') return messages;
+    return messages.filter(msg => msg.type === filter);
+  }, [messages, filter]);
+  
+  // Group messages by type for counts
+  const messageCountsByType = useMemo(() => {
+    const counts = {
+      letters: messages.filter(m => m.type === 'letter').length,
+      videos: messages.filter(m => m.type === 'video').length,
+      audios: messages.filter(m => m.type === 'audio').length,
+      documents: messages.filter(m => m.type === 'document').length,
+      checkins: messages.filter(m => m.type === 'check-in').length,
+      all: messages.length
     };
-    
-    checkForScheduledMessages();
-  }, [toast, notifySuccess]);
+    return counts;
+  }, [messages]);
   
-  const fetchMessages = async () => {
-    try {
-      setLoading(true);
-      const data = await getFutureMessages();
-      const formattedMessages = data.map(msg => ({
-        id: msg.id,
-        type: msg.message_type || 'letter',
-        title: msg.title || 'Untitled',
-        recipient: msg.recipient_name,
-        deliveryDate: msg.delivery_date,
-        status: msg.status,
-        preview: msg.preview || 'No preview available',
-        category: msg.category || undefined,
-        messageUrl: msg.message_url || undefined,
-        frequency: msg.frequency || undefined
-      }));
-      
-      console.log('Formatted messages with URLs:', formattedMessages);
-      setMessages(formattedMessages);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    } finally {
-      setLoading(false);
-    }
+  const checkInMessages = useMemo(() => {
+    return messages.filter(msg => msg.type === 'check-in');
+  }, [messages]);
+
+  const refreshMessages = () => {
+    refetch();
   };
   
-  const handleCreateMessage = () => {
-    navigate('/tank/create');
-  };
-  
-  const handleViewMessage = (id: string) => {
-    navigate(`/tank/message/${id}`);
-  };
-  
-  const handlePreviewMessage = (message: Message) => {
-    console.log('Previewing message:', message);
-    setPreviewMessage(message);
-    setPreviewOpen(true);
-  };
-  
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      const success = await deleteFutureMessage(messageId);
-      if (success) {
-        toast({
-          title: "Message Deleted",
-          description: "The message has been successfully deleted.",
-        });
-        
-        // Add notification for message deletion
-        notifyInfo(
-          "Message Deleted", 
-          "Your future message has been successfully deleted.",
-          "medium"
-        );
-        
-        fetchMessages();
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to delete the message. Please try again.",
-          variant: "destructive",
-        });
-        
-        notifyWarning(
-          "Delete Operation Failed", 
-          "There was an issue deleting your message. Please try again.",
-          "medium"
-        );
-      }
-    } catch (error) {
-      console.error('Error deleting message:', error);
+  useEffect(() => {
+    if (isError) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred while deleting the message.",
-        variant: "destructive",
+        description: "Failed to load messages. Please try again.",
+        variant: "destructive"
       });
     }
-  };
-  
-  const getMessageIcon = (type: string) => {
-    switch(type) {
-      case 'video': return <Video className="h-4 w-4 text-blue-500" />;
-      case 'audio': return <Mic className="h-4 w-4 text-green-500" />;
-      case 'document': return <File className="h-4 w-4 text-amber-500" />;
-      case 'check-in': return <Bell className="h-4 w-4 text-purple-500" />;
-      default: return <FileText className="h-4 w-4 text-purple-500" />;
-    }
-  };
-  
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled': return 'bg-amber-500';
-      case 'delivered': return 'bg-green-500';
-      case 'processing': return 'bg-blue-500';
-      case 'failed': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-  
-  const filteredMessages = activeTab === 'all' 
-    ? messages 
-    : activeTab === 'check-ins' 
-      ? messages.filter(msg => msg.type === 'check-in')
-      : messages.filter(msg => msg.type !== 'check-in');
-  
-  const getFrequencyLabel = (frequency: string) => {
-    switch(frequency) {
-      case 'daily': return 'Daily';
-      case 'weekly': return 'Weekly';
-      case 'monthly': return 'Monthly';
-      case 'quarterly': return 'Every 3 months';
-      case 'yearly': return 'Yearly';
-      default: return 'Custom';
-    }
-  };
+  }, [isError, toast]);
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Your Future Messages</h1>
-        <Button onClick={handleCreateMessage} className="bg-willtank-600 hover:bg-willtank-700">
-          <Plus className="mr-2 h-4 w-4" /> Create New Message
-        </Button>
-      </div>
-      
-      {loading ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-10 bg-gray-200 rounded"></div>
-              <div className="h-10 bg-gray-200 rounded"></div>
-              <div className="h-10 bg-gray-200 rounded"></div>
+      <Tabs defaultValue="messages">
+        <TabsList>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="check-ins">Check-ins</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="messages" className="space-y-6 mt-6">
+          <div className="flex flex-wrap gap-4 justify-between items-center">
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant={filter === 'all' ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setFilter('all')}
+                className="flex items-center"
+              >
+                All ({messageCountsByType.all})
+              </Button>
+              <Button 
+                variant={filter === 'letter' ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setFilter('letter')}
+                className="flex items-center"
+              >
+                <FileText className="h-4 w-4 mr-1" /> Letters ({messageCountsByType.letters})
+              </Button>
+              <Button 
+                variant={filter === 'video' ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setFilter('video')}
+                className="flex items-center"
+              >
+                <Video className="h-4 w-4 mr-1" /> Videos ({messageCountsByType.videos})
+              </Button>
+              <Button 
+                variant={filter === 'audio' ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setFilter('audio')}
+                className="flex items-center"
+              >
+                <FileAudio className="h-4 w-4 mr-1" /> Audio ({messageCountsByType.audios})
+              </Button>
+              <Button 
+                variant={filter === 'document' ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setFilter('document')}
+                className="flex items-center"
+              >
+                <File className="h-4 w-4 mr-1" /> Documents ({messageCountsByType.documents})
+              </Button>
+              <Button 
+                variant={filter === 'check-in' ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => setFilter('check-in')}
+                className="flex items-center"
+              >
+                <Bell className="h-4 w-4 mr-1" /> Check-ins ({messageCountsByType.checkins})
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>Message Inventory</CardTitle>
-            <CardDescription>
-              View and manage your future messages
-            </CardDescription>
-            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-4">
-              <TabsList>
-                <TabsTrigger value="all">All Messages</TabsTrigger>
-                <TabsTrigger value="standard">Standard Messages</TabsTrigger>
-                <TabsTrigger value="check-ins">Check-Ins</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </CardHeader>
-          <CardContent>
-            {filteredMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <FileText className="h-12 w-12 text-gray-400 mb-3" />
-                <h3 className="font-medium text-lg mb-1">No Messages Yet</h3>
-                <p className="text-gray-500 max-w-md mb-4">
-                  You haven't created any future messages yet. Create your first message to get started.
-                </p>
-                <Button onClick={handleCreateMessage} className="bg-willtank-600 hover:bg-willtank-700">
-                  Create Your First Message
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={refreshMessages}
+                className="flex items-center"
+              >
+                <RefreshCcw className="h-4 w-4 mr-1" /> Refresh
+              </Button>
+              <Link to="/tank/creation">
+                <Button size="sm" className="flex items-center">
+                  <Plus className="h-4 w-4 mr-1" /> New Message
                 </Button>
-              </div>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Recipient</TableHead>
-                      <TableHead>
-                        {activeTab === 'check-ins' ? 'Frequency' : 'Delivery Date'}
-                      </TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMessages.map((message) => (
-                      <TableRow key={message.id}>
-                        <TableCell className="font-medium">{message.title}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {getMessageIcon(message.type)}
-                            <span className="capitalize">{message.type}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{message.recipient}</TableCell>
-                        <TableCell>
-                          {message.type === 'check-in' && message.frequency ? (
-                            getFrequencyLabel(message.frequency)
-                          ) : (
-                            new Date(message.deliveryDate).toLocaleDateString()
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${getStatusColor(message.status)} text-white`}>
-                            {message.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handlePreviewMessage(message)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleViewMessage(message.id)}
-                            >
-                              Details
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Message</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this message? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDeleteMessage(message.id)}
-                                    className="bg-red-500 hover:bg-red-600"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter>
-            <p className="text-sm text-gray-500">
-              {activeTab === 'check-ins' 
-                ? 'Check-ins will be delivered at the specified frequency, requiring your response.'
-                : 'Messages will be delivered according to your specified schedule.'}
-            </p>
-          </CardFooter>
-        </Card>
-      )}
-      
-      {previewMessage && (
-        <MessagePreview
-          open={previewOpen}
-          onClose={() => setPreviewOpen(false)}
-          messageType={previewMessage.type as any}
-          title={previewMessage.title}
-          content={previewMessage.preview}
-          messageUrl={previewMessage.messageUrl}
-        />
-      )}
+              </Link>
+            </div>
+          </div>
+          
+          <MessageList 
+            messages={filteredMessages} 
+            isLoading={isLoading} 
+            onRefresh={refreshMessages}
+          />
+        </TabsContent>
+        
+        <TabsContent value="check-ins" className="space-y-6 mt-6">
+          <TankCheckIns 
+            checkIns={checkInMessages}
+            onRefresh={refreshMessages}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

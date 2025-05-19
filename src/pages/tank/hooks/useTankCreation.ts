@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createFutureMessage } from '@/services/tankService';
-import { MessageType, MessageCategory, DeliveryTrigger, FrequencyInterval } from '../types';
+import { createFutureMessage, createCheckInMessage } from '@/services/tankService';
 import { useToast } from '@/hooks/use-toast';
+import { MessageType, MessageCategory, DeliveryTrigger, FrequencyInterval } from '../types';
 
 export const useTankCreation = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -13,181 +13,176 @@ export const useTankCreation = () => {
   const [messageTitle, setMessageTitle] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
+  const [messageCategory, setMessageCategory] = useState<MessageCategory | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
-  const [messageCategory, setMessageCategory] = useState<MessageCategory>('letter');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [messageUrl, setMessageUrl] = useState<string | null>(null);
   const [frequency, setFrequency] = useState<FrequencyInterval>('monthly');
-  
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Set default delivery type for check-ins
-  useEffect(() => {
-    if (creationType === 'check-in' && !deliveryType) {
-      setDeliveryType('recurring');
-    }
-  }, [creationType, deliveryType]);
-
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
+    // Validate current step
     if (currentStep === 0 && !creationType) {
       toast({
-        title: 'Missing Selection',
-        description: 'Please select a message type to continue.'
+        title: "Select Message Type",
+        description: "Please select a type of message to continue",
+        variant: "destructive"
       });
       return;
     }
-    
+
     if (currentStep === 1) {
       if (!messageTitle.trim()) {
         toast({
-          title: 'Missing Title',
-          description: 'Please enter a title for your message.'
+          title: "Missing Title",
+          description: "Please provide a title for your message",
+          variant: "destructive"
         });
         return;
       }
       
-      if (!recipientName.trim()) {
+      if (!messageContent.trim() && creationType !== 'document') {
         toast({
-          title: 'Missing Recipient',
-          description: 'Please specify who this message is for.'
+          title: "Missing Content",
+          description: "Please add content to your message",
+          variant: "destructive"
         });
         return;
-      }
-      
-      // Set default delivery type for check-ins
-      if (creationType === 'check-in') {
-        setDeliveryType('recurring');
       }
     }
-    
+
     if (currentStep === 2 && !deliveryType && creationType !== 'check-in') {
       toast({
-        title: 'Missing Selection',
-        description: 'Please select a delivery method to continue.'
+        title: "Select Delivery Method",
+        description: "Please select how you want your message delivered",
+        variant: "destructive"
       });
       return;
     }
-    
+
     if (currentStep === 3) {
-      if (!deliveryDate) {
+      if (creationType !== 'check-in' && !recipientEmail) {
         toast({
-          title: 'Missing Date',
-          description: 'Please select a delivery date.'
+          title: "Missing Recipient",
+          description: "Please provide a recipient email address",
+          variant: "destructive"
         });
         return;
       }
       
-      if (deliveryDate < new Date()) {
+      if (deliveryType === 'date' && !deliveryDate) {
         toast({
-          title: 'Invalid Date',
-          description: 'The delivery date must be in the future.'
-        });
-        return;
-      }
-      
-      if ((deliveryType === 'date' || deliveryType === 'recurring') && !recipientEmail.trim()) {
-        toast({
-          title: 'Missing Email',
-          description: 'Please enter the recipient email address.'
+          title: "Missing Delivery Date",
+          description: "Please select a delivery date",
+          variant: "destructive"
         });
         return;
       }
     }
-    
+
     setCurrentStep(prev => prev + 1);
-  };
+  }, [currentStep, creationType, messageTitle, messageContent, deliveryType, recipientEmail, deliveryDate, toast]);
 
-  const handlePrev = () => {
-    setCurrentStep(prev => prev - 1);
-  };
+  const handlePrev = useCallback(() => {
+    setCurrentStep(prev => Math.max(0, prev - 1));
+  }, []);
 
-  const handleCancel = () => {
-    navigate('/tank');
-  };
-
-  const handleFinalize = async () => {
-    if (!creationType || !deliveryType) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please ensure all required fields are filled out.',
-        variant: 'destructive'
-      });
-      return;
+  const handleCancel = useCallback(() => {
+    if (window.confirm("Are you sure you want to cancel? All your progress will be lost.")) {
+      navigate('/tank');
     }
+  }, [navigate]);
 
+  const handleFinalize = useCallback(async () => {
     setIsGenerating(true);
-    setProgress(10);
-
+    setProgress(0);
+    
     try {
+      // Start progress animation
       const progressInterval = setInterval(() => {
         setProgress(prev => {
-          const increment = Math.floor(Math.random() * 10) + 1;
-          return Math.min(prev + increment, 95);
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
         });
-      }, 500);
+      }, 300);
 
-      // Ensure we have a valid delivery date
-      const effectiveDeliveryDate = deliveryDate || new Date(Date.now() + 31536000000); // Default to 1 year in future
+      let result;
       
-      const message = {
-        title: messageTitle,
-        recipient_name: recipientName,
-        recipient_email: recipientEmail,
-        message_type: creationType,
-        preview: messageContent,
-        content: messageContent,
-        message_url: messageUrl || null,
-        status: 'scheduled' as 'draft' | 'scheduled' | 'processing' | 'delivered' | 'failed',
-        delivery_type: deliveryType,
-        delivery_date: effectiveDeliveryDate.toISOString(),
-        delivery_event: null,
-        category: messageCategory,
-        frequency: deliveryType === 'recurring' ? frequency : null,
-        user_id: 'd9b57bd2-32a6-4675-91dd-a313b5073f77', // This would normally be fetched from auth context
-      };
+      // Handle check-in messages differently
+      if (creationType === 'check-in') {
+        result = await createCheckInMessage({
+          title: messageTitle,
+          recipientEmail: recipientEmail,
+          content: messageContent,
+          frequency: frequency
+        });
+      } else {
+        // For other message types
+        const message = {
+          title: messageTitle,
+          recipient_name: recipientName,
+          recipient_email: recipientEmail,
+          message_type: creationType,
+          content: messageContent,
+          preview: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
+          delivery_type: deliveryType,
+          delivery_date: deliveryDate ? deliveryDate.toISOString() : new Date().toISOString(),
+          status: 'scheduled',
+          category: messageCategory,
+          message_url: messageUrl,
+          frequency: creationType === 'check-in' ? frequency : undefined
+        };
 
-      console.log("Creating message with data:", message);
-      setProgress(60);
+        result = await createFutureMessage(message as any);
+      }
 
-      const createdMessage = await createFutureMessage(message);
-      
+      // Complete progress animation
       clearInterval(progressInterval);
       setProgress(100);
       
-      if (createdMessage) {
+      if (result) {
         toast({
-          title: 'Message Created',
-          description: 'Your future message has been successfully created.'
+          title: "Success",
+          description: `Your ${creationType} has been created and scheduled successfully`,
         });
         
+        // Redirect back to tank
         setTimeout(() => {
           navigate('/tank');
-        }, 2000);
+        }, 1500);
       } else {
-        throw new Error('Failed to create message');
+        throw new Error("Failed to create message");
       }
     } catch (error) {
-      console.error('Error finalizing message:', error);
+      console.error('Error creating message:', error);
       toast({
-        title: 'Error',
-        description: 'An error occurred while creating your message. Please try again.',
-        variant: 'destructive'
+        title: "Error",
+        description: "Failed to create your message. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [
+    creationType, messageTitle, recipientName, recipientEmail, messageContent,
+    deliveryType, deliveryDate, navigate, toast, messageCategory, messageUrl, frequency
+  ]);
 
   return {
     currentStep,
     creationType,
     deliveryType,
     messageContent,
+    messageTitle,
     recipientName,
     recipientEmail,
-    messageTitle,
     messageCategory,
     deliveryDate,
     isGenerating,
@@ -197,17 +192,19 @@ export const useTankCreation = () => {
     setCreationType,
     setDeliveryType,
     setMessageContent,
+    setMessageTitle,
     setRecipientName,
     setRecipientEmail,
-    setMessageTitle,
     setMessageCategory,
     setDeliveryDate,
     setMessageUrl,
     setFrequency,
-    setCurrentStep,
     handleNext,
     handlePrev,
     handleCancel,
-    handleFinalize
+    handleFinalize,
+    setCurrentStep
   };
 };
+
+export default useTankCreation;

@@ -17,6 +17,7 @@ import { TankCheckInCreator } from './components/creators/TankCheckInCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
 import { MessageCategory, DeliveryTrigger, FrequencyInterval } from './types';
+import { useLocation } from 'react-router-dom';
 
 // Define steps for regular future messages
 const standardSteps = [
@@ -48,6 +49,10 @@ const standardSteps = [
 ];
 
 export default function TankCreation() {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const typeParam = searchParams.get('type');
+  
   const {
     currentStep,
     creationType,
@@ -75,19 +80,26 @@ export default function TankCreation() {
     handleNext,
     handlePrev,
     handleCancel,
-    handleFinalize
+    handleFinalize,
+    setCurrentStep
   } = useTankCreation();
 
   useEffect(() => {
     // Redirect users with willId in URL to will-specific pages
-    const queryParams = new URLSearchParams(window.location.search);
-    const willIdParam = queryParams.get('willId');
+    const willIdParam = searchParams.get('willId');
     
     if (willIdParam) {
       // If there's a willId in the URL, redirect to the dedicated will video recording page
       window.location.href = `/will/video-creation/${willIdParam}`;
+      return;
     }
-  }, []);
+    
+    // Handle direct link to specific message type
+    if (typeParam && ['letter', 'video', 'audio', 'document', 'check-in'].includes(typeParam)) {
+      setCreationType(typeParam as any);
+      setCurrentStep(1); // Skip to the creator step
+    }
+  }, [searchParams, typeParam, setCreationType, setCurrentStep]);
   
   // Set appropriate delivery type for check-ins
   useEffect(() => {
