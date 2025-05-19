@@ -38,14 +38,14 @@ export type FrequencyInterval = 'daily' | 'weekly' | 'monthly' | 'quarterly' | '
 export const adaptFutureMessageToMessage = (futureMessage: any): Message => {
   return {
     id: futureMessage.id,
-    message_type: futureMessage.message_type,
+    message_type: futureMessage.message_type || futureMessage.type,
     title: futureMessage.title,
     recipient_email: futureMessage.recipient_email || '',
     delivery_date: futureMessage.delivery_date || '',
     status: futureMessage.status,
     preview: futureMessage.preview || '',
     category: futureMessage.category,
-    message_url: futureMessage.message_url || '',
+    message_url: futureMessage.message_url || futureMessage.messageUrl || '',
     frequency: futureMessage.frequency,
   };
 };
