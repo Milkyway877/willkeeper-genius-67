@@ -126,7 +126,14 @@ serve(async (req) => {
     // Get resend client
     const resend = getResendClient();
     
-    // Send status check emails to all contacts
+    // Get executor details for the email
+    let executorInfo = "Please contact WillTank support if needed.";
+    if (executors && executors.length > 0) {
+      const primaryExecutor = executors[0];
+      executorInfo = `If necessary, you can contact the will executor, ${primaryExecutor.name}, at ${primaryExecutor.email}`;
+    }
+    
+    // Send status check emails to all contacts with updated content
     const results = await Promise.all(contacts.map(async (contact) => {
       try {
         // Generate a verification token
@@ -157,25 +164,44 @@ serve(async (req) => {
         // Create verification URL
         const statusUrl = `https://willtank.com/verify/status/${verificationToken}`;
         
-        // Generate email content
+        // Generate email content - Updated to be more informational
         const content = `
-          <h1>Status Check Request</h1>
+          <h1>Important: Missed Check-in Notification</h1>
           <p>Hello ${contact.name},</p>
-          <p>We're reaching out as part of WillTank's regular status check system. ${userFullName} has you listed as a ${contact.type} in their will.</p>
-          <p>We'd like to confirm that ${userFullName} is still alive and well. Please click the appropriate button below:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${statusUrl}?response=alive" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">YES, STILL ALIVE</a>
-            <a href="${statusUrl}?response=deceased" style="background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 0 10px;">NO, DECEASED</a>
+          <p>We're reaching out because <strong>${userFullName}</strong> has missed their regular check-in on the WillTank platform.</p>
+          
+          <h2>What This Means</h2>
+          <p>This could be due to various reasons - they might be traveling, busy, or simply forgot to log in.</p>
+          
+          <h2>Recommended Action</h2>
+          <p>Please consider the following steps:</p>
+          <ol>
+            <li>Try to contact ${userFullName} directly to ensure they are well</li>
+            <li>Remind them to log in to their WillTank account and complete their check-in</li>
+            <li>If you're unable to reach them, please keep an eye out for further notifications</li>
+          </ol>
+          
+          <p>You can visit <a href="${statusUrl}">this link</a> to view more information.</p>
+          
+          <div style="margin-top: 20px; padding: 15px; border-left: 4px solid #f59e0b; background-color: #fffbeb;">
+            <h3>Important Note</h3>
+            <p>${executorInfo}</p>
           </div>
-          <p>This is a routine check and part of WillTank's death verification system. Your response helps ensure that ${userFullName}'s will is only accessible at the appropriate time.</p>
-          <p>If you're not sure about ${userFullName}'s status, please try to contact them directly before responding.</p>
+          
+          <p>Thank you for being a trusted contact for ${userFullName}.</p>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea;">
+            <h3>About WillTank</h3>
+            <p>WillTank is a secure digital time capsule service that helps people manage their digital legacy and ensure their wishes are carried out.</p>
+            <p>For more information, visit <a href="https://willtank.com">willtank.com</a></p>
+          </div>
         `;
         
         // Send the email
         const emailResponse = await resend.emails.send({
-          from: "WillTank Status Check <status@willtank.com>",
+          from: "WillTank Status Check <notifications@willtank.com>",
           to: [contact.email],
-          subject: `Status Check for ${userFullName}`,
+          subject: `Important: Missed Check-in by ${userFullName}`,
           html: buildDefaultEmailLayout(content),
         });
         
