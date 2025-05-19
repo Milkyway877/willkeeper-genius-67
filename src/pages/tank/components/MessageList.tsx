@@ -74,7 +74,8 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, isLoading, o
                     {getIconForType(message.message_type)}
                     <CardTitle className="text-lg ml-2">{message.title}</CardTitle>
                   </div>
-                  <Badge variant={message.status === 'delivered' ? 'success' : 'default'}>
+                  <Badge variant={message.status === 'delivered' ? 'secondary' : 'default'} 
+                         className={message.status === 'delivered' ? 'bg-green-500 text-white' : ''}>
                     {message.status}
                   </Badge>
                 </div>
