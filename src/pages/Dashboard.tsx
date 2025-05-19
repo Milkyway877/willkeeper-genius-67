@@ -3,7 +3,7 @@ import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Shield, Bell, TimerReset } from 'lucide-react';
+import { AlertTriangle, Shield } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { getDashboardSummary } from '@/services/dashboardService';
@@ -52,24 +52,6 @@ export default function Dashboard() {
           {/* Death Verification Widget */}
           <DeathVerificationWidget />
           
-          {/* Tank Quick Access Card */}
-          <Card className="border rounded-lg shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center mb-4">
-                <TimerReset className="mr-2 h-5 w-5 text-willtank-600" />
-                <h3 className="font-medium text-lg">The Tank</h3>
-              </div>
-              <p className="text-gray-600 mb-4">
-                Create and manage future messages, trusted contacts, and automated check-ins all in one place.
-              </p>
-              <Link to="/tank">
-                <Button variant="outline" className="w-full">
-                  Go to The Tank
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-          
           {/* Death Verification Testing Card */}
           <Card className="border rounded-lg shadow-sm">
             <CardContent className="p-6">
@@ -83,24 +65,6 @@ export default function Dashboard() {
               <Link to="/test-death-verification">
                 <Button variant="outline" className="w-full">
                   Test Death Verification Flow
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-          
-          {/* Check-ins Card */}
-          <Card className="border rounded-lg shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center mb-4">
-                <Bell className="mr-2 h-5 w-5 text-blue-500" />
-                <h3 className="font-medium text-lg">Check-ins</h3>
-              </div>
-              <p className="text-gray-600 mb-4">
-                Set up automatic check-ins that require your response. If you miss them, trusted contacts will be notified.
-              </p>
-              <Link to="/tank?tab=check-ins">
-                <Button variant="outline" className="w-full">
-                  Manage Check-ins
                 </Button>
               </Link>
             </CardContent>

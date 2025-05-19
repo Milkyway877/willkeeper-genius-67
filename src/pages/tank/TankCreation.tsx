@@ -13,11 +13,9 @@ import { TankLetterCreator } from './components/creators/TankLetterCreator';
 import { TankVideoCreator } from './components/creators/TankVideoCreator';
 import { TankAudioCreator } from './components/creators/TankAudioCreator';
 import { TankDocumentCreator } from './components/creators/TankDocumentCreator';
-import { TankCheckInCreator } from './components/creators/TankCheckInCreator';
 import { TankDeliverySettings } from './components/creators/TankDeliverySettings';
 import { TankReview } from './components/creators/TankReview';
-import { MessageCategory, DeliveryTrigger, FrequencyInterval } from './types';
-import { useLocation } from 'react-router-dom';
+import { MessageCategory, DeliveryTrigger } from './types';
 
 // Define steps for regular future messages
 const standardSteps = [
@@ -49,10 +47,6 @@ const standardSteps = [
 ];
 
 export default function TankCreation() {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const typeParam = searchParams.get('type');
-  
   const {
     currentStep,
     creationType,
@@ -66,7 +60,6 @@ export default function TankCreation() {
     isGenerating,
     progress,
     messageUrl,
-    frequency,
     setCreationType,
     setDeliveryType,
     setMessageContent,
@@ -76,37 +69,22 @@ export default function TankCreation() {
     setMessageCategory,
     setDeliveryDate,
     setMessageUrl,
-    setFrequency,
     handleNext,
     handlePrev,
     handleCancel,
-    handleFinalize,
-    setCurrentStep
+    handleFinalize
   } = useTankCreation();
 
   useEffect(() => {
     // Redirect users with willId in URL to will-specific pages
-    const willIdParam = searchParams.get('willId');
+    const queryParams = new URLSearchParams(window.location.search);
+    const willIdParam = queryParams.get('willId');
     
     if (willIdParam) {
       // If there's a willId in the URL, redirect to the dedicated will video recording page
       window.location.href = `/will/video-creation/${willIdParam}`;
-      return;
     }
-    
-    // Handle direct link to specific message type
-    if (typeParam && ['letter', 'video', 'audio', 'document', 'check-in'].includes(typeParam)) {
-      setCreationType(typeParam as any);
-      setCurrentStep(1); // Skip to the creator step
-    }
-  }, [searchParams, typeParam, setCreationType, setCurrentStep]);
-  
-  // Set appropriate delivery type for check-ins
-  useEffect(() => {
-    if (creationType === 'check-in') {
-      setDeliveryType('recurring');
-    }
-  }, [creationType, setDeliveryType]);
+  }, []);
 
   const renderCreationComponent = () => {
     switch (creationType) {
@@ -141,14 +119,6 @@ export default function TankCreation() {
                  onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
                  onDocumentUrlChange={setMessageUrl}
                />;
-      case 'check-in':
-        return <TankCheckInCreator
-                 onContentChange={setMessageContent}
-                 onTitleChange={setMessageTitle}
-                 onRecipientChange={setRecipientName}
-                 onCategoryChange={(category: MessageCategory) => setMessageCategory(category)}
-                 onFrequencyChange={(frequency: FrequencyInterval) => setFrequency(frequency)}
-               />;
       default:
         return <div>Please select a message type</div>;
     }
@@ -161,22 +131,14 @@ export default function TankCreation() {
       case 1:
         return renderCreationComponent();
       case 2:
-        // Skip delivery method selection for check-ins
-        if (creationType === 'check-in') {
-          handleNext();
-          return <div>Loading...</div>;
-        }
         return <DeliveryMethodSelector onSelect={setDeliveryType} />;
       case 3:
         return <TankDeliverySettings 
                  deliveryType={deliveryType as DeliveryTrigger} 
                  deliveryDate={deliveryDate}
                  recipientEmail={recipientEmail}
-                 frequency={frequency}
-                 isCheckIn={creationType === 'check-in'}
                  onDateChange={(date: Date) => setDeliveryDate(date)}
                  onEmailChange={setRecipientEmail}
-                 onFrequencyChange={(freq: FrequencyInterval) => setFrequency(freq)}
                />;
       case 4:
         return <TankReview 
@@ -186,7 +148,6 @@ export default function TankCreation() {
                  recipientEmail={recipientEmail}
                  deliveryType={deliveryType as DeliveryTrigger}
                  deliveryDate={deliveryDate ? deliveryDate.toISOString() : ''}
-                 frequency={frequency}
                  onFinalize={handleFinalize}
                  isGenerating={isGenerating}
                  progress={progress}

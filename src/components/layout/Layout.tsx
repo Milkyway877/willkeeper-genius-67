@@ -4,6 +4,8 @@ import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
 import { PageTransition } from '@/components/animations/PageTransition';
 import { cn } from '@/lib/utils';
+import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
+import { FloatingHelp } from '@/components/ui/FloatingHelp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,19 +72,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       checkAuthStatus();
     }
   }, [forceAuthenticated, location.pathname, navigate, profile]);
-  
-  // Handle tab selection from state
-  useEffect(() => {
-    if (location.state?.activeTab && location.pathname === '/tank') {
-      const tankTabElement = document.querySelector(`[data-value="${location.state.activeTab}"]`);
-      if (tankTabElement && 'click' in tankTabElement) {
-        (tankTabElement as HTMLElement).click();
-      }
-      
-      // Clear the state to avoid repeated clicks
-      window.history.replaceState(null, '');
-    }
-  }, [location]);
   
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
@@ -164,6 +153,13 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             </PageTransition>
           </div>
         </main>
+        
+        {showAuthenticatedLayout && (
+          <>
+            <FloatingAssistant />
+            <FloatingHelp />
+          </>
+        )}
       </motion.div>
     </div>
   );

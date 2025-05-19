@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, FileText, Video, FileAudio, File, Bell } from 'lucide-react';
+import { Check, FileText, Video, FileAudio, File } from 'lucide-react';
 import { MessageType } from '../../types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -71,19 +71,6 @@ export const MessageTypeSelector = ({ onSelect }: MessageTypeSelectorProps) => {
         'Upload multiple documents',
         'Advanced encryption and security',
         'Structured organization with AI assistance'
-      ]
-    },
-    {
-      type: 'check-in' as MessageType,
-      title: 'Recurring Check-In',
-      icon: Bell,
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-amber-600',
-      description: 'Set up automated check-in messages that require your response at regular intervals',
-      features: [
-        'Customizable frequency settings',
-        'Automatic notifications to trusted contacts',
-        'Simple one-click response system'
       ]
     }
   ];

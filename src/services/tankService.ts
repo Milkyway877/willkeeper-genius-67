@@ -1,6 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
-import { MessageCategory, FrequencyInterval } from "@/pages/tank/types";
+import { MessageCategory } from "@/pages/tank/types";
 import { EventType } from "@/services/notificationService";
 import { toast } from "@/hooks/use-toast";
 
@@ -22,9 +23,6 @@ export interface FutureMessage {
   updated_at: string | null;
   is_encrypted: boolean;
   category: MessageCategory | null;
-  frequency: FrequencyInterval | null;
-  last_check_in_response?: string | null;
-  trusted_contacts?: string[] | null;
 }
 
 export const getFutureMessages = async (): Promise<FutureMessage[]> => {
@@ -349,116 +347,5 @@ export const getValidStatusValues = async (): Promise<string[] | null> => {
   } catch (error) {
     console.error('Error in getValidStatusValues:', error);
     return null;
-  }
-};
-
-// New function to send status checks to contacts
-export const sendStatusChecks = async (): Promise<boolean> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      console.error('No authenticated user found');
-      return false;
-    }
-    
-    const { data, error } = await supabase.functions.invoke('send-status-check', {
-      body: { userId: session.user.id }
-    });
-    
-    if (error) {
-      console.error('Error sending status checks:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send status checks. Please try again.",
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    console.log('Status check response:', data);
-    
-    if (data.success) {
-      toast({
-        title: "Status Checks Sent",
-        description: `Successfully sent ${data.stats?.successful || 0} status check emails.`,
-      });
-      
-      await createSystemNotification('info', {
-        title: 'Status Checks Sent',
-        description: `Successfully sent status checks to your contacts.`
-      });
-      
-      return true;
-    } else {
-      throw new Error(data.message || 'Unknown error');
-    }
-  } catch (error) {
-    console.error('Error in sendStatusChecks:', error);
-    toast({
-      title: "Error",
-      description: "Failed to send status checks.",
-      variant: "destructive"
-    });
-    return false;
-  }
-};
-
-// Function to create check-in message
-export const createCheckInMessage = async (
-  checkInData: {
-    title: string;
-    recipientEmail: string;
-    content: string;
-    frequency: FrequencyInterval;
-  }
-): Promise<FutureMessage | null> => {
-  try {
-    const message = {
-      title: checkInData.title,
-      recipient_name: checkInData.recipientEmail.split('@')[0] || 'User',
-      recipient_email: checkInData.recipientEmail,
-      message_type: 'check-in',
-      content: checkInData.content,
-      status: 'scheduled',
-      preview: checkInData.content.substring(0, 100) + (checkInData.content.length > 100 ? '...' : ''),
-      delivery_type: 'recurring',
-      delivery_date: new Date().toISOString(),
-      category: 'check-in',
-      frequency: checkInData.frequency
-    };
-    
-    return await createFutureMessage(message as any);
-  } catch (error) {
-    console.error('Error creating check-in message:', error);
-    return null;
-  }
-};
-
-// Function to respond to a check-in
-export const respondToCheckIn = async (checkInId: string): Promise<boolean> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('confirm-check-in', {
-      body: { checkInId }
-    });
-    
-    if (error) {
-      console.error('Error responding to check-in:', error);
-      return false;
-    }
-    
-    if (data.success) {
-      // Update the message with last response time
-      await updateFutureMessage(checkInId, {
-        last_check_in_response: new Date().toISOString()
-      });
-      
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Error in respondToCheckIn:', error);
-    return false;
   }
 };
