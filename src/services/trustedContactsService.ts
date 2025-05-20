@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { sendTrustedContactInvitation } from './emailService';
@@ -329,8 +328,19 @@ export const resendInvitation = async (contactId: string): Promise<boolean> => {
   }
 };
 
+// Interface for status check response
+interface StatusCheckResponse {
+  success: boolean;
+  error?: string;
+  stats?: {
+    total?: number;
+    successful?: number;
+    failed?: number;
+  };
+}
+
 // Method to trigger a status check for all contacts
-export const triggerStatusCheck = async (): Promise<{ success: boolean; error?: string }> => {
+export const triggerStatusCheck = async (): Promise<StatusCheckResponse> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     

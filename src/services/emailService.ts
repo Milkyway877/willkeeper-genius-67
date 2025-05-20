@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 
@@ -236,8 +235,19 @@ export const sendReminderToTrustedContact = async (
   }
 };
 
+// Interface for status check response
+interface StatusCheckResponse {
+  success: boolean;
+  error?: string;
+  stats?: {
+    total?: number;
+    successful?: number;
+    failed?: number;
+  };
+}
+
 // Function to trigger a status check for a user
-export const triggerStatusCheck = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+export const triggerStatusCheck = async (userId: string): Promise<StatusCheckResponse> => {
   try {
     console.log(`Triggering status check for user: ${userId}`);
     
