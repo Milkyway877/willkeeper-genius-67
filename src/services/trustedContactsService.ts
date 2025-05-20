@@ -1,5 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
+import { sendTrustedContactInvitation } from './emailService';
 
 export interface TrustedContact {
   id: string;
@@ -72,9 +74,6 @@ export const createTrustedContact = async (contact: {
       return null;
     }
     
-    // We'll handle notifications in the component now
-    // using the createSystemNotificationFallback function
-    
     return data;
   } catch (error) {
     console.error('Error in createTrustedContact:', error);
@@ -122,6 +121,7 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
   }
 };
 
+// Send verification request using the trusted contact invitation service
 export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
   try {
     // Get contact details
@@ -154,78 +154,114 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Attempt to call the edge function but with better error handling
+    // Try using the emailService function first
     try {
-      // Update the contact with the invitation sent timestamp first
-      // This way we at least mark an attempt was made
-      await supabase
-        .from('trusted_contacts')
-        .update({
-          invitation_sent_at: new Date().toISOString(),
-          invitation_status: 'pending'
-        })
-        .eq('id', contactId);
-        
-      // Create the invitation request to be sent via edge function
-      const invitationRequest = {
-        contact: {
-          contactId: contact.id,
-          contactType: 'trusted',
-          name: contact.name,
-          email: contact.email,
-          userId: session.user.id,
-          userFullName
-        },
-        emailDetails: {
-          subject: `Important: ${userFullName} has named you as a trusted contact`,
-          includeVerificationInstructions: true,
-          includeUserBio: true,
-          priority: 'high'
-        }
-      };
+      console.log('Sending verification request via emailService');
+      const result = await sendTrustedContactInvitation(
+        contactId,
+        contact.name,
+        contact.email
+      );
       
-      // First try using fetch with the edge function
+      if (result.success) {
+        console.log('Verification request sent successfully via emailService');
+        return true;
+      } else {
+        console.error('emailService failed, trying direct methods');
+        throw new Error(result.error || 'emailService failed');
+      }
+    } catch (emailServiceError) {
+      console.error('Error with emailService:', emailServiceError);
+      
+      // Direct fallback - update the contact status first
       try {
-        const emailResponse = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-          },
-          body: JSON.stringify(invitationRequest)
+        await supabase
+          .from('trusted_contacts')
+          .update({
+            invitation_sent_at: new Date().toISOString(),
+            invitation_status: 'pending'
+          })
+          .eq('id', contactId);
+      } catch (updateError) {
+        console.error('Error updating contact status:', updateError);
+        // Continue anyway
+      }
+      
+      // Try direct function invocation
+      try {
+        console.log('Attempting to send verification via direct invoke');
+        
+        const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
+          body: {
+            contact: {
+              contactId: contact.id,
+              contactType: 'trusted',
+              name: contact.name,
+              email: contact.email,
+              userId: session.user.id,
+              userFullName
+            },
+            emailDetails: {
+              subject: `Important: ${userFullName} has named you as a trusted contact`,
+              includeVerificationInstructions: false,
+              includeUserBio: true,
+              priority: 'high'
+            }
+          }
         });
         
-        if (!emailResponse.ok) {
-          const errorData = await emailResponse.json();
-          console.error('Error from invitation edge function:', errorData);
-          throw new Error('Edge function error');
+        if (fnError) {
+          console.error('Error from functions.invoke:', fnError);
+          throw new Error('Functions invoke error');
         }
         
+        console.log('Verification sent successfully via direct invoke');
         return true;
-      } catch (fetchError) {
-        console.error('Fetch error with edge function:', fetchError);
+      } catch (invokeError) {
+        console.error('Error with direct invoke:', invokeError);
         
-        // Try direct functions invoke as a fallback
+        // Try fetch as final fallback
         try {
-          const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
-            body: invitationRequest
+          console.log('Attempting to send verification via fetch');
+          
+          const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+              'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+            },
+            body: JSON.stringify({
+              contact: {
+                contactId: contact.id,
+                contactType: 'trusted',
+                name: contact.name,
+                email: contact.email,
+                userId: session.user.id,
+                userFullName
+              },
+              emailDetails: {
+                subject: `Important: ${userFullName} has named you as a trusted contact`,
+                includeVerificationInstructions: false,
+                includeUserBio: true,
+                priority: 'high'
+              }
+            })
           });
           
-          if (fnError) {
-            console.error('Error from functions.invoke:', fnError);
-            throw new Error('Functions invoke error');
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error from fetch:', errorData);
+            throw new Error('Fetch error');
           }
           
+          console.log('Verification sent successfully via fetch');
           return true;
-        } catch (invokeError) {
-          console.error('Error with functions.invoke:', invokeError);
-          throw new Error('All email sending methods failed');
+        } catch (fetchError) {
+          console.error('Error with fetch:', fetchError);
+          return false;
         }
       }
-    } catch (error) {
-      console.error('Error sending verification request:', error);
-      return false;
     }
   } catch (error) {
     console.error('Error in sendVerificationRequest:', error);
@@ -257,6 +293,18 @@ export const checkInvitationStatus = async (contactId: string): Promise<string> 
 // Method to resend an invitation
 export const resendInvitation = async (contactId: string): Promise<boolean> => {
   try {
+    // Get contact details first
+    const { data: contact, error: contactError } = await supabase
+      .from('trusted_contacts')
+      .select('name, email')
+      .eq('id', contactId)
+      .single();
+      
+    if (contactError || !contact) {
+      console.error('Error fetching contact for resend:', contactError);
+      return false;
+    }
+    
     // Reset invitation status
     await supabase
       .from('trusted_contacts')
@@ -266,9 +314,75 @@ export const resendInvitation = async (contactId: string): Promise<boolean> => {
       })
       .eq('id', contactId);
       
-    return await sendVerificationRequest(contactId);
+    // Use the emailService to send the invitation
+    const result = await sendTrustedContactInvitation(
+      contactId,
+      contact.name,
+      contact.email,
+      "This is a reminder about your role as a trusted contact."
+    );
+    
+    return result.success;
   } catch (error) {
     console.error('Error in resendInvitation:', error);
     return false;
+  }
+};
+
+// Method to trigger a status check for all contacts
+export const triggerStatusCheck = async (): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('No authenticated user found');
+      return { success: false, error: 'Not authenticated' };
+    }
+    
+    // Try direct functions invoke first
+    try {
+      console.log('Attempting status check via direct invoke');
+      const { data, error: fnError } = await supabase.functions.invoke('send-status-check', {
+        body: { userId: session.user.id }
+      });
+      
+      if (fnError) {
+        console.error('Error from functions.invoke:', fnError);
+        throw new Error(fnError.message || 'Failed to send status check via functions invoke');
+      }
+      
+      return { success: true, stats: data?.stats };
+    } catch (invokeError) {
+      console.error('Error with functions.invoke for status check:', invokeError);
+      
+      // Try fetch as fallback
+      try {
+        console.log('Attempting status check via fetch');
+        const response = await fetch(`${window.location.origin}/functions/v1/send-status-check`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_PUBLISHABLE_KEY || ''
+          },
+          body: JSON.stringify({ userId: session.user.id })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Error sending status check:', errorData);
+          throw new Error(errorData.message || 'Failed to send status check');
+        }
+        
+        const responseData = await response.json();
+        return { success: true, stats: responseData.stats };
+      } catch (fetchError) {
+        console.error('Fetch error with send-status-check:', fetchError);
+        throw new Error('All methods to trigger status check failed');
+      }
+    }
+  } catch (error) {
+    console.error('Error in triggerStatusCheck:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 };

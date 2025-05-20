@@ -31,36 +31,38 @@ serve(async (req) => {
     // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Generate verification token
-    const verificationToken = crypto.randomUUID();
+    // Log the incoming data for debugging
+    console.log('Processing invitation for contact:', JSON.stringify({
+      contactId: contact.contactId,
+      email: contact.email,
+      name: contact.name,
+      userId: contact.userId
+    }));
     
     // Set expiration date (30 days from now)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
     
-    // Create verification record
+    // Create verification record - this is just for tracking, not for requiring action
     const { error: verificationError } = await supabase
       .from('contact_verifications')
       .insert({
         contact_id: contact.contactId,
-        contact_type: contact.contactType,
-        verification_token: verificationToken,
+        contact_type: contact.contactType || 'trusted',
+        verification_token: crypto.randomUUID(), // Generate token but won't require user to click
         expires_at: expiresAt.toISOString(),
         user_id: contact.userId
       });
     
     if (verificationError) {
       console.error('Error creating verification record:', verificationError);
-      return new Response(
-        JSON.stringify({ success: false, error: "Failed to create verification record" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Continue anyway - we can still send the email even if record creation fails
     }
     
     // Get Resend client
     const resend = getResendClient();
     
-    // Prepare email content - Updated to be more informational
+    // Prepare email content - Pure informational version
     let emailHtml = `
       <h1>Important Information: You've Been Named as a Trusted Contact</h1>
       <p>Hello ${contact.name},</p>
@@ -77,7 +79,7 @@ serve(async (req) => {
     `;
     
     // Add any custom message if provided
-    if (emailDetails.customMessage) {
+    if (emailDetails?.customMessage) {
       emailHtml += `
         <div style="margin: 20px 0; padding: 15px; border-left: 4px solid #4a6cf7; background-color: #f9fafb;">
           <h3>Message from ${contact.userFullName}:</h3>
@@ -94,12 +96,14 @@ serve(async (req) => {
         <p>For more information, visit <a href="https://willtank.com">willtank.com</a></p>
       </div>
     `;
+
+    console.log('Sending informational email to:', contact.email);
     
     // Send email
     const emailResponse = await resend.emails.send({
       from: "WillTank <notifications@willtank.com>",
       to: [contact.email],
-      subject: emailDetails.subject || `${contact.userFullName} has named you as a trusted contact`,
+      subject: emailDetails?.subject || `${contact.userFullName} has named you as a trusted contact`,
       html: buildDefaultEmailLayout(emailHtml),
       tags: [
         {
@@ -108,33 +112,47 @@ serve(async (req) => {
         },
         {
           name: "contact_type",
-          value: contact.contactType
+          value: contact.contactType || 'trusted'
         }
       ]
     });
     
-    // Update the contact with the invitation sent timestamp
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Update the contact with the invitation sent timestamp regardless of the email success
+    // Create a new client instance to avoid any potential issues
+    const dbClient = createClient(supabaseUrl, supabaseServiceKey);
     
-    await supabase
-      .from('trusted_contacts')
-      .update({
-        invitation_sent_at: new Date().toISOString(),
-        invitation_status: 'sent'
-      })
-      .eq('id', contact.contactId);
+    try {
+      await dbClient
+        .from('trusted_contacts')
+        .update({
+          invitation_sent_at: new Date().toISOString(),
+          invitation_status: 'sent'
+        })
+        .eq('id', contact.contactId);
+        
+      console.log('Contact status updated successfully for ID:', contact.contactId);
+    } catch (dbError) {
+      console.error('Error updating contact status:', dbError);
+    }
     
-    // Log the invitation
-    await supabase.from('death_verification_logs').insert({
-      user_id: contact.userId,
-      action: 'trusted_contact_invitation_sent',
-      details: {
-        contact_id: contact.contactId,
-        contact_name: contact.name,
-        contact_email: contact.email,
-        email_id: emailResponse.id
-      }
-    });
+    // Log the invitation (even if email fails)
+    try {
+      await dbClient.from('death_verification_logs').insert({
+        user_id: contact.userId,
+        action: 'trusted_contact_invitation_sent',
+        details: {
+          contact_id: contact.contactId,
+          contact_name: contact.name,
+          contact_email: contact.email,
+          email_id: emailResponse.id || 'email_failed',
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      console.log('Invitation logged successfully');
+    } catch (logError) {
+      console.error('Error logging invitation:', logError);
+    }
     
     return new Response(
       JSON.stringify({ 
