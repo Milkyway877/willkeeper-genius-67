@@ -1,1 +1,54 @@
-project_id = "cshnqojdrlfxbidqxwwz"
+
+project_id = "ksiinmxsycosnpchutuw"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[functions]
+[functions.message-ai]
+verify_jwt = true
+
+[functions.send-future-message]
+verify_jwt = false
+
+[functions.check-scheduled-messages]
+verify_jwt = false
+
+[functions.test-message-delivery]
+verify_jwt = false
+
+[functions.get-function-logs]
+verify_jwt = false
+
+[functions.unified-will-assistant]
+verify_jwt = true
+
+[functions.create-notification]
+verify_jwt = true
+
+[functions.send-contact-invitation]
+verify_jwt = false
+
+[functions.send-status-check]
+verify_jwt = false

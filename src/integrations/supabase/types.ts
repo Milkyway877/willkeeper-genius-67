@@ -9,40 +9,67 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_interactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          request_type: string | null
+          response: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          request_type?: string | null
+          response?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          request_type?: string | null
+          response?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       contact_verifications: {
         Row: {
           contact_id: string
           contact_type: string
-          created_at: string | null
+          created_at: string
           expires_at: string
           id: string
           responded_at: string | null
           response: string | null
-          updated_at: string | null
+          status: string
           user_id: string
           verification_token: string
         }
         Insert: {
           contact_id: string
           contact_type: string
-          created_at?: string | null
+          created_at?: string
           expires_at: string
           id?: string
           responded_at?: string | null
           response?: string | null
-          updated_at?: string | null
+          status?: string
           user_id: string
           verification_token: string
         }
         Update: {
           contact_id?: string
           contact_type?: string
-          created_at?: string | null
+          created_at?: string
           expires_at?: string
           id?: string
           responded_at?: string | null
           response?: string | null
-          updated_at?: string | null
+          status?: string
           user_id?: string
           verification_token?: string
         }
@@ -51,32 +78,26 @@ export type Database = {
       death_verification_checkins: {
         Row: {
           checked_in_at: string
-          created_at: string | null
+          created_at: string
           id: string
           next_check_in: string
-          notes: string | null
           status: string
-          updated_at: string | null
           user_id: string
         }
         Insert: {
           checked_in_at?: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           next_check_in: string
-          notes?: string | null
-          status?: string
-          updated_at?: string | null
+          status: string
           user_id: string
         }
         Update: {
           checked_in_at?: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           next_check_in?: string
-          notes?: string | null
           status?: string
-          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -84,149 +105,210 @@ export type Database = {
       death_verification_logs: {
         Row: {
           action: string
-          created_at: string | null
           details: Json | null
           id: string
-          ip_address: string | null
-          user_agent: string | null
-          user_id: string
+          timestamp: string | null
+          user_id: string | null
         }
         Insert: {
           action: string
-          created_at?: string | null
           details?: Json | null
           id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_id: string
+          timestamp?: string | null
+          user_id?: string | null
         }
         Update: {
           action?: string
-          created_at?: string | null
           details?: Json | null
           id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_id?: string
+          timestamp?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
       death_verification_pins: {
         Row: {
-          active: boolean | null
-          created_at: string | null
+          created_at: string
           id: string
-          pin_hash: string
-          recovery_code: string | null
-          updated_at: string | null
-          user_id: string
+          person_id: string
+          person_type: string
+          pin_code: string
+          used: boolean
+          used_at: string | null
         }
         Insert: {
-          active?: boolean | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          pin_hash: string
-          recovery_code?: string | null
-          updated_at?: string | null
-          user_id: string
+          person_id: string
+          person_type: string
+          pin_code: string
+          used?: boolean
+          used_at?: string | null
         }
         Update: {
-          active?: boolean | null
-          created_at?: string | null
+          created_at?: string
           id?: string
-          pin_hash?: string
-          recovery_code?: string | null
-          updated_at?: string | null
-          user_id?: string
+          person_id?: string
+          person_type?: string
+          pin_code?: string
+          used?: boolean
+          used_at?: string | null
         }
         Relationships: []
       }
       death_verification_requests: {
         Row: {
-          completed_at: string | null
-          created_at: string | null
+          expires_at: string
           id: string
           initiated_at: string
           status: string
-          updated_at: string | null
           user_id: string
-          verification_details: Json | null
-          verification_result: string | null
+          verification_link: string
+          verification_token: string
         }
         Insert: {
-          completed_at?: string | null
-          created_at?: string | null
+          expires_at: string
           id?: string
           initiated_at?: string
-          status?: string
-          updated_at?: string | null
+          status: string
           user_id: string
-          verification_details?: Json | null
-          verification_result?: string | null
+          verification_link: string
+          verification_token: string
         }
         Update: {
-          completed_at?: string | null
-          created_at?: string | null
+          expires_at?: string
           id?: string
           initiated_at?: string
           status?: string
-          updated_at?: string | null
           user_id?: string
-          verification_details?: Json | null
-          verification_result?: string | null
+          verification_link?: string
+          verification_token?: string
         }
         Relationships: []
       }
+      death_verification_responses: {
+        Row: {
+          id: string
+          request_id: string
+          responded_at: string
+          responder_id: string
+          response: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          responded_at?: string
+          responder_id: string
+          response: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          responded_at?: string
+          responder_id?: string
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "death_verification_responses_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "death_verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       death_verification_settings: {
         Row: {
-          beneficiary_verification_interval: number | null
-          check_in_enabled: boolean | null
-          check_in_frequency: number | null
-          created_at: string | null
-          executor_override_enabled: boolean | null
-          failsafe_enabled: boolean | null
-          grace_period: number | null
+          beneficiary_verification_interval: number
+          check_in_enabled: boolean
+          check_in_frequency: number
+          created_at: string
+          executor_override_enabled: boolean
+          failsafe_enabled: boolean
           id: string
-          notification_preferences: Json | null
-          pin_system_enabled: boolean | null
-          reminder_frequency: number | null
-          trusted_contact_enabled: boolean | null
-          updated_at: string | null
+          notification_preferences: Json
+          pin_system_enabled: boolean
+          trusted_contact_email: string | null
+          trusted_contact_enabled: boolean
+          updated_at: string
           user_id: string
         }
         Insert: {
-          beneficiary_verification_interval?: number | null
-          check_in_enabled?: boolean | null
-          check_in_frequency?: number | null
-          created_at?: string | null
-          executor_override_enabled?: boolean | null
-          failsafe_enabled?: boolean | null
-          grace_period?: number | null
+          beneficiary_verification_interval?: number
+          check_in_enabled?: boolean
+          check_in_frequency?: number
+          created_at?: string
+          executor_override_enabled?: boolean
+          failsafe_enabled?: boolean
           id?: string
-          notification_preferences?: Json | null
-          pin_system_enabled?: boolean | null
-          reminder_frequency?: number | null
-          trusted_contact_enabled?: boolean | null
-          updated_at?: string | null
+          notification_preferences?: Json
+          pin_system_enabled?: boolean
+          trusted_contact_email?: string | null
+          trusted_contact_enabled?: boolean
+          updated_at?: string
           user_id: string
         }
         Update: {
-          beneficiary_verification_interval?: number | null
-          check_in_enabled?: boolean | null
-          check_in_frequency?: number | null
-          created_at?: string | null
-          executor_override_enabled?: boolean | null
-          failsafe_enabled?: boolean | null
-          grace_period?: number | null
+          beneficiary_verification_interval?: number
+          check_in_enabled?: boolean
+          check_in_frequency?: number
+          created_at?: string
+          executor_override_enabled?: boolean
+          failsafe_enabled?: boolean
           id?: string
-          notification_preferences?: Json | null
-          pin_system_enabled?: boolean | null
-          reminder_frequency?: number | null
-          trusted_contact_enabled?: boolean | null
-          updated_at?: string | null
+          notification_preferences?: Json
+          pin_system_enabled?: boolean
+          trusted_contact_email?: string | null
+          trusted_contact_enabled?: boolean
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      email_notifications: {
+        Row: {
+          content: string
+          error: string | null
+          id: string
+          message_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          error?: string | null
+          id?: string
+          message_id?: string | null
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          error?: string | null
+          id?: string
+          message_id?: string | null
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_notifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "future_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_verification_codes: {
         Row: {
@@ -261,129 +343,165 @@ export type Database = {
         }
         Relationships: []
       }
-      encryption_keys: {
+      email_verifications: {
         Row: {
-          algorithm: string
+          code: string
           created_at: string | null
+          email: string
+          expires_at: string
           id: string
-          key_material: string
-          last_used: string | null
-          name: string
-          status: string
-          strength: string
-          type: string
-          updated_at: string | null
+          is_used: boolean | null
           user_id: string
+          verified_at: string | null
         }
         Insert: {
-          algorithm: string
+          code: string
           created_at?: string | null
+          email: string
+          expires_at: string
           id?: string
-          key_material: string
-          last_used?: string | null
-          name: string
-          status?: string
-          strength: string
-          type: string
-          updated_at?: string | null
+          is_used?: boolean | null
           user_id: string
+          verified_at?: string | null
         }
         Update: {
-          algorithm?: string
+          code?: string
           created_at?: string | null
+          email?: string
+          expires_at?: string
           id?: string
-          key_material?: string
-          last_used?: string | null
-          name?: string
-          status?: string
-          strength?: string
-          type?: string
-          updated_at?: string | null
+          is_used?: boolean | null
           user_id?: string
+          verified_at?: string | null
         }
         Relationships: []
       }
       future_messages: {
         Row: {
-          content: string
+          category: string | null
+          content: string | null
           created_at: string | null
-          delivery_condition: string | null
+          delivery_date: string | null
+          delivery_event: string | null
+          delivery_type: string | null
           id: string
+          is_encrypted: boolean | null
+          message_type: string | null
+          message_url: string | null
           preview: string | null
-          recipient_email: string
+          recipient_email: string | null
           recipient_name: string | null
-          scheduled_date: string | null
-          status: string | null
-          subject: string
+          status: Database["public"]["Enums"]["future_message_status"] | null
           title: string | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
-          content: string
+          category?: string | null
+          content?: string | null
           created_at?: string | null
-          delivery_condition?: string | null
+          delivery_date?: string | null
+          delivery_event?: string | null
+          delivery_type?: string | null
           id?: string
+          is_encrypted?: boolean | null
+          message_type?: string | null
+          message_url?: string | null
           preview?: string | null
-          recipient_email: string
+          recipient_email?: string | null
           recipient_name?: string | null
-          scheduled_date?: string | null
-          status?: string | null
-          subject: string
+          status?: Database["public"]["Enums"]["future_message_status"] | null
           title?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
-          content?: string
+          category?: string | null
+          content?: string | null
           created_at?: string | null
-          delivery_condition?: string | null
+          delivery_date?: string | null
+          delivery_event?: string | null
+          delivery_type?: string | null
           id?: string
+          is_encrypted?: boolean | null
+          message_type?: string | null
+          message_url?: string | null
           preview?: string | null
-          recipient_email?: string
+          recipient_email?: string | null
           recipient_name?: string | null
-          scheduled_date?: string | null
-          status?: string | null
-          subject?: string
+          status?: Database["public"]["Enums"]["future_message_status"] | null
           title?: string | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       legacy_vault: {
         Row: {
-          category: string
-          content: Json
+          category: string | null
+          content: string | null
           created_at: string | null
-          encrypted: boolean | null
+          document_url: string | null
           id: string
+          is_encrypted: boolean | null
           preview: string | null
-          title: string
+          title: string | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
-          category: string
-          content: Json
+          category?: string | null
+          content?: string | null
           created_at?: string | null
-          encrypted?: boolean | null
+          document_url?: string | null
           id?: string
+          is_encrypted?: boolean | null
           preview?: string | null
-          title: string
+          title?: string | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
-          category?: string
-          content?: Json
+          category?: string | null
+          content?: string | null
           created_at?: string | null
-          encrypted?: boolean | null
+          document_url?: string | null
           id?: string
+          is_encrypted?: boolean | null
           preview?: string | null
-          title?: string
+          title?: string | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      legacy_vault_ai_suggestions: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_type: string
+          prompt: string
+          suggestion: string
+          used: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_type: string
+          prompt: string
+          suggestion: string
+          used?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_type?: string
+          prompt?: string
+          suggestion?: string
+          used?: boolean | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -392,33 +510,71 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          read: boolean
+          read: boolean | null
           title: string
           type: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           description: string
           id?: string
-          read?: boolean
+          read?: boolean | null
           title: string
           type: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           description?: string
           id?: string
-          read?: boolean
+          read?: boolean | null
           title?: string
           type?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
+      }
+      public_verification_access: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          request_id: string
+          used: boolean
+          used_at: string | null
+          verification_token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          request_id: string
+          used?: boolean
+          used_at?: string | null
+          verification_token: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          request_id?: string
+          used?: boolean
+          used_at?: string | null
+          verification_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_verification_access_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "death_verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -470,7 +626,7 @@ export type Database = {
       }
       trusted_contacts: {
         Row: {
-          created_at: string | null
+          created_at: string
           email: string
           id: string
           invitation_responded_at: string | null
@@ -478,12 +634,12 @@ export type Database = {
           invitation_status: string | null
           name: string
           phone: string | null
-          relation: string | null
-          updated_at: string | null
+          relationship: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           email: string
           id?: string
           invitation_responded_at?: string | null
@@ -491,12 +647,12 @@ export type Database = {
           invitation_status?: string | null
           name: string
           phone?: string | null
-          relation?: string | null
-          updated_at?: string | null
+          relationship?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           email?: string
           id?: string
           invitation_responded_at?: string | null
@@ -504,9 +660,39 @@ export type Database = {
           invitation_status?: string | null
           name?: string
           phone?: string | null
-          relation?: string | null
-          updated_at?: string | null
+          relationship?: string | null
+          updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_activity: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -540,52 +726,49 @@ export type Database = {
       user_profiles: {
         Row: {
           activation_complete: boolean | null
-          activation_date: string | null
           avatar_url: string | null
+          country: string | null
           created_at: string | null
+          date_of_birth: string | null
           email: string | null
           first_name: string | null
           full_name: string | null
-          gender: string | null
           id: string
           last_name: string | null
           onboarding_completed: boolean | null
-          stripe_customer_id: string | null
-          subscription_plan: string | null
+          phone_number: string | null
           updated_at: string | null
           verification_status: string | null
         }
         Insert: {
           activation_complete?: boolean | null
-          activation_date?: string | null
           avatar_url?: string | null
+          country?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
           email?: string | null
           first_name?: string | null
           full_name?: string | null
-          gender?: string | null
           id: string
           last_name?: string | null
           onboarding_completed?: boolean | null
-          stripe_customer_id?: string | null
-          subscription_plan?: string | null
+          phone_number?: string | null
           updated_at?: string | null
           verification_status?: string | null
         }
         Update: {
           activation_complete?: boolean | null
-          activation_date?: string | null
           avatar_url?: string | null
+          country?: string | null
           created_at?: string | null
+          date_of_birth?: string | null
           email?: string | null
           first_name?: string | null
           full_name?: string | null
-          gender?: string | null
           id?: string
           last_name?: string | null
           onboarding_completed?: boolean | null
-          stripe_customer_id?: string | null
-          subscription_plan?: string | null
+          phone_number?: string | null
           updated_at?: string | null
           verification_status?: string | null
         }
@@ -621,113 +804,216 @@ export type Database = {
       user_security: {
         Row: {
           created_at: string | null
-          encryption_key: string
+          encryption_key: string | null
           google_auth_enabled: boolean | null
           google_auth_secret: string | null
           id: string
-          last_login: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
-          encryption_key: string
+          encryption_key?: string | null
           google_auth_enabled?: boolean | null
           google_auth_secret?: string | null
           id?: string
-          last_login?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
-          encryption_key?: string
+          encryption_key?: string | null
           google_auth_enabled?: boolean | null
           google_auth_secret?: string | null
           id?: string
-          last_login?: string | null
           updated_at?: string | null
           user_id?: string
         }
         Relationships: []
       }
+      will_ai_conversations: {
+        Row: {
+          conversation_data: Json
+          created_at: string | null
+          extracted_entities: Json | null
+          id: string
+          updated_at: string | null
+          will_id: string
+        }
+        Insert: {
+          conversation_data: Json
+          created_at?: string | null
+          extracted_entities?: Json | null
+          id?: string
+          updated_at?: string | null
+          will_id: string
+        }
+        Update: {
+          conversation_data?: Json
+          created_at?: string | null
+          extracted_entities?: Json | null
+          id?: string
+          updated_at?: string | null
+          will_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_ai_conversations_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       will_beneficiaries: {
         Row: {
-          allocation_percentage: number | null
           beneficiary_name: string
           created_at: string | null
           email: string | null
           id: string
-          notes: string | null
+          invitation_responded_at: string | null
+          invitation_sent_at: string | null
+          invitation_status: string | null
+          percentage: number | null
           phone: string | null
-          relation: string | null
-          specific_assets: string | null
-          updated_at: string | null
-          user_id: string
+          relationship: string
+          status: string | null
+          user_id: string | null
+          will_id: string | null
         }
         Insert: {
-          allocation_percentage?: number | null
           beneficiary_name: string
           created_at?: string | null
           email?: string | null
           id?: string
-          notes?: string | null
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
+          percentage?: number | null
           phone?: string | null
-          relation?: string | null
-          specific_assets?: string | null
-          updated_at?: string | null
-          user_id: string
+          relationship: string
+          status?: string | null
+          user_id?: string | null
+          will_id?: string | null
         }
         Update: {
-          allocation_percentage?: number | null
           beneficiary_name?: string
           created_at?: string | null
           email?: string | null
           id?: string
-          notes?: string | null
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
+          percentage?: number | null
           phone?: string | null
-          relation?: string | null
-          specific_assets?: string | null
-          updated_at?: string | null
-          user_id?: string
+          relationship?: string
+          status?: string | null
+          user_id?: string | null
+          will_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "will_beneficiaries_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      will_documents: {
+      will_contacts: {
         Row: {
-          created_at: string
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
+          address: string | null
+          created_at: string | null
+          email: string | null
           id: string
+          name: string
+          phone: string | null
+          role: string
           updated_at: string | null
-          user_id: string
           will_id: string
         }
         Insert: {
-          created_at?: string
-          file_name: string
-          file_path: string
-          file_size: number
-          file_type: string
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
           id?: string
+          name: string
+          phone?: string | null
+          role: string
           updated_at?: string | null
-          user_id: string
           will_id: string
         }
         Update: {
-          created_at?: string
-          file_name?: string
-          file_path?: string
-          file_size?: number
-          file_type?: string
+          address?: string | null
+          created_at?: string | null
+          email?: string | null
           id?: string
+          name?: string
+          phone?: string | null
+          role?: string
           updated_at?: string | null
-          user_id?: string
           will_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "will_contacts_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      will_documents: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          description: string | null
+          document_type: string
+          file_path: string
+          file_size: number | null
+          id: string
+          name: string
+          related_contact_id: string | null
+          updated_at: string | null
+          will_id: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          document_type: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          name: string
+          related_contact_id?: string | null
+          updated_at?: string | null
+          will_id: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          document_type?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          name?: string
+          related_contact_id?: string | null
+          updated_at?: string | null
+          will_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_documents_related_contact_id_fkey"
+            columns: ["related_contact_id"]
+            isOneToOne: false
+            referencedRelation: "will_contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "will_documents_will_id_fkey"
             columns: ["will_id"]
@@ -739,92 +1025,97 @@ export type Database = {
       }
       will_executors: {
         Row: {
-          compensation: string | null
           created_at: string | null
-          email: string | null
+          email: string
           id: string
+          invitation_responded_at: string | null
+          invitation_sent_at: string | null
+          invitation_status: string | null
           name: string
-          notes: string | null
-          phone: string | null
-          primary_executor: boolean | null
-          relation: string | null
-          updated_at: string | null
-          user_id: string
+          status: string | null
+          user_id: string | null
+          will_id: string | null
         }
         Insert: {
-          compensation?: string | null
           created_at?: string | null
-          email?: string | null
+          email: string
           id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
           name: string
-          notes?: string | null
-          phone?: string | null
-          primary_executor?: boolean | null
-          relation?: string | null
-          updated_at?: string | null
-          user_id: string
+          status?: string | null
+          user_id?: string | null
+          will_id?: string | null
         }
         Update: {
-          compensation?: string | null
           created_at?: string | null
-          email?: string | null
+          email?: string
           id?: string
+          invitation_responded_at?: string | null
+          invitation_sent_at?: string | null
+          invitation_status?: string | null
           name?: string
-          notes?: string | null
-          phone?: string | null
-          primary_executor?: boolean | null
-          relation?: string | null
-          updated_at?: string | null
-          user_id?: string
+          status?: string | null
+          user_id?: string | null
+          will_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "will_executors_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       will_progress: {
         Row: {
           completedsections: string[] | null
           content: string | null
-          conversation_data: Json[] | null
-          created_at: string | null
+          conversation_data: Json | null
+          created_at: string
           current_step: string
           id: string
           isfinalized: boolean | null
           lasteditedsection: string | null
-          responses: Json | null
+          responses: Json
           template_id: string
           title: string | null
-          updated_at: string | null
+          updated_at: string
           user_id: string
           will_id: string | null
         }
         Insert: {
           completedsections?: string[] | null
           content?: string | null
-          conversation_data?: Json[] | null
-          created_at?: string | null
+          conversation_data?: Json | null
+          created_at?: string
           current_step: string
           id?: string
           isfinalized?: boolean | null
           lasteditedsection?: string | null
-          responses?: Json | null
+          responses?: Json
           template_id: string
           title?: string | null
-          updated_at?: string | null
+          updated_at?: string
           user_id: string
           will_id?: string | null
         }
         Update: {
           completedsections?: string[] | null
           content?: string | null
-          conversation_data?: Json[] | null
-          created_at?: string | null
+          conversation_data?: Json | null
+          created_at?: string
           current_step?: string
           id?: string
           isfinalized?: boolean | null
           lasteditedsection?: string | null
-          responses?: Json | null
+          responses?: Json
           template_id?: string
           title?: string | null
-          updated_at?: string | null
+          updated_at?: string
           user_id?: string
           will_id?: string | null
         }
@@ -838,37 +1129,81 @@ export type Database = {
           },
         ]
       }
+      will_videos: {
+        Row: {
+          created_at: string | null
+          duration: number | null
+          file_path: string
+          id: string
+          thumbnail_path: string | null
+          transcript: string | null
+          updated_at: string | null
+          will_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration?: number | null
+          file_path: string
+          id?: string
+          thumbnail_path?: string | null
+          transcript?: string | null
+          updated_at?: string | null
+          will_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration?: number | null
+          file_path?: string
+          id?: string
+          thumbnail_path?: string | null
+          transcript?: string | null
+          updated_at?: string | null
+          will_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "will_videos_will_id_fkey"
+            columns: ["will_id"]
+            isOneToOne: false
+            referencedRelation: "wills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wills: {
         Row: {
+          ai_generated: boolean | null
           content: string | null
           created_at: string | null
+          document_url: string | null
           id: string
-          is_finalized: boolean | null
           status: string | null
-          template_id: string | null
-          title: string
+          template_type: string | null
+          title: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          ai_generated?: boolean | null
           content?: string | null
           created_at?: string | null
+          document_url?: string | null
           id?: string
-          is_finalized?: boolean | null
           status?: string | null
-          template_id?: string | null
-          title: string
+          template_type?: string | null
+          title?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          ai_generated?: boolean | null
           content?: string | null
           created_at?: string | null
+          document_url?: string | null
           id?: string
-          is_finalized?: boolean | null
           status?: string | null
-          template_id?: string | null
-          title?: string
+          template_type?: string | null
+          title?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -879,30 +1214,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_column_if_not_exists: {
-        Args: { table_name: string; column_name: string; column_type: string }
-        Returns: undefined
-      }
-      check_column_exists: {
-        Args: { table_name: string; column_name: string }
-        Returns: boolean
-      }
-      check_subscription_renewals: {
+      check_missed_checkins: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      create_notification: {
-        Args: {
-          p_user_id: string
-          p_title: string
-          p_description: string
-          p_type: string
-        }
-        Returns: string
+      get_enum_values: {
+        Args: { table_name: string; column_name: string }
+        Returns: string[]
       }
     }
     Enums: {
-      [_ in never]: never
+      future_message_status:
+        | "draft"
+        | "scheduled"
+        | "processing"
+        | "delivered"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1017,6 +1344,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      future_message_status: [
+        "draft",
+        "scheduled",
+        "processing",
+        "delivered",
+        "failed",
+      ],
+    },
   },
 } as const

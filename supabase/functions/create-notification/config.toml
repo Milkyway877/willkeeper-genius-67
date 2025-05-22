@@ -1,6 +1,3 @@
 
-# This config file is used to configure the function when deployed to Supabase
-# Learn more: https://supabase.com/docs/guides/functions/deploy#function-configuration
-
 [functions.create-notification]
 verify_jwt = true
