@@ -1,10 +1,12 @@
 
 import React from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 import { motion } from 'framer-motion';
 import { Shield, FileText, Users, Globe, Zap, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 
 export default function Services() {
   const fadeIn = {
@@ -82,78 +84,85 @@ export default function Services() {
   ];
 
   return (
-    <Layout>
-      <div className="container max-w-6xl py-16 md:py-24">
-        <motion.div 
-          className="text-center mb-16"
-          initial="hidden"
-          animate="visible"
-          variants={fadeIn}
-        >
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Our Services</h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            WillTank provides comprehensive estate planning solutions designed to protect your legacy
-            and provide peace of mind for you and your loved ones.
-          </p>
-        </motion.div>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-1">
+        <div className="container max-w-6xl py-16 md:py-24">
+          <motion.div 
+            className="text-center mb-16"
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+          >
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">Our Services</h1>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              WillTank provides comprehensive estate planning solutions designed to protect your legacy
+              and provide peace of mind for you and your loved ones.
+            </p>
+          </motion.div>
 
-        <motion.div 
-          className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeIn}
-        >
-          {services.map((service, index) => (
-            <motion.div 
-              key={index} 
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
-              whileHover={{ y: -5 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <div className="h-12 w-12 bg-willtank-50 rounded-full flex items-center justify-center mb-4">
-                {React.cloneElement(service.icon, { className: "h-6 w-6 text-willtank-600" })}
-              </div>
-              <h3 className="text-xl font-semibold mb-3">{service.title}</h3>
-              <p className="text-gray-600 mb-4">{service.description}</p>
-              <ul className="space-y-2">
-                {service.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="text-willtank-500 flex-shrink-0 mt-1">•</span>
-                    <span className="text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
-        </motion.div>
+          <motion.div 
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeIn}
+          >
+            {services.map((service, index) => (
+              <motion.div 
+                key={index} 
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+                whileHover={{ y: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="h-12 w-12 bg-willtank-50 rounded-full flex items-center justify-center mb-4">
+                  {React.cloneElement(service.icon, { className: "h-6 w-6 text-willtank-600" })}
+                </div>
+                <h3 className="text-xl font-semibold mb-3">{service.title}</h3>
+                <p className="text-gray-600 mb-4">{service.description}</p>
+                <ul className="space-y-2">
+                  {service.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-willtank-500 flex-shrink-0 mt-1">•</span>
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            ))}
+          </motion.div>
 
-        <motion.div 
-          className="bg-willtank-50 rounded-xl p-8 border border-willtank-100 text-center"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeIn}
-        >
-          <h2 className="text-2xl font-bold mb-4">Ready to get started?</h2>
-          <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-            Choose the plan that's right for you and begin securing your legacy today.
-            All plans come with a 14-day money-back guarantee.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/pricing">
-              <Button className="bg-willtank-600 hover:bg-willtank-700">
-                View Pricing Plans
-              </Button>
-            </Link>
-            <Link to="/contact">
-              <Button variant="outline">
-                Contact Us
-              </Button>
-            </Link>
-          </div>
-        </motion.div>
-      </div>
-    </Layout>
+          <motion.div 
+            className="bg-willtank-50 rounded-xl p-8 border border-willtank-100 text-center"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeIn}
+          >
+            <h2 className="text-2xl font-bold mb-4">Ready to get started?</h2>
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+              Choose the plan that's right for you and begin securing your legacy today.
+              All plans come with a 14-day money-back guarantee.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/pricing">
+                <Button className="bg-willtank-600 hover:bg-willtank-700">
+                  View Pricing Plans
+                </Button>
+              </Link>
+              <Link to="/contact">
+                <Button variant="outline">
+                  Contact Us
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </main>
+      
+      <Footer />
+      <FloatingAssistant />
+    </div>
   );
 }
