@@ -27,7 +27,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function NotificationSettings() {
-  const { preferences, loading, updatePreference } = useNotificationPreferences();
+  const { notificationSettings, loading, updatePreferences } = useNotificationPreferences();
+
+  const handlePreferenceUpdate = (key: keyof typeof notificationSettings, value: boolean) => {
+    const newSettings = { ...notificationSettings, [key]: value };
+    updatePreferences(newSettings);
+  };
 
   const handleTestNotification = async () => {
     try {
@@ -192,8 +197,18 @@ export function NotificationSettings() {
                 <span>Email Notifications</span>
               </div>
               <Switch
-                checked={preferences.documentUpdates}
-                onCheckedChange={(checked) => updatePreference('documentUpdates', checked)}
+                checked={notificationSettings.email}
+                onCheckedChange={(checked) => handlePreferenceUpdate('email', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Bell className="h-5 w-5 text-gray-400 mr-3" />
+                <span>App Notifications</span>
+              </div>
+              <Switch
+                checked={notificationSettings.app}
+                onCheckedChange={(checked) => handlePreferenceUpdate('app', checked)}
               />
             </div>
           </div>
@@ -202,45 +217,16 @@ export function NotificationSettings() {
         <div>
           <h4 className="font-medium mb-4">Notification Types</h4>
           <div className="space-y-4">
-            {Object.entries({
-              securityAlerts: {
-                title: 'Security Alerts',
-                description: 'Notifications about security-related events'
-              },
-              documentUpdates: {
-                title: 'Document Updates',
-                description: 'Notifications about changes to your documents'
-              },
-              legalChanges: {
-                title: 'Legal Changes',
-                description: 'Updates about legal changes that may affect your will'
-              },
-              executorActivities: {
-                title: 'Executor Activities',
-                description: 'Notifications about executor verification and actions'
-              },
-              marketingEmails: {
-                title: 'Marketing Emails',
-                description: 'Promotional emails and offers'
-              },
-              willtankUpdates: {
-                title: 'WillTank Updates',
-                description: 'Notifications about new features and updates'
-              }
-            }).map(([key, { title, description }]) => (
-              <div key={key} className="flex items-center justify-between">
-                <div>
-                  <h5 className="text-sm font-medium">{title}</h5>
-                  <p className="text-xs text-gray-500">{description}</p>
-                </div>
-                <Switch
-                  checked={preferences[key as keyof typeof preferences]}
-                  onCheckedChange={(checked) => 
-                    updatePreference(key as keyof typeof preferences, checked)
-                  }
-                />
+            <div className="flex items-center justify-between">
+              <div>
+                <h5 className="text-sm font-medium">Marketing Emails</h5>
+                <p className="text-xs text-gray-500">Promotional emails and offers</p>
               </div>
-            ))}
+              <Switch
+                checked={notificationSettings.marketing}
+                onCheckedChange={(checked) => handlePreferenceUpdate('marketing', checked)}
+              />
+            </div>
           </div>
         </div>
       </div>

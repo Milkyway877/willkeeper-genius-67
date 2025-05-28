@@ -4,28 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { FileText, Clock, CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
-import { getFutureMessages } from '@/services/tankService';
-
-interface FutureMessage {
-  id: string;
-  user_id: string;
-  title: string;
-  content: string;
-  recipient_email: string;
-  recipient_name: string;
-  subject: string;
-  scheduled_date: string;
-  delivery_condition: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  preview: string;
-  message_type?: string;
-  message_url?: string;
-  delivery_type?: string;
-  delivery_date?: string;
-  category?: string;
-}
+import { getFutureMessages, FutureMessage } from '@/services/tankService';
 
 export const TankAnalytics: React.FC = () => {
   const [messages, setMessages] = useState<FutureMessage[]>([]);
@@ -39,16 +18,7 @@ export const TankAnalytics: React.FC = () => {
     try {
       setLoading(true);
       const data = await getFutureMessages();
-      // Transform data to match our interface
-      const transformedData: FutureMessage[] = data.map(msg => ({
-        ...msg,
-        message_type: msg.message_type || 'letter',
-        message_url: msg.message_url || '',
-        delivery_type: msg.delivery_condition || 'scheduled',
-        delivery_date: msg.scheduled_date || msg.delivery_date,
-        category: msg.category || 'personal',
-      }));
-      setMessages(transformedData);
+      setMessages(data);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
     } finally {
@@ -78,9 +48,9 @@ export const TankAnalytics: React.FC = () => {
 
   // Monthly delivery schedule
   const monthlyData = messages
-    .filter(m => m.delivery_date || m.scheduled_date)
+    .filter(m => m.delivery_date)
     .reduce((acc, message) => {
-      const date = new Date(message.delivery_date || message.scheduled_date);
+      const date = new Date(message.delivery_date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       acc[monthKey] = (acc[monthKey] || 0) + 1;
       return acc;
@@ -252,7 +222,7 @@ export const TankAnalytics: React.FC = () => {
                     {message.status}
                   </Badge>
                   <span className="text-sm text-gray-500">
-                    {new Date(message.created_at).toLocaleDateString()}
+                    {new Date(message.created_at || '').toLocaleDateString()}
                   </span>
                 </div>
               </div>
