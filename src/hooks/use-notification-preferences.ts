@@ -4,25 +4,28 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface NotificationPreferences {
-  securityAlerts: boolean;
-  documentUpdates: boolean;
-  legalChanges: boolean;
-  executorActivities: boolean;
-  marketingEmails: boolean;
-  willtankUpdates: boolean;
+  email: boolean;
+  app: boolean;
+  marketing: boolean;
 }
 
-const defaultPreferences: NotificationPreferences = {
-  securityAlerts: true,
-  documentUpdates: true,
-  legalChanges: true,
-  executorActivities: true,
-  marketingEmails: false,
-  willtankUpdates: true,
-};
+export interface PrivacyPreferences {
+  data_sharing: boolean;
+  activity_tracking: boolean;
+}
 
 export function useNotificationPreferences() {
-  const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationPreferences>({
+    email: true,
+    app: true,
+    marketing: false,
+  });
+  
+  const [privacySettings, setPrivacySettings] = useState<PrivacyPreferences>({
+    data_sharing: false,
+    activity_tracking: true,
+  });
+  
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -33,86 +36,79 @@ export function useNotificationPreferences() {
   const fetchPreferences = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        console.warn('No user session found');
-        setLoading(false);
-        return;
-      }
+      if (!session?.user) return;
 
       const { data, error } = await supabase
         .from('user_preferences')
-        .select('notification_settings')
+        .select('notification_settings, privacy_settings')
         .eq('user_id', session.user.id)
-        .maybeSingle();
+        .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
 
-      if (data?.notification_settings) {
-        setPreferences({
-          ...defaultPreferences,
-          ...data.notification_settings
-        });
-      } else {
-        // Create default preferences if none exist
-        await supabase
-          .from('user_preferences')
-          .insert({
-            user_id: session.user.id,
-            notification_settings: defaultPreferences
-          });
+      if (data) {
+        const notifSettings = data.notification_settings as any;
+        const privSettings = data.privacy_settings as any;
+        
+        if (notifSettings) {
+          setNotificationSettings(notifSettings);
+        }
+        if (privSettings) {
+          setPrivacySettings(privSettings);
+        }
       }
     } catch (error) {
       console.error('Error fetching preferences:', error);
-      toast({
-        title: 'Error loading preferences',
-        description: 'Failed to load your notification preferences.',
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const updatePreference = async (key: keyof NotificationPreferences, value: boolean) => {
+  const updatePreferences = async (newNotificationSettings?: NotificationPreferences, newPrivacySettings?: PrivacyPreferences) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        throw new Error('No user session found');
-      }
+      if (!session?.user) return;
 
-      const updatedPreferences = { ...preferences, [key]: value };
-      setPreferences(updatedPreferences);
+      const finalNotificationSettings = newNotificationSettings || notificationSettings;
+      const finalPrivacySettings = newPrivacySettings || privacySettings;
 
       const { error } = await supabase
         .from('user_preferences')
         .upsert({
           user_id: session.user.id,
-          notification_settings: updatedPreferences
+          notification_settings: finalNotificationSettings as any,
+          privacy_settings: finalPrivacySettings as any,
         });
 
       if (error) throw error;
 
+      if (newNotificationSettings) {
+        setNotificationSettings(newNotificationSettings);
+      }
+      if (newPrivacySettings) {
+        setPrivacySettings(newPrivacySettings);
+      }
+
       toast({
-        title: 'Preferences updated',
-        description: 'Your notification preferences have been saved.',
+        title: 'Preferences Updated',
+        description: 'Your preferences have been saved successfully.',
       });
     } catch (error) {
-      console.error('Error updating preference:', error);
-      // Revert the change
-      setPreferences(preferences);
+      console.error('Error updating preferences:', error);
       toast({
-        title: 'Update failed',
-        description: 'Failed to update your notification preferences.',
+        title: 'Error',
+        description: 'Failed to update preferences. Please try again.',
         variant: 'destructive',
       });
     }
   };
 
   return {
-    preferences,
+    notificationSettings,
+    privacySettings,
     loading,
-    updatePreference
+    updatePreferences,
   };
 }
