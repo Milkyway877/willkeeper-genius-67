@@ -8,9 +8,18 @@ import { DashboardRecentActivity } from '@/components/dashboard/DashboardRecentA
 import { NotificationTester } from '@/components/debug/NotificationTester';
 import { Button } from '@/components/ui/button';
 import { Bug } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getDashboardSummary } from '@/services/dashboardService';
 
 export default function Dashboard() {
   const [showDebug, setShowDebug] = useState(false);
+  
+  // Fetch dashboard data
+  const { data: dashboardData, isLoading, error } = useQuery({
+    queryKey: ['dashboardSummary'],
+    queryFn: getDashboardSummary,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
   
   // Always show debug tools in development/testing environments
   const isDev = () => {
@@ -49,6 +58,10 @@ export default function Dashboard() {
   // Force show debug tools for now to ensure functionality
   const forceShowDebug = true;
 
+  if (error) {
+    console.error('Dashboard data error:', error);
+  }
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
@@ -75,11 +88,20 @@ export default function Dashboard() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2 space-y-6">
-            <DashboardStats />
+            <DashboardStats 
+              activeWills={dashboardData?.activeWills}
+              messagesInTank={dashboardData?.messagesInTank}
+              trustedContacts={dashboardData?.trustedContacts}
+              securityScore={dashboardData?.securityScore}
+              isLoading={isLoading}
+            />
             <DashboardActions />
           </div>
           <div>
-            <DashboardRecentActivity />
+            <DashboardRecentActivity 
+              activities={dashboardData?.recentActivity}
+              isLoading={isLoading}
+            />
           </div>
         </div>
       </div>
