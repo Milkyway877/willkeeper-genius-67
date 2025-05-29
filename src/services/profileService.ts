@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -26,7 +27,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     
     console.log('Fetching profile for user:', session.user.id);
     
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('id', session.user.id)
