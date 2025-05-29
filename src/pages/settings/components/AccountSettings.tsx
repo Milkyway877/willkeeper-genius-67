@@ -9,8 +9,11 @@ import { ProfileForm } from '@/components/profile/ProfileForm';
 export function AccountSettings() {
   const { profile, user, displayName, displayEmail, loading } = useUserProfile();
 
+  console.log('AccountSettings: Render state - loading:', loading, 'user:', !!user, 'profile:', !!profile);
+
   // Only show loading state when we have no user session at all
   if (loading && !user) {
+    console.log('AccountSettings: Showing loading state');
     return (
       <div className="space-y-6">
         <Card>
@@ -29,6 +32,8 @@ export function AccountSettings() {
       </div>
     );
   }
+
+  console.log('AccountSettings: Showing account content');
 
   return (
     <div className="space-y-6">

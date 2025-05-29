@@ -50,27 +50,27 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshProfile = async () => {
     if (!user || isRefreshing.current) {
-      console.log('Skipping profile refresh - no user or already refreshing');
+      console.log('refreshProfile: Skipping - no user or already refreshing');
       return;
     }
     
     try {
       isRefreshing.current = true;
-      console.log("Refreshing profile for user:", user.id);
+      console.log("refreshProfile: Starting profile refresh for user:", user.id);
       
       const userProfile = await getUserProfile();
       
       if (userProfile) {
-        console.log("Profile refreshed successfully:", userProfile);
+        console.log("refreshProfile: Profile refreshed successfully:", userProfile);
         setProfile(userProfile);
         setInitials(getInitials(userProfile.full_name));
       } else {
-        console.warn("No profile found during refresh, using session fallbacks");
+        console.warn("refreshProfile: No profile found, using session fallbacks");
         // Use user data as fallback
         setInitials(getInitials(user?.user_metadata?.full_name || user?.email));
       }
     } catch (error) {
-      console.error("Error refreshing profile:", error);
+      console.error("refreshProfile: Error refreshing profile:", error);
       // Use user data as fallback on error
       setInitials(getInitials(user?.user_metadata?.full_name || user?.email));
       toast({
@@ -80,6 +80,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     } finally {
       isRefreshing.current = false;
+      console.log("refreshProfile: Completed, setting loading to false");
     }
   };
 
@@ -168,11 +169,11 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const checkUser = async () => {
       try {
-        console.log("Checking for existing session...");
+        console.log("checkUser: Checking for existing session...");
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          console.log("Found existing session for user:", session.user.id);
+          console.log("checkUser: Found existing session for user:", session.user.id);
           setUser(session.user);
           setPrevAuthState(session.user);
           
@@ -180,19 +181,20 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
           const fallbackName = session.user.user_metadata?.full_name || session.user.email;
           setInitials(getInitials(fallbackName));
           
-          // Then load the full profile (only once)
+          // Load the full profile (only once)
           if (!isRefreshing.current) {
             await refreshProfile();
           }
         } else {
-          console.log("No active session found");
+          console.log("checkUser: No active session found");
           setUser(null);
           setProfile(null);
           setInitials("U");
         }
       } catch (error) {
-        console.error("Error checking user session:", error);
+        console.error("checkUser: Error checking user session:", error);
       } finally {
+        console.log("checkUser: Setting loading to false");
         setLoading(false);
       }
     };
@@ -239,6 +241,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
           await refreshProfile();
         }
         
+        console.log("Auth state change: Setting loading to false");
         setLoading(false);
       }
     );

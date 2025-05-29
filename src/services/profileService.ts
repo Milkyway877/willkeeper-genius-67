@@ -18,14 +18,15 @@ export interface UserProfile {
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
   try {
+    console.log('getUserProfile: Starting profile fetch...');
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      console.log('No session found in getUserProfile');
+      console.log('getUserProfile: No session found');
       return null;
     }
     
-    console.log('Fetching profile for user:', session.user.id);
+    console.log('getUserProfile: Fetching profile for user:', session.user.id);
     
     let { data, error } = await supabase
       .from('user_profiles')
@@ -34,30 +35,35 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       .single();
       
     if (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('getUserProfile: Error fetching profile:', error);
       
       // If profile doesn't exist, try to create it
       if (error.code === 'PGRST116') {
-        console.log('Profile not found, attempting to create...');
-        await createUserProfile(session.user);
-        // Try fetching again after creation
-        const { data: newData, error: newError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (newError) {
-          console.error('Error fetching newly created profile:', newError);
+        console.log('getUserProfile: Profile not found, attempting to create...');
+        try {
+          await createUserProfile(session.user);
+          // Try fetching again after creation
+          const { data: newData, error: newError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+            
+          if (newError) {
+            console.error('getUserProfile: Error fetching newly created profile:', newError);
+            return null;
+          }
+          data = newData;
+        } catch (createError) {
+          console.error('getUserProfile: Failed to create profile:', createError);
           return null;
         }
-        data = newData;
       } else {
         return null;
       }
     }
     
-    return {
+    const profile = {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
@@ -70,15 +76,18 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
     };
+    
+    console.log('getUserProfile: Successfully fetched profile:', profile);
+    return profile;
   } catch (error) {
-    console.error('Error in getUserProfile:', error);
+    console.error('getUserProfile: Unexpected error:', error);
     return null;
   }
 };
 
 export const createUserProfile = async (user: User): Promise<void> => {
   try {
-    console.log('Creating profile for user:', user.id);
+    console.log('createUserProfile: Creating profile for user:', user.id);
     
     const profileData = {
       id: user.id,
@@ -94,13 +103,13 @@ export const createUserProfile = async (user: User): Promise<void> => {
       .insert(profileData);
       
     if (error) {
-      console.error('Error creating user profile:', error);
+      console.error('createUserProfile: Error creating profile:', error);
       throw error;
     }
     
-    console.log('User profile created successfully');
+    console.log('createUserProfile: Profile created successfully');
   } catch (error) {
-    console.error('Error in createUserProfile:', error);
+    console.error('createUserProfile: Unexpected error:', error);
     throw error;
   }
 };
