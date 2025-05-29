@@ -166,7 +166,7 @@ export const createSystemNotification = async (
     
     console.log(`Creating notification: ${eventType} - ${details.title} (${notificationType})`);
     
-    // Try the RPC method first
+    // Try the fixed RPC method first
     try {
       console.log('Attempting to create notification via RPC method...');
       const { data: notificationId, error: rpcError } = await supabase.rpc(
@@ -180,7 +180,7 @@ export const createSystemNotification = async (
       );
       
       if (rpcError) {
-        console.warn('RPC method failed, using fallback:', rpcError);
+        console.warn('RPC method failed:', rpcError);
         throw new Error('RPC method failed');
       }
       
@@ -220,24 +220,13 @@ export const createSystemNotification = async (
       
       if (!response.ok) {
         console.warn('Edge function failed with status:', response.status);
-        
-        // Try to get more details from the response
-        try {
-          const errorBody = await response.text();
-          console.warn('Edge function error response:', errorBody);
-        } catch (e) {
-          console.warn('Could not parse edge function error response');
-        }
-        
         throw new Error(`Edge function returned ${response.status}`);
       }
       
       const responseData = await response.json();
       console.log('Edge function succeeded with response:', responseData);
       
-      // Use the notification ID returned by the edge function
       if (responseData.notification_id) {
-        // Fetch the newly created notification to return it
         const { data: notification } = await supabase
           .from('notifications')
           .select('*')
@@ -261,7 +250,9 @@ export const createSystemNotification = async (
           title: details.title,
           description: details.description,
           type: notificationType,
-          read: false
+          read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select()
         .single();
