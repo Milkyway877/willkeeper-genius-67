@@ -12,24 +12,48 @@ import { Bug } from 'lucide-react';
 export default function Dashboard() {
   const [showDebug, setShowDebug] = useState(false);
   
+  // Check if we're in a development or testing environment
+  const isDev = () => {
+    const hostname = window.location.hostname;
+    console.log('Current hostname:', hostname);
+    
+    // Include more Lovable environments and development scenarios
+    const devHosts = [
+      'localhost',
+      '127.0.0.1',
+      'lovableproject.com',
+      'lovable.app',
+      'lovable.dev'
+    ];
+    
+    // Check if hostname matches any dev patterns
+    const isDevEnvironment = devHosts.some(host => 
+      hostname === host || 
+      hostname.includes(host) || 
+      hostname.endsWith('.lovable.app') ||
+      hostname.endsWith('.lovableproject.com') ||
+      hostname.endsWith('.lovable.dev')
+    );
+    
+    console.log('Is development environment:', isDevEnvironment);
+    return isDevEnvironment;
+  };
+  
   // Show debug tools in development
   useEffect(() => {
-    const isDev = window.location.hostname === 'localhost' || 
-                  window.location.hostname.includes('lovableproject.com');
-    if (isDev) {
+    if (isDev()) {
       console.log('Development mode detected - debug tools available');
     }
   }, []);
 
-  const isDev = window.location.hostname === 'localhost' || 
-               window.location.hostname.includes('lovableproject.com');
+  const showDebugTools = isDev();
 
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-start mb-6">
           <DashboardHeader />
-          {isDev && (
+          {showDebugTools && (
             <Button 
               variant="outline" 
               size="sm"
@@ -42,7 +66,7 @@ export default function Dashboard() {
           )}
         </div>
         
-        {showDebug && isDev && (
+        {showDebug && showDebugTools && (
           <div className="mb-6">
             <NotificationTester />
           </div>
