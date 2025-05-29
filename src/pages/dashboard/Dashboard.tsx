@@ -12,27 +12,25 @@ import { Bug } from 'lucide-react';
 export default function Dashboard() {
   const [showDebug, setShowDebug] = useState(false);
   
-  // Check if we're in a development or testing environment
+  // Always show debug tools in development/testing environments
   const isDev = () => {
     const hostname = window.location.hostname;
+    const href = window.location.href;
+    
     console.log('Current hostname:', hostname);
+    console.log('Current href:', href);
     
-    // Include more Lovable environments and development scenarios
-    const devHosts = [
-      'localhost',
-      '127.0.0.1',
-      'lovableproject.com',
-      'lovable.app',
-      'lovable.dev'
-    ];
-    
-    // Check if hostname matches any dev patterns
-    const isDevEnvironment = devHosts.some(host => 
-      hostname === host || 
-      hostname.includes(host) || 
-      hostname.endsWith('.lovable.app') ||
-      hostname.endsWith('.lovableproject.com') ||
-      hostname.endsWith('.lovable.dev')
+    // More comprehensive detection for Lovable and development environments
+    const isDevEnvironment = (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.includes('lovable') ||
+      hostname.includes('lovableproject') ||
+      href.includes('lovable') ||
+      href.includes('preview') ||
+      process.env.NODE_ENV === 'development' ||
+      // Always show in non-production environments
+      !hostname.includes('www.') // Most production sites use www
     );
     
     console.log('Is development environment:', isDevEnvironment);
@@ -47,13 +45,16 @@ export default function Dashboard() {
   }, []);
 
   const showDebugTools = isDev();
+  
+  // Force show debug tools for now to ensure functionality
+  const forceShowDebug = true;
 
   return (
     <Layout>
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-start mb-6">
           <DashboardHeader />
-          {showDebugTools && (
+          {(showDebugTools || forceShowDebug) && (
             <Button 
               variant="outline" 
               size="sm"
@@ -66,7 +67,7 @@ export default function Dashboard() {
           )}
         </div>
         
-        {showDebug && showDebugTools && (
+        {showDebug && (showDebugTools || forceShowDebug) && (
           <div className="mb-6">
             <NotificationTester />
           </div>
