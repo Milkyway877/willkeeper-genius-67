@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -38,7 +37,7 @@ interface NavbarProps {
 
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
+  const { displayName, displayEmail } = useUserProfile();
   const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
   
@@ -79,8 +78,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     <div className="relative z-10">
       <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
         <div className="flex h-16 items-center px-4">
-          {/* Removed the hamburger menu button that was here */}
-          
           {(!isAuthenticated || isMobile) && (
             <Link to="/" className="flex items-center">
               <Logo size={isMobile ? 'sm' : 'md'} />
@@ -140,8 +137,8 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="flex flex-col">
-                      <span className="font-semibold">{profile?.full_name || 'Guest User'}</span>
-                      <span className="text-xs text-gray-500 truncate">{profile?.email || 'No email'}</span>
+                      <span className="font-semibold">{displayName}</span>
+                      <span className="text-xs text-gray-500 truncate">{displayEmail}</span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
