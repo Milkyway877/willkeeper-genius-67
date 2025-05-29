@@ -1,5 +1,4 @@
-
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getUserProfile, getInitials, type UserProfile, updateUserProfile } from "@/services/profileService";
@@ -39,16 +38,26 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
   const [initials, setInitials] = useState("U");
   const [prevAuthState, setPrevAuthState] = useState<User | null>(null);
+  const isRefreshing = useRef(false);
 
-  // Derived values for immediate display
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || "User";
+  // Derived values with proper fallbacks
+  const displayName = profile?.full_name || 
+                     user?.user_metadata?.full_name || 
+                     user?.email?.split('@')[0] || 
+                     "User";
+  
   const displayEmail = profile?.email || user?.email || "";
 
   const refreshProfile = async () => {
+    if (!user || isRefreshing.current) {
+      console.log('Skipping profile refresh - no user or already refreshing');
+      return;
+    }
+    
     try {
-      if (!user) return;
-      
+      isRefreshing.current = true;
       console.log("Refreshing profile for user:", user.id);
+      
       const userProfile = await getUserProfile();
       
       if (userProfile) {
@@ -56,7 +65,7 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         setProfile(userProfile);
         setInitials(getInitials(userProfile.full_name));
       } else {
-        console.warn("No profile found during refresh");
+        console.warn("No profile found during refresh, using session fallbacks");
         // Use user data as fallback
         setInitials(getInitials(user?.user_metadata?.full_name || user?.email));
       }
@@ -69,6 +78,8 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         description: "Could not refresh your profile information.",
         variant: "destructive"
       });
+    } finally {
+      isRefreshing.current = false;
     }
   };
 
@@ -166,10 +177,13 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
           setPrevAuthState(session.user);
           
           // Set immediate fallback values from session
-          setInitials(getInitials(session.user.user_metadata?.full_name || session.user.email));
+          const fallbackName = session.user.user_metadata?.full_name || session.user.email;
+          setInitials(getInitials(fallbackName));
           
-          // Then load the full profile
-          await refreshProfile();
+          // Then load the full profile (only once)
+          if (!isRefreshing.current) {
+            await refreshProfile();
+          }
         } else {
           console.log("No active session found");
           setUser(null);
@@ -195,19 +209,22 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
           setPrevAuthState(session.user);
           
           // Set immediate fallback values
-          setInitials(getInitials(session.user.user_metadata?.full_name || session.user.email));
+          const fallbackName = session.user.user_metadata?.full_name || session.user.email;
+          setInitials(getInitials(fallbackName));
           
           await logUserActivity('login', { 
             email: session.user.email,
             method: 'password'
           });
           
+          // Load profile after sign in
           await refreshProfile();
         } else if (event === 'SIGNED_OUT') {
           console.log("User signed out");
           setUser(null);
           setProfile(null);
           setInitials("U");
+          isRefreshing.current = false;
           
           if (prevAuthState) {
             await logUserActivity('logout', { 
@@ -217,9 +234,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         } else if (event === 'USER_UPDATED' && session?.user) {
           console.log("User updated:", session.user.id);
           setUser(session.user);
-          setInitials(getInitials(session.user.user_metadata?.full_name || session.user.email));
+          const fallbackName = session.user.user_metadata?.full_name || session.user.email;
+          setInitials(getInitials(fallbackName));
           await refreshProfile();
         }
+        
+        setLoading(false);
       }
     );
     
