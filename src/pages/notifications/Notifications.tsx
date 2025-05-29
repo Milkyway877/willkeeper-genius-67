@@ -10,7 +10,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function Notifications() {
-  const { notifications, markAsRead, deleteNotification, markAllAsRead } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   const filteredNotifications = notifications.filter(notification => {
@@ -131,7 +131,7 @@ export default function Notifications() {
                             )}
                           </div>
                           <p className={`text-sm ${!notification.read ? 'text-gray-700' : 'text-gray-600'} mb-2`}>
-                            {notification.message}
+                            {notification.description}
                           </p>
                           <p className="text-xs text-gray-500">
                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
@@ -148,13 +148,6 @@ export default function Notifications() {
                             <Check className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteNotification(notification.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
