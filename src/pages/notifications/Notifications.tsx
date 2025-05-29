@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Bell, Eye, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { useNotifications } from '@/contexts/NotificationsContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useSimpleNotifications } from '@/hooks/useSimpleNotifications';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 
-// Type definition for notification preferences
 interface NotificationPreferences {
   securityAlerts: boolean;
   documentUpdates: boolean;
@@ -33,7 +30,8 @@ const getNotificationIcon = (type: string) => {
 };
 
 export default function Notifications() {
-  // Notification preferences state (with local storage persistence)
+  const { notifications, unreadCount, loading, markAsRead } = useSimpleNotifications();
+  
   const [preferences, setPreferences] = useLocalStorage<NotificationPreferences>('notification-preferences', {
     securityAlerts: true,
     documentUpdates: true,
@@ -41,68 +39,20 @@ export default function Notifications() {
     executorActivities: true
   });
   
-  // Loading state for preferences
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
-  
-  // Try to use the notifications context, but handle cases where it might not be available
-  let notificationsContext;
-  try {
-    notificationsContext = useNotifications();
-  } catch (error) {
-    // Show a loading state if the context is not available
-    return (
-      <Layout>
-        <div className="max-w-5xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Notifications & Updates</h1>
-              <p className="text-gray-600">Stay informed about your account, security, and legal updates.</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-10 w-10 text-willtank-600 animate-spin" />
-            <p className="ml-3 text-willtank-600">Loading notifications...</p>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-  
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = notificationsContext;
 
-  // Function to update a specific preference
   const updatePreference = async (key: keyof NotificationPreferences, value: boolean) => {
     setIsLoadingPreferences(true);
     
     try {
-      // Create a new preferences object with the updated value
       const updatedPreferences = { ...preferences, [key]: value };
-      
-      // Update local storage state
       setPreferences(updatedPreferences);
       
-      // Here you would typically update the user's preferences in the database
-      // For now, we're just using local storage, but in a real app you'd do:
-      /*
-      const { error } = await supabase
-        .from('user_notification_preferences')
-        .upsert({ 
-          user_id: auth.user().id, 
-          preferences: updatedPreferences 
-        });
-        
-      if (error) throw error;
-      */
-      
-      // Show success toast
       toast.success("Preferences updated", {
         description: `Your notification preferences have been updated.`,
       });
     } catch (error) {
       console.error('Error updating notification preferences:', error);
-      
-      // Revert the change in case of error
       setPreferences(preferences);
       
       toast.error("Error updating preferences", {
@@ -128,25 +78,6 @@ export default function Notifications() {
       console.error('Error marking notification as read:', error);
       toast.error("Error", {
         description: "Failed to mark notification as read. Please try again."
-      });
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      const success = await markAllAsRead();
-      
-      if (success) {
-        toast.success("All notifications marked as read", {
-          description: "All notifications have been marked as read."
-        });
-      } else {
-        throw new Error('Failed to mark all notifications as read');
-      }
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-      toast.error("Error", {
-        description: "Failed to mark all notifications as read. Please try again."
       });
     }
   };
@@ -188,22 +119,10 @@ export default function Notifications() {
             <h1 className="text-3xl font-bold mb-2">Notifications & Updates</h1>
             <p className="text-gray-600">Stay informed about your account, security, and legal updates.</p>
           </div>
-          
-          <div className="flex gap-2">
-            {unreadCount > 0 && (
-              <Button variant="outline" onClick={handleMarkAllAsRead}>
-                Mark All as Read
-              </Button>
-            )}
-          </div>
         </div>
         
         <div className="grid grid-cols-1 gap-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Skeleton className="h-10 w-10" />
-            </div>
-          ) : notifications.length > 0 ? (
+          {notifications.length > 0 ? (
             notifications.map((notification, index) => (
               <motion.div 
                 key={notification.id}

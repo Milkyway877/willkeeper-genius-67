@@ -4,9 +4,8 @@ import { SimpleAvatar } from '@/components/user/SimpleAvatar';
 import { UserDisplay } from '@/components/user/UserDisplay';
 import { Logo } from '@/components/ui/logo/Logo';
 import { useUserAuth } from '@/hooks/useUserAuth';
-import { NotificationDropdown } from './NotificationDropdown';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useNotifications } from '@/contexts/NotificationsContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Search,
@@ -40,10 +39,6 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const { displayName, displayEmail } = useUserAuth();
   const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
-  
-  // Only use notifications context when authenticated
-  const notificationsData = isAuthenticated ? useNotifications() : { unreadCount: 0 };
-  const { unreadCount } = notificationsData;
 
   const handleSignOut = async () => {
     try {
