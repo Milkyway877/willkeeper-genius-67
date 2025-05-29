@@ -44,6 +44,7 @@ export default function UnlockWill() {
         .from('death_verification_pins')
         .select(`
           id,
+          contact_id,
           contact_type,
           pin_code,
           expires_at,
