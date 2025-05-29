@@ -52,3 +52,12 @@ verify_jwt = false
 
 [functions.send-status-check]
 verify_jwt = false
+
+[functions.send-checkin-email]
+verify_jwt = false
+
+[functions.trigger-trusted-contact-notification]
+verify_jwt = false
+
+[functions.trigger-death-verification]
+verify_jwt = false
