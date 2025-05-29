@@ -9,16 +9,26 @@ interface TwoFactorInputProps {
   loading?: boolean;
   error?: string | null;
   autoSubmit?: boolean;
+  showButton?: boolean; // New prop to control button visibility
+  value?: string; // Allow external value control
+  onChange?: (value: string) => void; // Allow external change handling
 }
 
 export function TwoFactorInput({ 
   onSubmit, 
   loading = false, 
   error = null,
-  autoSubmit = true
+  autoSubmit = true,
+  showButton = true,
+  value,
+  onChange
 }: TwoFactorInputProps) {
-  const [otp, setOtp] = useState('');
+  const [internalOtp, setInternalOtp] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  
+  // Use external value if provided, otherwise use internal state
+  const otp = value !== undefined ? value : internalOtp;
+  const setOtp = onChange || setInternalOtp;
   
   // Clear local error when external error prop changes or reset when the error is fixed
   useEffect(() => {
@@ -35,21 +45,21 @@ export function TwoFactorInput({
     }
   };
   
-  const handleChange = (value: string) => {
+  const handleChange = (newValue: string) => {
     // Clear error when user starts typing
     if (localError) setLocalError(null);
     
     // Ensure only digits are entered
-    if (value && !/^\d*$/.test(value)) {
+    if (newValue && !/^\d*$/.test(newValue)) {
       return; // Don't update if non-digits are entered
     }
     
-    setOtp(value);
+    setOtp(newValue);
     
     // Auto-submit when code is complete (if enabled)
-    if (autoSubmit && value.length === 6) {
-      console.log("Auto-submitting 2FA code:", value);
-      onSubmit(value);
+    if (autoSubmit && newValue.length === 6) {
+      console.log("Auto-submitting 2FA code:", newValue);
+      onSubmit(newValue);
     }
   };
   
@@ -84,21 +94,23 @@ export function TwoFactorInput({
           <div className="text-sm text-red-500 text-center" role="alert">{localError}</div>
         )}
         
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={otp.length !== 6 || loading}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
-            </>
-          ) : (
-            <>
-              Verify <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
+        {showButton && (
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={otp.length !== 6 || loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+              </>
+            ) : (
+              <>
+                Verify <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </form>
   );

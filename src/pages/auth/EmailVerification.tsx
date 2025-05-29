@@ -29,25 +29,25 @@ export default function EmailVerification() {
 
   useEffect(() => {
     if (!email) {
-      navigate('/auth/signin', { replace: true });
+      navigate('/auth/signin');
     }
   }, [email, navigate]);
 
-  const handleFormSubmit = async (values: { code: string }) => {
+  const handleCodeSubmit = async (code: string) => {
     if (!email) return;
     
     setIsLoading(true);
     setVerificationAttempts(prev => prev + 1);
     
     try {
-      console.log("Verifying code:", values.code, "for email:", email);
+      console.log("Verifying code:", code, "for email:", email);
       
       // First verify the code
       const { data: verificationData, error: verificationError } = await supabase
         .from('email_verification_codes')
         .select('*')
         .eq('email', email)
-        .eq('code', values.code)
+        .eq('code', code)
         .eq('type', type)
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
@@ -92,8 +92,8 @@ export default function EmailVerification() {
           variant: "default",
         });
         
-        // Direct to dashboard after successful signup verification
-        navigate('/dashboard', { replace: true });
+        // Navigate to dashboard without replace to maintain history
+        navigate('/dashboard');
       } else {
         // For login flow
         // Get credentials from session storage
@@ -127,15 +127,15 @@ export default function EmailVerification() {
             variant: "default",
           });
           
-          // Navigate to dashboard with replace to prevent back navigation to login
-          navigate('/dashboard', { replace: true });
+          // Navigate to dashboard without replace
+          navigate('/dashboard');
         } else {
           toast({
             title: "Authentication error",
             description: "Login session expired. Please log in again.",
             variant: "destructive",
           });
-          navigate('/auth/signin', { replace: true });
+          navigate('/auth/signin');
         }
       }
     } catch (error: any) {
@@ -225,7 +225,7 @@ export default function EmailVerification() {
         className="w-full"
       >
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+          <form className="space-y-6">
             <FormField
               control={form.control}
               name="code"
@@ -234,12 +234,12 @@ export default function EmailVerification() {
                   <FormLabel>Verification Code</FormLabel>
                   <FormControl>
                     <TwoFactorInput 
-                      onSubmit={(code) => {
-                        field.onChange(code);
-                        form.handleSubmit(handleFormSubmit)();
-                      }}
+                      onSubmit={handleCodeSubmit}
                       loading={isLoading}
-                      autoSubmit={false}
+                      autoSubmit={true}
+                      showButton={false}
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                 </FormItem>
@@ -247,9 +247,10 @@ export default function EmailVerification() {
             />
 
             <Button
-              type="submit"
+              type="button"
               className="w-full"
               disabled={isLoading || form.watch('code').length !== 6}
+              onClick={() => handleCodeSubmit(form.watch('code'))}
             >
               {isLoading ? "Verifying..." : "Verify Email"}
             </Button>
