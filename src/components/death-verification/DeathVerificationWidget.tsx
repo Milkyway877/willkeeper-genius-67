@@ -276,12 +276,12 @@ export function DeathVerificationWidget() {
           
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-500">Check-in frequency</span>
-            <span>{settings?.check_in_frequency || 0} days</span>
+            <span>{settings?.check_in_frequency} days</span>
           </div>
           
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-500">Grace period</span>
-            <span>{settings?.grace_period || 0} days</span>
+            <span>{settings?.grace_period} days</span>
           </div>
         </div>
       </CardContent>
