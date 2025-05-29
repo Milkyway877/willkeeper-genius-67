@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -50,6 +51,7 @@ import Will from './pages/will/Will';
 import WillCreatePage from './pages/will/WillCreatePage';
 import TemplateWillCreationPage from './pages/will/TemplateWillCreationPage';
 import { WillVideoCreation } from './pages/will/WillVideoCreation';
+import WillUnlockPage from './pages/will-unlock/WillUnlockPage';
 import Notifications from './pages/notifications/Notifications';
 import { NotificationsProvider } from '@/contexts/NotificationsContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -293,6 +295,10 @@ const router = createBrowserRouter([
       {
         path: "/notifications",
         element: <Notifications />,
+      },
+      {
+        path: "/will-unlock/:verificationId",
+        element: <WillUnlockPage />,
       },
       {
         path: "*",

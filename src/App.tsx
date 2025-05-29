@@ -3,6 +3,7 @@ import React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '@/components/ui/toaster';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
+import { MissedCheckinMonitor } from '@/components/death-verification/MissedCheckinMonitor';
 import { Outlet } from 'react-router-dom';
 
 // Add global mobile responsive styles
@@ -138,6 +139,7 @@ export default function App() {
       <Outlet />
       <Toaster />
       <FloatingAssistant />
+      <MissedCheckinMonitor />
       <ReactQueryDevtools initialIsOpen={false} />
     </>
   );
