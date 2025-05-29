@@ -78,7 +78,7 @@ export default function CheckIns() {
   };
 
   return (
-    <Layout>
+    <Layout forceAuthenticated={true}>
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Check-ins</h1>
