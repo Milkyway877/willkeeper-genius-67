@@ -18,7 +18,7 @@ interface LayoutProps {
   forceAuthenticated?: boolean;
 }
 
-export function Layout({ children, forceAuthenticated = false }: LayoutProps) {
+export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showMobileNotification, setShowMobileNotification] = useState(true);
   const location = useLocation();
@@ -77,7 +77,7 @@ export function Layout({ children, forceAuthenticated = false }: LayoutProps) {
     setShowSidebar(!showSidebar);
   };
   
-  // Don't show sidebar on auth pages or public pages
+  // Don't show sidebar on auth pages
   const isAuthPage = location.pathname.includes('/auth/');
   const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
   
