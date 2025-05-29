@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserAvatar } from '@/components/UserAvatar';
+import { SimpleAvatar } from '@/components/user/SimpleAvatar';
+import { UserDisplay } from '@/components/user/UserDisplay';
 import { Logo } from '@/components/ui/logo/Logo';
-import { useUserProfile } from '@/contexts/UserProfileContext';
+import { useUserAuth } from '@/hooks/useUserAuth';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -28,7 +29,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { cn } from '@/lib/utils';
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -37,7 +37,7 @@ interface NavbarProps {
 
 export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   const navigate = useNavigate();
-  const { displayName, displayEmail } = useUserProfile();
+  const { displayName, displayEmail } = useUserAuth();
   const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
   
@@ -132,13 +132,12 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <UserAvatar />
+                      <SimpleAvatar />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="flex flex-col">
-                      <span className="font-semibold">{displayName}</span>
-                      <span className="text-xs text-gray-500 truncate">{displayEmail}</span>
+                      <UserDisplay />
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>

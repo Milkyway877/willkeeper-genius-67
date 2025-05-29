@@ -1,12 +1,12 @@
 
 import React from 'react';
-import { useUserProfile } from '@/contexts/UserProfileContext';
+import { useUserAuth } from '@/hooks/useUserAuth';
 import { Check, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
 export function ProfileForm() {
-  const { profile, user, displayName, displayEmail } = useUserProfile();
+  const { user, displayName, displayEmail } = useUserAuth();
   
   return (
     <div className="space-y-6">
@@ -27,7 +27,7 @@ export function ProfileForm() {
               <h3 className="text-sm font-medium mb-2">Email Address</h3>
               <p className="text-base font-medium">{displayEmail || "Email not available"}</p>
               <div className="mt-1">
-                {(profile?.email_verified || user?.email_confirmed_at) ? (
+                {user?.email_confirmed_at ? (
                   <span className="text-xs text-green-600 flex items-center">
                     <Check className="h-3 w-3 mr-1" />
                     Email verified

@@ -1,19 +1,30 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUserProfile } from '@/contexts/UserProfileContext';
+import { useUserAuth } from '@/hooks/useUserAuth';
 import { Separator } from '@/components/ui/separator';
-import { UserAvatar } from '@/components/UserAvatar';
+import { SimpleAvatar } from '@/components/user/SimpleAvatar';
 import { ProfileForm } from '@/components/profile/ProfileForm';
+import { getSimpleUserProfile, type SimpleUserProfile } from '@/services/simpleProfileService';
 
 export function AccountSettings() {
-  const { profile, user, displayName, displayEmail, loading } = useUserProfile();
+  const { user, displayName, displayEmail, loading: authLoading } = useUserAuth();
+  const [profile, setProfile] = useState<SimpleUserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  console.log('AccountSettings: Render state - loading:', loading, 'user:', !!user, 'profile:', !!profile);
+  // Load profile data in background (optional enhancement)
+  useEffect(() => {
+    if (user && !profileLoading) {
+      setProfileLoading(true);
+      getSimpleUserProfile()
+        .then(setProfile)
+        .catch(error => console.error('Error loading profile:', error))
+        .finally(() => setProfileLoading(false));
+    }
+  }, [user, profileLoading]);
 
-  // Only show loading state when we have no user session at all
-  if (loading && !user) {
-    console.log('AccountSettings: Showing loading state');
+  // Show loading only if we don't have a user session at all
+  if (authLoading && !user) {
     return (
       <div className="space-y-6">
         <Card>
@@ -33,8 +44,6 @@ export function AccountSettings() {
     );
   }
 
-  console.log('AccountSettings: Showing account content');
-
   return (
     <div className="space-y-6">
       <Card>
@@ -48,7 +57,7 @@ export function AccountSettings() {
           {/* Avatar Section */}
           <div className="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
             <div className="relative">
-              <UserAvatar size="lg" />
+              <SimpleAvatar size="lg" />
             </div>
 
             <div className="text-center sm:text-left space-y-2">
