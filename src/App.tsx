@@ -1,146 +1,83 @@
-
 import React from 'react';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
-import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
+import { AuthCheck } from '@/components/auth/AuthCheck';
+import { TankLayout } from '@/components/tank/TankLayout';
 import { MissedCheckinMonitor } from '@/components/death-verification/MissedCheckinMonitor';
-import { Outlet } from 'react-router-dom';
+import { NotificationProvider } from '@/components/ui/providers/notification-provider';
 
-// Add global mobile responsive styles
-import './MobileStyles.css';
+import SecureSignUp from '@/pages/auth/SecureSignUp';
+import SecureSignIn from '@/pages/auth/SecureSignIn';
+import ForgotPassword from '@/pages/auth/ForgotPassword';
+import ResetPassword from '@/pages/auth/ResetPassword';
+import VerifyEmail from '@/pages/auth/VerifyEmail';
+import ImpersonateUser from '@/pages/admin/ImpersonateUser';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import TestDeathVerification from '@/pages/TestDeathVerification';
+import WillUnlockPage from '@/pages/WillUnlockPage';
+import ExecutorAccessPage from '@/pages/ExecutorAccessPage';
+import VerifyTrustedContact from '@/pages/VerifyTrustedContact';
+import VerifyBeneficiary from '@/pages/VerifyBeneficiary';
+import VerifyContactInvitation from '@/pages/VerifyContactInvitation';
 
-export default function App() {
+import AccountPage from '@/pages/tank/AccountPage';
+import DashboardPage from '@/pages/tank/DashboardPage';
+import WillPage from '@/pages/tank/WillPage';
+import DocumentsPage from '@/pages/tank/DocumentsPage';
+import ContactsPage from '@/pages/tank/ContactsPage';
+import SettingsPage from '@/pages/tank/SettingsPage';
+import SubscriptionPage from '@/pages/tank/SubscriptionPage';
+import CheckinPage from '@/pages/tank/CheckinPage';
+import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
+
+function App() {
   return (
-    <>
-      {/* Add Google Fonts for professional will document */}
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" />
-      
-      {/* Add styles for professional will preview and field highlighting */}
-      <style type="text/css">
-        {`
-          .professional-will-preview {
-            font-family: 'Times New Roman', serif;
-            color: #333;
-            line-height: 1.5;
-            max-width: 100%;
-            position: relative;
-          }
-          .professional-will-preview h1,
-          .professional-will-preview h2 {
-            font-family: 'Playfair Display', serif;
-            color: #333;
-          }
+    <QueryClientProvider client={new QueryClient()}>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/auth/signup" element={<SecureSignUp />} />
+          <Route path="/auth/signin" element={<SecureSignIn />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
+          <Route path="/auth/verify-email" element={<VerifyEmail />} />
           
-          /* Logo and watermark base64 fallback styles for when images can't load */
-          .willtank-logo-fallback {
-            display: inline-block;
-            background: #8B5CF6;
-            color: white;
-            font-family: 'Playfair Display', serif;
-            font-weight: bold;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.875rem;
-          }
+          {/* Legacy Verification Routes (redirect to unified) */}
+          <Route path="/verify/trusted-contact/:token" element={<VerifyTrustedContact />} />
+          <Route path="/verify/beneficiary/:token" element={<VerifyBeneficiary />} />
           
-          /* Will editing field styles */
-          .editable-field {
-            background-color: #FEF7CD;
-            border-bottom: 2px dashed #F59E0B;
-            padding: 0.2rem 0.4rem;
-            border-radius: 0.25rem;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
+          {/* Unified Invitation Verification */}
+          <Route path="/verify/invitation/:token" element={<VerifyContactInvitation />} />
+
+          {/* Admin Routes - Requires Authentication and Admin Role */}
+          <Route path="/admin" element={<AuthCheck roles={['admin']}><AdminDashboard /></AuthCheck>} />
+          <Route path="/admin/impersonate/:userId" element={<AuthCheck roles={['admin']}><ImpersonateUser /></AuthCheck>} />
+
+          {/* Testing and Development Routes */}
+          <Route path="/test/death-verification" element={<TestDeathVerification />} />
+
+          {/* Will unlock routes */}
+          <Route path="/will-unlock" element={<SimpleWillUnlock />} />
+          <Route path="/will-unlock/:requestId" element={<WillUnlockPage />} />
+          <Route path="/executor-access" element={<ExecutorAccessPage />} />
           
-          .editable-field:hover {
-            background-color: #FEF3B4;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-          }
-          
-          .editable-field::after {
-            content: "✏️";
-            position: absolute;
-            top: -0.75rem;
-            right: -0.5rem;
-            font-size: 0.75rem;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-          }
-          
-          .editable-field:hover::after {
-            opacity: 1;
-          }
-          
-          .empty-field {
-            background-color: #FECACA;
-            border: 1px dashed #EF4444;
-          }
-          
-          /* Field focus styling */
-          input:focus, textarea:focus {
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
-          }
-          
-          /* Enhanced input field styling */
-          .focus\:shadow-input:focus {
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 1px 3px rgba(0, 0, 0, 0.1);
-          }
-          
-          /* Highlight fields in the document */
-          [class*="will-field-"] {
-            background-color: #FFFBEB;
-            border: 1px dotted #F59E0B;
-            padding: 2px 4px;
-            border-radius: 3px;
-            cursor: pointer;
-            position: relative;
-          }
-          
-          [class*="will-field-"]:hover {
-            background-color: #FEF3C7;
-          }
-          
-          [class*="will-field-"]::before {
-            content: "Click to edit";
-            position: absolute;
-            top: -20px;
-            left: 0;
-            background: #FBBF24;
-            color: #78350F;
-            font-size: 10px;
-            padding: 2px 4px;
-            border-radius: 3px;
-            opacity: 0;
-            transition: opacity 0.2s;
-            pointer-events: none;
-          }
-          
-          [class*="will-field-"]:hover::before {
-            opacity: 1;
-          }
-          
-          /* Empty required field styling */
-          .empty-required {
-            background-color: #FEE2E2;
-            border-color: #EF4444;
-          }
-          
-          .empty-required::after {
-            content: "*";
-            color: #EF4444;
-            font-weight: bold;
-            margin-left: 2px;
-          }
-        `}
-      </style>
-      
-      <Outlet />
+          {/* Authenticated User Routes - Requires Authentication */}
+          <Route path="/" element={<AuthCheck><TankLayout><DashboardPage /></TankLayout></AuthCheck>} />
+          <Route path="/account" element={<AuthCheck><TankLayout><AccountPage /></TankLayout></AuthCheck>} />
+          <Route path="/will" element={<AuthCheck><TankLayout><WillPage /></TankLayout></AuthCheck>} />
+          <Route path="/documents" element={<AuthCheck><TankLayout><DocumentsPage /></TankLayout></AuthCheck>} />
+          <Route path="/contacts" element={<AuthCheck><TankLayout><ContactsPage /></TankLayout></AuthCheck>} />
+          <Route path="/settings" element={<AuthCheck><TankLayout><SettingsPage /></TankLayout></AuthCheck>} />
+          <Route path="/subscription" element={<AuthCheck><TankLayout><SubscriptionPage /></TankLayout></AuthCheck>} />
+          <Route path="/checkin" element={<AuthCheck><TankLayout><CheckinPage /></TankLayout></AuthCheck>} />
+        </Routes>
+      </BrowserRouter>
       <Toaster />
-      <FloatingAssistant />
+      <NotificationProvider />
       <MissedCheckinMonitor />
-      <ReactQueryDevtools initialIsOpen={false} />
-    </>
+    </QueryClientProvider>
   );
 }
+
+export default App;

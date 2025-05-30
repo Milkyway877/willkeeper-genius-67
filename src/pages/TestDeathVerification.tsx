@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, TestTube, Shield } from 'lucide-react';
 import TestDeathVerificationFlow from '@/components/death-verification/TestDeathVerificationFlow';
-import ExecutorAccessTester from '@/components/testing/ExecutorAccessTester';
+import StreamlinedExecutorTester from '@/components/testing/StreamlinedExecutorTester';
 
 export default function TestDeathVerification() {
   return (
@@ -14,37 +14,44 @@ export default function TestDeathVerification() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Death Verification Testing</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Comprehensive testing suite for the death verification and executor access systems.
-            Use these tools to validate functionality before production deployment.
+            Test the streamlined death verification and executor access system.
+            The new system uses trusted contacts with single unlock codes for simplicity.
           </p>
         </div>
 
-        <Alert className="mb-6 bg-amber-50 border-amber-200">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">Testing Environment</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            This page is for testing purposes only. All actions will create real data in your database.
-            Make sure to clean up test data when finished testing.
+        <Alert className="mb-6 bg-green-50 border-green-200">
+          <TestTube className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-800">Streamlined System</AlertTitle>
+          <AlertDescription className="text-green-700">
+            The new system is much simpler: missed check-in → email to trusted contact with executor details + single unlock code → executor uses code to unlock will.
+            No complex multi-person verification needed!
           </AlertDescription>
         </Alert>
 
-        <Tabs defaultValue="executor-access" className="w-full">
+        <Tabs defaultValue="streamlined-test" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="executor-access" className="flex items-center">
+            <TabsTrigger value="streamlined-test" className="flex items-center">
               <Shield className="h-4 w-4 mr-2" />
-              Executor Access Testing
+              Streamlined System Test
             </TabsTrigger>
-            <TabsTrigger value="death-verification" className="flex items-center">
+            <TabsTrigger value="legacy-test" className="flex items-center">
               <TestTube className="h-4 w-4 mr-2" />
-              Death Verification Testing
+              Legacy Testing (Old)
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="executor-access" className="space-y-6">
-            <ExecutorAccessTester />
+          <TabsContent value="streamlined-test" className="space-y-6">
+            <StreamlinedExecutorTester />
           </TabsContent>
 
-          <TabsContent value="death-verification" className="space-y-6">
+          <TabsContent value="legacy-test" className="space-y-6">
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-800">Legacy System</AlertTitle>
+              <AlertDescription className="text-amber-700">
+                This is the old complex system with multiple verification steps. Use the streamlined system instead.
+              </AlertDescription>
+            </Alert>
             <TestDeathVerificationFlow />
           </TabsContent>
         </Tabs>
