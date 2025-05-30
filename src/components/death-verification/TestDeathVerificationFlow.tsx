@@ -10,44 +10,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, Send, AlertTriangle, Info, TestTube } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { sendStatusCheck } from '@/services/deathVerificationService';
 import DeathVerificationTestDashboard from './DeathVerificationTestDashboard';
 
 export default function TestDeathVerificationFlow() {
   const { toast } = useToast();
-  const [sending, setSending] = useState(false);
+  const [sendingStatusCheck, setSendingStatusCheck] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
   const [result, setResult] = useState<any>(null);
   
   const sendTestStatusCheck = async () => {
     try {
-      setSending(true);
+      setSendingStatusCheck(true);
       
-      const success = await sendStatusCheck();
+      // Get the current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('No authenticated user found');
+      }
+
+      console.log('Sending test status check for user:', session.user.id);
+
+      // Generate a check-in URL
+      const checkInUrl = `${window.location.origin}/checkins?test=true`;
       
-      if (success) {
+      // Call the send-checkin-email function
+      const { data, error } = await supabase.functions.invoke('send-checkin-email', {
+        body: { 
+          userId: session.user.id,
+          checkInUrl: checkInUrl
+        }
+      });
+
+      console.log('Function response:', { data, error });
+
+      if (error) {
+        throw error;
+      }
+      
+      if (data?.success) {
         toast({
           title: "Status Check Sent",
-          description: "Test status check emails have been sent to your contacts.",
+          description: "Test status check email has been sent to your email address.",
           variant: "default"
         });
       } else {
-        throw new Error("Failed to send status check emails");
+        throw new Error(data?.message || "Failed to send status check email");
       }
     } catch (error) {
       console.error('Error sending test status check:', error);
       toast({
         title: "Error",
-        description: "Failed to send test status check emails.",
+        description: `Failed to send test status check email: ${error.message}`,
         variant: "destructive"
       });
     } finally {
-      setSending(false);
+      setSendingStatusCheck(false);
     }
   };
   
   const createTestVerification = async () => {
     try {
-      setSending(true);
+      setSendingVerification(true);
       
       // Get the current user
       const { data: { session } } = await supabase.auth.getSession();
@@ -110,11 +133,11 @@ export default function TestDeathVerificationFlow() {
       console.error('Error creating test verification:', error);
       toast({
         title: "Error",
-        description: "Failed to create test verification.",
+        description: `Failed to create test verification: ${error.message}`,
         variant: "destructive"
       });
     } finally {
-      setSending(false);
+      setSendingVerification(false);
     }
   };
   
@@ -152,30 +175,30 @@ export default function TestDeathVerificationFlow() {
                 Test Status Check
               </CardTitle>
               <CardDescription>
-                Send test status check emails to your contacts to verify they're properly configured
+                Send test status check email to your email address to verify the system is working
               </CardDescription>
             </CardHeader>
             
             <CardContent>
               <p className="text-gray-600 mb-4">
-                This will send real emails to all contacts you've configured (beneficiaries, executors, trusted contacts)
-                with links to respond to the status check. The emails will clearly indicate this is a test.
+                This will send a real email to your registered email address with a check-in link.
+                The email will clearly indicate this is a test.
               </p>
             </CardContent>
             
             <CardFooter>
               <Button 
                 onClick={sendTestStatusCheck} 
-                disabled={sending}
+                disabled={sendingStatusCheck}
                 className="w-full"
               >
-                {sending ? (
+                {sendingStatusCheck ? (
                   <>
                     <span className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></span>
-                    Sending Test Emails...
+                    Sending Test Email...
                   </>
                 ) : (
-                  'Send Test Status Check Emails'
+                  'Send Test Status Check Email'
                 )}
               </Button>
             </CardFooter>
@@ -266,10 +289,10 @@ export default function TestDeathVerificationFlow() {
             <CardFooter>
               <Button 
                 onClick={createTestVerification} 
-                disabled={sending}
+                disabled={sendingVerification}
                 className="w-full"
               >
-                {sending ? (
+                {sendingVerification ? (
                   <>
                     <span className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></span>
                     Creating Test Verification...
