@@ -25,7 +25,7 @@ export default function SignIn() {
             </div>
           </div>
           <Link to="/will-unlock">
-            <Button variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-100">
+            <Button variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-100 bg-white">
               Executor Access
               <ArrowRight className="h-3 w-3 ml-1" />
             </Button>
