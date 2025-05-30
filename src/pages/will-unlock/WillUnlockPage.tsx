@@ -4,8 +4,9 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Shield, Key, Users, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Shield, Key, Users, CheckCircle, AlertTriangle, Download, FileArchive } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,15 +19,34 @@ interface UnlockCode {
   verified: boolean;
 }
 
+interface ExecutorDetails {
+  executorName: string;
+  deceasedName: string;
+  deathCertificateNumber: string;
+  dateOfDeath: string;
+  relationshipToDeceased: string;
+  additionalNotes: string;
+}
+
 export default function WillUnlockPage() {
   const { verificationId } = useParams();
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
   const [unlocking, setUnlocking] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [verificationRequest, setVerificationRequest] = useState<any>(null);
   const [unlockCodes, setUnlockCodes] = useState<UnlockCode[]>([]);
   const [willUnlocked, setWillUnlocked] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [executorDetails, setExecutorDetails] = useState<ExecutorDetails>({
+    executorName: '',
+    deceasedName: '',
+    deathCertificateNumber: '',
+    dateOfDeath: '',
+    relationshipToDeceased: '',
+    additionalNotes: ''
+  });
 
   useEffect(() => {
     if (verificationId) {
@@ -55,6 +75,7 @@ export default function WillUnlockPage() {
       }
 
       setVerificationRequest(request);
+      setIsDownloaded(request.downloaded || false);
 
       // Get all unlock codes for this verification
       const { data: pins, error: pinsError } = await supabase
@@ -183,7 +204,7 @@ export default function WillUnlockPage() {
   };
 
   const unlockWill = async () => {
-    if (!allCodesVerified()) return;
+    if (!allCodesVerified() || !isExecutorDetailsValid()) return;
 
     try {
       setUnlocking(true);
@@ -198,10 +219,14 @@ export default function WillUnlockPage() {
         throw new Error('Failed to mark codes as used');
       }
 
-      // Update verification request status
+      // Update verification request status with executor details
       const { error: statusError } = await supabase
         .from('death_verification_requests')
-        .update({ status: 'completed' })
+        .update({ 
+          status: 'completed',
+          executor_details: executorDetails,
+          unlocked_at: new Date().toISOString()
+        })
         .eq('id', verificationId);
 
       if (statusError) {
@@ -212,13 +237,8 @@ export default function WillUnlockPage() {
       
       toast({
         title: "Will Unlocked Successfully",
-        description: "The will is now accessible. You will be redirected to view it.",
+        description: "You can now download the will package.",
       });
-
-      // Redirect to will view after 3 seconds
-      setTimeout(() => {
-        window.location.href = `/will/${verificationRequest.user_id}`;
-      }, 3000);
 
     } catch (error) {
       console.error('Error unlocking will:', error);
@@ -232,8 +252,75 @@ export default function WillUnlockPage() {
     }
   };
 
+  const downloadWillPackage = async () => {
+    if (!willUnlocked || isDownloaded) return;
+
+    try {
+      setDownloading(true);
+
+      // Call the edge function to generate the ZIP package
+      const { data, error } = await supabase.functions.invoke('generate-will-package', {
+        body: {
+          verificationRequestId: verificationId,
+          userId: verificationRequest.user_id,
+          executorDetails: executorDetails
+        }
+      });
+
+      if (error) {
+        throw new Error('Failed to generate will package');
+      }
+
+      // Convert the response to a blob and trigger download
+      const blob = new Blob([data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `will-package-${verificationRequest.user_id}-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Mark as downloaded in the database
+      await supabase
+        .from('death_verification_requests')
+        .update({ 
+          downloaded: true,
+          downloaded_at: new Date().toISOString(),
+          downloaded_by: executorDetails.executorName
+        })
+        .eq('id', verificationId);
+
+      setIsDownloaded(true);
+
+      toast({
+        title: "Download Complete",
+        description: "The will package has been downloaded successfully. This access is now permanently frozen.",
+      });
+
+    } catch (error) {
+      console.error('Error downloading will package:', error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download will package. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const allCodesVerified = () => {
     return unlockCodes.length > 0 && unlockCodes.every(uc => uc.verified);
+  };
+
+  const isExecutorDetailsValid = () => {
+    return executorDetails.executorName.trim() !== '' &&
+           executorDetails.deceasedName.trim() !== '' &&
+           executorDetails.deathCertificateNumber.trim() !== '' &&
+           executorDetails.dateOfDeath.trim() !== '' &&
+           executorDetails.relationshipToDeceased.trim() !== '';
   };
 
   if (loading) {
@@ -247,14 +334,19 @@ export default function WillUnlockPage() {
     );
   }
 
-  if (willUnlocked) {
+  if (isDownloaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
-            <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Will Successfully Unlocked</h2>
-            <p className="text-gray-600 mb-4">You will be redirected to view the will shortly.</p>
+            <FileArchive className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Access Expired</h2>
+            <p className="text-gray-600 mb-4">
+              This will package has already been downloaded and access is now permanently frozen for security purposes.
+            </p>
+            <p className="text-sm text-gray-500">
+              Downloaded on: {verificationRequest?.downloaded_at ? new Date(verificationRequest.downloaded_at).toLocaleDateString() : 'N/A'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -263,12 +355,12 @@ export default function WillUnlockPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-8">
           <Shield className="h-12 w-12 text-willtank-600 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900">Will Unlocking Process</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Executor Will Access</h1>
           <p className="text-gray-600 mt-2">
-            Enter all unlock codes to access the will securely
+            Secure one-time access to download the will and all associated documents
           </p>
         </div>
 
@@ -282,65 +374,192 @@ export default function WillUnlockPage() {
           </Alert>
         )}
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {unlockCodes.map((unlockCode) => (
-            <Card key={unlockCode.person_id} className={`${unlockCode.verified ? 'border-green-500 bg-green-50' : ''}`}>
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Executor Information Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Users className="h-5 w-5 mr-2" />
+                Executor Information
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                Please provide the required information to verify your authority as executor
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Executor Name *
+                </label>
+                <Input
+                  value={executorDetails.executorName}
+                  onChange={(e) => setExecutorDetails(prev => ({ ...prev, executorName: e.target.value }))}
+                  placeholder="Your full legal name"
+                  disabled={willUnlocked}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Deceased Person's Name *
+                </label>
+                <Input
+                  value={executorDetails.deceasedName}
+                  onChange={(e) => setExecutorDetails(prev => ({ ...prev, deceasedName: e.target.value }))}
+                  placeholder="Full legal name of the deceased"
+                  disabled={willUnlocked}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Death Certificate Number *
+                </label>
+                <Input
+                  value={executorDetails.deathCertificateNumber}
+                  onChange={(e) => setExecutorDetails(prev => ({ ...prev, deathCertificateNumber: e.target.value }))}
+                  placeholder="Official death certificate number"
+                  disabled={willUnlocked}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date of Death *
+                </label>
+                <Input
+                  type="date"
+                  value={executorDetails.dateOfDeath}
+                  onChange={(e) => setExecutorDetails(prev => ({ ...prev, dateOfDeath: e.target.value }))}
+                  disabled={willUnlocked}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Relationship to Deceased *
+                </label>
+                <Input
+                  value={executorDetails.relationshipToDeceased}
+                  onChange={(e) => setExecutorDetails(prev => ({ ...prev, relationshipToDeceased: e.target.value }))}
+                  placeholder="e.g., Spouse, Child, Friend, Lawyer"
+                  disabled={willUnlocked}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Additional Notes
+                </label>
+                <Textarea
+                  value={executorDetails.additionalNotes}
+                  onChange={(e) => setExecutorDetails(prev => ({ ...prev, additionalNotes: e.target.value }))}
+                  placeholder="Any additional information or special circumstances"
+                  disabled={willUnlocked}
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Verification Codes */}
+          <div className="space-y-6">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center text-lg">
-                  <Users className="h-5 w-5 mr-2" />
-                  {unlockCode.person_name}
-                  {unlockCode.verified && <CheckCircle className="h-5 w-5 ml-auto text-green-600" />}
+                <CardTitle className="flex items-center">
+                  <Key className="h-5 w-5 mr-2" />
+                  Verification Codes
                 </CardTitle>
                 <p className="text-sm text-gray-600">
-                  {unlockCode.person_type === 'executor' ? 'Executor' : 'Beneficiary'} - {unlockCode.person_email}
+                  Enter the codes provided to all beneficiaries and executors
                 </p>
               </CardHeader>
-              <CardContent>
-                <div className="flex space-x-2">
-                  <Input
-                    placeholder="Enter 10-character code"
-                    value={unlockCode.code_entered}
-                    onChange={(e) => updateCode(unlockCode.person_id, e.target.value)}
-                    maxLength={10}
-                    className="font-mono"
-                    disabled={unlockCode.verified}
-                  />
-                  <Button 
-                    onClick={() => verifyCode(unlockCode.person_id)}
-                    disabled={unlockCode.code_entered.length !== 10 || unlockCode.verified}
-                    variant={unlockCode.verified ? "default" : "outline"}
-                  >
-                    <Key className="h-4 w-4" />
-                  </Button>
-                </div>
+              <CardContent className="space-y-4">
+                {unlockCodes.map((unlockCode) => (
+                  <div key={unlockCode.person_id} className={`p-4 border rounded-lg ${unlockCode.verified ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-medium">{unlockCode.person_name}</p>
+                        <p className="text-sm text-gray-600">
+                          {unlockCode.person_type === 'executor' ? 'Executor' : 'Beneficiary'} - {unlockCode.person_email}
+                        </p>
+                      </div>
+                      {unlockCode.verified && <CheckCircle className="h-5 w-5 text-green-600" />}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Input
+                        placeholder="Enter 10-character code"
+                        value={unlockCode.code_entered}
+                        onChange={(e) => updateCode(unlockCode.person_id, e.target.value)}
+                        maxLength={10}
+                        className="font-mono"
+                        disabled={unlockCode.verified || willUnlocked}
+                      />
+                      <Button 
+                        onClick={() => verifyCode(unlockCode.person_id)}
+                        disabled={unlockCode.code_entered.length !== 10 || unlockCode.verified || willUnlocked}
+                        variant={unlockCode.verified ? "default" : "outline"}
+                        size="sm"
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        <div className="mt-8 text-center">
-          <Button 
-            onClick={unlockWill}
-            disabled={!allCodesVerified() || unlocking}
-            size="lg"
-            className="px-8"
-          >
-            {unlocking ? (
-              <>
-                <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></div>
-                Unlocking Will...
-              </>
-            ) : (
-              <>
-                <Shield className="h-4 w-4 mr-2" />
-                Unlock Will
-              </>
-            )}
-          </Button>
-          
-          <p className="text-sm text-gray-500 mt-4">
-            All {unlockCodes.length} codes must be verified to unlock the will
-          </p>
+            {/* Action Buttons */}
+            <div className="space-y-4">
+              {!willUnlocked ? (
+                <Button 
+                  onClick={unlockWill}
+                  disabled={!allCodesVerified() || !isExecutorDetailsValid() || unlocking}
+                  size="lg"
+                  className="w-full"
+                >
+                  {unlocking ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></div>
+                      Unlocking Will...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4 mr-2" />
+                      Unlock Will for Download
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={downloadWillPackage}
+                  disabled={downloading || isDownloaded}
+                  size="lg"
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {downloading ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></div>
+                      Preparing Download...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Will Package (ZIP)
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              <p className="text-sm text-gray-500 text-center">
+                {!willUnlocked ? (
+                  <>All {unlockCodes.length} codes and executor information must be provided to unlock</>
+                ) : (
+                  <>⚠️ This is a one-time download. Access will be permanently frozen after download.</>
+                )}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
