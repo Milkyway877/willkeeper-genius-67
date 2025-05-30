@@ -58,6 +58,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
+import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
@@ -303,6 +304,18 @@ const router = createBrowserRouter([
       {
         path: "/will-unlock/:verificationId",
         element: <WillUnlockPage />,
+      },
+      {
+        path: "/test/death-verification",
+        element: <TestDeathVerification />,
+      },
+      {
+        path: "/test-death-verification",
+        element: <TestDeathVerification />,
+      },
+      {
+        path: "/will-unlock",
+        element: <SimpleWillUnlock />,
       },
       {
         path: "*",
