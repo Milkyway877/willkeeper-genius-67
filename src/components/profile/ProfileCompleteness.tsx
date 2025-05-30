@@ -2,6 +2,7 @@
 import React from 'react';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 export function ProfileCompleteness() {
   const { profile } = useUserProfile();
@@ -40,9 +41,9 @@ export function ProfileCompleteness() {
   
   // Get progress color based on completeness percentage
   const getProgressColor = () => {
-    if (completeness < 40) return 'bg-red-500';
-    if (completeness < 70) return 'bg-orange-500';
-    return 'bg-green-500';
+    if (completeness < 40) return '[&>div]:bg-red-500';
+    if (completeness < 70) return '[&>div]:bg-orange-500';
+    return '[&>div]:bg-green-500';
   };
   
   return (
@@ -54,8 +55,7 @@ export function ProfileCompleteness() {
       
       <Progress
         value={completeness}
-        className="h-2"
-        indicatorClassName={getProgressColor()}
+        className={cn("h-2", getProgressColor())}
       />
       
       {completeness < 100 && (
