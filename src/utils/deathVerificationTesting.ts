@@ -306,7 +306,7 @@ export class DeathVerificationTester {
     return phaseResults;
   }
 
-  // Phase 4: Simulation Testing
+  // Phase 4: Simulation Testing - Fixed implementation
   async simulateMissedCheckin(): Promise<TestResult[]> {
     const phaseResults: TestResult[] = [];
 
@@ -330,60 +330,106 @@ export class DeathVerificationTester {
         .single();
 
       if (!settings || !settings.check_in_enabled) {
-        phaseResults.push({
-          phase: 'Simulation',
-          test: 'Simulate Missed Check-in',
-          status: 'warning',
-          message: 'Check-ins not enabled - enable them first'
-        });
-        return phaseResults;
+        // Create default settings if none exist
+        const { error: insertError } = await supabase
+          .from('death_verification_settings')
+          .insert({
+            user_id: session.user.id,
+            check_in_enabled: true,
+            check_in_frequency: 30,
+            grace_period: 7,
+            beneficiary_verification_interval: 48,
+            reminder_frequency: 24,
+            pin_system_enabled: true,
+            executor_override_enabled: true,
+            trusted_contact_enabled: true,
+            failsafe_enabled: true,
+            notification_preferences: {
+              email: true,
+              push: true
+            }
+          });
+
+        if (insertError) {
+          phaseResults.push({
+            phase: 'Simulation',
+            test: 'Simulate Missed Check-in',
+            status: 'fail',
+            message: 'Failed to create default settings',
+            details: insertError
+          });
+          return phaseResults;
+        }
       }
 
-      // Get the latest check-in
-      const { data: checkins } = await supabase
+      // Create or update a check-in record to simulate missed check-in
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - (settings?.grace_period || 7) - 1);
+
+      // Try to get the latest check-in first
+      const { data: existingCheckin } = await supabase
         .from('death_verification_checkins')
         .select('*')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(1)
+        .single();
 
-      if (!checkins || checkins.length === 0) {
-        phaseResults.push({
-          phase: 'Simulation',
-          test: 'Simulate Missed Check-in',
-          status: 'warning',
-          message: 'No check-ins found - create initial check-in first'
-        });
-        return phaseResults;
-      }
+      if (existingCheckin) {
+        // Update existing check-in to be overdue
+        const { error: updateError } = await supabase
+          .from('death_verification_checkins')
+          .update({ 
+            next_check_in: pastDate.toISOString(),
+            status: 'alive'
+          })
+          .eq('id', existingCheckin.id);
 
-      // Simulate missed check-in by updating next_check_in to past date
-      const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - (settings.grace_period + 1));
-
-      const { error: updateError } = await supabase
-        .from('death_verification_checkins')
-        .update({ 
-          next_check_in: pastDate.toISOString(),
-          status: 'alive'
-        })
-        .eq('id', checkins[0].id);
-
-      if (updateError) {
-        phaseResults.push({
-          phase: 'Simulation',
-          test: 'Simulate Missed Check-in',
-          status: 'fail',
-          message: 'Failed to simulate missed check-in',
-          details: updateError
-        });
+        if (updateError) {
+          phaseResults.push({
+            phase: 'Simulation',
+            test: 'Simulate Missed Check-in',
+            status: 'fail',
+            message: 'Failed to update existing check-in',
+            details: updateError
+          });
+        } else {
+          phaseResults.push({
+            phase: 'Simulation',
+            test: 'Simulate Missed Check-in',
+            status: 'pass',
+            message: `Successfully simulated missed check-in (overdue by ${Math.abs(pastDate.getDate() - new Date().getDate())} days)`,
+            details: { next_check_in: pastDate.toISOString() }
+          });
+        }
       } else {
-        phaseResults.push({
-          phase: 'Simulation',
-          test: 'Simulate Missed Check-in',
-          status: 'pass',
-          message: 'Successfully simulated missed check-in (grace period exceeded)'
-        });
+        // Create a new overdue check-in
+        const { error: insertError } = await supabase
+          .from('death_verification_checkins')
+          .insert({
+            user_id: session.user.id,
+            status: 'alive',
+            checked_in_at: pastDate.toISOString(),
+            next_check_in: pastDate.toISOString()
+          });
+
+        if (insertError) {
+          phaseResults.push({
+            phase: 'Simulation',
+            test: 'Simulate Missed Check-in',
+            status: 'fail',
+            message: 'Failed to create overdue check-in',
+            details: insertError
+          });
+        } else {
+          phaseResults.push({
+            phase: 'Simulation',
+            test: 'Simulate Missed Check-in',
+            status: 'pass',
+            message: `Successfully created overdue check-in simulation (overdue by ${Math.abs(pastDate.getDate() - new Date().getDate())} days)`,
+            details: { next_check_in: pastDate.toISOString() }
+          });
+        }
       }
 
     } catch (error) {
@@ -416,10 +462,9 @@ export class DeathVerificationTester {
         return phaseResults;
       }
 
-      // Call the death-verification function to process this user
-      const { data, error } = await supabase.functions.invoke('death-verification', {
+      // Call the trigger-death-verification function directly
+      const { data, error } = await supabase.functions.invoke('trigger-death-verification', {
         body: { 
-          action: 'trigger_verification',
           userId: session.user.id
         }
       });
@@ -437,7 +482,7 @@ export class DeathVerificationTester {
           phase: 'Manual Trigger',
           test: 'Trigger Death Verification',
           status: 'pass',
-          message: 'Manual trigger successful',
+          message: 'Manual trigger successful - Check your email for notifications',
           details: data
         });
       }

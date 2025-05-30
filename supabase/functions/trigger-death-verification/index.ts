@@ -123,6 +123,49 @@ serve(async (req) => {
       });
     }
 
+    // Send informational email to the user (if they're still alive and can check)
+    const userEmailContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #dc2626;">WillTank Check-In Alert</h1>
+        <p>Dear ${userName},</p>
+        <p>This is an urgent notification from WillTank. Our system has detected that you have missed multiple scheduled check-ins.</p>
+        
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #dc2626; margin-top: 0;">Immediate Action Required</h3>
+          <p><strong>If you are receiving this email and you are alive and well</strong>, please log in to your WillTank account immediately and complete your check-in to prevent the death verification process from continuing.</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${Deno.env.get('SITE_URL') || 'https://willtank.com'}/checkins" 
+             style="display: inline-block; background-color: #dc2626; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+            Login to WillTank & Check In Now
+          </a>
+        </div>
+
+        <h3>What happens if you don't check in:</h3>
+        <ol>
+          <li>Your beneficiaries and executors will be notified</li>
+          <li>The death verification process will continue</li>
+          <li>Your will unlock process may be initiated</li>
+        </ol>
+
+        <p><strong>If you are unable to check in</strong> or if someone else is reading this email on your behalf, the death verification process has already begun and your designated contacts have been notified.</p>
+
+        <p>For immediate assistance, please contact our support team.</p>
+
+        <p>Best regards,<br>
+        The WillTank Team</p>
+      </div>
+    `;
+
+    // Send the user notification email
+    await resend.emails.send({
+      from: "WillTank <alerts@willtank.com>",
+      to: [user.email],
+      subject: `URGENT: WillTank Check-In Required - ${userName}`,
+      html: buildDefaultEmailLayout(userEmailContent)
+    });
+
     // Send emails to beneficiaries
     if (beneficiaries && beneficiaries.length > 0) {
       for (const beneficiary of beneficiaries) {
@@ -132,11 +175,11 @@ serve(async (req) => {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #dc2626;">Death Verification Process Initiated</h1>
             <p>Dear ${beneficiary.name},</p>
-            <p>This message is being sent because <strong>${userName}</strong> has missed multiple check-ins on WillTank, and our trusted contact verification has indicated this may be due to their passing.</p>
+            <p>This message is being sent because <strong>${userName}</strong> has missed multiple check-ins on WillTank, and our death verification process has been initiated.</p>
             
             <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3 style="color: #dc2626; margin-top: 0;">What This Means</h3>
-              <p>As a named beneficiary in ${userName}'s will, you are being notified that the digital legacy protection process has been initiated. This ensures their final wishes are properly carried out.</p>
+              <p>As a named beneficiary in ${userName}'s will, you are being notified that the digital legacy protection process has begun. This ensures their final wishes are properly carried out.</p>
             </div>
 
             <h3>Next Steps:</h3>
@@ -246,7 +289,8 @@ serve(async (req) => {
         request_id: verificationRequest.id,
         beneficiary_count: beneficiaries?.length || 0,
         executor_count: executors?.length || 0,
-        codes_generated: unlockCodes.length
+        codes_generated: unlockCodes.length,
+        user_notified: true
       }
     });
 
@@ -255,7 +299,8 @@ serve(async (req) => {
         success: true, 
         message: "Death verification process initiated",
         verification_request_id: verificationRequest.id,
-        contacts_notified: allContacts.length
+        contacts_notified: allContacts.length,
+        user_notified: true
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
