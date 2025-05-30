@@ -142,7 +142,7 @@ async function triggerDeathVerification(userId: string) {
         trigger_reason: 'missed_checkins',
         initiated_by: 'system',
         status: 'pending',
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       })
       .select()
       .single();
@@ -255,10 +255,21 @@ async function getVerificationStatus(userId: string) {
 
 async function cleanupTestData(userId: string) {
   try {
+    // Get verification request ID first
+    const { data: verificationRequests } = await supabase
+      .from('death_verification_requests')
+      .select('id')
+      .eq('user_id', userId);
+
     // Delete in correct order due to foreign key constraints
-    await supabase.from('death_verification_pins').delete().eq('verification_request_id', 
-      (await supabase.from('death_verification_requests').select('id').eq('user_id', userId)).data?.[0]?.id
-    );
+    if (verificationRequests && verificationRequests.length > 0) {
+      for (const request of verificationRequests) {
+        await supabase
+          .from('death_verification_pins')
+          .delete()
+          .eq('verification_request_id', request.id);
+      }
+    }
     
     await supabase.from('death_verification_requests').delete().eq('user_id', userId);
     await supabase.from('will_beneficiaries').delete().eq('user_id', userId);
