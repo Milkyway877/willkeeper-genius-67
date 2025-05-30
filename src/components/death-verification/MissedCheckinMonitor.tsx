@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { checkMissedCheckins, triggerTrustedContactNotification, triggerDeathVerificationProcess, MissedCheckinStatus } from '@/services/missedCheckinService';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export const MissedCheckinMonitor: React.FC = () => {
@@ -10,44 +10,71 @@ export const MissedCheckinMonitor: React.FC = () => {
   useEffect(() => {
     const checkInterval = setInterval(async () => {
       if (!processing) {
-        await processMissedCheckins();
+        await processDeathVerification();
       }
     }, 60000 * 60); // Check every hour
 
     // Initial check
-    processMissedCheckins();
+    processDeathVerification();
 
     return () => clearInterval(checkInterval);
   }, [processing]);
 
-  const processMissedCheckins = async () => {
+  const processDeathVerification = async () => {
     try {
       setProcessing(true);
       
-      const missedCheckins = await checkMissedCheckins();
+      console.log('Triggering death verification process...');
       
-      for (const missed of missedCheckins) {
-        console.log(`Processing missed check-in for user ${missed.user_id}, ${missed.days_overdue} days overdue`);
-        
-        // If grace period has expired and trusted contacts haven't been notified yet
-        if (missed.grace_period_expired && !missed.trusted_contacts_notified && missed.days_overdue <= 10) {
-          console.log(`Triggering trusted contact notification for user ${missed.user_id}`);
-          await triggerTrustedContactNotification(missed.user_id);
-        }
-        
-        // If it's been more than 10 days and death verification hasn't been triggered
-        if (missed.days_overdue > 10 && !missed.verification_triggered) {
-          console.log(`Triggering death verification process for user ${missed.user_id}`);
-          await triggerDeathVerificationProcess(missed.user_id);
-        }
+      // Call the enhanced death-verification function
+      const { data, error } = await supabase.functions.invoke('death-verification', {
+        body: { action: 'process_checkins' }
+      });
+      
+      if (error) {
+        console.error('Error processing death verification:', error);
+        return;
       }
+      
+      console.log('Death verification process completed:', data);
     } catch (error) {
-      console.error('Error processing missed check-ins:', error);
+      console.error('Error calling death verification function:', error);
     } finally {
       setProcessing(false);
     }
   };
 
-  // This component doesn't render anything visible
+  // Manual trigger function for testing
+  const manualTrigger = async () => {
+    await processDeathVerification();
+    toast({
+      title: "Manual Check Triggered",
+      description: "Death verification process has been manually triggered.",
+    });
+  };
+
+  // This component doesn't render anything visible in production
+  // But in development, you can add a manual trigger button
+  if (process.env.NODE_ENV === 'development') {
+    return (
+      <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 9999 }}>
+        <button
+          onClick={manualTrigger}
+          disabled={processing}
+          style={{
+            padding: '10px',
+            background: processing ? '#ccc' : '#4a6cf7',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: processing ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {processing ? 'Processing...' : 'Test Death Verification'}
+        </button>
+      </div>
+    );
+  }
+
   return null;
 };
