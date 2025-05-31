@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { checkUserHasWill } from '@/services/willCheckService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, ArrowRight, Clock, Users } from 'lucide-react';
+import { FileText, ArrowRight, Clock, Users, ArrowLeft } from 'lucide-react';
 
 interface TankAccessGuardProps {
   children: React.ReactNode;
@@ -77,16 +77,27 @@ export const TankAccessGuard: React.FC<TankAccessGuardProps> = ({ children }) =>
                 </div>
               </div>
 
-              <div className="text-center">
-                <Button 
-                  onClick={() => navigate('/will/create')}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3"
-                  size="lg"
-                >
-                  Create Your Will Now
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <p className="text-sm text-amber-600 mt-2">
+              <div className="text-center space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button 
+                    onClick={() => navigate('/dashboard')}
+                    variant="outline"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-100 px-6 py-3"
+                    size="lg"
+                  >
+                    <ArrowLeft className="mr-2 h-5 w-5" />
+                    Back to Dashboard
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/will/create')}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3"
+                    size="lg"
+                  >
+                    Create Your Will Now
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </div>
+                <p className="text-sm text-amber-600">
                   It only takes a few minutes to get started
                 </p>
               </div>
