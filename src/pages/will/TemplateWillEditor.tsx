@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -289,6 +288,12 @@ Date: ${new Date().toLocaleDateString()}
         const willCheck = await checkUserHasWill();
         const isFirstWill = !willCheck.hasWill;
         
+        console.log("Subscription check:", { 
+          isSubscribed: subscriptionStatus.isSubscribed, 
+          isFirstWill,
+          hasWill: willCheck.hasWill 
+        });
+        
         // Show subscription modal for first will or if not subscribed
         await handleWillSaved(isFirstWill);
         setSaving(false);
@@ -425,7 +430,7 @@ Date: ${new Date().toLocaleDateString()}
                       type="button"
                     >
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
-                      Finalize Will
+                      Generate Will
                     </Button>
                   </div>
                 </Card>
