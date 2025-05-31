@@ -1,13 +1,14 @@
 
 import React from 'react';
-import { SimpleAvatar } from '@/components/user/SimpleAvatar';
+import { ProAvatar } from '@/components/user/ProAvatar';
 
 interface UserAvatarProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   cacheBuster?: number;
+  showCrown?: boolean;
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = (props) => {
-  return <SimpleAvatar {...props} />;
+  return <ProAvatar {...props} />;
 };
