@@ -81,6 +81,18 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const isAuthPage = location.pathname.includes('/auth/');
   const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
   
+  // Only show FloatingAssistant on dashboard and authenticated routes (not on landing page)
+  const shouldShowFloatingAssistant = showAuthenticatedLayout && (
+    location.pathname.includes('/dashboard') ||
+    location.pathname.includes('/will') ||
+    location.pathname.includes('/tank') ||
+    location.pathname.includes('/settings') ||
+    location.pathname.includes('/templates') ||
+    location.pathname.includes('/search') ||
+    location.pathname.includes('/activity') ||
+    location.pathname.includes('/help')
+  );
+  
   // Check for URL parameters on Help page
   useEffect(() => {
     if (location.pathname === '/help' && location.search) {
@@ -154,7 +166,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           </div>
         </main>
         
-        {showAuthenticatedLayout && (
+        {shouldShowFloatingAssistant && (
           <>
             <FloatingAssistant />
             <FloatingHelp />
