@@ -7,7 +7,7 @@ import { Check, Download, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Lo
 import { Card } from '@/components/ui/card';
 import { DigitalSignature } from './DigitalSignature';
 import { downloadDocument } from '@/utils/documentUtils';
-import { validateWillContent, generateWillContent } from '@/utils/willTemplateUtils';
+import { generateWillContent } from '@/utils/willTemplateUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
