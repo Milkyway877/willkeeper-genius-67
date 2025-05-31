@@ -197,7 +197,7 @@ export default function Index() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-              </div>
+              </motion.div>
             </div>
           </div>
         </motion.section>
