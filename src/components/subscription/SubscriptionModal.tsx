@@ -1,187 +1,154 @@
 
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Check, Star, Shield, Crown } from 'lucide-react';
-import { createCheckoutSession } from '@/api/createCheckoutSession';
-import { toast } from 'sonner';
+import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Check, Crown, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface SubscriptionModalProps {
   open: boolean;
   onClose: () => void;
-  onSubscriptionSuccess: () => void;
+  onSubscribe: () => void;
 }
+
+const plans = [
+  {
+    name: 'Starter',
+    price: '$7.99',
+    period: 'month',
+    features: [
+      'Basic will templates',
+      'Up to 2 future messages',
+      'Standard encryption',
+      'Email support',
+      '5GB document storage'
+    ],
+    recommended: false,
+  },
+  {
+    name: 'Gold',
+    price: '$14.99',
+    period: 'month',
+    features: [
+      'Advanced will templates',
+      'Up to 10 future messages',
+      'Enhanced encryption',
+      'Priority email support',
+      '20GB document storage',
+      'AI document analysis'
+    ],
+    recommended: true,
+  },
+  {
+    name: 'Platinum',
+    price: '$24.99',
+    period: 'month',
+    features: [
+      'Premium legal templates',
+      'Unlimited future messages',
+      'Military-grade encryption',
+      '24/7 priority support',
+      '100GB document storage',
+      'Advanced AI tools',
+      'Family sharing (up to 5 users)'
+    ],
+    recommended: false,
+  },
+];
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   open,
   onClose,
-  onSubscriptionSuccess
+  onSubscribe
 }) => {
-  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const plans = [
-    {
-      name: 'starter',
-      title: 'Starter',
-      icon: <Star className="h-5 w-5" />,
-      price: '$14.99',
-      period: '/month',
-      description: 'Perfect for individuals starting with estate planning.',
-      features: [
-        'Basic will templates',
-        'Up to 2 future messages',
-        'Standard encryption',
-        'Email support',
-        '5GB document storage'
-      ],
-      popular: false
-    },
-    {
-      name: 'gold',
-      title: 'Gold',
-      icon: <Crown className="h-5 w-5" />,
-      price: '$29',
-      period: '/month',
-      description: 'Most popular for comprehensive estate planning.',
-      features: [
-        'All Starter features',
-        'Advanced will templates',
-        'Up to 10 future messages',
-        'Enhanced encryption',
-        'Priority email support',
-        '20GB document storage',
-        'AI document analysis'
-      ],
-      popular: true
-    },
-    {
-      name: 'platinum',
-      title: 'Platinum',
-      icon: <Shield className="h-5 w-5" />,
-      price: '$55',
-      period: '/month',
-      description: 'Premium solution for families.',
-      features: [
-        'All Gold features',
-        'Premium legal templates',
-        'Unlimited future messages',
-        'Military-grade encryption',
-        '24/7 priority support',
-        '100GB document storage',
-        'Advanced AI tools',
-        'Family sharing (up to 5 users)'
-      ],
-      popular: false
-    }
-  ];
-
-  const handlePlanSelection = async (planName: string) => {
-    try {
-      setIsLoading(planName);
-      
-      const result = await createCheckoutSession(planName, 'monthly');
-      
-      if (result.status === 'success' && result.url) {
-        window.location.href = result.url;
-      } else {
-        toast.error('Payment processing error', {
-          description: result.error || 'There was an error processing your request.',
-        });
-      }
-    } catch (error) {
-      console.error('Error handling plan selection:', error);
-      toast.error('Payment processing error', {
-        description: 'There was an error processing your payment. Please try again.',
-      });
-    } finally {
-      setIsLoading(null);
-    }
+  const handleSelectPlan = (planName: string) => {
+    onSubscribe();
+    // Navigate to pricing page with selected plan
+    navigate(`/pricing?plan=${planName.toLowerCase()}`);
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => !isLoading && onClose()}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">
-            Unlock Premium Features
+          <DialogTitle className="text-2xl font-bold text-center flex items-center justify-center">
+            <Crown className="h-6 w-6 mr-2 text-yellow-600" />
+            Upgrade to Continue
           </DialogTitle>
-          <DialogDescription className="text-center">
-            Your will has been saved! Choose a plan to unlock Tank messages and advanced features.
+          <DialogDescription className="text-center text-lg">
+            Creating your will requires a premium subscription. Choose your plan to continue.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-6 md:grid-cols-3 mt-6">
-          {plans.map((plan, index) => (
-            <div
+          {plans.map((plan) => (
+            <Card
               key={plan.name}
-              className={`relative rounded-xl border-2 p-6 ${
-                plan.popular 
-                  ? 'border-willtank-600 bg-willtank-50' 
-                  : 'border-gray-200 hover:border-gray-300'
+              className={`relative ${
+                plan.recommended
+                  ? 'border-yellow-500 shadow-lg scale-105'
+                  : 'border-gray-200'
               }`}
             >
-              {plan.popular && (
-                <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-willtank-600">
-                  Most Popular
-                </Badge>
+              {plan.recommended && (
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-yellow-500 text-white px-3 py-1">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Most Popular
+                  </Badge>
+                </div>
               )}
               
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  {plan.icon}
-                  <h3 className="ml-2 text-xl font-bold">{plan.title}</h3>
-                </div>
-                
-                <div className="mb-2">
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl font-bold">{plan.name}</CardTitle>
+                <div className="mt-2">
                   <span className="text-3xl font-bold">{plan.price}</span>
-                  <span className="text-gray-500">{plan.period}</span>
+                  <span className="text-gray-500">/{plan.period}</span>
                 </div>
-                
-                <p className="text-sm text-gray-600 mb-4">{plan.description}</p>
-                
-                <ul className="space-y-2 mb-6 text-left">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start text-sm">
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                <ul className="space-y-2">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-start">
                       <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                      <span>{feature}</span>
+                      <span className="text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
                 
                 <Button
-                  onClick={() => handlePlanSelection(plan.name)}
-                  disabled={isLoading === plan.name}
+                  onClick={() => handleSelectPlan(plan.name)}
                   className={`w-full ${
-                    plan.popular 
-                      ? 'bg-willtank-600 hover:bg-willtank-700' 
-                      : 'bg-gray-800 hover:bg-gray-900'
+                    plan.recommended
+                      ? 'bg-yellow-600 hover:bg-yellow-700'
+                      : 'bg-gray-900 hover:bg-gray-800'
                   }`}
                 >
-                  {isLoading === plan.name ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </span>
-                  ) : (
-                    'Choose Plan'
-                  )}
+                  Choose {plan.name}
                 </Button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
-        
-        <div className="text-center mt-6">
-          <Button variant="outline" onClick={onClose} disabled={!!isLoading}>
-            Continue with Free Plan
-          </Button>
-          <p className="text-xs text-gray-500 mt-2">
-            You can upgrade anytime from your settings
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-500 mb-4">
+            All plans include a 14-day money-back guarantee
           </p>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
