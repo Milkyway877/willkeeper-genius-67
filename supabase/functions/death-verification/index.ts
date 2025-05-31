@@ -2,520 +2,355 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { getResendClient, buildDefaultEmailLayout } from "../_shared/email-helper.ts";
-import { corsHeaders } from "../_shared/cors.ts";
 
-// Create a Supabase client with the service role key for admin operations
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-interface DeathVerificationSettings {
-  id: string;
-  user_id: string;
-  check_in_enabled: boolean;
-  check_in_frequency: number;
-  grace_period: number;
-  beneficiary_verification_interval: number;
-  notification_preferences: {
-    email: boolean;
-    sms: boolean;
-    push: boolean;
-  };
-  failsafe_enabled: boolean;
-  trusted_contact_email?: string;
-  unlock_mode: string;
-}
-
-interface CheckIn {
-  id: string;
-  user_id: string;
-  status: string;
-  next_check_in: string;
-  checked_in_at: string;
-}
-
-async function sendCheckinReminderEmail(userData: any, settings: any) {
-  if (!settings.notification_preferences?.email) return;
-  
-  const resend = getResendClient();
-  const userName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email;
-  const checkInFrequency = settings.check_in_frequency || 7;
-  const checkInUrl = `${Deno.env.get('SITE_URL') || 'https://willtank.com'}/check-ins`;
-  
-  const emailContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #4a6cf7;">Check-in Reminder</h1>
-      <p>Hello ${userName},</p>
-      <p>This is your regular ${checkInFrequency}-day check-in reminder from WillTank. Please confirm your status by clicking the button below:</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${checkInUrl}" style="background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">I'M ALIVE</a>
-      </div>
-      <p>If you don't respond within ${settings.grace_period || 7} days, a verification process will be triggered with your beneficiaries and executors.</p>
-      <p>Thank you for using WillTank to protect your digital legacy.</p>
-    </div>
-  `;
-  
-  await resend.emails.send({
-    from: "WillTank <checkins@willtank.com>",
-    to: [userData.email],
-    subject: "WillTank Check-in Reminder",
-    html: buildDefaultEmailLayout(emailContent)
-  });
-}
-
-async function sendTrustedContactNotification(userData: any, settings: any) {
-  if (!settings.trusted_contact_email) return;
-  
-  const resend = getResendClient();
-  const userName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email;
-  
-  const emailContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #f59e0b;">Urgent: Trusted Contact Verification Required</h1>
-      <p>Dear Trusted Contact,</p>
-      <p><strong>${userName}</strong> has missed their regular check-in on WillTank and we need your help to verify their status.</p>
-      
-      <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="color: #92400e; margin-top: 0;">What You Need to Do</h3>
-        <p>Please try to contact ${userName} immediately through phone, email, or in person. If you can confirm they are safe, please let us know.</p>
-      </div>
-      
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${Deno.env.get('SITE_URL') || 'https://willtank.com'}/verify/trusted-contact" 
-           style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; margin: 10px;">
-          VERIFY STATUS
-        </a>
-      </div>
-      
-      <p>If you cannot reach them within 48 hours, their will executors and beneficiaries will be notified to begin the death verification process.</p>
-      <p>This is a critical security measure to protect ${userName}'s digital legacy.</p>
-    </div>
-  `;
-  
-  await resend.emails.send({
-    from: "WillTank Security <security@willtank.com>",
-    to: [settings.trusted_contact_email],
-    subject: `Urgent: Verify Status of ${userName}`,
-    html: buildDefaultEmailLayout(emailContent)
-  });
-}
-
-async function sendDeathVerificationEmails(userData: any, beneficiaries: any[], executors: any[], verificationRequestId: string) {
-  const resend = getResendClient();
-  const userName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email;
-  
-  // Send emails to beneficiaries
-  if (beneficiaries && beneficiaries.length > 0) {
-    for (const beneficiary of beneficiaries) {
-      const executorList = executors?.map(e => `${e.name} (${e.email})`).join('<br>') || 'No executors listed';
-      
-      // Generate unlock code for this beneficiary
-      const unlockCode = generateUnlockCode();
-      
-      await supabase.from('death_verification_pins').insert({
-        person_id: beneficiary.id,
-        pin_code: unlockCode,
-        person_type: 'beneficiary',
-        used: false,
-        verification_request_id: verificationRequestId
-      });
-      
-      const emailContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #dc2626;">Death Verification Process Initiated</h1>
-          <p>Dear ${beneficiary.beneficiary_name || beneficiary.name},</p>
-          <p>This message is being sent because <strong>${userName}</strong> has missed multiple check-ins on WillTank, and our verification process indicates this may be due to their passing.</p>
-          
-          <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #dc2626; margin-top: 0;">What This Means</h3>
-            <p>As a named beneficiary in ${userName}'s will, you are being notified that the digital legacy protection process has been initiated.</p>
-          </div>
-
-          <h3>Executor Contact Information:</h3>
-          <div style="background-color: #fefbf3; border: 1px solid #fed7aa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p>${executorList}</p>
-          </div>
-
-          <p><strong>Your Unlock Code:</strong></p>
-          <div style="background-color: #f0f9ff; border: 2px solid #0ea5e9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <h2 style="color: #0369a1; font-family: monospace; letter-spacing: 2px; margin: 0;">${unlockCode}</h2>
-          </div>
-          
-          <p>Keep this code secure. It will be required during the will unlocking process.</p>
-          <p>We understand this is a difficult time. WillTank is here to ensure ${userName}'s final wishes are honored with dignity and security.</p>
-        </div>
-      `;
-
-      await resend.emails.send({
-        from: "WillTank <legacy@willtank.com>",
-        to: [beneficiary.email],
-        subject: `Will Access: ${userName} - Action Required`,
-        html: buildDefaultEmailLayout(emailContent)
-      });
-    }
-  }
-
-  // Send emails to executors
-  if (executors && executors.length > 0) {
-    for (const executor of executors) {
-      const beneficiaryList = beneficiaries?.map(b => `${b.beneficiary_name || b.name} (${b.email})`).join('<br>') || 'No beneficiaries listed';
-      
-      // Generate unlock code for this executor
-      const unlockCode = generateUnlockCode();
-      
-      await supabase.from('death_verification_pins').insert({
-        person_id: executor.id,
-        pin_code: unlockCode,
-        person_type: 'executor',
-        used: false,
-        verification_request_id: verificationRequestId
-      });
-      
-      const emailContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #dc2626;">Executor Notification: Death Verification Process</h1>
-          <p>Dear ${executor.name},</p>
-          <p>This message is being sent because <strong>${userName}</strong> has missed multiple check-ins on WillTank, and the death verification process has been initiated. As their named executor, your immediate attention is required.</p>
-          
-          <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #dc2626; margin-top: 0;">Your Role as Executor</h3>
-            <p>You are responsible for coordinating the legal process and guiding beneficiaries through the will unlocking procedure.</p>
-          </div>
-
-          <div style="background-color: #fefbf3; border: 1px solid #fed7aa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h4 style="color: #ea580c; margin-top: 0;">Beneficiaries to Contact:</h4>
-            <p>${beneficiaryList}</p>
-          </div>
-
-          <p><strong>Your Executor Unlock Code:</strong></p>
-          <div style="background-color: #f0f9ff; border: 2px solid #0ea5e9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
-            <h2 style="color: #0369a1; font-family: monospace; letter-spacing: 2px; margin: 0;">${unlockCode}</h2>
-          </div>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${Deno.env.get('SITE_URL') || 'https://willtank.com'}/will-unlock/${verificationRequestId}" 
-               style="display: inline-block; background-color: #dc2626; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
-              Access Will Unlocking Page
-            </a>
-          </div>
-
-          <p>The will can only be unlocked when all parties provide their codes simultaneously.</p>
-        </div>
-      `;
-
-      await resend.emails.send({
-        from: "WillTank Legal <legal@willtank.com>",
-        to: [executor.email],
-        subject: `Executor Action Required: ${userName} Will Unlocking`,
-        html: buildDefaultEmailLayout(emailContent)
-      });
-    }
-  }
-}
-
-async function processOverdueCheckins() {
-  const now = new Date().toISOString();
-  
-  // Find all enabled death verification settings
-  const { data: settings, error: settingsError } = await supabase
-    .from("death_verification_settings")
-    .select("*")
-    .eq("check_in_enabled", true);
-  
-  if (settingsError) {
-    console.error("Error fetching death verification settings:", settingsError);
-    return;
-  }
-  
-  if (!settings || settings.length === 0) {
-    console.log("No enabled death verification settings found");
-    return;
-  }
-  
-  console.log(`Processing ${settings.length} enabled death verification settings`);
-  
-  // Check for overdue check-ins for each user
-  for (const setting of settings) {
-    // Get user data for emails
-    const { data: userData, error: userError } = await supabase
-      .from('user_profiles')
-      .select('first_name, last_name, email')
-      .eq('id', setting.user_id)
-      .single();
-    
-    if (userError || !userData) {
-      console.error(`Error fetching user data for ${setting.user_id}:`, userError);
-      continue;
-    }
-    
-    // Get latest check-in
-    const { data: checkins, error: checkinsError } = await supabase
-      .from("death_verification_checkins")
-      .select("*")
-      .eq("user_id", setting.user_id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    
-    if (checkinsError) {
-      console.error(`Error fetching check-ins for user ${setting.user_id}:`, checkinsError);
-      continue;
-    }
-    
-    if (!checkins || checkins.length === 0) {
-      console.log(`No check-ins found for user ${setting.user_id}`);
-      continue;
-    }
-    
-    const latestCheckin = checkins[0];
-    
-    // Check if next_check_in is in the past
-    if (latestCheckin.next_check_in < now && latestCheckin.status === "alive") {
-      console.log(`Check-in overdue for user ${setting.user_id}`);
-      
-      // Send check-in reminder email
-      try {
-        await sendCheckinReminderEmail(userData, setting);
-        console.log(`Sent check-in reminder email to ${userData.email}`);
-      } catch (emailError) {
-        console.error(`Error sending check-in reminder email:`, emailError);
-      }
-      
-      // Create a notification for the user
-      const { error: notificationError } = await supabase
-        .from("notifications")
-        .insert({
-          user_id: setting.user_id,
-          title: "Check-in Reminder",
-          description: "Your regular check-in is overdue. Please log in to confirm your status.",
-          type: "warning",
-          read: false,
-          icon: "clock"
-        });
-      
-      if (notificationError) {
-        console.error(`Error creating notification for user ${setting.user_id}:`, notificationError);
-      }
-      
-      // Update check-in status
-      const { error: updateError } = await supabase
-        .from("death_verification_checkins")
-        .update({ status: "pending" })
-        .eq("id", latestCheckin.id);
-      
-      if (updateError) {
-        console.error(`Error updating check-in status for user ${setting.user_id}:`, updateError);
-      }
-      
-      // Calculate grace period using user's settings instead of hardcoded 7 days
-      const nextCheckInDate = new Date(latestCheckin.next_check_in);
-      const gracePeriod = new Date(nextCheckInDate);
-      gracePeriod.setDate(gracePeriod.getDate() + (setting.grace_period || 7));
-      
-      // Check if we should send trusted contact notification
-      const halfGracePeriod = new Date(nextCheckInDate);
-      halfGracePeriod.setDate(halfGracePeriod.getDate() + Math.floor((setting.grace_period || 7) / 2));
-      
-      if (new Date() > halfGracePeriod && latestCheckin.status !== "trusted_contacts_notified") {
-        console.log(`Sending trusted contact notification for user ${setting.user_id}`);
-        
-        try {
-          await sendTrustedContactNotification(userData, setting);
-          console.log(`Sent trusted contact notification for ${userData.email}`);
-          
-          // Update status to indicate trusted contacts have been notified
-          await supabase
-            .from("death_verification_checkins")
-            .update({ status: "trusted_contacts_notified" })
-            .eq("id", latestCheckin.id);
-        } catch (emailError) {
-          console.error(`Error sending trusted contact notification:`, emailError);
-        }
-      }
-      
-      // If grace period has fully expired, trigger death verification
-      if (gracePeriod < new Date() && latestCheckin.status !== "verification_triggered") {
-        console.log(`Triggering death verification for user ${setting.user_id}`);
-        
-        // Get beneficiaries and executors
-        const { data: beneficiaries, error: beneficiariesError } = await supabase
-          .from("will_beneficiaries")
-          .select("id, beneficiary_name, email")
-          .eq("user_id", setting.user_id);
-        
-        if (beneficiariesError) {
-          console.error(`Error fetching beneficiaries for user ${setting.user_id}:`, beneficiariesError);
-          continue;
-        }
-        
-        const { data: executors, error: executorsError } = await supabase
-          .from("will_executors")
-          .select("id, name, email")
-          .eq("user_id", setting.user_id);
-        
-        if (executorsError) {
-          console.error(`Error fetching executors for user ${setting.user_id}:`, executorsError);
-          continue;
-        }
-        
-        // Create death verification request
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + setting.beneficiary_verification_interval);
-        
-        const { data: request, error: requestError } = await supabase
-          .from("death_verification_requests")
-          .insert({
-            user_id: setting.user_id,
-            initiated_at: now,
-            expires_at: expiresAt.toISOString(),
-            status: "pending"
-          })
-          .select()
-          .single();
-        
-        if (requestError) {
-          console.error(`Error creating death verification request for user ${setting.user_id}:`, requestError);
-          continue;
-        }
-        
-        // Send death verification emails
-        try {
-          await sendDeathVerificationEmails(userData, beneficiaries, executors, request.id);
-          console.log(`Sent death verification emails for ${userData.email}`);
-        } catch (emailError) {
-          console.error(`Error sending death verification emails:`, emailError);
-        }
-        
-        // Update check-in status
-        const { error: statusError } = await supabase
-          .from("death_verification_checkins")
-          .update({ status: "verification_triggered" })
-          .eq("id", latestCheckin.id);
-        
-        if (statusError) {
-          console.error(`Error updating check-in status for user ${setting.user_id}:`, statusError);
-        }
-        
-        // Log verification event
-        const { error: logError } = await supabase
-          .from("death_verification_logs")
-          .insert({
-            user_id: setting.user_id,
-            action: "verification_triggered",
-            details: {
-              request_id: request.id,
-              expires_at: request.expires_at,
-              beneficiary_count: beneficiaries ? beneficiaries.length : 0,
-              executor_count: executors ? executors.length : 0
-            },
-            timestamp: now
-          });
-        
-        if (logError) {
-          console.error(`Error logging verification event for user ${setting.user_id}:`, logError);
-        }
-      }
-    }
-  }
-}
-
-function generatePIN(): string {
-  const digits = '0123456789';
-  let pin = '';
-  for (let i = 0; i < 10; i++) {
-    pin += digits.charAt(Math.floor(Math.random() * digits.length));
-  }
-  return pin;
-}
-
-function generateUnlockCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 10; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
-    // Only allow POST requests
-    if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    
-    // Process request based on action
     const { action, userId } = await req.json();
     
-    if (action === "process_checkins") {
-      await processOverdueCheckins();
-      
-      return new Response(
-        JSON.stringify({ success: true, message: "Processed overdue check-ins" }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    if (action === 'process_checkins' || !userId) {
+      return await processAllMissedCheckins();
     }
     
-    if (action === "trigger_verification" && userId) {
-      // Manual trigger for specific user
-      console.log(`Manually triggering verification for user ${userId}`);
-      
-      // Process just this user
-      const { data: settings, error: settingsError } = await supabase
-        .from("death_verification_settings")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("check_in_enabled", true)
-        .single();
-      
-      if (settingsError || !settings) {
-        return new Response(
-          JSON.stringify({ error: "User not found or verification not enabled" }),
-          {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      
-      // Process this specific user (similar logic but focused)
-      await processOverdueCheckins();
-      
-      return new Response(
-        JSON.stringify({ success: true, message: `Triggered verification for user ${userId}` }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    if (action === 'process_user') {
+      return await processUserMissedCheckin(userId);
     }
-    
+
     return new Response(
       JSON.stringify({ error: "Invalid action" }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (error) {
-    console.error("Error processing request:", error);
-    
+    console.error("Error in death-verification:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+
+async function processAllMissedCheckins() {
+  console.log('Processing all missed check-ins...');
+  
+  const now = new Date();
+  
+  // Find users with missed check-ins
+  const { data: missedCheckins, error } = await supabase
+    .from('death_verification_checkins')
+    .select(`
+      user_id,
+      next_check_in,
+      checked_in_at,
+      user_profiles!inner(id, first_name, last_name, email)
+    `)
+    .lt('next_check_in', now.toISOString())
+    .order('next_check_in', { ascending: true });
+
+  if (error || !missedCheckins) {
+    console.error('Error fetching missed check-ins:', error);
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch missed check-ins" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  console.log(`Found ${missedCheckins.length} users with missed check-ins`);
+  
+  const results = [];
+  for (const checkin of missedCheckins) {
+    try {
+      const result = await processUserMissedCheckin(checkin.user_id);
+      results.push({
+        userId: checkin.user_id,
+        success: true,
+        result
+      });
+    } catch (error) {
+      console.error(`Error processing user ${checkin.user_id}:`, error);
+      results.push({
+        userId: checkin.user_id,
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      processed: results.length,
+      results
+    }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+async function processUserMissedCheckin(userId: string) {
+  console.log(`Processing missed check-in for user: ${userId}`);
+  
+  // Get user profile
+  const { data: user, error: userError } = await supabase
+    .from('user_profiles')
+    .select('first_name, last_name, email')
+    .eq('id', userId)
+    .single();
+
+  if (userError || !user) {
+    throw new Error(`User not found: ${userId}`);
+  }
+
+  // Get death verification settings
+  const { data: settings, error: settingsError } = await supabase
+    .from('death_verification_settings')
+    .select('check_in_frequency, trusted_contact_email, notification_preferences')
+    .eq('user_id', userId)
+    .single();
+
+  if (settingsError || !settings) {
+    console.log(`No death verification settings found for user ${userId}`);
+    return { message: "No settings found" };
+  }
+
+  // Get latest checkin info
+  const { data: checkin, error: checkinError } = await supabase
+    .from('death_verification_checkins')
+    .select('next_check_in, checked_in_at')
+    .eq('user_id', userId)
+    .order('checked_in_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (checkinError || !checkin) {
+    throw new Error(`No checkin data found for user ${userId}`);
+  }
+
+  // Calculate days overdue
+  const nextCheckinDate = new Date(checkin.next_check_in);
+  const now = new Date();
+  const daysOverdue = Math.floor((now.getTime() - nextCheckinDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (daysOverdue <= 0) {
+    return { message: "User is not overdue" };
+  }
+
+  // Get executors
+  const { data: executors, error: executorsError } = await supabase
+    .from('will_executors')
+    .select('*')
+    .eq('user_id', userId)
+    .order('primary_executor', { ascending: false });
+
+  // Get beneficiaries  
+  const { data: beneficiaries, error: beneficiariesError } = await supabase
+    .from('will_beneficiaries')
+    .select('*')
+    .eq('user_id', userId);
+
+  const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;
+  const resend = getResendClient();
+  
+  const emailResults = [];
+
+  // 1. Send email to the user (check-in reminder)
+  if (settings.notification_preferences?.email_enabled !== false) {
+    try {
+      const userEmailContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #dc2626;">Check-in Reminder - ${daysOverdue} Days Overdue</h1>
+          <p>Hello ${userName},</p>
+          <p>You have missed your regular ${settings.check_in_frequency}-day check-in on WillTank.</p>
+          <p><strong>You are now ${daysOverdue} days overdue.</strong></p>
+          
+          <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #dc2626; margin-top: 0;">Important Notice</h3>
+            <p>If you don't check in soon, your trusted contacts and beneficiaries will be notified of your missed check-in.</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${supabaseUrl.replace('supabase.co', 'lovable.app')}/check-ins" 
+               style="background-color: #4a6cf7; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              COMPLETE CHECK-IN NOW
+            </a>
+          </div>
+
+          <p>Thank you for using WillTank to protect your digital legacy.</p>
+        </div>
+      `;
+
+      const userEmailResponse = await resend.emails.send({
+        from: "WillTank Check-ins <checkins@willtank.com>",
+        to: [user.email],
+        subject: `Urgent: WillTank Check-in Required (${daysOverdue} days overdue)`,
+        html: buildDefaultEmailLayout(userEmailContent)
+      });
+
+      emailResults.push({
+        type: 'user_reminder',
+        recipient: user.email,
+        success: !!userEmailResponse.id,
+        emailId: userEmailResponse.id
+      });
+    } catch (error) {
+      console.error('Error sending user reminder email:', error);
+      emailResults.push({
+        type: 'user_reminder',
+        recipient: user.email,
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // 2. Send emails to trusted contacts and beneficiaries
+  const contactEmails = [];
+  
+  // Add trusted contact email
+  if (settings.trusted_contact_email) {
+    contactEmails.push({
+      email: settings.trusted_contact_email,
+      type: 'trusted_contact',
+      name: 'Trusted Contact'
+    });
+  }
+
+  // Add beneficiary emails
+  if (beneficiaries) {
+    beneficiaries.forEach(beneficiary => {
+      if (beneficiary.email) {
+        contactEmails.push({
+          email: beneficiary.email,
+          type: 'beneficiary',
+          name: beneficiary.name
+        });
+      }
+    });
+  }
+
+  // Build executor details section
+  let executorDetailsHtml = '';
+  if (executors && executors.length > 0) {
+    executorDetailsHtml = `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #1f2937; margin-top: 0;">🔐 Executor Information for Will Access</h3>
+        <p style="color: #6b7280; margin-bottom: 15px;">If ${userName} has passed away, the following executors can access their will:</p>
+        ${executors.map((executor, index) => `
+          <div style="margin-bottom: 15px; padding: 15px; background-color: white; border-radius: 4px; border-left: 4px solid ${executor.primary_executor ? '#4f46e5' : '#6b7280'};">
+            <p style="margin: 0;"><strong>${executor.primary_executor ? '👑 Primary ' : ''}Executor ${index + 1}:</strong></p>
+            <p style="margin: 5px 0; color: #1f2937;"><strong>📧 Email:</strong> ${executor.email}</p>
+            <p style="margin: 5px 0; color: #1f2937;"><strong>👤 Full Name:</strong> ${executor.name}</p>
+            ${executor.phone ? `<p style="margin: 5px 0; color: #1f2937;"><strong>📞 Phone:</strong> ${executor.phone}</p>` : ''}
+            <p style="margin: 5px 0; color: #1f2937;"><strong>🔗 Relation:</strong> ${executor.relation || 'Not specified'}</p>
+          </div>
+        `).join('')}
+        
+        <div style="background-color: #fffbeb; border: 1px solid #f59e0b; padding: 15px; border-radius: 4px; margin-top: 15px;">
+          <h4 style="color: #92400e; margin-top: 0;">📋 Access Instructions for Executors:</h4>
+          <ol style="color: #92400e; margin: 10px 0; padding-left: 20px;">
+            <li>Go to: <strong>${supabaseUrl.replace('supabase.co', 'lovable.app')}/will-unlock</strong></li>
+            <li>Enter your <strong>full name</strong> and <strong>email address</strong> exactly as listed above</li>
+            <li>You will receive an OTP (One-Time Password) to your email</li>
+            <li>Use the OTP to unlock and download the will (one-time access only)</li>
+          </ol>
+        </div>
+      </div>
+    `;
+  }
+
+  // Send notification emails to contacts
+  for (const contact of contactEmails) {
+    try {
+      const contactEmailContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #dc2626;">⚠️ Death Verification Alert</h1>
+          <p>Dear ${contact.name},</p>
+          <p>You are receiving this important notification because <strong>${userName}</strong> has missed their regular check-in on WillTank for <strong>${daysOverdue} days</strong>.</p>
+          
+          <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #dc2626; margin-top: 0;">📋 What this means:</h3>
+            <p>WillTank users are required to check in every ${settings.check_in_frequency} days to confirm they are well. When this doesn't happen, we notify their trusted contacts and beneficiaries.</p>
+          </div>
+
+          <h3 style="color: #1f2937;">🔍 What you should do:</h3>
+          <ol style="color: #374151;">
+            <li><strong>Contact ${userName}</strong> immediately using your usual methods (phone, text, email, or in person)</li>
+            <li><strong>If you reach them:</strong> Ask them to log into their WillTank account and complete their check-in</li>
+            <li><strong>If you cannot reach them after reasonable attempts:</strong> This may indicate a serious situation</li>
+          </ol>
+
+          ${executorDetailsHtml}
+
+          <div style="background-color: #f3f4f6; border: 1px solid #d1d5db; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #374151; margin-top: 0;">📊 Check-in Details</h3>
+            <p><strong>User:</strong> ${userName}<br>
+            <strong>Email:</strong> ${user.email}<br>
+            <strong>Last Check-in:</strong> ${new Date(checkin.checked_in_at).toLocaleDateString()}<br>
+            <strong>Days Overdue:</strong> ${daysOverdue}<br>
+            <strong>Your Role:</strong> ${contact.type === 'trusted_contact' ? 'Trusted Contact' : 'Beneficiary'}</p>
+          </div>
+
+          <p>Thank you for being part of ${userName}'s digital legacy protection plan. Your role is crucial in ensuring their wishes are carried out.</p>
+
+          <p>Best regards,<br>
+          The WillTank Security Team</p>
+        </div>
+      `;
+
+      const contactEmailResponse = await resend.emails.send({
+        from: "WillTank Security <security@willtank.com>",
+        to: [contact.email],
+        subject: `⚠️ Death Verification Alert: ${userName} has missed check-in (${daysOverdue} days)`,
+        html: buildDefaultEmailLayout(contactEmailContent)
+      });
+
+      emailResults.push({
+        type: contact.type,
+        recipient: contact.email,
+        success: !!contactEmailResponse.id,
+        emailId: contactEmailResponse.id
+      });
+    } catch (error) {
+      console.error(`Error sending ${contact.type} email to ${contact.email}:`, error);
+      emailResults.push({
+        type: contact.type,
+        recipient: contact.email,
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Log the death verification event
+  await supabase.from('death_verification_logs').insert({
+    user_id: userId,
+    action: 'missed_checkin_notifications_sent',
+    details: {
+      days_overdue: daysOverdue,
+      emails_sent: emailResults,
+      executor_count: executors?.length || 0,
+      beneficiary_count: beneficiaries?.length || 0,
+      trusted_contact_notified: !!settings.trusted_contact_email
+    }
+  });
+
+  return {
+    success: true,
+    user: userName,
+    daysOverdue,
+    emailResults,
+    executorCount: executors?.length || 0,
+    beneficiaryCount: beneficiaries?.length || 0
+  };
+}
