@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Sparkles } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Star, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface SubscriptionModalProps {
@@ -21,8 +21,10 @@ interface SubscriptionModalProps {
 
 const plans = [
   {
-    name: 'Starter',
-    price: '$7.99',
+    name: 'starter',
+    title: 'Starter',
+    icon: <Zap className="h-5 w-5" />,
+    price: '$14.99',
     period: 'month',
     features: [
       'Basic will templates',
@@ -34,10 +36,13 @@ const plans = [
     recommended: false,
   },
   {
-    name: 'Gold',
-    price: '$14.99',
+    name: 'gold',
+    title: 'Gold',
+    icon: <Star className="h-5 w-5" />,
+    price: '$29',
     period: 'month',
     features: [
+      'All Starter features',
       'Advanced will templates',
       'Up to 10 future messages',
       'Enhanced encryption',
@@ -48,10 +53,13 @@ const plans = [
     recommended: true,
   },
   {
-    name: 'Platinum',
-    price: '$24.99',
+    name: 'platinum',
+    title: 'Platinum',
+    icon: <Shield className="h-5 w-5" />,
+    price: '$55',
     period: 'month',
     features: [
+      'All Gold features',
       'Premium legal templates',
       'Unlimited future messages',
       'Military-grade encryption',
@@ -96,13 +104,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               key={plan.name}
               className={`relative ${
                 plan.recommended
-                  ? 'border-yellow-500 shadow-lg scale-105'
+                  ? 'border-willtank-500 shadow-lg scale-105'
                   : 'border-gray-200'
               }`}
             >
               {plan.recommended && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-yellow-500 text-white px-3 py-1">
+                  <Badge className="bg-willtank-500 text-white px-3 py-1">
                     <Sparkles className="h-3 w-3 mr-1" />
                     Most Popular
                   </Badge>
@@ -110,7 +118,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               )}
               
               <CardHeader className="text-center pb-2">
-                <CardTitle className="text-xl font-bold">{plan.name}</CardTitle>
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <div className="bg-willtank-100 p-2 rounded-lg text-willtank-600">
+                    {plan.icon}
+                  </div>
+                  <CardTitle className="text-xl font-bold">{plan.title}</CardTitle>
+                </div>
                 <div className="mt-2">
                   <span className="text-3xl font-bold">{plan.price}</span>
                   <span className="text-gray-500">/{plan.period}</span>
@@ -131,11 +144,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   onClick={() => handleSelectPlan(plan.name)}
                   className={`w-full ${
                     plan.recommended
-                      ? 'bg-yellow-600 hover:bg-yellow-700'
+                      ? 'bg-willtank-600 hover:bg-willtank-700'
                       : 'bg-gray-900 hover:bg-gray-800'
                   }`}
                 >
-                  Choose {plan.name}
+                  Choose {plan.title}
                 </Button>
               </CardContent>
             </Card>

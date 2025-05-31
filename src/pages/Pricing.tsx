@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
-import { Pricing as PricingComponent } from '@/components/home/Pricing';
+import { CleanPricingPlans } from '@/components/pricing/CleanPricingPlans';
 
 export default function Pricing() {
   return (
@@ -17,7 +17,7 @@ export default function Pricing() {
             </p>
           </div>
           
-          <PricingComponent />
+          <CleanPricingPlans />
           
           <div className="mt-16 bg-gray-50 p-8 rounded-lg max-w-3xl mx-auto">
             <h2 className="text-2xl font-bold mb-4">Frequently Asked Questions</h2>
