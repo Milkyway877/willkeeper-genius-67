@@ -4,7 +4,7 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { checkFeatureAccess } from '@/services/subscriptionService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Crown, Lock, ArrowRight } from 'lucide-react';
+import { Crown, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface FeatureGuardProps {
@@ -69,13 +69,23 @@ export const FeatureGuard: React.FC<FeatureGuardProps> = ({
           </div>
         </div>
 
-        <Button 
-          onClick={() => navigate('/pricing')}
-          className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2"
-        >
-          Upgrade Now
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button 
+            onClick={() => navigate('/dashboard')}
+            variant="outline"
+            className="border-yellow-300 text-yellow-700 hover:bg-yellow-100 px-6 py-2"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <Button 
+            onClick={() => navigate('/pricing')}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2"
+          >
+            Upgrade Now
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
