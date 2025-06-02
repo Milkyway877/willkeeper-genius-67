@@ -63,9 +63,49 @@ export default function TemplateWillCreationPage() {
     navigate('/will/create');
   };
   
-  const handleWillSaved = (willId: string) => {
-    console.log("Will saved with ID:", willId);
-    navigate('/wills');
+  const handleSave = async (data: any) => {
+    try {
+      // Save progress
+      if (progress) {
+        await saveWillProgress({
+          ...progress,
+          responses: data,
+          updated_at: new Date().toISOString()
+        });
+      }
+      
+      // If there's a will ID, update the will
+      if (progress?.will_id) {
+        await updateWill(progress.will_id, {
+          title: `${data.personalInfo?.fullName}'s Will`,
+          content: JSON.stringify(data),
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        // Create a new will
+        const willData = {
+          title: `${data.personalInfo?.fullName}'s Will`,
+          content: JSON.stringify(data),
+          status: 'draft',
+          template_type: templateId || '',
+          ai_generated: false,
+          document_url: ''
+        };
+        
+        const savedWill = await createWill(willData);
+        
+        // Update progress with will ID
+        if (savedWill && progress) {
+          await saveWillProgress({
+            ...progress,
+            will_id: savedWill.id,
+            responses: data
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error saving will:", error);
+    }
   };
   
   return (
@@ -90,7 +130,12 @@ export default function TemplateWillCreationPage() {
           </div>
         ) : (
           <div className="flex-1">
-            <DocumentWillEditor onWillSaved={handleWillSaved} />
+            <DocumentWillEditor 
+              templateId={templateId || ''} 
+              initialData={progress?.responses} 
+              willId={progress?.will_id}
+              onSave={handleSave}
+            />
           </div>
         )}
       </div>

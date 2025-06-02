@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -21,8 +20,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generateWillContent } from '@/utils/willTemplateUtils';
-import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
-import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 
 // Form validation schema
 const willSchema = z.object({
@@ -189,14 +186,6 @@ Date: ${new Date().toLocaleDateString()}
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  const {
-    showSubscriptionModal,
-    handleWillSaved,
-    handleSubscriptionSuccess,
-    closeSubscriptionModal,
-    subscriptionStatus
-  } = useWillSubscriptionFlow();
-  
   // Form watcher to update content as user types
   const handleFormChange = (values: WillFormValues) => {
     console.log("Form values updated:", values);
@@ -213,12 +202,6 @@ Date: ${new Date().toLocaleDateString()}
   };
   
   const handleSaveDraft = async () => {
-    // Check subscription before allowing any save operation
-    if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true); // This will show the subscription modal
-      return;
-    }
-
     try {
       setSaving(true);
       
@@ -268,12 +251,6 @@ Date: ${new Date().toLocaleDateString()}
   };
   
   const handleFinalize = async () => {
-    // Check subscription before allowing finalization
-    if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true); // This will show the subscription modal
-      return;
-    }
-
     try {
       setSaving(true);
       
@@ -396,14 +373,6 @@ Date: ${new Date().toLocaleDateString()}
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
                       Finalize Will
                     </Button>
-                    
-                    {!subscriptionStatus.isSubscribed && (
-                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        <p className="text-xs text-amber-800">
-                          <strong>Subscription Required:</strong> Upgrade to save your will and access Tank features.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </Card>
               </div>
@@ -411,12 +380,6 @@ Date: ${new Date().toLocaleDateString()}
           </div>
         </form>
       </FormProvider>
-      
-      <SubscriptionModal
-        open={showSubscriptionModal}
-        onClose={closeSubscriptionModal}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
     </div>
   );
 }

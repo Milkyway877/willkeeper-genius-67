@@ -1,304 +1,918 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { WillPreview } from './WillPreview';
-import { FileText, Save, Download, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createWill } from '@/services/willService';
-import { useNavigate } from 'react-router-dom';
-import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
-import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
+import { Check, Download, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { DigitalSignature } from './DigitalSignature';
+import { downloadDocument } from '@/utils/documentUtils';
+import { validateWillContent, generateWillContent } from '@/utils/willTemplateUtils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { BeneficiaryField } from './DocumentFields/BeneficiaryField';
+import { ExecutorField } from './DocumentFields/ExecutorField';
+import { GuardianField } from './DocumentFields/GuardianField';
+import { AssetField } from './DocumentFields/AssetField';
+import { TextField } from './DocumentFields/TextField';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { DocumentPreview } from './DocumentPreview';
+import { createWill, updateWill, Will } from '@/services/willService';
+import { useFormAutoSave } from '@/hooks/use-form-auto-save';
+import { AIFloatingIndicator } from './AIFloatingIndicator';
+import { AISuggestionsPanel } from './AISuggestionsPanel';
+import { ContactField } from './DocumentFields/ContactField';
+import { WillCreationSuccess } from './WillCreationSuccess';
+import '../../../MobileStyles.css';
+import { 
+  Executor, 
+  Beneficiary, 
+  Guardian, 
+  Property, 
+  Vehicle, 
+  FinancialAccount, 
+  DigitalAsset,
+  WillContent
+} from './types';
 
 interface DocumentWillEditorProps {
-  onWillSaved?: (willId: string) => void;
+  templateId: string;
+  initialData?: any;
+  willId?: string;
+  onSave?: (data: any) => void;
 }
 
-export function DocumentWillEditor({ onWillSaved }: DocumentWillEditorProps) {
-  const [title, setTitle] = useState('My Last Will and Testament');
-  const [content, setContent] = useState(`LAST WILL AND TESTAMENT
+export function DocumentWillEditor({ templateId, initialData = {}, willId, onSave }: DocumentWillEditorProps) {
+  // State for personal information
+  const [personalInfo, setPersonalInfo] = useState({
+    fullName: initialData?.fullName || '',
+    dateOfBirth: initialData?.dateOfBirth || '',
+    address: initialData?.homeAddress || '',
+    email: initialData?.email || '',
+    phone: initialData?.phoneNumber || '',
+  });
 
-I, [Your Full Name], of [Your Address], being of sound mind and disposing memory, do hereby make, publish, and declare this to be my Last Will and Testament.
+  // State for structured contact data
+  const [executors, setExecutors] = useState<Executor[]>(
+    initialData?.executors || [
+      { id: 'exec-1', name: '', relationship: '', email: '', phone: '', address: '', isPrimary: true }
+    ]
+  );
 
-ARTICLE I: REVOCATION
-I hereby revoke all former wills and codicils made by me.
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(
+    initialData?.beneficiaries || [
+      { id: 'ben-1', name: '', relationship: '', email: '', phone: '', address: '', percentage: 0 }
+    ]
+  );
 
-ARTICLE II: PERSONAL REPRESENTATIVE
-I hereby nominate and appoint [Executor Name] as the Personal Representative of this my Last Will and Testament.
+  const [guardians, setGuardians] = useState<Guardian[]>(
+    initialData?.guardians || [
+      { id: 'guard-1', name: '', relationship: '', email: '', phone: '', address: '', forChildren: [] }
+    ]
+  );
 
-ARTICLE III: DISPOSITION OF PROPERTY
-I give, devise, and bequeath all of my property, both real and personal, of whatever kind and wherever situated, to [Beneficiary Name].
+  // State for assets
+  const [properties, setProperties] = useState<Property[]>(
+    initialData?.properties || []
+  );
 
-IN WITNESS WHEREOF, I have hereunto set my hand this [Date].
+  const [vehicles, setVehicles] = useState<Vehicle[]>(
+    initialData?.vehicles || []
+  );
 
-_________________________
-[Your Full Name], Testator`);
+  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>(
+    initialData?.financialAccounts || []
+  );
+
+  const [digitalAssets, setDigitalAssets] = useState<DigitalAsset[]>(
+    initialData?.digitalAssets || []
+  );
+
+  // State for other will content
+  const [specificBequests, setSpecificBequests] = useState(
+    initialData?.specificBequests || ''
+  );
   
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasGenerated, setHasGenerated] = useState(false);
+  const [residualEstate, setResidualEstate] = useState(
+    initialData?.residualEstate || ''
+  );
+  
+  const [finalArrangements, setFinalArrangements] = useState(
+    initialData?.finalArrangements || ''
+  );
+  
+  // UI state
+  const [signature, setSignature] = useState<string | null>(null);
+  const [showAIHelper, setShowAIHelper] = useState<string | null>(null);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [isComplete, setIsComplete] = useState<boolean>(false);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
+  const [showBeneficiaryPrompt, setShowBeneficiaryPrompt] = useState<boolean>(false);
+  const [showAISuggestionsPanel, setShowAISuggestionsPanel] = useState(true);
+  const [showSuccessScreen, setShowSuccessScreen] = useState<boolean>(false);
+  const [generatedWill, setGeneratedWill] = useState<Will | null>(null);
+  
+  const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const navigate = useNavigate();
-  
-  const {
-    showSubscriptionModal,
-    handleWillSaved,
-    handleSubscriptionSuccess,
-    closeSubscriptionModal,
-    subscriptionStatus
-  } = useWillSubscriptionFlow();
 
-  const handleGenerateOfficialWill = async () => {
-    if (!title.trim() || !content.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide both a title and content for your will.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    
-    try {
-      // Simulate generation process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setHasGenerated(true);
-      toast({
-        title: "Will Generated",
-        description: "Your will has been generated successfully. You can now review and save it.",
-      });
-    } catch (error) {
-      console.error('Error generating will:', error);
-      toast({
-        title: "Generation Error",
-        description: "There was an error generating your will. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+  // Prepare combined will content for auto-save and completeness check
+  const willContent: WillContent = {
+    personalInfo,
+    executors,
+    beneficiaries,
+    guardians,
+    assets: {
+      properties,
+      vehicles,
+      financialAccounts,
+      digitalAssets
+    },
+    specificBequests,
+    residualEstate,
+    finalArrangements
   };
 
-  const handleSaveWill = async () => {
-    // Check subscription before allowing save
-    if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true); // This will show the subscription modal
-      return;
-    }
+  // Auto-save functionality
+  const { saving: autoSaving, lastSaved, saveError } = useFormAutoSave({
+    data: { willContent, signature },
+    onSave: async (data) => {
+      try {
+        if (!willId && onSave) {
+          onSave(data.willContent);
+        } else if (willId) {
+          await updateWill(willId, {
+            content: JSON.stringify(data.willContent),
+            title: `${data.willContent.personalInfo.fullName}'s Will`,
+            updated_at: new Date().toISOString()
+          });
+        }
+        setLastAutoSave(new Date());
+        return true;
+      } catch (error) {
+        console.error("Auto-save error:", error);
+        return false;
+      }
+    },
+    debounceMs: 2000,
+    enabled: true
+  });
 
-    if (!title.trim() || !content.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide both a title and content for your will.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    
-    try {
-      const willData = {
-        title: title.trim(),
-        content: content.trim(),
-        status: 'active',
-        template_type: 'custom',
-        ai_generated: false,
-        document_url: ''
-      };
-
-      const savedWill = await createWill(willData);
-      
-      toast({
-        title: "Will Saved",
-        description: "Your will has been saved successfully.",
-      });
-      
-      if (onWillSaved) {
-        onWillSaved(savedWill.id);
+  // Check if the document is complete
+  useEffect(() => {
+    const checkCompleteness = () => {
+      // Basic completeness check (could be enhanced)
+      if (!personalInfo.fullName || !personalInfo.dateOfBirth || !personalInfo.address) {
+        return false;
       }
       
-      // Navigate to wills page or tank
-      navigate('/wills');
+      // Check primary executor
+      const primaryExecutor = executors.find(e => e.isPrimary);
+      if (!primaryExecutor || !primaryExecutor.name) {
+        return false;
+      }
+      
+      // Check beneficiaries
+      if (!beneficiaries.length || !beneficiaries[0].name) {
+        return false;
+      }
+      
+      // Check if beneficiary percentages add up to 100%
+      const totalPercentage = beneficiaries.reduce((sum, b) => sum + (b.percentage || 0), 0);
+      if (Math.abs(totalPercentage - 100) > 0.01) {
+        return false;
+      }
+      
+      return true;
+    };
+    
+    setIsComplete(checkCompleteness());
+  }, [personalInfo, executors, beneficiaries]);
+
+  // Handle AI Assistant for a field
+  const handleShowAIHelper = (field: string, position?: { x: number, y: number }) => {
+    setShowAIHelper(field === showAIHelper ? null : field);
+    setShowAISuggestionsPanel(true);
+    
+    // Use an actual popup notification instead of toast
+    const fieldName = field.replace(/([A-Z])/g, ' $1')
+                          .replace(/_/g, ' ')
+                          .trim();
+    
+    // We'll use the toast only as a notification, our AIAssistantPopup provides the actual help
+    toast({
+      title: `AI Assistant activated for ${fieldName}`,
+      description: "Check the suggestions panel for help."
+    });
+  };
+  
+  // Handle signature change
+  const handleSignatureChange = (signatureData: string | null) => {
+    setSignature(signatureData);
+  };
+  
+  // Handle document save
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      
+      const documentData = {
+        title: `${personalInfo.fullName}'s Will`,
+        content: JSON.stringify(willContent),
+        status: 'draft',
+        template_type: templateId,
+        document_url: '',
+      };
+      
+      if (willId) {
+        await updateWill(willId, documentData);
+      } else {
+        const newWill = await createWill(documentData);
+        if (newWill && onSave) {
+          onSave({ ...willContent, id: newWill.id });
+        }
+      }
+      
+      toast({
+        title: "Draft Saved",
+        description: "Your will document has been saved as a draft.",
+      });
     } catch (error) {
-      console.error('Error saving will:', error);
+      console.error("Error saving document:", error);
       toast({
         title: "Save Error",
-        description: "There was an error saving your will. Please try again.",
+        description: "There was an error saving your document. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
+  
+  // Handle document download
+  const handleDownload = () => {
+    // Generate a formatted text document
+    const generateDocumentText = (): string => {
+      const primaryExecutor = executors.find(e => e.isPrimary);
+      const alternateExecutors = executors.filter(e => !e.isPrimary);
+      
+      const beneficiariesText = beneficiaries.map(b => 
+        `- ${b.name} (${b.relationship}): ${b.percentage}% of the estate`
+      ).join('\n');
+      
+      return `
+LAST WILL AND TESTAMENT
 
-  const handleDownloadWill = () => {
-    // Only allow download if user has subscription
-    if (!subscriptionStatus.isSubscribed) {
+I, ${personalInfo.fullName}, residing at ${personalInfo.address}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on ${personalInfo.dateOfBirth} and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint ${primaryExecutor?.name || '[Primary Executor]'} to serve as the Executor of my estate. ${
+  alternateExecutors.length > 0 
+    ? `If they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} to serve as alternate Executor.` 
+    : ''
+}
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+${beneficiariesText}
+
+ARTICLE IV: SPECIFIC BEQUESTS
+${specificBequests || '[No specific bequests specified]'}
+
+ARTICLE V: RESIDUAL ESTATE
+I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
+
+ARTICLE VI: FINAL ARRANGEMENTS
+${finalArrangements || '[No specific final arrangements specified]'}
+      `;
+    };
+    
+    const documentText = generateDocumentText();
+    downloadDocument(documentText, `${personalInfo.fullName}'s Will`, signature);
+  };
+  
+  // Handle AI assistance request from floating indicator
+  const handleAIAssistanceRequest = (field?: string) => {
+    setShowAISuggestionsPanel(true);
+    
+    if (field) {
+      // Specific field help
+      handleShowAIHelper(field);
+    } else {
+      // General advice
       toast({
-        title: "Subscription Required",
-        description: "Please upgrade to download your will document.",
-        variant: "destructive"
+        title: "AI Document Assistant",
+        description: "I can help you complete your will. Click on any field that needs assistance or on the question mark icon next to it.",
+        duration: 6000,
       });
-      return;
     }
-
-    if (!hasGenerated) {
-      toast({
-        title: "Generate First",
-        description: "Please generate your will before downloading.",
-        variant: "destructive"
-      });
-      return;
+  };
+  
+  // Handle accepting an AI suggestion
+  const handleAcceptAISuggestion = (field: string, suggestion: string) => {
+    // Extract useful content from the suggestion
+    let extractedContent = suggestion;
+    
+    // For examples, extract just the example part
+    if (suggestion.includes('For example:')) {
+      const exampleMatch = suggestion.match(/For example:(.*?)(?:$|\n)/s);
+      if (exampleMatch && exampleMatch[1]) {
+        extractedContent = exampleMatch[1].trim();
+      }
     }
-
-    // Create and download the document
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    // Update the appropriate state based on the field
+    if (field.startsWith('personal_')) {
+      const personalField = field.replace('personal_', '') as keyof typeof personalInfo;
+      setPersonalInfo(prev => ({
+        ...prev,
+        [personalField]: extractedContent
+      }));
+    } else if (field === 'specificBequests') {
+      setSpecificBequests(extractedContent);
+    } else if (field === 'residualEstate') {
+      setResidualEstate(extractedContent);
+    } else if (field === 'finalArrangements') {
+      setFinalArrangements(extractedContent);
+    }
     
     toast({
-      title: "Will Downloaded",
-      description: "Your will has been downloaded successfully.",
+      title: "AI Suggestion Applied",
+      description: `Updated ${field.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()} with the AI suggestion.`
     });
   };
 
-  return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Editor Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Will Editor
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="title">Will Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter will title"
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="content">Will Content</Label>
-              <Textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Enter your will content here..."
-                className="mt-1 min-h-[400px] font-mono text-sm"
-              />
-            </div>
-            
-            <div className="flex flex-col gap-3">
-              <Button
-                onClick={handleGenerateOfficialWill}
-                disabled={isGenerating}
-                className="w-full"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Will...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Generate Will
-                  </>
-                )}
-              </Button>
-              
-              {hasGenerated && (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleSaveWill}
-                    disabled={isSaving}
-                    variant="default"
-                    className="flex-1"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Will
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleDownloadWill}
-                    variant="outline"
-                    className="flex-1"
-                    disabled={!subscriptionStatus.isSubscribed}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {hasGenerated && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Generated
-                </Badge>
-                <span className="text-sm text-green-700">
-                  Your will is ready for review and saving
-                </span>
-              </div>
-            )}
-            
-            {!subscriptionStatus.isSubscribed && hasGenerated && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
-                  <strong>Subscription Required:</strong> Upgrade to save and download your will, plus access Tank features.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Preview Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Preview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <WillPreview content={content} />
-          </CardContent>
-        </Card>
-      </div>
+  // Handle generating the official document
+  const handleGenerateOfficialWill = async () => {
+    try {
+      if (!isComplete) {
+        toast({
+          title: "Document Incomplete",
+          description: "Please complete all required sections before generating the official will.",
+          variant: "destructive"
+        });
+        return;
+      }
       
-      <SubscriptionModal
-        open={showSubscriptionModal}
-        onClose={closeSubscriptionModal}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
+      if (!signature) {
+        toast({
+          title: "Signature Required",
+          description: "Please add your digital signature before generating the official will.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Generate a professional document
+      const title = `${personalInfo.fullName}'s Will`;
+      
+      // Import here to avoid circular dependency
+      import('@/utils/professionalDocumentUtils').then(({ downloadProfessionalDocument }) => {
+        downloadProfessionalDocument(willContent, signature, title);
+        
+        toast({
+          title: "Official Will Generated",
+          description: "Your official will document has been generated with letterhead and watermark.",
+        });
+      });
+      
+      // Save the will as active if not already saved
+      if (willId) {
+        const updatedWill = await updateWill(willId, {
+          status: 'active',
+          content: JSON.stringify(willContent),
+          title: title
+        });
+        
+        if (updatedWill) {
+          setGeneratedWill(updatedWill);
+          setShowSuccessScreen(true);
+        }
+      } else if (onSave) {
+        const documentData = {
+          title: title,
+          content: JSON.stringify(willContent),
+          status: 'active',
+          template_type: templateId,
+          document_url: '',
+        };
+        
+        const newWill = await createWill(documentData);
+        if (newWill && onSave) {
+          onSave({ ...willContent, id: newWill.id });
+          setGeneratedWill(newWill);
+          setShowSuccessScreen(true);
+        }
+      }
+      
+    } catch (error) {
+      console.error("Error generating official will:", error);
+      toast({
+        title: "Generation Error",
+        description: "There was an error generating your official will. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Function to generate document text from willContent
+  const generateDocumentText = (): string => {
+    const primaryExecutor = executors.find(e => e.isPrimary);
+    const alternateExecutors = executors.filter(e => !e.isPrimary);
+    
+    const beneficiariesText = beneficiaries.map(b => 
+      `- ${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate`
+    ).join('\n');
+    
+    return `
+LAST WILL AND TESTAMENT
+
+I, ${personalInfo.fullName || '[Full Name]'}, residing at ${personalInfo.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on ${personalInfo.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint ${primaryExecutor?.name || '[Primary Executor]'} to serve as the Executor of my estate. ${
+alternateExecutors.length > 0 
+  ? `If they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} to serve as alternate Executor.` 
+  : ''
+}
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+${beneficiariesText}
+
+ARTICLE IV: SPECIFIC BEQUESTS
+${specificBequests || '[No specific bequests specified]'}
+
+ARTICLE V: RESIDUAL ESTATE
+I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
+
+ARTICLE VI: FINAL ARRANGEMENTS
+${finalArrangements || '[No specific final arrangements specified]'}
+    `;
+  };
+
+  return (
+    <div className="container mx-auto mb-28">
+      {showSuccessScreen && generatedWill && (
+        <WillCreationSuccess 
+          will={generatedWill} 
+          onClose={() => setShowSuccessScreen(false)} 
+        />
+      )}
+      
+      {/* Main document area with scrolling */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* AI Suggestions Panel */}
+        <AISuggestionsPanel
+          isVisible={showAISuggestionsPanel}
+          activeField={showAIHelper}
+          onClose={() => setShowAISuggestionsPanel(false)}
+          onSuggestionAccept={handleAcceptAISuggestion}
+        />
+        
+        {/* Control panel */}
+        <div className="col-span-12 flex justify-between items-center flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Draft
+            </Button>
+            <Button onClick={() => setShowPreview(true)} variant="outline">
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
+            </Button>
+            <Button onClick={handleDownload} disabled={!isComplete}>
+              <Download className="h-4 w-4 mr-2" />
+              Download Will
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            {autoSaving && (
+              <div className="text-gray-500 flex items-center text-sm">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" /> 
+                Saving...
+              </div>
+            )}
+            {lastSaved && !autoSaving && (
+              <div className="text-gray-500 flex items-center text-sm">
+                <Clock className="h-3 w-3 mr-1" /> 
+                Auto-saved {new Date(lastSaved).toLocaleTimeString()}
+              </div>
+            )}
+            {isComplete ? (
+              <div className="text-green-600 flex items-center text-sm">
+                <Check className="h-4 w-4 mr-1" /> Document Complete
+              </div>
+            ) : (
+              <div className="text-amber-600 flex items-center text-sm">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                Fill in all required fields
+              </div>
+            )}
+            
+            {/* AI Helper toggle button */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              className={`${showAISuggestionsPanel ? 'bg-willtank-50 text-willtank-800' : ''}`}
+              onClick={() => setShowAISuggestionsPanel(!showAISuggestionsPanel)}
+            >
+              <MessageCircleQuestion className="h-4 w-4 mr-2" />
+              AI Assistant
+            </Button>
+          </div>
+        </div>
+        
+        {/* Main document area with scrolling */}
+        <div className="col-span-12 md:col-span-8 relative">
+          <ScrollArea className="h-auto max-h-[80vh]">
+            <Card className="p-8 border-2 shadow-sm">
+              {/* Letterhead */}
+              <div className="flex justify-between items-center border-b border-gray-200 pb-6 mb-8">
+                <Logo size="lg" variant="default" showSlogan={true} />
+                <div className="text-right text-gray-500 text-sm">
+                  <p>Official Legal Document</p>
+                  <p>Generated on {new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+              
+              {/* Document content */}
+              <div className="font-serif space-y-6" ref={documentRef}>
+                <h1 className="text-3xl text-center font-bold mb-6">LAST WILL AND TESTAMENT</h1>
+                
+                <p className="text-lg">
+                  I, {' '}
+                  <span className="inline-block">
+                    <ContactField 
+                      label="Full Name"
+                      value={personalInfo.fullName}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, fullName: value }))}
+                      placeholder="Enter your full legal name"
+                      required={true}
+                      onAiHelp={(position) => handleShowAIHelper('personal_fullName', position)}
+                    />
+                  </span>
+                  , residing at {' '}
+                  <span className="inline-block">
+                    <ContactField 
+                      label="Address"
+                      value={personalInfo.address}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, address: value }))}
+                      placeholder="Enter your full address"
+                      required={true}
+                      onAiHelp={(position) => handleShowAIHelper('personal_address', position)}
+                    />
+                  </span>
+                  , being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+                </p>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE I: PERSONAL INFORMATION</h2>
+                  <p>
+                    I declare that I was born on {' '}
+                    <span className="inline-block">
+                      <ContactField 
+                        label="Date of Birth" 
+                        value={personalInfo.dateOfBirth}
+                        onChange={(value) => setPersonalInfo(prev => ({ ...prev, dateOfBirth: value }))}
+                        placeholder="MM/DD/YYYY"
+                        required={true}
+                        onAiHelp={(position) => handleShowAIHelper('personal_dateOfBirth', position)}
+                      />
+                    </span>
+                    {' '} and that I am creating this will to ensure my wishes are carried out after my death.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <ContactField 
+                      label="Email Address"
+                      value={personalInfo.email}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, email: value }))}
+                      type="email"
+                      placeholder="your@email.com"
+                      onAiHelp={(position) => handleShowAIHelper('personal_email', position)}
+                    />
+                    
+                    <ContactField 
+                      label="Phone Number"
+                      value={personalInfo.phone}
+                      onChange={(value) => setPersonalInfo(prev => ({ ...prev, phone: value }))}
+                      type="tel"
+                      placeholder="(123) 456-7890"
+                      onAiHelp={(position) => handleShowAIHelper('personal_phone', position)}
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE II: APPOINTMENT OF EXECUTOR</h2>
+                  <p>
+                    I appoint {' '}
+                    <span className="inline-block">
+                      <ExecutorField
+                        executors={executors}
+                        onUpdate={setExecutors}
+                        onAiHelp={handleShowAIHelper}
+                      />
+                    </span>
+                    {' '} to serve as the Executor of my estate.
+                  </p>
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE III: BENEFICIARIES</h2>
+                  <p className="mb-2">I bequeath my assets to the following beneficiaries:</p>
+                  <div className="pl-4">
+                    <BeneficiaryField
+                      beneficiaries={beneficiaries}
+                      onUpdate={setBeneficiaries}
+                      onAiHelp={handleShowAIHelper}
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE IV: ASSETS & SPECIFIC BEQUESTS</h2>
+                  <p className="mb-4">I own the following assets:</p>
+                  
+                  <AssetField
+                    properties={properties}
+                    vehicles={vehicles}
+                    financialAccounts={financialAccounts}
+                    digitalAssets={digitalAssets}
+                    onUpdateProperties={setProperties}
+                    onUpdateVehicles={setVehicles}
+                    onUpdateFinancialAccounts={setFinancialAccounts}
+                    onUpdateDigitalAssets={setDigitalAssets}
+                    onAiHelp={handleShowAIHelper}
+                  />
+                  
+                  <h3 className="font-medium mt-6 mb-2">Specific Bequests</h3>
+                  <p className="mb-2">I make the following specific gifts:</p>
+                  <TextField 
+                    value={specificBequests} 
+                    multiline={true}
+                    label="specificBequests" 
+                    onEdit={(value) => setSpecificBequests(value)}
+                    onAiHelp={() => handleShowAIHelper('specificBequests')}
+                  />
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE V: RESIDUAL ESTATE</h2>
+                  <p>
+                    I give all the rest and residue of my estate to {' '}
+                    <TextField 
+                      value={residualEstate} 
+                      label="residualEstate" 
+                      onEdit={(value) => setResidualEstate(value)}
+                      onAiHelp={() => handleShowAIHelper('residualEstate')}
+                    />
+                    .
+                  </p>
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VI: GUARDIANSHIP</h2>
+                  {guardians.length > 0 ? (
+                    <div>
+                      <p className="mb-2">I appoint the following guardian(s) for my minor children:</p>
+                      <GuardianField
+                        guardians={guardians}
+                        onUpdate={setGuardians}
+                        onAiHelp={handleShowAIHelper}
+                        children={['Child 1', 'Child 2']} // Example - would be dynamic in real use
+                      />
+                    </div>
+                  ) : (
+                    <p>
+                      I do not have minor children at this time. If I should have children in the future, I appoint {' '}
+                      <span 
+                        className="cursor-pointer border-b border-dashed border-gray-300 hover:border-willtank-400 px-1"
+                        onClick={() => setGuardians([{ id: 'guard-1', name: '', relationship: '', email: '', phone: '', address: '', forChildren: [] }])}
+                      >
+                        [Click to add guardians]
+                      </span>
+                      {' '} as their guardian.
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <h2 className="text-xl font-bold mt-6 mb-3">ARTICLE VII: FINAL ARRANGEMENTS</h2>
+                  <TextField 
+                    value={finalArrangements} 
+                    multiline={true}
+                    label="finalArrangements" 
+                    onEdit={(value) => setFinalArrangements(value)}
+                    onAiHelp={() => handleShowAIHelper('finalArrangements')}
+                  />
+                </div>
+                
+                {/* Digital Signature Section */}
+                <div className="mt-12 pt-6 border-t border-gray-200">
+                  <h2 className="text-xl font-bold mb-3">SIGNATURE</h2>
+                  <p className="mb-4">
+                    By signing below, I confirm this document represents my last will and testament.
+                  </p>
+                  
+                  <DigitalSignature defaultOpen={true} onSignatureChange={handleSignatureChange} />
+                </div>
+              </div>
+            </Card>
+          </ScrollArea>
+        </div>
+        
+        {/* Document information sidebar - with sticky positioning */}
+        <div className="col-span-12 md:col-span-4 space-y-4">
+          <div className="md:sticky md:top-6">
+            <Card className="p-4">
+              <h3 className="font-medium mb-3">Document Progress</h3>
+              <div className="space-y-2 text-sm">
+                <div className="space-y-1">
+                  <h4 className="font-medium">Personal Information</h4>
+                  <ul className="ml-2 space-y-1">
+                    <li className="flex items-center justify-between">
+                      <span>Full Name</span>
+                      {personalInfo.fullName ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-amber-600"
+                          onClick={() => handleShowAIHelper('personal_fullName')}
+                        >
+                          <Pen className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Date of Birth</span>
+                      {personalInfo.dateOfBirth ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-amber-600"
+                          onClick={() => handleShowAIHelper('personal_dateOfBirth')}
+                        >
+                          <Pen className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Address</span>
+                      {personalInfo.address ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-amber-600"
+                          onClick={() => handleShowAIHelper('personal_address')}
+                        >
+                          <Pen className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="font-medium">Executors</h4>
+                  <ul className="ml-2 space-y-1">
+                    <li className="flex items-center justify-between">
+                      <span>Primary Executor</span>
+                      {executors.some(e => e.isPrimary && e.name) ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-amber-600"
+                          onClick={() => handleShowAIHelper('executor')}
+                        >
+                          <Pen className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="font-medium">Beneficiaries</h4>
+                  <ul className="ml-2 space-y-1">
+                    <li className="flex items-center justify-between">
+                      <span>Named Beneficiaries</span>
+                      {beneficiaries.some(b => b.name) ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-amber-600"
+                          onClick={() => handleShowAIHelper('beneficiary')}
+                        >
+                          <Pen className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Allocation (100%)</span>
+                      {Math.abs(beneficiaries.reduce((sum, b) => sum + (b.percentage || 0), 0) - 100) < 0.01 ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-amber-600"
+                          onClick={() => handleShowAIHelper('beneficiary')}
+                        >
+                          <Pen className="h-3 w-3 mr-1" /> Edit
+                        </Button>
+                      )}
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="font-medium">Assets</h4>
+                  <ul className="ml-2 space-y-1">
+                    <li className="flex items-center justify-between">
+                      <span>Properties</span>
+                      <span className="text-xs">{properties.length || 0} added</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Vehicles</span>
+                      <span className="text-xs">{vehicles.length || 0} added</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Financial Accounts</span>
+                      <span className="text-xs">{financialAccounts.length || 0} added</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Digital Assets</span>
+                      <span className="text-xs">{digitalAssets.length || 0} added</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="font-medium">Signature</h4>
+                  <div className="ml-2">
+                    {signature ? (
+                      <div className="flex items-center justify-between">
+                        <span>Digital Signature</span>
+                        <Check className="h-4 w-4 text-green-500" />
+                      </div>
+                    ) : (
+                      <div className="text-amber-600 text-sm">
+                        Please add your signature to complete the will
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <Button 
+                  onClick={handleGenerateOfficialWill} 
+                  className="w-full"
+                  disabled={!isComplete || !signature}
+                >
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Generate Official Will
+                </Button>
+              </div>
+            </Card>
+            
+            {/* Document Preview Dialog */}
+            <Dialog open={showPreview} onOpenChange={setShowPreview}>
+              <DialogContent className="max-w-5xl h-[90vh]">
+                <DialogHeader>
+                  <DialogTitle>Will Document Preview</DialogTitle>
+                </DialogHeader>
+                <div className="mt-2 h-full overflow-y-auto">
+                  <DocumentPreview 
+                    documentText={generateDocumentText()} 
+                    willContent={willContent}
+                    signature={signature || ""}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
