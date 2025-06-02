@@ -289,7 +289,7 @@ _________________________
             <CardTitle>Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <WillPreview title={title} content={content} />
+            <WillPreview content={content} />
           </CardContent>
         </Card>
       </div>
