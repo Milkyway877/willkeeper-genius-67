@@ -129,6 +129,73 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Generate document text function
+  const generateDocumentText = (): string => {
+    const primaryExecutor = executors.find(e => e.isPrimary);
+    const alternateExecutors = executors.filter(e => !e.isPrimary);
+    
+    const beneficiariesText = beneficiaries.map(b => 
+      `- ${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate`
+    ).join('\n');
+    
+    return `
+LAST WILL AND TESTAMENT
+
+I, ${personalInfo.fullName || '[Full Name]'}, residing at ${personalInfo.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on ${personalInfo.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint ${primaryExecutor?.name || '[Primary Executor]'} to serve as the Executor of my estate. ${
+  alternateExecutors.length > 0 
+    ? `If they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} to serve as alternate Executor.` 
+    : ''
+}
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+${beneficiariesText}
+
+ARTICLE IV: ASSETS & SPECIFIC BEQUESTS
+I own the following assets:
+
+${properties.map(prop => 
+  `- ${prop.description || '[Property Description]'} at ${prop.address || '[Address]'}: ${prop.approximateValue || '[Value]'}`
+).join('\n')}
+
+${vehicles.map(vehicle => 
+  `- ${vehicle.description || '[Vehicle Description]'} (${vehicle.registrationNumber || 'registration'}): ${vehicle.approximateValue || '[Value]'}`
+).join('\n')}
+
+${financialAccounts.map(account => 
+  `- ${account.accountType || '[Account Type]'} at ${account.institution || '[Institution]'}: ${account.approximateValue || '[Value]'}`
+).join('\n')}
+
+${digitalAssets.map(asset => 
+  `- ${asset.description || '[Asset Description]'} (${asset.platform || 'platform'}): ${asset.approximateValue || '[Value]'}`
+).join('\n')}
+
+ARTICLE IV: SPECIFIC BEQUESTS
+${specificBequests || '[No specific bequests specified]'}
+
+ARTICLE V: RESIDUAL ESTATE
+I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
+
+ARTICLE VI: GUARDIANSHIP
+${guardians.length > 0 ? (
+  `I appoint the following guardian(s) for my minor children:\n${guardians.map(g => `- ${g.name} (${g.relationship})`).join('\n')}`
+) : (
+  'I do not have minor children at this time.'
+)}
+
+ARTICLE VII: FINAL ARRANGEMENTS
+${finalArrangements || '[No specific final arrangements specified]'}
+
+${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date().toLocaleDateString()}` : ''}
+    `;
+  };
+
   // Prepare combined will content for auto-save and completeness check
   const willContent: WillContent = {
     personalInfo,
@@ -274,72 +341,6 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     }
     
     // Generate a formatted text document
-    const generateDocumentText = (): string => {
-      const primaryExecutor = executors.find(e => e.isPrimary);
-      const alternateExecutors = executors.filter(e => !e.isPrimary);
-      
-      const beneficiariesText = beneficiaries.map(b => 
-        `- ${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate`
-      ).join('\n');
-      
-      return `
-LAST WILL AND TESTAMENT
-
-I, ${personalInfo.fullName || '[Full Name]'}, residing at ${personalInfo.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-
-ARTICLE I: PERSONAL INFORMATION
-I declare that I was born on ${personalInfo.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
-
-ARTICLE II: APPOINTMENT OF EXECUTOR
-I appoint ${primaryExecutor?.name || '[Primary Executor]'} to serve as the Executor of my estate. ${
-  alternateExecutors.length > 0 
-    ? `If they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} to serve as alternate Executor.` 
-    : ''
-}
-
-ARTICLE III: BENEFICIARIES
-I bequeath my assets to the following beneficiaries:
-${beneficiariesText}
-
-ARTICLE IV: ASSETS & SPECIFIC BEQUESTS
-I own the following assets:
-
-${properties.map(prop => 
-  `- ${prop.description || '[Property Description]'} at ${prop.address || '[Address]'}: ${prop.approximateValue || '[Value]'}`
-).join('\n')}
-
-${vehicles.map(vehicle => 
-  `- ${vehicle.description || '[Vehicle Description]'} (${vehicle.registrationNumber || 'registration'}): ${vehicle.approximateValue || '[Value]'}`
-).join('\n')}
-
-${financialAccounts.map(account => 
-  `- ${account.accountType || '[Account Type]'} at ${account.institution || '[Institution]'}: ${account.approximateValue || '[Value]'}`
-).join('\n')}
-
-${digitalAssets.map(asset => 
-  `- ${asset.description || '[Asset Description]'} (${asset.platform || 'platform'}): ${asset.approximateValue || '[Value]'}`
-).join('\n')}
-
-ARTICLE IV: SPECIFIC BEQUESTS
-${specificBequests || '[No specific bequests specified]'}
-
-ARTICLE V: RESIDUAL ESTATE
-I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
-
-ARTICLE VI: GUARDIANSHIP
-${guardians.length > 0 ? (
-  `I appoint the following guardian(s) for my minor children:\n${guardians.map(g => `- ${g.name} (${g.relationship})`).join('\n')}`
-) : (
-  'I do not have minor children at this time.'
-)}
-
-ARTICLE VII: FINAL ARRANGEMENTS
-${finalArrangements || '[No specific final arrangements specified]'}
-
-${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date().toLocaleDateString()}` : ''}
-      `;
-    };
-    
     const documentText = generateDocumentText();
     downloadDocument(documentText, `${personalInfo.fullName}'s Will`, signature);
   };
