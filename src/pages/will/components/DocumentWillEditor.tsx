@@ -115,6 +115,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [showSuccessScreen, setShowSuccessScreen] = useState<boolean>(false);
   const [generatedWill, setGeneratedWill] = useState<Will | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
   
   // Add subscription flow hook
   const { 
@@ -284,7 +285,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       return `
 LAST WILL AND TESTAMENT
 
-I, ${personalInfo.fullName}, residing at ${personalInfo.address}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+I, ${personalInfo.fullName} residing at ${personalInfo.address}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
 
 ARTICLE I: PERSONAL INFORMATION
 I declare that I was born on ${personalInfo.dateOfBirth} and that I am creating this will to ensure my wishes are carried out after my death.
@@ -368,8 +369,14 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     });
   };
 
-  // Handle generating the official document - with paywall before finalization
+  // Handle generating the official document - with immediate paywall check
   const handleGenerateOfficialWill = async () => {
+    // IMMEDIATE PAYWALL CHECK - Before any other processing
+    if (!subscriptionStatus.isSubscribed) {
+      await handleWillSaved(true); // This will show subscription modal
+      return; // Stop execution here if not subscribed
+    }
+    
     try {
       if (!isComplete) {
         toast({
@@ -391,15 +398,12 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
 
       setIsGenerating(true);
       
-      // Check subscription status first - trigger paywall if not subscribed
-      if (!subscriptionStatus.isSubscribed) {
-        setIsGenerating(false);
-        await handleWillSaved(true); // This will show subscription modal
-        return;
-      }
-      
       // User is subscribed, proceed with finalization
       const title = `${personalInfo.fullName}'s Will`;
+      
+      // Create will content with signature
+      const documentText = generateDocumentText();
+      const contentWithSignature = documentText + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
       
       // Save the will as active if not already saved
       let finalWill: Will | null = null;
@@ -407,13 +411,13 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
       if (willId) {
         finalWill = await updateWill(willId, {
           status: 'active',
-          content: JSON.stringify(willContent),
+          content: contentWithSignature,
           title: title
         });
       } else if (onSave) {
         const documentData = {
           title: title,
-          content: JSON.stringify(willContent),
+          content: contentWithSignature,
           status: 'active',
           template_type: templateId,
           document_url: '',
@@ -427,6 +431,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
       
       if (finalWill) {
         setGeneratedWill(finalWill);
+        setFinalizedWillId(finalWill.id);
         setShowSuccessScreen(true);
         
         toast({
@@ -475,13 +480,56 @@ ARTICLE III: BENEFICIARIES
 I bequeath my assets to the following beneficiaries:
 ${beneficiariesText}
 
+ARTICLE IV: ASSETS & SPECIFIC BEQUESTS
+I own the following assets:
+
+${properties.map(prop => 
+  `- ${prop.name || '[Property Name]'} (${prop.type || 'type'}): ${prop.value || '[Value]'}`
+).join('\n')}
+
+${vehicles.map(vehicle => 
+  `- ${vehicle.name || '[Vehicle Name]'} (${vehicle.type || 'type'}): ${vehicle.value || '[Value]'}`
+).join('\n')}
+
+${financialAccounts.map(account => 
+  `- ${account.name || '[Account Name]'} (${account.type || 'type'}): ${account.value || '[Value]'}`
+).join('\n')}
+
+${digitalAssets.map(asset => 
+  `- ${asset.name || '[Asset Name]'} (${asset.type || 'type'}): ${asset.value || '[Value]'}`
+).join('\n')}
+
 ARTICLE IV: SPECIFIC BEQUESTS
 ${specificBequests || '[No specific bequests specified]'}
 
 ARTICLE V: RESIDUAL ESTATE
 I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
 
-ARTICLE VI: FINAL ARRANGEMENTS
+ARTICLE VI: GUARDIANSHIP
+${guardians.length > 0 ? (
+  <div>
+    <p className="mb-2">I appoint the following guardian(s) for my minor children:</p>
+    <GuardianField
+      guardians={guardians}
+      onUpdate={setGuardians}
+      onAiHelp={handleShowAIHelper}
+      children={['Child 1', 'Child 2']} // Example - would be dynamic in real use
+    />
+  </div>
+) : (
+  <p>
+    I do not have minor children at this time. If I should have children in the future, I appoint {' '}
+    <span 
+      className="cursor-pointer border-b border-dashed border-gray-300 hover:border-willtank-400 px-1"
+      onClick={() => setGuardians([{ id: 'guard-1', name: '', relationship: '', email: '', phone: '', address: '', forChildren: [] }])}
+    >
+      [Click to add guardians]
+    </span>
+    {' '} as their guardian.
+  </p>
+)}
+
+ARTICLE VII: FINAL ARRANGEMENTS
 ${finalArrangements || '[No specific final arrangements specified]'}
 
 ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date().toLocaleDateString()}` : ''}
@@ -527,7 +575,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
             </Button>
             <Button 
               onClick={handleDownload} 
-              disabled={!isComplete || !subscriptionStatus.isSubscribed}
+              disabled={!isComplete || !subscriptionStatus.isSubscribed || !finalizedWillId}
               variant="outline"
             >
               <Download className="h-4 w-4 mr-2" />
@@ -714,7 +762,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                       value={residualEstate} 
                       label="residualEstate" 
                       onEdit={(value) => setResidualEstate(value)}
-                      onAiHelp={() => handleShowAIHelper('residualEstate')}
+                      onAiHelp={() => handleShowAIHelper('residualEestate')}
                     />
                     .
                   </p>

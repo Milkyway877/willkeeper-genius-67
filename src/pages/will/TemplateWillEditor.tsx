@@ -167,6 +167,8 @@ Date: ${new Date().toLocaleDateString()}
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [isFinalized, setIsFinalized] = useState<boolean>(false);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
   
   // Add subscription flow hook
   const { 
@@ -263,8 +265,14 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
   
-  // Modified finalize function with paywall
+  // Fixed finalize function with immediate paywall check
   const handleFinalize = async () => {
+    // IMMEDIATE PAYWALL CHECK - Before any other processing
+    if (!subscriptionStatus.isSubscribed) {
+      await handleWillSaved(true); // This will show subscription modal
+      return; // Stop execution here if not subscribed
+    }
+    
     try {
       // Validate form
       await form.trigger();
@@ -286,25 +294,19 @@ Date: ${new Date().toLocaleDateString()}
         return;
       }
       
-      setSaving(true);
-      
-      // Check subscription status - trigger paywall if not subscribed
-      if (!subscriptionStatus.isSubscribed) {
-        setSaving(false);
-        await handleWillSaved(true); // This will show subscription modal
-        return;
-      }
+      setIsGenerating(true);
       
       // User is subscribed, proceed with finalization
       const formValues = form.getValues();
       
-      // Generate final content based on form values
+      // Generate final content based on form values and include signature
       const finalWillContent = generateWillContent(formValues, willContent);
+      const contentWithSignature = finalWillContent + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
       
       // Save as finalized will
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        content: finalWillContent,
+        content: contentWithSignature,
         status: 'active', // Mark as active/finalized
         template_type: templateId,
         ai_generated: false,
@@ -313,15 +315,16 @@ Date: ${new Date().toLocaleDateString()}
       
       const savedWill = await createWill(willData);
       
+      if (savedWill && savedWill.id) {
+        setFinalizedWillId(savedWill.id);
+      }
+      
       setIsFinalized(true);
       
       toast({
         title: "Will Finalized Successfully!",
         description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
       });
-      
-      // Navigate to wills listing or show success message
-      // navigate('/wills');
       
     } catch (error) {
       console.error("Error finalizing will:", error);
@@ -331,7 +334,7 @@ Date: ${new Date().toLocaleDateString()}
         variant: "destructive"
       });
     } finally {
-      setSaving(false);
+      setIsGenerating(false);
     }
   };
 
@@ -357,7 +360,7 @@ Date: ${new Date().toLocaleDateString()}
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
               
-              {!isNew && willId && (
+              {(finalizedWillId || (!isNew && willId)) && (
                 <Alert className="bg-blue-50 border border-blue-100">
                   <Video className="h-4 w-4 text-blue-500" />
                   <AlertDescription className="text-blue-700">
@@ -379,8 +382,8 @@ Date: ${new Date().toLocaleDateString()}
                   isWillFinalized={isFinalized}
                 />
                 
-                {!isNew && willId && (
-                  <WillAttachedVideosSection willId={willId} />
+                {(finalizedWillId || (!isNew && willId)) && (
+                  <WillAttachedVideosSection willId={finalizedWillId || willId || ''} />
                 )}
                 
                 <Card className="mt-6 p-4">
@@ -389,7 +392,7 @@ Date: ${new Date().toLocaleDateString()}
                       onClick={handleSaveDraft} 
                       variant="outline" 
                       className="w-full"
-                      disabled={saving}
+                      disabled={saving || isGenerating}
                       type="button"
                     >
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -399,13 +402,13 @@ Date: ${new Date().toLocaleDateString()}
                     <Button 
                       onClick={handleFinalize} 
                       className="w-full"
-                      disabled={saving || isFinalized}
+                      disabled={saving || isFinalized || isGenerating}
                       type="button"
                     >
-                      {saving ? (
+                      {isGenerating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Finalizing...
+                          Finalizing Will...
                         </>
                       ) : (
                         <>
