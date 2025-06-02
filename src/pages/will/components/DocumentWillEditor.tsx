@@ -142,10 +142,15 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     finalArrangements
   };
 
-  // Auto-save functionality
+  // Disable auto-save since we need subscription first
   const { saving: autoSaving, lastSaved, saveError } = useFormAutoSave({
     data: { willContent, signature },
     onSave: async (data) => {
+      // Don't auto-save if user is not subscribed
+      if (!subscriptionStatus.isSubscribed) {
+        return false;
+      }
+      
       try {
         if (!willId && onSave) {
           onSave(data.willContent);
@@ -164,7 +169,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       }
     },
     debounceMs: 2000,
-    enabled: true
+    enabled: subscriptionStatus.isSubscribed // Only enable auto-save if subscribed
   });
 
   // Check if the document is complete
@@ -220,9 +225,25 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     setSignature(signatureData);
   };
   
-  // Handle document save
+  // Handle document save - now with subscription check FIRST
   const handleSave = async () => {
     try {
+      // Check subscription BEFORE attempting any save
+      if (!subscriptionStatus.isSubscribed) {
+        const willCheck = await checkUserHasWill();
+        const isFirstWill = !willCheck.hasWill;
+        
+        console.log("Subscription required for save:", { 
+          isSubscribed: subscriptionStatus.isSubscribed, 
+          isFirstWill,
+          hasWill: willCheck.hasWill 
+        });
+        
+        // Show subscription modal
+        await handleWillSaved(isFirstWill);
+        return;
+      }
+
       setSaving(true);
       
       const documentData = {
@@ -309,7 +330,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     });
   };
 
-  // Handle generating the will with subscription check
+  // Handle generating the will with subscription check FIRST
   const handleGenerateWill = async () => {
     try {
       if (!isComplete) {
@@ -330,19 +351,18 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
         return;
       }
 
-      // Check if user needs subscription
+      // Check subscription FIRST, before any generation attempt
       if (!subscriptionStatus.isSubscribed) {
-        // Check if this is their first will
         const willCheck = await checkUserHasWill();
         const isFirstWill = !willCheck.hasWill;
         
-        console.log("Subscription check:", { 
+        console.log("Subscription required for generation:", { 
           isSubscribed: subscriptionStatus.isSubscribed, 
           isFirstWill,
           hasWill: willCheck.hasWill 
         });
         
-        // Show subscription modal for first will or if not subscribed
+        // Show subscription modal
         await handleWillSaved(isFirstWill);
         return;
       }
@@ -360,7 +380,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     }
   };
 
-  // Generate the final will document
+  // Generate the final will document (only called after subscription is confirmed)
   const generateFinalWill = async () => {
     try {
       setSaving(true);
@@ -487,16 +507,22 @@ ${finalArrangements || '[No specific final arrangements specified]'}
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            {autoSaving && (
+            {autoSaving && subscriptionStatus.isSubscribed && (
               <div className="text-gray-500 flex items-center text-sm">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" /> 
                 Saving...
               </div>
             )}
-            {lastSaved && !autoSaving && (
+            {lastSaved && !autoSaving && subscriptionStatus.isSubscribed && (
               <div className="text-gray-500 flex items-center text-sm">
                 <Clock className="h-3 w-3 mr-1" /> 
                 Auto-saved {new Date(lastSaved).toLocaleTimeString()}
+              </div>
+            )}
+            {!subscriptionStatus.isSubscribed && (
+              <div className="text-amber-600 flex items-center text-sm">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                Subscription required to save
               </div>
             )}
             {isComplete ? (

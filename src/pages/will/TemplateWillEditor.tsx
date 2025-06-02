@@ -220,8 +220,25 @@ Date: ${new Date().toLocaleDateString()}
     form.setValue('signature', signatureData || '');
   };
   
+  // Handle save draft - now with subscription check FIRST
   const handleSaveDraft = async () => {
     try {
+      // Check subscription BEFORE attempting any save
+      if (!subscriptionStatus.isSubscribed) {
+        const willCheck = await checkUserHasWill();
+        const isFirstWill = !willCheck.hasWill;
+        
+        console.log("Subscription required for save:", { 
+          isSubscribed: subscriptionStatus.isSubscribed, 
+          isFirstWill,
+          hasWill: willCheck.hasWill 
+        });
+        
+        // Show subscription modal
+        await handleWillSaved(isFirstWill);
+        return;
+      }
+
       setSaving(true);
       
       const formValues = form.getValues();
@@ -278,27 +295,26 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
   
+  // Handle finalize - now with subscription check FIRST
   const handleFinalize = async () => {
     try {
-      setSaving(true);
-      
-      // Check if user needs subscription before finalizing
+      // Check subscription FIRST, before any finalization attempt
       if (!subscriptionStatus.isSubscribed) {
-        // Check if this is their first will
         const willCheck = await checkUserHasWill();
         const isFirstWill = !willCheck.hasWill;
         
-        console.log("Subscription check:", { 
+        console.log("Subscription required for finalization:", { 
           isSubscribed: subscriptionStatus.isSubscribed, 
           isFirstWill,
           hasWill: willCheck.hasWill 
         });
         
-        // Show subscription modal for first will or if not subscribed
+        // Show subscription modal
         await handleWillSaved(isFirstWill);
-        setSaving(false);
         return;
       }
+
+      setSaving(true);
       
       // Validate form
       await form.trigger();

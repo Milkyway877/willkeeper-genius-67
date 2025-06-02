@@ -1,7 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FeatureGuard } from '@/components/guards/FeatureGuard';
-import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useToast } from '@/hooks/use-toast';
 import { useNotificationManager } from '@/hooks/use-notification-manager';
 import { Button } from '@/components/ui/button';
@@ -58,7 +57,6 @@ export const TankDashboard: React.FC = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const { toast } = useToast();
   const { notifyInfo, notifySuccess, notifyWarning } = useNotificationManager();
-  const { subscriptionStatus } = useSubscriptionStatus();
   
   useEffect(() => {
     fetchMessages();
@@ -116,42 +114,8 @@ export const TankDashboard: React.FC = () => {
       setLoading(false);
     }
   };
-  
-  const getMessageLimit = () => {
-    switch (subscriptionStatus.tier) {
-      case 'starter': return 2;
-      case 'gold': return 10;
-      case 'platinum': return Infinity;
-      default: return 0;
-    }
-  };
-
-  const canCreateMessage = () => {
-    const limit = getMessageLimit();
-    return subscriptionStatus.isSubscribed && (limit === Infinity || messages.length < limit);
-  };
 
   const handleCreateMessage = () => {
-    if (!subscriptionStatus.isSubscribed) {
-      toast({
-        title: "Premium Feature",
-        description: "Tank messages require a paid subscription. Please upgrade to continue.",
-        variant: "destructive",
-      });
-      navigate('/pricing');
-      return;
-    }
-
-    if (!canCreateMessage()) {
-      toast({
-        title: "Message Limit Reached",
-        description: `Your ${subscriptionStatus.tier} plan allows up to ${getMessageLimit()} messages. Upgrade for more.`,
-        variant: "destructive",
-      });
-      navigate('/pricing');
-      return;
-    }
-
     navigate('/tank/create');
   };
   
@@ -174,7 +138,6 @@ export const TankDashboard: React.FC = () => {
           description: "The message has been successfully deleted.",
         });
         
-        // Add notification for message deletion
         notifyInfo(
           "Message Deleted", 
           "Your future message has been successfully deleted.",
@@ -229,169 +192,139 @@ export const TankDashboard: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Your Future Messages</h1>
-          {subscriptionStatus.isSubscribed && (
-            <p className="text-sm text-gray-600 mt-1">
-              {subscriptionStatus.tier === 'platinum' 
-                ? 'Unlimited messages' 
-                : `${messages.length}/${getMessageLimit()} messages used`}
-            </p>
-          )}
+          <p className="text-sm text-gray-600 mt-1">
+            Create unlimited messages for your loved ones
+          </p>
         </div>
         
-        {subscriptionStatus.isSubscribed ? (
-          <Button 
-            onClick={handleCreateMessage} 
-            className="bg-willtank-600 hover:bg-willtank-700"
-            disabled={!canCreateMessage()}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Create New Message
-          </Button>
-        ) : (
-          <FeatureGuard 
-            requiredTier="starter" 
-            featureName="Tank Messages"
-            featureDescription="Create future messages that will be delivered to your loved ones"
-            showUpgrade={false}
-          >
-            <Button onClick={handleCreateMessage} className="bg-willtank-600 hover:bg-willtank-700">
-              <Plus className="mr-2 h-4 w-4" /> Create New Message
-            </Button>
-          </FeatureGuard>
-        )}
+        <Button 
+          onClick={handleCreateMessage} 
+          className="bg-willtank-600 hover:bg-willtank-700"
+        >
+          <Plus className="mr-2 h-4 w-4" /> Create New Message
+        </Button>
       </div>
       
-      {!subscriptionStatus.isSubscribed ? (
-        <FeatureGuard 
-          requiredTier="starter" 
-          featureName="Future Messages"
-          featureDescription="Create and schedule messages to be delivered to your loved ones in the future"
-        >
-          <div></div>
-        </FeatureGuard>
+      {loading ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <>
-          {loading ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="animate-pulse space-y-4">
-                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle>Message Inventory</CardTitle>
-                <CardDescription>
-                  View and manage your future messages
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <FileText className="h-12 w-12 text-gray-400 mb-3" />
-                    <h3 className="font-medium text-lg mb-1">No Messages Yet</h3>
-                    <p className="text-gray-500 max-w-md mb-4">
-                      You haven't created any future messages yet. Create your first message to get started.
-                    </p>
-                    <Button onClick={handleCreateMessage} className="bg-willtank-600 hover:bg-willtank-700">
-                      Create Your First Message
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Recipient</TableHead>
-                          <TableHead>Delivery Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {messages.map((message) => (
-                          <TableRow key={message.id}>
-                            <TableCell className="font-medium">{message.title}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                {getMessageIcon(message.type)}
-                                <span className="capitalize">{message.type}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{message.recipient}</TableCell>
-                            <TableCell>{new Date(message.deliveryDate).toLocaleDateString()}</TableCell>
-                            <TableCell>
-                              <Badge className={`${getStatusColor(message.status)} text-white`}>
-                                {message.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Message Inventory</CardTitle>
+            <CardDescription>
+              View and manage your future messages
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FileText className="h-12 w-12 text-gray-400 mb-3" />
+                <h3 className="font-medium text-lg mb-1">No Messages Yet</h3>
+                <p className="text-gray-500 max-w-md mb-4">
+                  You haven't created any future messages yet. Create your first message to get started.
+                </p>
+                <Button onClick={handleCreateMessage} className="bg-willtank-600 hover:bg-willtank-700">
+                  Create Your First Message
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Recipient</TableHead>
+                      <TableHead>Delivery Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {messages.map((message) => (
+                      <TableRow key={message.id}>
+                        <TableCell className="font-medium">{message.title}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {getMessageIcon(message.type)}
+                            <span className="capitalize">{message.type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{message.recipient}</TableCell>
+                        <TableCell>{new Date(message.deliveryDate).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge className={`${getStatusColor(message.status)} text-white`}>
+                            {message.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handlePreviewMessage(message)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewMessage(message.id)}
+                            >
+                              Details
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => handlePreviewMessage(message)}
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleViewMessage(message.id)}
-                                >
-                                  Details
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Message</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this message? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteMessage(message.id)}
-                                        className="bg-red-500 hover:bg-red-600"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter>
-                <p className="text-sm text-gray-500">
-                  Messages will be delivered according to your specified schedule.
-                </p>
-              </CardFooter>
-            </Card>
-          )}
-        </>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Message</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this message? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            <p className="text-sm text-gray-500">
+              Messages will be delivered according to your specified schedule.
+            </p>
+          </CardFooter>
+        </Card>
       )}
       
       {previewMessage && (
