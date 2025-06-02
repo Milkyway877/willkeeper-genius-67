@@ -7,7 +7,10 @@ export const useSubscriptionStatus = () => {
     isSubscribed: false,
     plan: null,
     tier: 'free',
-    features: ['Basic will creation']
+    features: ['Basic will creation'],
+    isTrial: false,
+    trialEnd: null,
+    trialDaysRemaining: 0
   });
   const [loading, setLoading] = useState(true);
 

@@ -6,6 +6,9 @@ export interface SubscriptionStatus {
   plan: string | null;
   tier: 'free' | 'starter' | 'gold' | 'platinum';
   features: string[];
+  isTrial: boolean;
+  trialEnd: string | null;
+  trialDaysRemaining: number;
 }
 
 export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
@@ -17,7 +20,10 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
         isSubscribed: false,
         plan: null,
         tier: 'free',
-        features: ['Basic will creation']
+        features: ['Basic will creation'],
+        isTrial: false,
+        trialEnd: null,
+        trialDaysRemaining: 0
       };
     }
 
@@ -25,7 +31,7 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
       .from('subscriptions')
       .select('*')
       .eq('user_id', session.user.id)
-      .eq('status', 'active')
+      .in('status', ['active', 'trialing'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -35,11 +41,22 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
         isSubscribed: false,
         plan: null,
         tier: 'free',
-        features: ['Basic will creation']
+        features: ['Basic will creation'],
+        isTrial: false,
+        trialEnd: null,
+        trialDaysRemaining: 0
       };
     }
 
-    // Determine tier based on plan
+    // Calculate trial days remaining if in trial
+    let trialDaysRemaining = 0;
+    if (subscription.is_trial && subscription.trial_end_date) {
+      const trialEnd = new Date(subscription.trial_end_date);
+      const now = new Date();
+      trialDaysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    }
+
+    // Determine tier and features based on plan
     let tier: 'free' | 'starter' | 'gold' | 'platinum' = 'free';
     let features: string[] = ['Basic will creation'];
 
@@ -75,11 +92,18 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
       ];
     }
 
+    // User is considered subscribed if they have active subscription OR active trial
+    const isSubscribed = subscription.status === 'active' || 
+                        (subscription.is_trial && trialDaysRemaining > 0);
+
     return {
-      isSubscribed: true,
+      isSubscribed,
       plan: subscription.plan,
       tier,
-      features
+      features,
+      isTrial: subscription.is_trial || false,
+      trialEnd: subscription.trial_end_date,
+      trialDaysRemaining
     };
   } catch (error) {
     console.error('Error getting subscription status:', error);
@@ -87,7 +111,10 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
       isSubscribed: false,
       plan: null,
       tier: 'free',
-      features: ['Basic will creation']
+      features: ['Basic will creation'],
+      isTrial: false,
+      trialEnd: null,
+      trialDaysRemaining: 0
     };
   }
 };
