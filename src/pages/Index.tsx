@@ -6,6 +6,7 @@ import { ServicesSection } from '@/components/home/ServicesSection';
 import { SecuritySection } from '@/components/home/SecuritySection';
 import { FeatureCarousel } from '@/components/home/FeatureCarousel';
 import { InfoCards } from '@/components/home/InfoCards';
+import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { motion } from 'framer-motion';
 import { ArrowRight, Users, BarChart, Briefcase, Map, FileCheck, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -204,6 +205,8 @@ export default function Index() {
       </main>
       
       <Footer />
+      
+      <FloatingAssistant />
     </div>
   );
 }

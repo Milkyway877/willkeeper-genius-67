@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,9 +20,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generateWillContent } from '@/utils/willTemplateUtils';
-import { checkUserHasWill } from '@/services/willCheckService';
-import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
-import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 
 // Form validation schema
 const willSchema = z.object({
@@ -62,9 +59,6 @@ const willSchema = z.object({
   obituary: z.string().optional(),
   charitableDonations: z.string().optional(),
   specialInstructions: z.string().optional(),
-  
-  // For signature
-  signature: z.string().optional(),
 });
 
 type WillFormValues = z.infer<typeof willSchema>;
@@ -169,16 +163,6 @@ Date: ${new Date().toLocaleDateString()}
   
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
-  const [savedWillId, setSavedWillId] = useState<string | null>(willId || null);
-  
-  // Subscription flow integration
-  const {
-    showSubscriptionModal,
-    handleWillSaved,
-    handleSubscriptionSuccess,
-    closeSubscriptionModal,
-    subscriptionStatus
-  } = useWillSubscriptionFlow();
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -196,7 +180,6 @@ Date: ${new Date().toLocaleDateString()}
       obituary: initialData?.obituary || '',
       charitableDonations: initialData?.charitableDonations || '',
       specialInstructions: initialData?.specialInstructions || '',
-      signature: initialData?.signature || '',
     }
   });
   
@@ -216,29 +199,10 @@ Date: ${new Date().toLocaleDateString()}
   
   const handleSignatureChange = (signatureData: string | null) => {
     setSignature(signatureData);
-    // Update form with signature data
-    form.setValue('signature', signatureData || '');
   };
   
-  // Handle save draft - now with subscription check FIRST
   const handleSaveDraft = async () => {
     try {
-      // Check subscription BEFORE attempting any save
-      if (!subscriptionStatus.isSubscribed) {
-        const willCheck = await checkUserHasWill();
-        const isFirstWill = !willCheck.hasWill;
-        
-        console.log("Subscription required for save:", { 
-          isSubscribed: subscriptionStatus.isSubscribed, 
-          isFirstWill,
-          hasWill: willCheck.hasWill 
-        });
-        
-        // Show subscription modal
-        await handleWillSaved(isFirstWill);
-        return;
-      }
-
       setSaving(true);
       
       const formValues = form.getValues();
@@ -264,19 +228,10 @@ Date: ${new Date().toLocaleDateString()}
         status: 'draft',
         template_type: templateId,
         ai_generated: false,
-        document_url: '',
-        signature: signature || undefined,
+        document_url: ''
       };
       
-      let savedWill;
-      if (savedWillId) {
-        savedWill = await updateWill(savedWillId, willData);
-      } else {
-        savedWill = await createWill(willData);
-        if (savedWill) {
-          setSavedWillId(savedWill.id);
-        }
-      }
+      const savedWill = await createWill(willData);
       
       toast({
         title: "Draft Saved",
@@ -295,25 +250,8 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
   
-  // Handle finalize - now with subscription check FIRST
   const handleFinalize = async () => {
     try {
-      // Check subscription FIRST, before any finalization attempt
-      if (!subscriptionStatus.isSubscribed) {
-        const willCheck = await checkUserHasWill();
-        const isFirstWill = !willCheck.hasWill;
-        
-        console.log("Subscription required for finalization:", { 
-          isSubscribed: subscriptionStatus.isSubscribed, 
-          isFirstWill,
-          hasWill: willCheck.hasWill 
-        });
-        
-        // Show subscription modal
-        await handleWillSaved(isFirstWill);
-        return;
-      }
-
       setSaving(true);
       
       // Validate form
@@ -324,7 +262,6 @@ Date: ${new Date().toLocaleDateString()}
           description: "Please fill in all required fields before finalizing.",
           variant: "destructive"
         });
-        setSaving(false);
         return;
       }
       
@@ -334,19 +271,13 @@ Date: ${new Date().toLocaleDateString()}
           description: "Please add your signature before finalizing your will.",
           variant: "destructive"
         });
-        setSaving(false);
         return;
       }
       
       const formValues = form.getValues();
       
-      // Generate final content based on form values including signature
-      let finalWillContent = generateWillContent(formValues, willContent);
-      
-      // Add signature to the will content
-      if (signature) {
-        finalWillContent += `\n\nDIGITAL SIGNATURE:\n[Signature: ${formValues.fullName}]\nSigned on: ${new Date().toLocaleDateString()}\n`;
-      }
+      // Generate final content based on form values
+      const finalWillContent = generateWillContent(formValues, willContent);
       
       // Save as finalized will
       const willData = {
@@ -356,19 +287,13 @@ Date: ${new Date().toLocaleDateString()}
         template_type: templateId,
         ai_generated: false,
         document_url: '',
-        signature: signature,
       };
       
-      let savedWill;
-      if (savedWillId) {
-        savedWill = await updateWill(savedWillId, willData);
-      } else {
-        savedWill = await createWill(willData);
-      }
+      const savedWill = await createWill(willData);
       
       toast({
         title: "Will Finalized",
-        description: "Your will has been successfully finalized. You can now add videos and documents through the Tank section.",
+        description: "Your will has been successfully finalized. You can now add a video testament through the Tank section.",
       });
       
       // Navigate to wills listing
@@ -401,7 +326,7 @@ Date: ${new Date().toLocaleDateString()}
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
               
-              {savedWillId && (
+              {!isNew && willId && (
                 <Alert className="bg-blue-50 border border-blue-100">
                   <Video className="h-4 w-4 text-blue-500" />
                   <AlertDescription className="text-blue-700">
@@ -422,8 +347,8 @@ Date: ${new Date().toLocaleDateString()}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                 />
                 
-                {savedWillId && (
-                  <WillAttachedVideosSection willId={savedWillId} />
+                {!isNew && willId && (
+                  <WillAttachedVideosSection willId={willId} />
                 )}
                 
                 <Card className="mt-6 p-4">
@@ -446,7 +371,7 @@ Date: ${new Date().toLocaleDateString()}
                       type="button"
                     >
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
-                      Generate Will
+                      Finalize Will
                     </Button>
                   </div>
                 </Card>
@@ -455,13 +380,6 @@ Date: ${new Date().toLocaleDateString()}
           </div>
         </form>
       </FormProvider>
-      
-      {/* Subscription Modal */}
-      <SubscriptionModal
-        open={showSubscriptionModal}
-        onClose={closeSubscriptionModal}
-        onSubscribe={handleSubscriptionSuccess}
-      />
     </div>
   );
 }

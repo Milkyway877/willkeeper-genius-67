@@ -158,8 +158,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       ...will,
       user_id: session.user.id,
       document_url: will.document_url || '',
-      status: will.status || 'draft',
-      signature: will.signature || null, // Include signature in the will creation
+      status: will.status || 'draft'
     };
     
     console.log('Creating will with data:', willToCreate);
@@ -677,74 +676,5 @@ export const getDocumentUrl = async (document: WillDocument): Promise<string | n
   } catch (error) {
     console.error('Error in getDocumentUrl:', error);
     return null;
-  }
-};
-
-// Add function to link videos and documents to a will
-export const linkAttachmentToWill = async (willId: string, attachmentId: string, attachmentType: 'video' | 'document'): Promise<boolean> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return false;
-    }
-
-    // Update the future_messages table to link the attachment to the will
-    const { error } = await supabase
-      .from('future_messages')
-      .update({ 
-        preview: `${attachmentType} attachment for will: ${willId}`,
-        category: `will_${attachmentType}` 
-      })
-      .eq('id', attachmentId)
-      .eq('user_id', session.user.id);
-      
-    if (error) {
-      console.error('Error linking attachment to will:', error);
-      return false;
-    }
-    
-    console.log(`Successfully linked ${attachmentType} ${attachmentId} to will ${willId}`);
-    return true;
-  } catch (error) {
-    console.error('Error in linkAttachmentToWill:', error);
-    return false;
-  }
-};
-
-// Add function to get attachments for a specific will
-export const getWillAttachments = async (willId: string): Promise<{videos: any[], documents: WillDocument[]}> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('User is not authenticated');
-      return { videos: [], documents: [] };
-    }
-
-    // Get videos linked to this will
-    const { data: videos, error: videoError } = await supabase
-      .from('future_messages')
-      .select('*')
-      .eq('message_type', 'video')
-      .eq('user_id', session.user.id)
-      .like('preview', `%will: ${willId}%`)
-      .order('created_at', { ascending: false });
-      
-    if (videoError) {
-      console.error('Error fetching will videos:', videoError);
-    }
-
-    // Get documents using the existing function
-    const documents = await getWillDocuments(willId);
-    
-    return {
-      videos: videos || [],
-      documents: documents || []
-    };
-  } catch (error) {
-    console.error('Error in getWillAttachments:', error);
-    return { videos: [], documents: [] };
   }
 };

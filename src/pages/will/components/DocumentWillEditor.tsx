@@ -1,10 +1,13 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
+import { Check, Download, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { DigitalSignature } from './DigitalSignature';
+import { downloadDocument } from '@/utils/documentUtils';
+import { validateWillContent, generateWillContent } from '@/utils/willTemplateUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,9 +24,6 @@ import { AIFloatingIndicator } from './AIFloatingIndicator';
 import { AISuggestionsPanel } from './AISuggestionsPanel';
 import { ContactField } from './DocumentFields/ContactField';
 import { WillCreationSuccess } from './WillCreationSuccess';
-import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
-import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
-import { checkUserHasWill } from '@/services/willCheckService';
 import '../../../MobileStyles.css';
 import { 
   Executor, 
@@ -109,21 +109,13 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [isComplete, setIsComplete] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
+  const [showBeneficiaryPrompt, setShowBeneficiaryPrompt] = useState<boolean>(false);
   const [showAISuggestionsPanel, setShowAISuggestionsPanel] = useState(true);
   const [showSuccessScreen, setShowSuccessScreen] = useState<boolean>(false);
   const [generatedWill, setGeneratedWill] = useState<Will | null>(null);
   
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-  // Subscription flow integration
-  const {
-    showSubscriptionModal,
-    handleWillSaved,
-    handleSubscriptionSuccess,
-    closeSubscriptionModal,
-    subscriptionStatus
-  } = useWillSubscriptionFlow();
 
   // Prepare combined will content for auto-save and completeness check
   const willContent: WillContent = {
@@ -142,15 +134,10 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     finalArrangements
   };
 
-  // Disable auto-save since we need subscription first
+  // Auto-save functionality
   const { saving: autoSaving, lastSaved, saveError } = useFormAutoSave({
     data: { willContent, signature },
     onSave: async (data) => {
-      // Don't auto-save if user is not subscribed
-      if (!subscriptionStatus.isSubscribed) {
-        return false;
-      }
-      
       try {
         if (!willId && onSave) {
           onSave(data.willContent);
@@ -169,7 +156,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       }
     },
     debounceMs: 2000,
-    enabled: subscriptionStatus.isSubscribed // Only enable auto-save if subscribed
+    enabled: true
   });
 
   // Check if the document is complete
@@ -225,25 +212,9 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     setSignature(signatureData);
   };
   
-  // Handle document save - now with subscription check FIRST
+  // Handle document save
   const handleSave = async () => {
     try {
-      // Check subscription BEFORE attempting any save
-      if (!subscriptionStatus.isSubscribed) {
-        const willCheck = await checkUserHasWill();
-        const isFirstWill = !willCheck.hasWill;
-        
-        console.log("Subscription required for save:", { 
-          isSubscribed: subscriptionStatus.isSubscribed, 
-          isFirstWill,
-          hasWill: willCheck.hasWill 
-        });
-        
-        // Show subscription modal
-        await handleWillSaved(isFirstWill);
-        return;
-      }
-
       setSaving(true);
       
       const documentData = {
@@ -277,6 +248,51 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     } finally {
       setSaving(false);
     }
+  };
+  
+  // Handle document download
+  const handleDownload = () => {
+    // Generate a formatted text document
+    const generateDocumentText = (): string => {
+      const primaryExecutor = executors.find(e => e.isPrimary);
+      const alternateExecutors = executors.filter(e => !e.isPrimary);
+      
+      const beneficiariesText = beneficiaries.map(b => 
+        `- ${b.name} (${b.relationship}): ${b.percentage}% of the estate`
+      ).join('\n');
+      
+      return `
+LAST WILL AND TESTAMENT
+
+I, ${personalInfo.fullName}, residing at ${personalInfo.address}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on ${personalInfo.dateOfBirth} and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint ${primaryExecutor?.name || '[Primary Executor]'} to serve as the Executor of my estate. ${
+  alternateExecutors.length > 0 
+    ? `If they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} to serve as alternate Executor.` 
+    : ''
+}
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+${beneficiariesText}
+
+ARTICLE IV: SPECIFIC BEQUESTS
+${specificBequests || '[No specific bequests specified]'}
+
+ARTICLE V: RESIDUAL ESTATE
+I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
+
+ARTICLE VI: FINAL ARRANGEMENTS
+${finalArrangements || '[No specific final arrangements specified]'}
+      `;
+    };
+    
+    const documentText = generateDocumentText();
+    downloadDocument(documentText, `${personalInfo.fullName}'s Will`, signature);
   };
   
   // Handle AI assistance request from floating indicator
@@ -330,13 +346,13 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     });
   };
 
-  // Handle generating the will with subscription check FIRST
-  const handleGenerateWill = async () => {
+  // Handle generating the official document
+  const handleGenerateOfficialWill = async () => {
     try {
       if (!isComplete) {
         toast({
           title: "Document Incomplete",
-          description: "Please complete all required sections before generating your will.",
+          description: "Please complete all required sections before generating the official will.",
           variant: "destructive"
         });
         return;
@@ -345,87 +361,61 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       if (!signature) {
         toast({
           title: "Signature Required",
-          description: "Please add your digital signature before generating your will.",
+          description: "Please add your digital signature before generating the official will.",
           variant: "destructive"
         });
         return;
       }
-
-      // Check subscription FIRST, before any generation attempt
-      if (!subscriptionStatus.isSubscribed) {
-        const willCheck = await checkUserHasWill();
-        const isFirstWill = !willCheck.hasWill;
-        
-        console.log("Subscription required for generation:", { 
-          isSubscribed: subscriptionStatus.isSubscribed, 
-          isFirstWill,
-          hasWill: willCheck.hasWill 
-        });
-        
-        // Show subscription modal
-        await handleWillSaved(isFirstWill);
-        return;
-      }
-
-      // User is subscribed, proceed with will generation
-      await generateFinalWill();
       
-    } catch (error) {
-      console.error("Error in will generation:", error);
-      toast({
-        title: "Generation Error",
-        description: "There was an error generating your will. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Generate the final will document (only called after subscription is confirmed)
-  const generateFinalWill = async () => {
-    try {
-      setSaving(true);
-      
+      // Generate a professional document
       const title = `${personalInfo.fullName}'s Will`;
       
-      // Save the will as active
-      const documentData = {
-        title: title,
-        content: JSON.stringify(willContent),
-        status: 'active',
-        template_type: templateId,
-        document_url: '',
-        signature: signature
-      };
+      // Import here to avoid circular dependency
+      import('@/utils/professionalDocumentUtils').then(({ downloadProfessionalDocument }) => {
+        downloadProfessionalDocument(willContent, signature, title);
+        
+        toast({
+          title: "Official Will Generated",
+          description: "Your official will document has been generated with letterhead and watermark.",
+        });
+      });
       
-      let savedWill;
+      // Save the will as active if not already saved
       if (willId) {
-        savedWill = await updateWill(willId, documentData);
-      } else {
-        savedWill = await createWill(documentData);
-        if (savedWill && onSave) {
-          onSave({ ...willContent, id: savedWill.id });
+        const updatedWill = await updateWill(willId, {
+          status: 'active',
+          content: JSON.stringify(willContent),
+          title: title
+        });
+        
+        if (updatedWill) {
+          setGeneratedWill(updatedWill);
+          setShowSuccessScreen(true);
+        }
+      } else if (onSave) {
+        const documentData = {
+          title: title,
+          content: JSON.stringify(willContent),
+          status: 'active',
+          template_type: templateId,
+          document_url: '',
+        };
+        
+        const newWill = await createWill(documentData);
+        if (newWill && onSave) {
+          onSave({ ...willContent, id: newWill.id });
+          setGeneratedWill(newWill);
+          setShowSuccessScreen(true);
         }
       }
       
-      if (savedWill) {
-        setGeneratedWill(savedWill);
-        setShowSuccessScreen(true);
-        
-        toast({
-          title: "Will Generated Successfully!",
-          description: "Your will has been created and saved. You can now add Tank messages and download your document.",
-        });
-      }
-      
     } catch (error) {
-      console.error("Error generating final will:", error);
+      console.error("Error generating official will:", error);
       toast({
         title: "Generation Error",
-        description: "There was an error generating your will. Please try again.",
+        description: "There was an error generating your official will. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -477,13 +467,6 @@ ${finalArrangements || '[No specific final arrangements specified]'}
         />
       )}
       
-      {/* Subscription Modal */}
-      <SubscriptionModal
-        open={showSubscriptionModal}
-        onClose={closeSubscriptionModal}
-        onSubscribe={handleSubscriptionSuccess}
-      />
-      
       {/* Main document area with scrolling */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* AI Suggestions Panel */}
@@ -505,24 +488,22 @@ ${finalArrangements || '[No specific final arrangements specified]'}
               <Eye className="h-4 w-4 mr-2" />
               Preview
             </Button>
+            <Button onClick={handleDownload} disabled={!isComplete}>
+              <Download className="h-4 w-4 mr-2" />
+              Download Will
+            </Button>
           </div>
           <div className="flex items-center gap-2">
-            {autoSaving && subscriptionStatus.isSubscribed && (
+            {autoSaving && (
               <div className="text-gray-500 flex items-center text-sm">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" /> 
                 Saving...
               </div>
             )}
-            {lastSaved && !autoSaving && subscriptionStatus.isSubscribed && (
+            {lastSaved && !autoSaving && (
               <div className="text-gray-500 flex items-center text-sm">
                 <Clock className="h-3 w-3 mr-1" /> 
                 Auto-saved {new Date(lastSaved).toLocaleTimeString()}
-              </div>
-            )}
-            {!subscriptionStatus.isSubscribed && (
-              <div className="text-amber-600 flex items-center text-sm">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                Subscription required to save
               </div>
             )}
             {isComplete ? (
@@ -904,16 +885,12 @@ ${finalArrangements || '[No specific final arrangements specified]'}
               
               <div className="mt-6 pt-4 border-t border-gray-100">
                 <Button 
-                  onClick={handleGenerateWill} 
+                  onClick={handleGenerateOfficialWill} 
                   className="w-full"
-                  disabled={!isComplete || !signature || saving}
+                  disabled={!isComplete || !signature}
                 >
-                  {saving ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <FileCheck className="h-4 w-4 mr-2" />
-                  )}
-                  Generate Will
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Generate Official Will
                 </Button>
               </div>
             </Card>
