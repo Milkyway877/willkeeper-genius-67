@@ -107,6 +107,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/tank') && 
     !location.pathname.includes('/settings') &&
     !location.pathname.includes('/search');
+
+  // Check if we should show the floating assistant - only on authenticated pages, not on landing page
+  const shouldShowFloatingAssistant = showAuthenticatedLayout && location.pathname !== '/';
   
   return (
     <div className={cn(
@@ -154,7 +157,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           </div>
         </main>
         
-        {showAuthenticatedLayout && (
+        {shouldShowFloatingAssistant && (
           <>
             <FloatingAssistant />
             <FloatingHelp />

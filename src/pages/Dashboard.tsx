@@ -64,12 +64,13 @@ const QuickActionCard = ({ icon: Icon, title, description, href, color = "willta
   </Link>
 );
 
-const StatCard = ({ icon: Icon, title, value, change, color = "blue" }: {
+const StatCard = ({ icon: Icon, title, value, change, color = "blue", isLoading = false }: {
   icon: React.ElementType;
   title: string;
   value: string | number;
   change?: string;
   color?: string;
+  isLoading?: boolean;
 }) => (
   <Card>
     <CardContent className="p-6">
@@ -80,10 +81,14 @@ const StatCard = ({ icon: Icon, title, value, change, color = "blue" }: {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            {isLoading ? (
+              <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+            ) : (
+              <p className="text-2xl font-bold text-gray-900">{value}</p>
+            )}
           </div>
         </div>
-        {change && (
+        {change && !isLoading && (
           <Badge variant="secondary" className="text-green-600 bg-green-100">
             <TrendingUp className="h-3 w-3 mr-1" />
             {change}
@@ -119,33 +124,35 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Overview */}
+        {/* Stats Overview - Using real data */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             icon={FileText}
             title="Active Wills"
-            value="3"
-            change="+1"
+            value={dashboardSummary?.activeWills || 0}
             color="purple"
+            isLoading={isLoading}
           />
           <StatCard
             icon={Vault}
             title="Messages in Tank"
-            value="12"
-            change="+2"
+            value={dashboardSummary?.messagesInTank || 0}
             color="blue"
+            isLoading={isLoading}
           />
           <StatCard
             icon={Users}
             title="Trusted Contacts"
-            value="5"
+            value={dashboardSummary?.trustedContacts || 0}
             color="green"
+            isLoading={isLoading}
           />
           <StatCard
             icon={Shield}
             title="Security Score"
-            value="98%"
+            value={isLoading ? "..." : `${dashboardSummary?.securityScore || 0}%`}
             color="amber"
+            isLoading={isLoading}
           />
         </div>
 
@@ -233,12 +240,12 @@ export default function Dashboard() {
                         'bg-amber-500'
                       }`}></div>
                       <span className="font-medium">
-                        {dashboardSummary?.securityStatus || 'Loading...'}
+                        {dashboardSummary?.securityStatus || 'Needs Setup'}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mb-4">
                       Your account security is currently rated as{' '}
-                      <span className="font-medium">{dashboardSummary?.securityStatus}</span>.
+                      <span className="font-medium">{dashboardSummary?.securityStatus || 'Unknown'}</span>.
                       {dashboardSummary?.securityStatus !== 'Strong' && ' Consider enabling two-factor authentication.'}
                     </p>
                     <Button variant="outline" size="sm" asChild className="w-full">
@@ -254,39 +261,49 @@ export default function Dashboard() {
             {/* Death Verification Widget */}
             <DeathVerificationWidget />
 
-            {/* Recent Activity */}
+            {/* Recent Activity - Show real data or empty state */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Recent Activity</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">Will updated</p>
-                    <p className="text-xs text-gray-500">2 hours ago</p>
+                {isLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
-                  <Calendar className="h-4 w-4 text-blue-500" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">Message scheduled</p>
-                    <p className="text-xs text-gray-500">1 day ago</p>
+                ) : dashboardSummary?.recentActivity && dashboardSummary.recentActivity.length > 0 ? (
+                  <>
+                    {dashboardSummary.recentActivity.map((activity) => (
+                      <div key={activity.id} className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{activity.title}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(activity.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <Button variant="ghost" size="sm" asChild className="w-full mt-3">
+                      <Link to="/activity">
+                        View All Activity
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">No recent activity</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Start by creating your first will
+                    </p>
                   </div>
-                </div>
-                <div className="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
-                  <Users className="h-4 w-4 text-purple-500" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">Contact added</p>
-                    <p className="text-xs text-gray-500">3 days ago</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" asChild className="w-full mt-3">
-                  <Link to="/activity">
-                    View All Activity
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Link>
-                </Button>
+                )}
               </CardContent>
             </Card>
           </div>
