@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TemplateWillSection } from '@/components/will/TemplateWillSection';
-import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion, FileCheck } from 'lucide-react';
+import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion, FileCheck, Loader2 } from 'lucide-react';
 import { WillPreview } from '@/pages/will/components/WillPreview';
 import { Button } from '@/components/ui/button';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WillContent } from './types';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useToast } from '@/hooks/use-toast';
 
 interface WillPreviewSectionProps {
   content: string;
@@ -19,7 +21,8 @@ interface WillPreviewSectionProps {
   onRefresh?: () => void;
   onHelp?: () => void;
   liveUpdate?: boolean;
-  useProfessionalFormat?: boolean; // Added prop for professional format
+  useProfessionalFormat?: boolean;
+  isWillFinalized?: boolean; // Add prop to track if will is finalized
 }
 
 export function WillPreviewSection({ 
@@ -30,34 +33,84 @@ export function WillPreviewSection({
   onRefresh,
   onHelp,
   liveUpdate = false,
-  useProfessionalFormat = true // Default to true for professional format
+  useProfessionalFormat = true,
+  isWillFinalized = false // Default to false for drafts
 }: WillPreviewSectionProps) {
   const [isFormatted, setIsFormatted] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const { subscriptionStatus } = useSubscriptionStatus();
+  const { toast } = useToast();
   
-  // Function to download the draft document
+  // Function to download the draft document - only for subscribed users with finalized wills
   const handleDownload = () => {
     if (!content) {
       console.error("No content to download");
       return;
     }
     
+    if (!subscriptionStatus.isSubscribed) {
+      toast({
+        title: "Subscription Required",
+        description: "Please subscribe to download your will document.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!isWillFinalized) {
+      toast({
+        title: "Will Not Finalized",
+        description: "Please finalize your will before downloading.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsDownloading(true);
     try {
       downloadDocument(content, title, signature);
+      
+      toast({
+        title: "Download Started",
+        description: "Your will document is being downloaded.",
+      });
+    } catch (error) {
+      console.error("Download error:", error);
+      toast({
+        title: "Download Error",
+        description: "There was an error downloading your will. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsDownloading(false);
     }
   };
   
-  // Function to generate official will document
-  const handleGenerateOfficialWill = () => {
+  // Function to generate professional will document - only for subscribed users with finalized wills
+  const handleGenerateProfessionalDocument = () => {
+    if (!subscriptionStatus.isSubscribed) {
+      toast({
+        title: "Subscription Required",
+        description: "Please subscribe to generate professional documents.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!isWillFinalized) {
+      toast({
+        title: "Will Not Finalized",
+        description: "Please finalize your will before generating professional documents.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       setIsDownloading(true);
       
       // Create a mock WillContent object from the text content
-      // This is just a basic implementation - in reality you'd want proper parsing
       const mockWillContent: WillContent = {
         personalInfo: {
           fullName: title.replace(/'s Will$/, '') || "Unknown",
@@ -85,8 +138,18 @@ export function WillPreviewSection({
       }
       
       downloadProfessionalDocument(mockWillContent, signature, title);
+      
+      toast({
+        title: "Professional Document Generated",
+        description: "Your professional will document has been generated and downloaded.",
+      });
     } catch (error) {
-      console.error("Error generating official will:", error);
+      console.error("Error generating professional document:", error);
+      toast({
+        title: "Generation Error",
+        description: "There was an error generating the professional document. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -148,20 +211,46 @@ export function WillPreviewSection({
             variant="outline" 
             className="w-full flex items-center justify-center gap-2"
             onClick={handleDownload}
-            disabled={isDownloading}
+            disabled={isDownloading || !subscriptionStatus.isSubscribed || !isWillFinalized}
           >
-            <Download className="h-4 w-4" />
-            Download Draft
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Downloading...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Download Draft
+              </>
+            )}
           </Button>
           
           <Button 
             className="w-full bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-2 px-4 rounded shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
-            onClick={handleGenerateOfficialWill}
-            disabled={isDownloading}
+            onClick={handleGenerateProfessionalDocument}
+            disabled={isDownloading || !subscriptionStatus.isSubscribed || !isWillFinalized}
           >
-            <FileCheck className="h-5 w-5" />
-            Generate Official Will
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileCheck className="h-5 w-5" />
+                Generate Professional Document
+              </>
+            )}
           </Button>
+          
+          {(!subscriptionStatus.isSubscribed || !isWillFinalized) && (
+            <div className="text-center text-xs text-gray-500 mt-2">
+              {!subscriptionStatus.isSubscribed && "Subscription required for downloads"}
+              {!subscriptionStatus.isSubscribed && !isWillFinalized && " • "}
+              {!isWillFinalized && "Will must be finalized first"}
+            </div>
+          )}
           
           {showHelp && (
             <div className="bg-willtank-50 p-3 text-sm rounded border border-willtank-100 text-willtank-700">
@@ -176,4 +265,3 @@ export function WillPreviewSection({
     </TemplateWillSection>
   );
 }
-

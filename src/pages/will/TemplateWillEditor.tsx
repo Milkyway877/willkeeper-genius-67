@@ -20,6 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generateWillContent } from '@/utils/willTemplateUtils';
+import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
+import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 
 // Form validation schema
 const willSchema = z.object({
@@ -63,7 +65,7 @@ const willSchema = z.object({
 
 type WillFormValues = z.infer<typeof willSchema>;
 
-// Create a FormWatcher component to handle form updates with improved initial state handling
+// Enhanced FormWatcher component for faster real-time updates
 const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void }) => {
   const formValues = useWatch();
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
@@ -88,7 +90,7 @@ const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void 
   }, []);
   
   useEffect(() => {
-    // Only trigger onChange if user has interacted with the form or if we have meaningful data
+    // Trigger onChange for any meaningful form change for real-time preview
     if (hasUserInteracted || hasValidFormData(formValues)) {
       onChange(formValues as WillFormValues);
     }
@@ -133,6 +135,7 @@ export function TemplateWillEditor({
   isNew = true,
   willId 
 }: TemplateWillEditorProps) {
+  // Form validation schema
   const [willContent, setWillContent] = useState<string>(`
 LAST WILL AND TESTAMENT
 
@@ -163,6 +166,16 @@ Date: ${new Date().toLocaleDateString()}
   
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
+  const [isFinalized, setIsFinalized] = useState<boolean>(false);
+  
+  // Add subscription flow hook
+  const { 
+    showSubscriptionModal, 
+    handleWillSaved, 
+    handleSubscriptionSuccess, 
+    closeSubscriptionModal,
+    subscriptionStatus 
+  } = useWillSubscriptionFlow();
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -186,13 +199,13 @@ Date: ${new Date().toLocaleDateString()}
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Form watcher to update content as user types
+  // Enhanced form watcher for real-time preview updates
   const handleFormChange = (values: WillFormValues) => {
     console.log("Form values updated:", values);
     
     if (!values) return;
     
-    // Only generate content if we have meaningful data
+    // Generate content immediately for real-time preview
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
   };
@@ -250,10 +263,9 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
   
+  // Modified finalize function with paywall
   const handleFinalize = async () => {
     try {
-      setSaving(true);
-      
       // Validate form
       await form.trigger();
       if (!form.formState.isValid) {
@@ -274,6 +286,16 @@ Date: ${new Date().toLocaleDateString()}
         return;
       }
       
+      setSaving(true);
+      
+      // Check subscription status - trigger paywall if not subscribed
+      if (!subscriptionStatus.isSubscribed) {
+        setSaving(false);
+        await handleWillSaved(true); // This will show subscription modal
+        return;
+      }
+      
+      // User is subscribed, proceed with finalization
       const formValues = form.getValues();
       
       // Generate final content based on form values
@@ -291,13 +313,15 @@ Date: ${new Date().toLocaleDateString()}
       
       const savedWill = await createWill(willData);
       
+      setIsFinalized(true);
+      
       toast({
-        title: "Will Finalized",
-        description: "Your will has been successfully finalized. You can now add a video testament through the Tank section.",
+        title: "Will Finalized Successfully!",
+        description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
       });
       
-      // Navigate to wills listing
-      navigate('/wills');
+      // Navigate to wills listing or show success message
+      // navigate('/wills');
       
     } catch (error) {
       console.error("Error finalizing will:", error);
@@ -313,9 +337,16 @@ Date: ${new Date().toLocaleDateString()}
 
   return (
     <div className="container mx-auto mb-16">
+      {/* Subscription Modal */}
+      <SubscriptionModal 
+        open={showSubscriptionModal}
+        onClose={closeSubscriptionModal}
+        onSubscriptionSuccess={handleSubscriptionSuccess}
+      />
+      
       <FormProvider {...form}>
         <form>
-          {/* Add form watcher to track changes */}
+          {/* Enhanced form watcher for real-time updates */}
           <FormWatcher onChange={handleFormChange} />
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -345,6 +376,7 @@ Date: ${new Date().toLocaleDateString()}
                   content={willContent}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
+                  isWillFinalized={isFinalized}
                 />
                 
                 {!isNew && willId && (
@@ -367,12 +399,36 @@ Date: ${new Date().toLocaleDateString()}
                     <Button 
                       onClick={handleFinalize} 
                       className="w-full"
-                      disabled={saving}
+                      disabled={saving || isFinalized}
                       type="button"
                     >
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck className="mr-2 h-4 w-4" />}
-                      Finalize Will
+                      {saving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Finalizing...
+                        </>
+                      ) : (
+                        <>
+                          <FileCheck className="mr-2 h-4 w-4" />
+                          {isFinalized ? 'Will Finalized' : 'Finalize Will'}
+                        </>
+                      )}
                     </Button>
+                    
+                    {!subscriptionStatus.isSubscribed && (
+                      <p className="text-xs text-gray-500 text-center">
+                        Subscription required to finalize and save your will
+                      </p>
+                    )}
+                    
+                    {isFinalized && (
+                      <Alert className="bg-green-50 border border-green-100">
+                        <Video className="h-4 w-4 text-green-500" />
+                        <AlertDescription className="text-green-700">
+                          Your will has been finalized! You can now create video testimonies and attach documents in the Tank section.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                 </Card>
               </div>

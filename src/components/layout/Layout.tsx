@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -108,6 +107,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/settings') &&
     !location.pathname.includes('/search');
   
+  // Check if we're on the landing page (index route)
+  const isLandingPage = location.pathname === '/';
+  
   return (
     <div className={cn(
       "flex h-screen w-full",
@@ -156,7 +158,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         
         {showAuthenticatedLayout && (
           <>
-            <FloatingAssistant />
+            {/* Only show FloatingAssistant if not on landing page */}
+            {!isLandingPage && <FloatingAssistant />}
             <FloatingHelp />
           </>
         )}

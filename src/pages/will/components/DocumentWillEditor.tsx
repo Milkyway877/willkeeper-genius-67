@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,8 @@ import { AIFloatingIndicator } from './AIFloatingIndicator';
 import { AISuggestionsPanel } from './AISuggestionsPanel';
 import { ContactField } from './DocumentFields/ContactField';
 import { WillCreationSuccess } from './WillCreationSuccess';
+import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
+import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 import '../../../MobileStyles.css';
 import { 
   Executor, 
@@ -113,6 +114,16 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [showAISuggestionsPanel, setShowAISuggestionsPanel] = useState(true);
   const [showSuccessScreen, setShowSuccessScreen] = useState<boolean>(false);
   const [generatedWill, setGeneratedWill] = useState<Will | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  
+  // Add subscription flow hook
+  const { 
+    showSubscriptionModal, 
+    handleWillSaved, 
+    handleSubscriptionSuccess, 
+    closeSubscriptionModal,
+    subscriptionStatus 
+  } = useWillSubscriptionFlow();
   
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -134,7 +145,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     finalArrangements
   };
 
-  // Auto-save functionality
+  // Enhanced auto-save functionality for real-time updates
   const { saving: autoSaving, lastSaved, saveError } = useFormAutoSave({
     data: { willContent, signature },
     onSave: async (data) => {
@@ -155,7 +166,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
         return false;
       }
     },
-    debounceMs: 2000,
+    debounceMs: 1000, // Faster auto-save for real-time preview
     enabled: true
   });
 
@@ -250,8 +261,17 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     }
   };
   
-  // Handle document download
+  // Handle document download - only for subscribed users
   const handleDownload = () => {
+    if (!subscriptionStatus.isSubscribed) {
+      toast({
+        title: "Subscription Required",
+        description: "Please subscribe to download your will document.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Generate a formatted text document
     const generateDocumentText = (): string => {
       const primaryExecutor = executors.find(e => e.isPrimary);
@@ -288,6 +308,8 @@ I give all the rest and residue of my estate to ${residualEstate || 'my benefici
 
 ARTICLE VI: FINAL ARRANGEMENTS
 ${finalArrangements || '[No specific final arrangements specified]'}
+
+${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date().toLocaleDateString()}` : ''}
       `;
     };
     
@@ -346,13 +368,13 @@ ${finalArrangements || '[No specific final arrangements specified]'}
     });
   };
 
-  // Handle generating the official document
+  // Handle generating the official document - with paywall before finalization
   const handleGenerateOfficialWill = async () => {
     try {
       if (!isComplete) {
         toast({
           title: "Document Incomplete",
-          description: "Please complete all required sections before generating the official will.",
+          description: "Please complete all required sections before finalizing your will.",
           variant: "destructive"
         });
         return;
@@ -361,37 +383,33 @@ ${finalArrangements || '[No specific final arrangements specified]'}
       if (!signature) {
         toast({
           title: "Signature Required",
-          description: "Please add your digital signature before generating the official will.",
+          description: "Please add your digital signature before finalizing your will.",
           variant: "destructive"
         });
         return;
       }
+
+      setIsGenerating(true);
       
-      // Generate a professional document
+      // Check subscription status first - trigger paywall if not subscribed
+      if (!subscriptionStatus.isSubscribed) {
+        setIsGenerating(false);
+        await handleWillSaved(true); // This will show subscription modal
+        return;
+      }
+      
+      // User is subscribed, proceed with finalization
       const title = `${personalInfo.fullName}'s Will`;
       
-      // Import here to avoid circular dependency
-      import('@/utils/professionalDocumentUtils').then(({ downloadProfessionalDocument }) => {
-        downloadProfessionalDocument(willContent, signature, title);
-        
-        toast({
-          title: "Official Will Generated",
-          description: "Your official will document has been generated with letterhead and watermark.",
-        });
-      });
-      
       // Save the will as active if not already saved
+      let finalWill: Will | null = null;
+      
       if (willId) {
-        const updatedWill = await updateWill(willId, {
+        finalWill = await updateWill(willId, {
           status: 'active',
           content: JSON.stringify(willContent),
           title: title
         });
-        
-        if (updatedWill) {
-          setGeneratedWill(updatedWill);
-          setShowSuccessScreen(true);
-        }
       } else if (onSave) {
         const documentData = {
           title: title,
@@ -401,21 +419,31 @@ ${finalArrangements || '[No specific final arrangements specified]'}
           document_url: '',
         };
         
-        const newWill = await createWill(documentData);
-        if (newWill && onSave) {
-          onSave({ ...willContent, id: newWill.id });
-          setGeneratedWill(newWill);
-          setShowSuccessScreen(true);
+        finalWill = await createWill(documentData);
+        if (finalWill && onSave) {
+          onSave({ ...willContent, id: finalWill.id });
         }
+      }
+      
+      if (finalWill) {
+        setGeneratedWill(finalWill);
+        setShowSuccessScreen(true);
+        
+        toast({
+          title: "Will Finalized Successfully!",
+          description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
+        });
       }
       
     } catch (error) {
       console.error("Error generating official will:", error);
       toast({
-        title: "Generation Error",
-        description: "There was an error generating your official will. Please try again.",
+        title: "Finalization Error",
+        description: "There was an error finalizing your will. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -455,11 +483,20 @@ I give all the rest and residue of my estate to ${residualEstate || 'my benefici
 
 ARTICLE VI: FINAL ARRANGEMENTS
 ${finalArrangements || '[No specific final arrangements specified]'}
+
+${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date().toLocaleDateString()}` : ''}
     `;
   };
 
   return (
     <div className="container mx-auto mb-28">
+      {/* Subscription Modal */}
+      <SubscriptionModal 
+        open={showSubscriptionModal}
+        onClose={closeSubscriptionModal}
+        onSubscriptionSuccess={handleSubscriptionSuccess}
+      />
+      
       {showSuccessScreen && generatedWill && (
         <WillCreationSuccess 
           will={generatedWill} 
@@ -488,7 +525,11 @@ ${finalArrangements || '[No specific final arrangements specified]'}
               <Eye className="h-4 w-4 mr-2" />
               Preview
             </Button>
-            <Button onClick={handleDownload} disabled={!isComplete}>
+            <Button 
+              onClick={handleDownload} 
+              disabled={!isComplete || !subscriptionStatus.isSubscribed}
+              variant="outline"
+            >
               <Download className="h-4 w-4 mr-2" />
               Download Will
             </Button>
@@ -724,6 +765,16 @@ ${finalArrangements || '[No specific final arrangements specified]'}
                   </p>
                   
                   <DigitalSignature defaultOpen={true} onSignatureChange={handleSignatureChange} />
+                  
+                  {signature && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-2">Digital signature captured:</p>
+                      <img src={signature} alt="Digital signature" className="max-w-xs border rounded" />
+                      <p className="text-xs text-gray-500 mt-2">
+                        Signed on: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
@@ -887,11 +938,26 @@ ${finalArrangements || '[No specific final arrangements specified]'}
                 <Button 
                   onClick={handleGenerateOfficialWill} 
                   className="w-full"
-                  disabled={!isComplete || !signature}
+                  disabled={!isComplete || !signature || isGenerating}
                 >
-                  <FileCheck className="h-4 w-4 mr-2" />
-                  Generate Official Will
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Finalizing Will...
+                    </>
+                  ) : (
+                    <>
+                      <FileCheck className="h-4 w-4 mr-2" />
+                      Finalize Will
+                    </>
+                  )}
                 </Button>
+                
+                {!subscriptionStatus.isSubscribed && (
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Subscription required to finalize and save your will
+                  </p>
+                )}
               </div>
             </Card>
             
