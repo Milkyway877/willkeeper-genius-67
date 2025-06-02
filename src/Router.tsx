@@ -6,18 +6,18 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { HomePage } from '@/pages/HomePage';
-import { SignInPage } from '@/pages/auth/SignInPage';
-import { SignUpPage } from '@/pages/auth/SignUpPage';
-import { RecoverPage } from '@/pages/auth/RecoverPage';
-import { DashboardPage } from '@/pages/DashboardPage';
-import { WillsPage } from '@/pages/WillsPage';
-import { TankPage } from '@/pages/TankPage';
-import { ContactsPage } from '@/pages/ContactsPage';
-import { DeathVerificationPage } from '@/pages/DeathVerificationPage';
-import { TreasuryPage } from '@/pages/TreasuryPage';
-import { BillingPage } from '@/pages/BillingPage';
-import { WillEditorPage } from '@/pages/will/WillEditorPage';
+import Index from '@/pages/Index';
+import SignIn from '@/pages/auth/SignIn';
+import SignUp from '@/pages/auth/SignUp';
+import Recover from '@/pages/auth/Recover';
+import Dashboard from '@/pages/Dashboard';
+import Wills from '@/pages/wills/Wills';
+import Tank from '@/pages/tank/Tank';
+import ContactsPage from '@/pages/ContactsPage';
+import DeathVerificationPage from '@/pages/DeathVerificationPage';
+import TreasuryPage from '@/pages/TreasuryPage';
+import Billing from '@/pages/billing/Billing';
+import WillEditorPage from '@/pages/will/WillEditorPage';
 import { TrialSuccess } from '@/pages/TrialSuccess';
 
 const queryClient = new QueryClient();
@@ -28,19 +28,19 @@ export function Router() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/sign-in" element={<SignInPage />} />
-            <Route path="/sign-up" element={<SignUpPage />} />
-            <Route path="/recover" element={<RecoverPage />} />
+            <Route path="/" element={<Index />} />
+            <Route path="/sign-in" element={<SignIn />} />
+            <Route path="/sign-up" element={<SignUp />} />
+            <Route path="/recover" element={<Recover />} />
             <Route path="/trial-success" element={<TrialSuccess />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <DashboardPage />
+                <Dashboard />
               </ProtectedRoute>
             } />
             <Route path="/wills" element={
               <ProtectedRoute>
-                <WillsPage />
+                <Wills />
               </ProtectedRoute>
             } />
             <Route path="/will/:templateId" element={
@@ -50,7 +50,7 @@ export function Router() {
             } />
             <Route path="/tank" element={
               <ProtectedRoute>
-                <TankPage />
+                <Tank />
               </ProtectedRoute>
             } />
             <Route path="/contacts" element={
@@ -70,7 +70,7 @@ export function Router() {
             } />
             <Route path="/billing" element={
               <ProtectedRoute>
-                <BillingPage />
+                <Billing />
               </ProtectedRoute>
             } />
           </Routes>
