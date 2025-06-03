@@ -2,12 +2,16 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export async function createCheckoutSession(plan: string, billingPeriod: string) {
+export async function createCheckoutSession(plan: string, billingPeriod: string, returnUrl?: string) {
   try {
-    console.log('Creating checkout session for:', { plan, billingPeriod });
+    console.log('Creating checkout session for:', { plan, billingPeriod, returnUrl });
     
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { plan, billingPeriod }
+      body: { 
+        plan, 
+        billingPeriod,
+        return_url: returnUrl || window.location.href
+      }
     });
 
     console.log('Checkout session response:', { data, error });

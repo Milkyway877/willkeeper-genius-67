@@ -1,267 +1,152 @@
 
-import React, { useState, useEffect } from 'react';
-import { TemplateWillSection } from '@/components/will/TemplateWillSection';
-import { FileText, Download, RefreshCw, Bot, MessageCircleQuestion, FileCheck, Loader2 } from 'lucide-react';
-import { WillPreview } from '@/pages/will/components/WillPreview';
+import React, { useState } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { downloadDocument } from '@/utils/documentUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WillPreview } from './WillPreview';
+import { Eye, EyeOff, Download, FileCheck } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { WillContent } from './types';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
-import { useToast } from '@/hooks/use-toast';
 
 interface WillPreviewSectionProps {
+  defaultOpen?: boolean;
   content: string;
   signature?: string | null;
   title?: string;
-  defaultOpen?: boolean;
-  onRefresh?: () => void;
-  onHelp?: () => void;
-  liveUpdate?: boolean;
-  useProfessionalFormat?: boolean;
-  isWillFinalized?: boolean; // Add prop to track if will is finalized
+  isWillFinalized?: boolean;
+  videos?: string[];
+  documents?: string[];
 }
 
 export function WillPreviewSection({ 
-  content, 
+  defaultOpen = true, 
+  content,
   signature = null,
-  title = "Last Will and Testament",
-  defaultOpen = false,
-  onRefresh,
-  onHelp,
-  liveUpdate = false,
-  useProfessionalFormat = true,
-  isWillFinalized = false // Default to false for drafts
+  title = "Will Preview",
+  isWillFinalized = false,
+  videos = [],
+  documents = []
 }: WillPreviewSectionProps) {
-  const [isFormatted, setIsFormatted] = useState(true);
-  const [showHelp, setShowHelp] = useState(false);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [activeTab, setActiveTab] = useState('formatted');
   const [isDownloading, setIsDownloading] = useState(false);
-  const { subscriptionStatus } = useSubscriptionStatus();
-  const { toast } = useToast();
-  
-  // Function to download the draft document - only for subscribed users with finalized wills
-  const handleDownload = () => {
-    if (!content) {
-      console.error("No content to download");
-      return;
-    }
-    
-    if (!subscriptionStatus.isSubscribed) {
-      toast({
-        title: "Subscription Required",
-        description: "Please subscribe to download your will document.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!isWillFinalized) {
-      toast({
-        title: "Will Not Finalized",
-        description: "Please finalize your will before downloading.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+
+  const handleDownloadProfessional = () => {
     setIsDownloading(true);
     try {
-      downloadDocument(content, title, signature);
+      // Try to parse content as JSON for structured data
+      let willContentObj;
+      try {
+        if (typeof content === 'string' && content.trim().startsWith('{')) {
+          willContentObj = JSON.parse(content);
+        } else {
+          // If not JSON, create a basic structure from the text content
+          willContentObj = {
+            personalInfo: {
+              fullName: content.match(/I, ([^,]+),/)?.[1] || '[Full Name]',
+              address: content.match(/residing at ([^,]+),/)?.[1] || '[Address]',
+              dateOfBirth: content.match(/born on ([^.]+)/)?.[1] || '[Date of Birth]'
+            },
+            executors: [],
+            beneficiaries: [],
+            finalArrangements: content.includes('FINAL ARRANGEMENTS') 
+              ? content.split('FINAL ARRANGEMENTS')[1]?.split('\n\n')[0] 
+              : 'No specific arrangements specified'
+          };
+        }
+      } catch (e) {
+        console.log('Could not parse content as JSON, using fallback structure');
+        willContentObj = {
+          personalInfo: {
+            fullName: '[Full Name]',
+            address: '[Address]',
+            dateOfBirth: '[Date of Birth]'
+          },
+          executors: [],
+          beneficiaries: [],
+          finalArrangements: 'No specific arrangements specified'
+        };
+      }
       
-      toast({
-        title: "Download Started",
-        description: "Your will document is being downloaded.",
-      });
-    } catch (error) {
-      console.error("Download error:", error);
-      toast({
-        title: "Download Error",
-        description: "There was an error downloading your will. Please try again.",
-        variant: "destructive"
-      });
+      downloadProfessionalDocument(willContentObj, signature, title);
     } finally {
       setIsDownloading(false);
     }
-  };
-  
-  // Function to generate professional will document - only for subscribed users with finalized wills
-  const handleGenerateProfessionalDocument = () => {
-    if (!subscriptionStatus.isSubscribed) {
-      toast({
-        title: "Subscription Required",
-        description: "Please subscribe to generate professional documents.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!isWillFinalized) {
-      toast({
-        title: "Will Not Finalized",
-        description: "Please finalize your will before generating professional documents.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    try {
-      setIsDownloading(true);
-      
-      // Create a mock WillContent object from the text content
-      const mockWillContent: WillContent = {
-        personalInfo: {
-          fullName: title.replace(/'s Will$/, '') || "Unknown",
-          dateOfBirth: "",
-          address: "",
-          email: "",
-          phone: ""
-        },
-        executors: [{ id: "exec-1", name: "", relationship: "", email: "", phone: "", address: "", isPrimary: true }],
-        beneficiaries: [{ id: "ben-1", name: "", relationship: "", email: "", phone: "", address: "", percentage: 0 }],
-        specificBequests: "",
-        residualEstate: "",
-        finalArrangements: ""
-      };
-      
-      // Try to extract some basic information from the content
-      const fullNameMatch = content.match(/I,\s+([^,]+)/);
-      if (fullNameMatch && fullNameMatch[1]) {
-        mockWillContent.personalInfo.fullName = fullNameMatch[1].trim();
-      }
-      
-      const addressMatch = content.match(/residing at\s+([^,]+)/);
-      if (addressMatch && addressMatch[1]) {
-        mockWillContent.personalInfo.address = addressMatch[1].trim();
-      }
-      
-      downloadProfessionalDocument(mockWillContent, signature, title);
-      
-      toast({
-        title: "Professional Document Generated",
-        description: "Your professional will document has been generated and downloaded.",
-      });
-    } catch (error) {
-      console.error("Error generating professional document:", error);
-      toast({
-        title: "Generation Error",
-        description: "There was an error generating the professional document. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  // Toggle formatting option
-  const toggleFormatting = () => {
-    setIsFormatted(!isFormatted);
   };
 
   return (
-    <TemplateWillSection 
-      title="Document Preview" 
-      icon={<FileText className="h-5 w-5" />}
-      defaultOpen={defaultOpen}
-      actions={
-        <div className="flex items-center space-x-2">
-          {onRefresh && (
-            <Button variant="ghost" size="sm" onClick={onRefresh} title="Refresh Preview">
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          )}
-          {onHelp && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => {
-                setShowHelp(!showHelp);
-                onHelp();
-              }} 
-              title="Get Help"
-              className={showHelp ? 'text-willtank-600' : ''}
-            >
-              <MessageCircleQuestion className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      }
-    >
-      <div className="space-y-4 pb-4">
-        <div className="flex items-center space-x-2">
-          <Switch id="format-toggle" checked={isFormatted} onCheckedChange={toggleFormatting} />
-          <Label htmlFor="format-toggle">Show formatted preview</Label>
-        </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card className="w-full">
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+            <h3 className="font-medium">{title}</h3>
+            {isOpen ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </div>
+        </CollapsibleTrigger>
         
-        <div className="border rounded-md p-4 bg-white">
-          <ScrollArea className="max-h-[50vh]">
-            <WillPreview 
-              content={content} 
-              formatted={isFormatted} 
-              signature={signature}
-              useProfessionalFormat={useProfessionalFormat && isFormatted}
-            />
-          </ScrollArea>
-        </div>
-        
-        <div className="space-y-2">
-          <Button 
-            variant="outline" 
-            className="w-full flex items-center justify-center gap-2"
-            onClick={handleDownload}
-            disabled={isDownloading || !subscriptionStatus.isSubscribed || !isWillFinalized}
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Downloading...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Download Draft
-              </>
-            )}
-          </Button>
-          
-          <Button 
-            className="w-full bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700 text-white font-medium py-2 px-4 rounded shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
-            onClick={handleGenerateProfessionalDocument}
-            disabled={isDownloading || !subscriptionStatus.isSubscribed || !isWillFinalized}
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <FileCheck className="h-5 w-5" />
-                Generate Professional Document
-              </>
-            )}
-          </Button>
-          
-          {(!subscriptionStatus.isSubscribed || !isWillFinalized) && (
-            <div className="text-center text-xs text-gray-500 mt-2">
-              {!subscriptionStatus.isSubscribed && "Subscription required for downloads"}
-              {!subscriptionStatus.isSubscribed && !isWillFinalized && " • "}
-              {!isWillFinalized && "Will must be finalized first"}
+        <CollapsibleContent>
+          <div className="p-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="formatted">Formatted</TabsTrigger>
+                <TabsTrigger value="professional">Professional</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="formatted" className="mt-4">
+                <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
+                  <WillPreview 
+                    content={content} 
+                    signature={signature}
+                    formatted={true}
+                    videos={videos}
+                    documents={documents}
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="professional" className="mt-4">
+                <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
+                  <WillPreview 
+                    content={content} 
+                    signature={signature}
+                    formatted={true}
+                    useProfessionalFormat={true}
+                    videos={videos}
+                    documents={documents}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <div className="mt-4 space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleDownloadProfessional}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <Download className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileCheck className="mr-2 h-4 w-4" />
+                    Download Professional Will
+                  </>
+                )}
+              </Button>
+              
+              {isWillFinalized && (
+                <div className="text-xs text-green-600 text-center">
+                  ✓ Will has been finalized and saved
+                </div>
+              )}
             </div>
-          )}
-          
-          {showHelp && (
-            <div className="bg-willtank-50 p-3 text-sm rounded border border-willtank-100 text-willtank-700">
-              <p className="flex items-start gap-2">
-                <Bot className="h-4 w-4 mt-0.5 flex-shrink-0 text-willtank-500" />
-                Want to improve your will? Ask our AI assistant for help with specific sections.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </TemplateWillSection>
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

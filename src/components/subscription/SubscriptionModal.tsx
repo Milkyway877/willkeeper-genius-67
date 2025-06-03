@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,8 +26,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       
       console.log('Starting trial for plan:', planName);
       
+      // Get current URL to return user back after checkout
+      const currentUrl = window.location.href;
+      const returnUrl = encodeURIComponent(currentUrl);
+      
       const { data, error } = await supabase.functions.invoke('create-trial-session', {
-        body: { plan: planName }
+        body: { 
+          plan: planName,
+          return_url: currentUrl
+        }
       });
 
       console.log('Trial session response:', { data, error });
@@ -66,7 +72,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       
       console.log('Starting checkout for plan:', planName);
       
-      const result = await createCheckoutSession(planName, 'monthly');
+      // Get current URL to return user back after checkout
+      const currentUrl = window.location.href;
+      
+      const result = await createCheckoutSession(planName, 'monthly', currentUrl);
       
       console.log('Checkout session result:', result);
       

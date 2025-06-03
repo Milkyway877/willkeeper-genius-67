@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -15,7 +16,7 @@ import { WillPreviewSection } from './components/WillPreviewSection';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Save, FileCheck, Video } from 'lucide-react';
+import { Loader2, Save, FileCheck, Video, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -61,6 +62,10 @@ const willSchema = z.object({
   obituary: z.string().optional(),
   charitableDonations: z.string().optional(),
   specialInstructions: z.string().optional(),
+  
+  // New fields for videos and documents
+  videos: z.array(z.string()).optional(),
+  documents: z.array(z.string()).optional(),
 });
 
 type WillFormValues = z.infer<typeof willSchema>;
@@ -169,6 +174,8 @@ Date: ${new Date().toLocaleDateString()}
   const [isFinalized, setIsFinalized] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
+  const [attachedVideos, setAttachedVideos] = useState<string[]>([]);
+  const [attachedDocuments, setAttachedDocuments] = useState<string[]>([]);
   
   // Add subscription flow hook
   const { 
@@ -195,6 +202,8 @@ Date: ${new Date().toLocaleDateString()}
       obituary: initialData?.obituary || '',
       charitableDonations: initialData?.charitableDonations || '',
       specialInstructions: initialData?.specialInstructions || '',
+      videos: initialData?.videos || [],
+      documents: initialData?.documents || [],
     }
   });
   
@@ -207,6 +216,10 @@ Date: ${new Date().toLocaleDateString()}
     
     if (!values) return;
     
+    // Update attached videos and documents from form
+    if (values.videos) setAttachedVideos(values.videos);
+    if (values.documents) setAttachedDocuments(values.documents);
+    
     // Generate content immediately for real-time preview
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
@@ -214,6 +227,24 @@ Date: ${new Date().toLocaleDateString()}
   
   const handleSignatureChange = (signatureData: string | null) => {
     setSignature(signatureData);
+  };
+  
+  // Function to handle video/document uploads from Tank
+  const handleMediaAttachment = (mediaUrl: string, type: 'video' | 'document') => {
+    const currentValues = form.getValues();
+    
+    if (type === 'video') {
+      const updatedVideos = [...(currentValues.videos || []), mediaUrl];
+      form.setValue('videos', updatedVideos);
+      setAttachedVideos(updatedVideos);
+    } else {
+      const updatedDocuments = [...(currentValues.documents || []), mediaUrl];
+      form.setValue('documents', updatedDocuments);
+      setAttachedDocuments(updatedDocuments);
+    }
+    
+    // Trigger form change to update preview
+    handleFormChange(form.getValues());
   };
   
   const handleSaveDraft = async () => {
@@ -360,6 +391,47 @@ Date: ${new Date().toLocaleDateString()}
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
               
+              {/* Video/Document Upload Section */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Attachments
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Videos</h4>
+                    {attachedVideos.length > 0 ? (
+                      <div className="space-y-2">
+                        {attachedVideos.map((videoUrl, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <Video className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm">Video {index + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No videos attached. Use the Tank section to record videos.</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Documents</h4>
+                    {attachedDocuments.length > 0 ? (
+                      <div className="space-y-2">
+                        {attachedDocuments.map((docUrl, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <Upload className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Document {index + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No documents attached.</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+              
               {(finalizedWillId || (!isNew && willId)) && (
                 <Alert className="bg-blue-50 border border-blue-100">
                   <Video className="h-4 w-4 text-blue-500" />
@@ -380,6 +452,8 @@ Date: ${new Date().toLocaleDateString()}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                   isWillFinalized={isFinalized}
+                  videos={attachedVideos}
+                  documents={attachedDocuments}
                 />
                 
                 {(finalizedWillId || (!isNew && willId)) && (

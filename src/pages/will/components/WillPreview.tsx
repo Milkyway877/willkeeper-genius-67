@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
-import { Bot } from 'lucide-react';
+import { Bot, Video, FileText, Download } from 'lucide-react';
 import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
 
 interface WillPreviewProps {
@@ -11,6 +11,8 @@ interface WillPreviewProps {
   interactive?: boolean;
   onSectionClick?: (sectionName: string) => void;
   useProfessionalFormat?: boolean;
+  videos?: string[];
+  documents?: string[];
 }
 
 export function WillPreview({ 
@@ -19,7 +21,9 @@ export function WillPreview({
   signature = null,
   interactive = false,
   onSectionClick,
-  useProfessionalFormat = false
+  useProfessionalFormat = false,
+  videos = [],
+  documents = []
 }: WillPreviewProps) {
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   
@@ -47,27 +51,86 @@ export function WillPreview({
     );
   }
 
-  // Use professional format if requested
-  if (useProfessionalFormat && formatted) {
+  // Try to parse content as JSON (structured will data)
+  let willContentObj;
+  try {
+    if (typeof content === 'string' && content.trim().startsWith('{')) {
+      willContentObj = JSON.parse(content);
+    }
+  } catch (e) {
+    console.log('Content is not valid JSON, using text format');
+  }
+
+  // Use professional format if requested and we have structured data
+  if (useProfessionalFormat && formatted && willContentObj) {
     try {
-      // Try to parse content as JSON first
-      let willContentObj;
-      try {
-        if (typeof content === 'string' && content.trim().startsWith('{')) {
-          willContentObj = JSON.parse(content);
-        }
-      } catch (e) {
-        console.log('Content is not valid JSON, using text format');
-      }
-      
       // Generate professional preview HTML
       const professionalHtml = generateProfessionalDocumentPreview(willContentObj, signature);
       
       return (
-        <div 
-          className="professional-will-preview"
-          dangerouslySetInnerHTML={{ __html: professionalHtml }}
-        />
+        <div className="space-y-4">
+          <div 
+            className="professional-will-preview"
+            dangerouslySetInnerHTML={{ __html: professionalHtml }}
+          />
+          
+          {/* Render attached videos and documents */}
+          {(videos.length > 0 || documents.length > 0) && (
+            <div className="mt-6 p-4 border-t border-gray-200">
+              <h4 className="font-medium mb-3">Attached Media</h4>
+              
+              {videos.length > 0 && (
+                <div className="mb-4">
+                  <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <Video className="h-4 w-4 mr-1" />
+                    Videos ({videos.length})
+                  </h5>
+                  <div className="grid grid-cols-1 gap-2">
+                    {videos.map((videoUrl, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                        <Video className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm">Video Testimony {index + 1}</span>
+                        <a 
+                          href={videoUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="ml-auto text-blue-500 hover:text-blue-700"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {documents.length > 0 && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <FileText className="h-4 w-4 mr-1" />
+                    Documents ({documents.length})
+                  </h5>
+                  <div className="grid grid-cols-1 gap-2">
+                    {documents.map((docUrl, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                        <FileText className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Document {index + 1}</span>
+                        <a 
+                          href={docUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="ml-auto text-blue-500 hover:text-blue-700"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       );
     } catch (error) {
       console.error('Error generating professional preview:', error);
@@ -201,6 +264,47 @@ export function WillPreview({
           <p className="text-xs text-gray-500 mt-1">
             Date: {new Date().toLocaleDateString()}
           </p>
+        </div>
+      )}
+      
+      {/* Render attached videos and documents for non-professional format */}
+      {!useProfessionalFormat && (videos.length > 0 || documents.length > 0) && (
+        <div className="mt-6 p-4 border-t border-gray-200">
+          <h4 className="font-medium mb-3">Attached Media</h4>
+          
+          {videos.length > 0 && (
+            <div className="mb-4">
+              <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <Video className="h-4 w-4 mr-1" />
+                Videos ({videos.length})
+              </h5>
+              <div className="grid grid-cols-1 gap-2">
+                {videos.map((videoUrl, index) => (
+                  <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                    <Video className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm">Video Testimony {index + 1}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {documents.length > 0 && (
+            <div>
+              <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <FileText className="h-4 w-4 mr-1" />
+                Documents ({documents.length})
+              </h5>
+              <div className="grid grid-cols-1 gap-2">
+                {documents.map((docUrl, index) => (
+                  <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                    <FileText className="h-4 w-4 text-green-500" />
+                    <span className="text-sm">Document {index + 1}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
