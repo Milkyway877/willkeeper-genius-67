@@ -27,16 +27,12 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
       };
     }
 
-    const { data: subscription, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .in('status', ['active', 'trialing'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    console.log('Checking subscription status for user:', session.user.email);
 
-    if (error || !subscription) {
+    const { data, error } = await supabase.functions.invoke('check-subscription');
+
+    if (error) {
+      console.error('Error checking subscription:', error);
       return {
         isSubscribed: false,
         plan: null,
@@ -48,10 +44,12 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
       };
     }
 
+    console.log('Subscription check response:', data);
+
     // Calculate trial days remaining if in trial
     let trialDaysRemaining = 0;
-    if (subscription.is_trial && subscription.trial_end_date) {
-      const trialEnd = new Date(subscription.trial_end_date);
+    if (data.is_trial && data.trial_end) {
+      const trialEnd = new Date(data.trial_end);
       const now = new Date();
       trialDaysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     }
@@ -60,49 +58,51 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
     let tier: 'free' | 'starter' | 'gold' | 'platinum' = 'free';
     let features: string[] = ['Basic will creation'];
 
-    if (subscription.plan === 'starter') {
-      tier = 'starter';
-      features = [
-        'Basic will templates',
-        'Up to 2 future messages',
-        'Standard encryption',
-        'Email support',
-        '5GB document storage'
-      ];
-    } else if (subscription.plan === 'gold') {
-      tier = 'gold';
-      features = [
-        'Advanced will templates',
-        'Up to 10 future messages',
-        'Enhanced encryption',
-        'Priority email support',
-        '20GB document storage',
-        'AI document analysis'
-      ];
-    } else if (subscription.plan === 'platinum') {
-      tier = 'platinum';
-      features = [
-        'Premium legal templates',
-        'Unlimited future messages',
-        'Military-grade encryption',
-        '24/7 priority support',
-        '100GB document storage',
-        'Advanced AI tools',
-        'Family sharing (up to 5 users)'
-      ];
+    if (data.subscription_tier) {
+      const planName = data.subscription_tier.toLowerCase();
+      if (planName === 'starter') {
+        tier = 'starter';
+        features = [
+          'Basic will templates',
+          'Up to 2 future messages',
+          'Standard encryption',
+          'Email support',
+          '5GB document storage'
+        ];
+      } else if (planName === 'gold') {
+        tier = 'gold';
+        features = [
+          'Advanced will templates',
+          'Up to 10 future messages',
+          'Enhanced encryption',
+          'Priority email support',
+          '20GB document storage',
+          'AI document analysis'
+        ];
+      } else if (planName === 'platinum') {
+        tier = 'platinum';
+        features = [
+          'Premium legal templates',
+          'Unlimited future messages',
+          'Military-grade encryption',
+          '24/7 priority support',
+          '100GB document storage',
+          'Advanced AI tools',
+          'Family sharing (up to 5 users)'
+        ];
+      }
     }
 
     // User is considered subscribed if they have active subscription OR active trial
-    const isSubscribed = subscription.status === 'active' || 
-                        (subscription.is_trial && trialDaysRemaining > 0);
+    const isSubscribed = data.subscribed || (data.is_trial && trialDaysRemaining > 0);
 
     return {
       isSubscribed,
-      plan: subscription.plan,
+      plan: data.subscription_tier,
       tier,
       features,
-      isTrial: subscription.is_trial || false,
-      trialEnd: subscription.trial_end_date,
+      isTrial: data.is_trial || false,
+      trialEnd: data.trial_end,
       trialDaysRemaining
     };
   } catch (error) {

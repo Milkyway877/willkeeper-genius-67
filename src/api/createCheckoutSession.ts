@@ -4,9 +4,13 @@ import { toast } from 'sonner';
 
 export async function createCheckoutSession(plan: string, billingPeriod: string) {
   try {
+    console.log('Creating checkout session for:', { plan, billingPeriod });
+    
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: { plan, billingPeriod }
     });
+
+    console.log('Checkout session response:', { data, error });
 
     if (error) {
       console.error('Checkout session error:', error);
@@ -24,6 +28,7 @@ export async function createCheckoutSession(plan: string, billingPeriod: string)
       return { status: 'error', error: 'No checkout URL' };
     }
 
+    console.log('Checkout session created successfully:', data.url);
     return { status: 'success', url: data.url };
   } catch (error) {
     console.error('Checkout session error:', error);
