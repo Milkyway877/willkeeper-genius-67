@@ -282,7 +282,6 @@ Date: ${new Date().toLocaleDateString()}
               <div className="md:col-span-1">
                 <WillPreviewSection 
                   content={livePreviewContent}
-                  liveUpdate={true}
                   onRefresh={() => {
                     // Refresh the preview with the latest data
                     if (Object.keys(currentResponses).length > 0) {
