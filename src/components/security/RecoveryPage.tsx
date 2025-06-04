@@ -8,6 +8,7 @@ import { RefreshCw, Shield, Copy, AlertCircle, Key, CheckCircle } from 'lucide-r
 import { getUserRecoveryCodes, generateRecoveryCodes, validateRecoveryCode } from '@/services/encryptionService';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { QRCode } from '@/components/ui/QRCode';
 
 export function RecoveryPage() {
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
@@ -16,6 +17,7 @@ export function RecoveryPage() {
   const [validationCode, setValidationCode] = useState('');
   const [validating, setValidating] = useState(false);
   const [copied, setCopied] = useState<{[key: string]: boolean}>({});
+  const [qrCodeValue, setQrCodeValue] = useState<string>('');
 
   useEffect(() => {
     fetchRecoveryCodes();
@@ -38,6 +40,9 @@ export function RecoveryPage() {
       
       const codes = await getUserRecoveryCodes(user.id);
       setRecoveryCodes(codes.map(c => c.code));
+      
+      // Generate QR code value for recovery setup
+      setQrCodeValue(`https://willtank.com/recovery/${user.id}`);
     } catch (error) {
       console.error('Error fetching recovery codes:', error);
       toast({
@@ -165,6 +170,22 @@ export function RecoveryPage() {
               Each code can only be used once.
             </AlertDescription>
           </Alert>
+
+          {/* QR Code Section */}
+          {qrCodeValue && (
+            <div className="text-center p-4 bg-gray-50 rounded-lg border">
+              <h4 className="font-medium mb-3">Recovery Setup QR Code</h4>
+              <QRCode 
+                value={qrCodeValue}
+                size={200}
+                color="#2D8B75"
+                backgroundColor="#ffffff"
+              />
+              <p className="text-sm text-gray-600 mt-2">
+                Scan this QR code to set up account recovery
+              </p>
+            </div>
+          )}
           
           {loading ? (
             <div className="flex justify-center py-6">
