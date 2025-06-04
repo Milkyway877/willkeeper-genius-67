@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, FileVideo, Upload, Eye, ArrowRight } from 'lucide-react';
+import { CheckCircle2, FileVideo, Upload, Eye, ArrowRight, AlertTriangle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Will } from "@/services/willService";
 
@@ -37,10 +37,6 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
     };
   }, [will.id]);
 
-  const handleNavigateToVideo = () => {
-    navigate(`/will/video-creation/${will.id}`);
-  };
-
   const handleNavigateToWill = () => {
     navigate(`/will/${will.id}`);
   };
@@ -63,18 +59,39 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
             </p>
           </div>
           
-          <div className="space-y-4 mt-6">
-            <h3 className="font-medium text-lg">Complete Your Will Package</h3>
-            
+          {/* Mandatory Next Steps Alert */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 mr-3" />
+              <div>
+                <h3 className="font-semibold text-amber-800 mb-2">Important: Complete Your Will Package</h3>
+                <p className="text-sm text-amber-700 mb-3">
+                  To ensure your will is comprehensive and legally robust, you must now:
+                </p>
+                <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
+                  <li><strong>Record video testimonies</strong> explaining your wishes</li>
+                  <li><strong>Upload supporting documents</strong> (property deeds, insurance policies, etc.)</li>
+                </ul>
+                <p className="text-sm text-amber-700 mt-2 font-medium">
+                  These steps are mandatory to complete your estate planning process.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
             <Button 
-              onClick={handleNavigateToVideo} 
-              className="w-full flex items-center justify-between bg-willtank-600 hover:bg-willtank-700 text-white"
+              onClick={handleNavigateToWill} 
+              className="w-full flex items-center justify-between bg-willtank-600 hover:bg-willtank-700 text-white text-lg py-4"
             >
               <div className="flex items-center">
-                <FileVideo className="mr-2 h-5 w-5" />
-                <span>Record Video Testament & Upload Documents</span>
+                <FileVideo className="mr-3 h-6 w-6" />
+                <div className="text-left">
+                  <div className="font-semibold">Complete Your Will Package</div>
+                  <div className="text-sm opacity-90">Record videos & upload documents</div>
+                </div>
               </div>
-              <ArrowRight className="h-4 w-4 ml-2" />
+              <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
             
             <Button 
@@ -84,14 +101,14 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
             >
               <div className="flex items-center">
                 <Eye className="mr-2 h-5 w-5" />
-                <span>View Your Will</span>
+                <span>View Your Will Details</span>
               </div>
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
             
             <Button 
               onClick={handleNavigateToWills} 
-              variant="outline" 
+              variant="ghost" 
               className="w-full flex items-center justify-between"
             >
               <div className="flex items-center">
@@ -104,11 +121,11 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
           
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
             <p className="text-sm text-gray-600 mb-3">
-              Your will has been saved and you can always come back to complete these steps later.
+              You can always complete the video and document upload steps later, but we strongly recommend doing it now.
             </p>
             
             <Button variant="ghost" size="sm" onClick={handleNavigateToWills}>
-              Close
+              Skip for Now (Not Recommended)
             </Button>
           </div>
         </CardContent>
