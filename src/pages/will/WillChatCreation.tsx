@@ -282,40 +282,6 @@ Date: ${new Date().toLocaleDateString()}
               <div className="md:col-span-1">
                 <WillPreviewSection 
                   content={livePreviewContent}
-                  onRefresh={() => {
-                    // Refresh the preview with the latest data
-                    if (Object.keys(currentResponses).length > 0) {
-                      const templateContent = `
-LAST WILL AND TESTAMENT
-
-I, [Full Name], residing at [Address], being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-
-ARTICLE I: PERSONAL INFORMATION
-I declare that I was born on [Date of Birth] and that I am creating this will to ensure my wishes are carried out after my death.
-
-ARTICLE II: APPOINTMENT OF EXECUTOR
-I appoint [Executor Name] to serve as the Executor of my estate. If they are unable or unwilling to serve, I appoint [Alternate Executor Name] to serve as alternate Executor.
-
-ARTICLE III: BENEFICIARIES
-I bequeath my assets to the following beneficiaries:
-[Beneficiary details to be added]
-
-ARTICLE IV: SPECIFIC BEQUESTS
-[Specific bequests to be added]
-
-ARTICLE V: RESIDUAL ESTATE
-I give all the rest and residue of my estate to [Beneficiary names and distribution details].
-
-ARTICLE VI: FINAL ARRANGEMENTS
-[Final arrangements to be added]
-
-Digitally signed by: [Full Name]
-Date: ${new Date().toLocaleDateString()}
-                      `;
-                      const updatedContent = generateWillContent(currentResponses, templateContent);
-                      setLivePreviewContent(updatedContent);
-                    }
-                  }}
                 />
               </div>
             </div>
