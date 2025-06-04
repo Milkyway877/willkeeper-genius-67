@@ -16,16 +16,15 @@ import { WillPreviewSection } from './components/WillPreviewSection';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Save, FileCheck } from 'lucide-react';
+import { Loader2, Save, FileCheck, Video, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generateWillContent } from '@/utils/willTemplateUtils';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
 import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
-import { WillCreationSuccess } from './components/WillCreationSuccess';
 
-// Form validation schema (removed videos and documents)
+// Form validation schema
 const willSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
@@ -63,6 +62,10 @@ const willSchema = z.object({
   obituary: z.string().optional(),
   charitableDonations: z.string().optional(),
   specialInstructions: z.string().optional(),
+  
+  // New fields for videos and documents
+  videos: z.array(z.string()).optional(),
+  documents: z.array(z.string()).optional(),
 });
 
 type WillFormValues = z.infer<typeof willSchema>;
@@ -171,8 +174,8 @@ Date: ${new Date().toLocaleDateString()}
   const [isFinalized, setIsFinalized] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
-  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
-  const [createdWill, setCreatedWill] = useState<any>(null);
+  const [attachedVideos, setAttachedVideos] = useState<string[]>([]);
+  const [attachedDocuments, setAttachedDocuments] = useState<string[]>([]);
   
   // Add subscription flow hook
   const { 
@@ -199,6 +202,8 @@ Date: ${new Date().toLocaleDateString()}
       obituary: initialData?.obituary || '',
       charitableDonations: initialData?.charitableDonations || '',
       specialInstructions: initialData?.specialInstructions || '',
+      videos: initialData?.videos || [],
+      documents: initialData?.documents || [],
     }
   });
   
@@ -211,6 +216,10 @@ Date: ${new Date().toLocaleDateString()}
     
     if (!values) return;
     
+    // Update attached videos and documents from form
+    if (values.videos) setAttachedVideos(values.videos);
+    if (values.documents) setAttachedDocuments(values.documents);
+    
     // Generate content immediately for real-time preview
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
@@ -218,6 +227,24 @@ Date: ${new Date().toLocaleDateString()}
   
   const handleSignatureChange = (signatureData: string | null) => {
     setSignature(signatureData);
+  };
+  
+  // Function to handle video/document uploads from Tank
+  const handleMediaAttachment = (mediaUrl: string, type: 'video' | 'document') => {
+    const currentValues = form.getValues();
+    
+    if (type === 'video') {
+      const updatedVideos = [...(currentValues.videos || []), mediaUrl];
+      form.setValue('videos', updatedVideos);
+      setAttachedVideos(updatedVideos);
+    } else {
+      const updatedDocuments = [...(currentValues.documents || []), mediaUrl];
+      form.setValue('documents', updatedDocuments);
+      setAttachedDocuments(updatedDocuments);
+    }
+    
+    // Trigger form change to update preview
+    handleFormChange(form.getValues());
   };
   
   const handleSaveDraft = async () => {
@@ -321,15 +348,13 @@ Date: ${new Date().toLocaleDateString()}
       
       if (savedWill && savedWill.id) {
         setFinalizedWillId(savedWill.id);
-        setCreatedWill(savedWill);
       }
       
       setIsFinalized(true);
-      setShowSuccessModal(true);
       
       toast({
         title: "Will Finalized Successfully!",
-        description: "Your will has been finalized and saved.",
+        description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
       });
       
     } catch (error) {
@@ -346,14 +371,6 @@ Date: ${new Date().toLocaleDateString()}
 
   return (
     <div className="container mx-auto mb-16">
-      {/* Success Modal */}
-      {showSuccessModal && createdWill && (
-        <WillCreationSuccess 
-          will={createdWill}
-          onClose={() => setShowSuccessModal(false)}
-        />
-      )}
-      
       {/* Subscription Modal */}
       <SubscriptionModal 
         open={showSubscriptionModal}
@@ -374,12 +391,52 @@ Date: ${new Date().toLocaleDateString()}
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
               
-              {/* Video/Document sections removed from creation process */}
+              {/* Video/Document Upload Section */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Attachments
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Videos</h4>
+                    {attachedVideos.length > 0 ? (
+                      <div className="space-y-2">
+                        {attachedVideos.map((videoUrl, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <Video className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm">Video {index + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No videos attached. Use the Tank section to record videos.</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Documents</h4>
+                    {attachedDocuments.length > 0 ? (
+                      <div className="space-y-2">
+                        {attachedDocuments.map((docUrl, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                            <Upload className="h-4 w-4 text-green-500" />
+                            <span className="text-sm">Document {index + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No documents attached.</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
               
               {(finalizedWillId || (!isNew && willId)) && (
                 <Alert className="bg-blue-50 border border-blue-100">
+                  <Video className="h-4 w-4 text-blue-500" />
                   <AlertDescription className="text-blue-700">
-                    After finalizing your will, you can add video testimonies and upload documents on your will's individual page.
+                    After finalizing your will, you can create video testimonies in the Tank section and attach them to this will.
                   </AlertDescription>
                 </Alert>
               )}
@@ -395,6 +452,8 @@ Date: ${new Date().toLocaleDateString()}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                   isWillFinalized={isFinalized}
+                  videos={attachedVideos}
+                  documents={attachedDocuments}
                 />
                 
                 {(finalizedWillId || (!isNew && willId)) && (
@@ -428,7 +487,7 @@ Date: ${new Date().toLocaleDateString()}
                       ) : (
                         <>
                           <FileCheck className="mr-2 h-4 w-4" />
-                          {isFinalized ? 'Will Finalized' : 'Finalize & Save Will'}
+                          {isFinalized ? 'Will Finalized' : 'Finalize Will'}
                         </>
                       )}
                     </Button>
@@ -441,8 +500,9 @@ Date: ${new Date().toLocaleDateString()}
                     
                     {isFinalized && (
                       <Alert className="bg-green-50 border border-green-100">
+                        <Video className="h-4 w-4 text-green-500" />
                         <AlertDescription className="text-green-700">
-                          Your will has been finalized! Next, add video testimonies and upload documents on your will's page.
+                          Your will has been finalized! You can now create video testimonies and attach documents in the Tank section.
                         </AlertDescription>
                       </Alert>
                     )}

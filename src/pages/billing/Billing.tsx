@@ -22,9 +22,7 @@ export default function Billing() {
 
   useEffect(() => {
     // Refresh subscription status when page loads
-    if (refreshSubscriptionStatus) {
-      refreshSubscriptionStatus();
-    }
+    refreshSubscriptionStatus();
     
     // Handle success case
     if (success === 'true') {
@@ -49,7 +47,7 @@ export default function Billing() {
             console.error('Error redirecting to return URL:', error);
             navigate('/dashboard');
           }
-        }, 2000);
+        }, 2000); // 2 second delay to show success message
       }
     }
     
@@ -74,9 +72,9 @@ export default function Billing() {
   }
 
   const getStatusIcon = () => {
-    if (subscriptionStatus?.isTrial) {
+    if (subscriptionStatus.isTrial) {
       return <Clock className="h-5 w-5 text-blue-500" />;
-    } else if (subscriptionStatus?.isSubscribed) {
+    } else if (subscriptionStatus.isSubscribed) {
       return <CheckCircle className="h-5 w-5 text-green-500" />;
     } else {
       return <AlertCircle className="h-5 w-5 text-gray-500" />;
@@ -84,23 +82,13 @@ export default function Billing() {
   };
 
   const getStatusText = () => {
-    if (subscriptionStatus?.isTrial) {
-      return `Trial (${subscriptionStatus.trialDaysRemaining || 0} days remaining)`;
-    } else if (subscriptionStatus?.isSubscribed) {
+    if (subscriptionStatus.isTrial) {
+      return `Trial (${subscriptionStatus.trialDaysRemaining} days remaining)`;
+    } else if (subscriptionStatus.isSubscribed) {
       return 'Active';
     } else {
       return 'Free Plan';
     }
-  };
-
-  // Fallback values if subscriptionStatus is null/undefined
-  const safeSubscriptionStatus = subscriptionStatus || {
-    isSubscribed: false,
-    isTrial: false,
-    tier: 'free',
-    features: ['Basic will creation'],
-    trialDaysRemaining: 0,
-    trialEnd: null
   };
 
   return (
@@ -155,7 +143,7 @@ export default function Billing() {
               <h2 className="text-xl font-semibold">Current Plan</h2>
               <div className="flex items-center gap-2">
                 {getStatusIcon()}
-                <Badge variant={safeSubscriptionStatus.isSubscribed ? "default" : "secondary"}>
+                <Badge variant={subscriptionStatus.isSubscribed ? "default" : "secondary"}>
                   {getStatusText()}
                 </Badge>
               </div>
@@ -165,18 +153,18 @@ export default function Billing() {
               <div>
                 <h3 className="font-medium text-gray-700">Plan</h3>
                 <p className="text-lg">
-                  {safeSubscriptionStatus.tier.charAt(0).toUpperCase() + safeSubscriptionStatus.tier.slice(1)}
+                  {subscriptionStatus.tier.charAt(0).toUpperCase() + subscriptionStatus.tier.slice(1)}
                 </p>
               </div>
               
-              {safeSubscriptionStatus.isSubscribed && (
+              {subscriptionStatus.isSubscribed && (
                 <div>
                   <h3 className="font-medium text-gray-700">
-                    {safeSubscriptionStatus.isTrial ? 'Trial Ends' : 'Next Billing'}
+                    {subscriptionStatus.isTrial ? 'Trial Ends' : 'Next Billing'}
                   </h3>
                   <p className="text-lg">
-                    {safeSubscriptionStatus.isTrial && safeSubscriptionStatus.trialEnd
-                      ? new Date(safeSubscriptionStatus.trialEnd).toLocaleDateString()
+                    {subscriptionStatus.isTrial && subscriptionStatus.trialEnd
+                      ? new Date(subscriptionStatus.trialEnd).toLocaleDateString()
                       : 'N/A'
                     }
                   </p>
@@ -188,7 +176,7 @@ export default function Billing() {
             <div className="mt-6">
               <h3 className="font-medium text-gray-700 mb-3">Included Features</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {safeSubscriptionStatus.features.map((feature, index) => (
+                {subscriptionStatus.features.map((feature, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
                     <span className="text-sm">{feature}</span>
@@ -199,7 +187,7 @@ export default function Billing() {
             
             {/* Action Buttons */}
             <div className="mt-6 flex gap-3">
-              {!safeSubscriptionStatus.isSubscribed && (
+              {!subscriptionStatus.isSubscribed && (
                 <Button 
                   onClick={() => navigate('/wills')}
                   className="bg-willtank-600 hover:bg-willtank-700"
@@ -237,7 +225,7 @@ export default function Billing() {
         </Card>
         
         {/* Trial Information */}
-        {safeSubscriptionStatus.isTrial && (
+        {subscriptionStatus.isTrial && (
           <Card className="bg-blue-50 border-blue-200">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-3">
@@ -245,11 +233,11 @@ export default function Billing() {
                 <h3 className="font-semibold text-blue-800">Trial Information</h3>
               </div>
               <p className="text-blue-700 mb-3">
-                You have {safeSubscriptionStatus.trialDaysRemaining || 0} days remaining in your free trial. 
+                You have {subscriptionStatus.trialDaysRemaining} days remaining in your free trial. 
                 Your subscription will automatically continue after the trial period unless you cancel.
               </p>
               <p className="text-sm text-blue-600">
-                Trial ends on: {safeSubscriptionStatus.trialEnd ? new Date(safeSubscriptionStatus.trialEnd).toLocaleDateString() : 'N/A'}
+                Trial ends on: {subscriptionStatus.trialEnd ? new Date(subscriptionStatus.trialEnd).toLocaleDateString() : 'N/A'}
               </p>
             </div>
           </Card>

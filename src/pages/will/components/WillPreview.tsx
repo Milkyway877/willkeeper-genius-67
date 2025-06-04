@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { Bot, Video, FileText, Download } from 'lucide-react';
@@ -61,13 +62,10 @@ export function WillPreview({
   }
 
   // Use professional format if requested and we have structured data
-  if (useProfessionalFormat && formatted) {
+  if (useProfessionalFormat && formatted && willContentObj) {
     try {
-      // If we have structured data, use it; otherwise try to extract from content
-      const dataForPreview = willContentObj || content;
-      
-      // Generate professional preview HTML with signature
-      const professionalHtml = generateProfessionalDocumentPreview(dataForPreview, signature);
+      // Generate professional preview HTML
+      const professionalHtml = generateProfessionalDocumentPreview(willContentObj, signature);
       
       return (
         <div className="space-y-4">
@@ -254,22 +252,17 @@ export function WillPreview({
         );
       })}
       
-      {/* Enhanced signature display with proper styling */}
+      {/* Add signature display at bottom if provided */}
       {signature && (
-        <div className="border-t border-gray-200 pt-4 mt-6 bg-gray-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-willtank-700">Digital Signature:</p>
-            <span className="text-xs text-gray-500">Verified</span>
-          </div>
-          <div className="bg-white p-3 border-2 border-willtank-200 rounded-md">
-            <img 
-              src={signature} 
-              alt="Digital signature" 
-              className="max-w-[200px] max-h-[80px] mx-auto block" 
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            Digitally signed on: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+        <div className="border-t border-gray-200 pt-4 mt-6">
+          <p className="text-sm mb-2">Digitally signed:</p>
+          <img 
+            src={signature} 
+            alt="Digital signature" 
+            className="max-w-[200px] max-h-[80px]" 
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Date: {new Date().toLocaleDateString()}
           </p>
         </div>
       )}
