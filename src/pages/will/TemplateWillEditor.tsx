@@ -16,15 +16,13 @@ import { WillPreviewSection } from './components/WillPreviewSection';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Save, FileCheck, Video, Upload } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { WillAttachedVideosSection } from './components/WillAttachedVideosSection';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Save, FileCheck } from 'lucide-react';
 import { generateWillContent } from '@/utils/willTemplateUtils';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
 import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
+import { WillCreationSuccess } from './components/WillCreationSuccess';
 
-// Form validation schema
+// Simplified form validation schema without videos/documents
 const willSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
@@ -32,7 +30,6 @@ const willSchema = z.object({
   email: z.string().email().optional().or(z.string().length(0)),
   phoneNumber: z.string().optional(),
   
-  // For executors
   executors: z.array(
     z.object({
       name: z.string().optional(),
@@ -44,7 +41,6 @@ const willSchema = z.object({
     })
   ).optional(),
 
-  // For beneficiaries
   beneficiaries: z.array(
     z.object({
       name: z.string().optional(),
@@ -56,16 +52,11 @@ const willSchema = z.object({
     })
   ).optional(),
 
-  // For final wishes
   funeralPreferences: z.string().optional(),
   memorialService: z.string().optional(),
   obituary: z.string().optional(),
   charitableDonations: z.string().optional(),
   specialInstructions: z.string().optional(),
-  
-  // New fields for videos and documents
-  videos: z.array(z.string()).optional(),
-  documents: z.array(z.string()).optional(),
 });
 
 type WillFormValues = z.infer<typeof willSchema>;
@@ -75,11 +66,9 @@ const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void 
   const formValues = useWatch();
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   
-  // Track user interaction with the form
   useEffect(() => {
     const handleUserInteraction = () => setHasUserInteracted(true);
     
-    // Listen for user interaction events on the form
     const formElement = document.querySelector('form');
     if (formElement) {
       formElement.addEventListener('input', handleUserInteraction);
@@ -95,28 +84,21 @@ const FormWatcher = ({ onChange }: { onChange: (values: WillFormValues) => void 
   }, []);
   
   useEffect(() => {
-    // Trigger onChange for any meaningful form change for real-time preview
     if (hasUserInteracted || hasValidFormData(formValues)) {
       onChange(formValues as WillFormValues);
     }
   }, [formValues, onChange, hasUserInteracted]);
   
-  // Helper to check if form has any meaningful data beyond defaults
   const hasValidFormData = (values: any): boolean => {
     if (!values) return false;
     
-    // Check if user has entered a name (most basic thing they'd enter)
     if (values.fullName && values.fullName.trim().length > 0) return true;
-    
-    // Check if user has entered a date of birth
     if (values.dateOfBirth && values.dateOfBirth.trim().length > 0) return true;
     
-    // Check if any executor has a name
     if (values.executors && Array.isArray(values.executors)) {
       if (values.executors.some(exec => exec.name && exec.name.trim().length > 0)) return true;
     }
     
-    // Check if any beneficiary has a name
     if (values.beneficiaries && Array.isArray(values.beneficiaries)) {
       if (values.beneficiaries.some(ben => ben.name && ben.name.trim().length > 0)) return true;
     }
@@ -140,7 +122,6 @@ export function TemplateWillEditor({
   isNew = true,
   willId 
 }: TemplateWillEditorProps) {
-  // Form validation schema
   const [willContent, setWillContent] = useState<string>(`
 LAST WILL AND TESTAMENT
 
@@ -173,11 +154,9 @@ Date: ${new Date().toLocaleDateString()}
   const [saving, setSaving] = useState<boolean>(false);
   const [isFinalized, setIsFinalized] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
-  const [attachedVideos, setAttachedVideos] = useState<string[]>([]);
-  const [attachedDocuments, setAttachedDocuments] = useState<string[]>([]);
+  const [finalizedWill, setFinalizedWill] = useState<any>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   
-  // Add subscription flow hook
   const { 
     showSubscriptionModal, 
     handleWillSaved, 
@@ -194,7 +173,6 @@ Date: ${new Date().toLocaleDateString()}
       homeAddress: initialData?.homeAddress || '',
       email: initialData?.email || '',
       phoneNumber: initialData?.phoneNumber || '',
-      // Initialize other fields with empty arrays to prevent undefined errors
       executors: initialData?.executors || [{ name: '', email: '', phone: '', address: '', isPrimary: true }],
       beneficiaries: initialData?.beneficiaries || [{ name: '', relationship: '', email: '', phone: '', address: '', percentage: 0 }],
       funeralPreferences: initialData?.funeralPreferences || '',
@@ -202,49 +180,23 @@ Date: ${new Date().toLocaleDateString()}
       obituary: initialData?.obituary || '',
       charitableDonations: initialData?.charitableDonations || '',
       specialInstructions: initialData?.specialInstructions || '',
-      videos: initialData?.videos || [],
-      documents: initialData?.documents || [],
     }
   });
   
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Enhanced form watcher for real-time preview updates
   const handleFormChange = (values: WillFormValues) => {
     console.log("Form values updated:", values);
     
     if (!values) return;
     
-    // Update attached videos and documents from form
-    if (values.videos) setAttachedVideos(values.videos);
-    if (values.documents) setAttachedDocuments(values.documents);
-    
-    // Generate content immediately for real-time preview
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
   };
   
   const handleSignatureChange = (signatureData: string | null) => {
     setSignature(signatureData);
-  };
-  
-  // Function to handle video/document uploads from Tank
-  const handleMediaAttachment = (mediaUrl: string, type: 'video' | 'document') => {
-    const currentValues = form.getValues();
-    
-    if (type === 'video') {
-      const updatedVideos = [...(currentValues.videos || []), mediaUrl];
-      form.setValue('videos', updatedVideos);
-      setAttachedVideos(updatedVideos);
-    } else {
-      const updatedDocuments = [...(currentValues.documents || []), mediaUrl];
-      form.setValue('documents', updatedDocuments);
-      setAttachedDocuments(updatedDocuments);
-    }
-    
-    // Trigger form change to update preview
-    handleFormChange(form.getValues());
   };
   
   const handleSaveDraft = async () => {
@@ -254,20 +206,17 @@ Date: ${new Date().toLocaleDateString()}
       const formValues = form.getValues();
       console.log("Saving draft with values:", formValues);
       
-      // Update will content one more time to ensure latest changes
       const finalWillContent = generateWillContent(formValues, willContent);
       
-      // Save progress
       await saveWillProgress({
         template_id: templateId,
         current_step: 'editing',
         responses: formValues,
         content: finalWillContent,
         title: `${formValues.fullName}'s Will`,
-        completedSections: ['personal_info'] // Track completed sections
+        completedSections: ['personal_info']
       });
       
-      // Save as draft will
       const willData = {
         title: `${formValues.fullName}'s Will`,
         content: finalWillContent,
@@ -296,16 +245,13 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
   
-  // Fixed finalize function with immediate paywall check
   const handleFinalize = async () => {
-    // IMMEDIATE PAYWALL CHECK - Before any other processing
     if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true); // This will show subscription modal
-      return; // Stop execution here if not subscribed
+      await handleWillSaved(true);
+      return;
     }
     
     try {
-      // Validate form
       await form.trigger();
       if (!form.formState.isValid) {
         toast({
@@ -327,18 +273,15 @@ Date: ${new Date().toLocaleDateString()}
       
       setIsGenerating(true);
       
-      // User is subscribed, proceed with finalization
       const formValues = form.getValues();
       
-      // Generate final content based on form values and include signature
       const finalWillContent = generateWillContent(formValues, willContent);
       const contentWithSignature = finalWillContent + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
       
-      // Save as finalized will
       const willData = {
         title: `${formValues.fullName}'s Will`,
         content: contentWithSignature,
-        status: 'active', // Mark as active/finalized
+        status: 'active',
         template_type: templateId,
         ai_generated: false,
         document_url: '',
@@ -347,15 +290,10 @@ Date: ${new Date().toLocaleDateString()}
       const savedWill = await createWill(willData);
       
       if (savedWill && savedWill.id) {
-        setFinalizedWillId(savedWill.id);
+        setFinalizedWill(savedWill);
+        setIsFinalized(true);
+        setShowSuccessModal(true);
       }
-      
-      setIsFinalized(true);
-      
-      toast({
-        title: "Will Finalized Successfully!",
-        description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
-      });
       
     } catch (error) {
       console.error("Error finalizing will:", error);
@@ -369,9 +307,18 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
 
+  // Show success modal instead of regular editor when finalized
+  if (showSuccessModal && finalizedWill) {
+    return (
+      <WillCreationSuccess 
+        will={finalizedWill} 
+        onClose={() => setShowSuccessModal(false)} 
+      />
+    );
+  }
+
   return (
     <div className="container mx-auto mb-16">
-      {/* Subscription Modal */}
       <SubscriptionModal 
         open={showSubscriptionModal}
         onClose={closeSubscriptionModal}
@@ -380,7 +327,6 @@ Date: ${new Date().toLocaleDateString()}
       
       <FormProvider {...form}>
         <form>
-          {/* Enhanced form watcher for real-time updates */}
           <FormWatcher onChange={handleFormChange} />
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -390,57 +336,6 @@ Date: ${new Date().toLocaleDateString()}
               <ExecutorsSection defaultOpen={false} />
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
-              
-              {/* Video/Document Upload Section */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Upload className="h-5 w-5" />
-                  Attachments
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Videos</h4>
-                    {attachedVideos.length > 0 ? (
-                      <div className="space-y-2">
-                        {attachedVideos.map((videoUrl, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <Video className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm">Video {index + 1}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No videos attached. Use the Tank section to record videos.</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Documents</h4>
-                    {attachedDocuments.length > 0 ? (
-                      <div className="space-y-2">
-                        {attachedDocuments.map((docUrl, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                            <Upload className="h-4 w-4 text-green-500" />
-                            <span className="text-sm">Document {index + 1}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No documents attached.</p>
-                    )}
-                  </div>
-                </div>
-              </Card>
-              
-              {(finalizedWillId || (!isNew && willId)) && (
-                <Alert className="bg-blue-50 border border-blue-100">
-                  <Video className="h-4 w-4 text-blue-500" />
-                  <AlertDescription className="text-blue-700">
-                    After finalizing your will, you can create video testimonies in the Tank section and attach them to this will.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
               <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
             </div>
             
@@ -452,13 +347,7 @@ Date: ${new Date().toLocaleDateString()}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                   isWillFinalized={isFinalized}
-                  videos={attachedVideos}
-                  documents={attachedDocuments}
                 />
-                
-                {(finalizedWillId || (!isNew && willId)) && (
-                  <WillAttachedVideosSection willId={finalizedWillId || willId || ''} />
-                )}
                 
                 <Card className="mt-6 p-4">
                   <div className="space-y-4">
@@ -496,15 +385,6 @@ Date: ${new Date().toLocaleDateString()}
                       <p className="text-xs text-gray-500 text-center">
                         Subscription required to finalize and save your will
                       </p>
-                    )}
-                    
-                    {isFinalized && (
-                      <Alert className="bg-green-50 border border-green-100">
-                        <Video className="h-4 w-4 text-green-500" />
-                        <AlertDescription className="text-green-700">
-                          Your will has been finalized! You can now create video testimonies and attach documents in the Tank section.
-                        </AlertDescription>
-                      </Alert>
                     )}
                   </div>
                 </Card>

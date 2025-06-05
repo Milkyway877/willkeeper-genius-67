@@ -1,205 +1,227 @@
 
-/* MobileStyles.css - Contains mobile-specific styles and responsive overrides */
+/* Enhanced mobile and animation styles */
 
-/* Base responsive typography adjustments */
-@media (max-width: 640px) {
-  html {
-    font-size: 14px;
-  }
-  
-  h1 {
-    font-size: 1.75rem !important;
-  }
-  
-  h2 {
-    font-size: 1.5rem !important;
-  }
-  
-  h3 {
-    font-size: 1.25rem !important;
-  }
-  
-  .text-xl {
-    font-size: 1.125rem !important;
-  }
-  
-  .text-lg {
-    font-size: 1rem !important;
-  }
-}
-
-/* Adjust padding and margins for mobile devices */
-@media (max-width: 640px) {
-  .p-6 {
-    padding: 1rem !important;
-  }
-  
-  .px-6 {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-  }
-  
-  .py-6 {
-    padding-top: 1rem !important;
-    padding-bottom: 1rem !important;
-  }
-  
-  .m-6 {
-    margin: 1rem !important;
-  }
-  
-  .my-6 {
-    margin-top: 1rem !important;
-    margin-bottom: 1rem !important;
-  }
-  
-  .mx-6 {
-    margin-left: 1rem !important;
-    margin-right: 1rem !important;
-  }
-  
-  /* Add more spacing overrides as needed */
-}
-
-/* Improve button touch targets on mobile */
-@media (max-width: 640px) {
-  button, 
-  .btn,
-  [role="button"],
-  a.btn,
-  input[type="button"],
-  input[type="submit"] {
-    min-height: 2.75rem;
-  }
-}
-
-/* Optimize mobile forms */
-@media (max-width: 640px) {
-  input,
-  select,
-  textarea {
-    font-size: 16px !important; /* Prevents iOS zoom on focus */
-  }
-  
-  /* Add more space between form fields on mobile */
-  .form-field + .form-field,
-  .space-y-4 > * {
-    margin-top: 1.25rem !important;
-  }
-}
-
-/* Better mobile table handling */
+/* Mobile responsive styles */
 @media (max-width: 768px) {
-  table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-
-/* Improve image responsiveness */
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Ensure proper viewport settings for mobile devices */
-@viewport {
-  width: device-width;
-  zoom: 1.0;
-}
-
-/* Fix for iOS input shadows */
-input {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-}
-
-/* Custom scrollbars for mobile */
-@media (max-width: 768px) {
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50;
   }
   
-  ::-webkit-scrollbar-track {
-    background: transparent;
+  .mobile-nav-item {
+    @apply flex-1 py-2 px-1 text-center;
   }
   
-  ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+  .mobile-container {
+    @apply px-4 pb-20;
+  }
+  
+  .mobile-card {
+    @apply mx-2 my-4;
+  }
+  
+  .mobile-form {
+    @apply space-y-4 px-4;
+  }
+  
+  .mobile-button {
+    @apply w-full py-3 text-base;
+  }
+  
+  .mobile-input {
+    @apply text-base py-3;
   }
 }
 
-/* Dashboard cards responsive adjustments */
-@media (max-width: 640px) {
-  .grid.grid-cols-3,
-  .grid.grid-cols-2 {
-    grid-template-columns: 1fr !important;
+/* Will card animations */
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(45, 139, 117, 0.3), 0 0 10px rgba(45, 139, 117, 0.2), 0 0 15px rgba(45, 139, 117, 0.1);
   }
-  
-  .lg\:grid-cols-3,
-  .md\:grid-cols-3,
-  .md\:grid-cols-2 {
-    grid-template-columns: 1fr !important;
+  50% {
+    box-shadow: 0 0 10px rgba(45, 139, 117, 0.5), 0 0 20px rgba(45, 139, 117, 0.3), 0 0 30px rgba(45, 139, 117, 0.2);
   }
 }
 
-/* Improve floating button positioning on mobile */
-@media (max-width: 640px) {
-  .fixed.bottom-4.right-4 {
-    bottom: 1rem !important;
-    right: 1rem !important;
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.01);
   }
 }
 
-/* Fix modal positioning on mobile */
-@media (max-width: 640px) {
-  .modal-container,
-  [role="dialog"] {
-    width: calc(100% - 2rem) !important;
-    margin: 1rem !important;
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-/* Improve bottom spacing for will editor and templates */
-@media (max-width: 768px) {
-  .container.mx-auto {
-    padding-bottom: 6rem !important;
-  }
-  
-  .col-span-12.mt-8 {
-    margin-bottom: 5rem !important;
-  }
-  
-  /* Ensure content has enough bottom space to prevent button overlap */
-  body {
-    padding-bottom: env(safe-area-inset-bottom, 20px);
-  }
-  
-  /* Fix for bottom nav bar overlap */
-  .pb-24 {
-    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 20px)) !important;
-  }
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
 }
 
-/* Add visible "scroll bounce" indicator for content that scrolls */
-.scroll-indicator::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+/* Toast enhancements */
+.toast-success {
+  @apply bg-green-50 border-green-200 text-green-800;
+}
+
+.toast-warning {
+  @apply bg-amber-50 border-amber-200 text-amber-800;
+}
+
+.toast-error {
+  @apply bg-red-50 border-red-200 text-red-800;
+}
+
+/* Confetti container */
+.confetti-container {
+  position: fixed;
+  top: 0;
   left: 0;
-  right: 0;
-  height: 16px;
-  background: linear-gradient(to top, rgba(0,0,0,0.05), transparent);
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  animation: pulse 2s ease-in-out infinite;
+  z-index: 9999;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+/* Will completion progress */
+.completion-bar {
+  @apply bg-gradient-to-r from-willtank-200 to-green-200 rounded-full h-2;
+}
+
+.completion-fill {
+  @apply bg-gradient-to-r from-willtank-500 to-green-500 rounded-full h-full transition-all duration-500 ease-out;
+}
+
+/* Priority indicators */
+.priority-urgent {
+  @apply border-l-4 border-red-500 bg-red-50;
+}
+
+.priority-high {
+  @apply border-l-4 border-amber-500 bg-amber-50;
+}
+
+.priority-normal {
+  @apply border-l-4 border-blue-500 bg-blue-50;
+}
+
+/* Responsive text sizes */
+@media (max-width: 640px) {
+  .responsive-text-sm {
+    @apply text-xs;
+  }
+  
+  .responsive-text-base {
+    @apply text-sm;
+  }
+  
+  .responsive-text-lg {
+    @apply text-base;
+  }
+  
+  .responsive-text-xl {
+    @apply text-lg;
+  }
+  
+  .responsive-text-2xl {
+    @apply text-xl;
+  }
+}
+
+/* Enhanced loading states */
+.loading-skeleton {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+.loading-shimmer {
+  @apply relative overflow-hidden;
+}
+
+.loading-shimmer::before {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-60;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Will status indicators */
+.will-status-active {
+  @apply bg-green-100 text-green-800 border-green-200;
+}
+
+.will-status-draft {
+  @apply bg-blue-100 text-blue-800 border-blue-200;
+}
+
+.will-status-pending {
+  @apply bg-amber-100 text-amber-800 border-amber-200;
+}
+
+.will-status-incomplete {
+  @apply bg-red-100 text-red-800 border-red-200;
+}
+
+/* Action required pulsing */
+.action-required {
+  animation: glow-pulse 3s ease-in-out infinite;
+  @apply border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50;
+}
+
+/* Floating elements */
+.floating-element {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Success celebration styles */
+.celebration-card {
+  @apply bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-200;
+  animation: celebrate 1s ease-out;
+}
+
+@keyframes celebrate {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
