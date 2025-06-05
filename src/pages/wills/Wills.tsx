@@ -177,8 +177,6 @@ export default function Wills() {
                     <HighlightedWillCard 
                       key={will.id} 
                       will={will}
-                      hasVideo={false} 
-                      hasDocuments={false} 
                     />
                   ) : (
                     <WillCard 
@@ -219,8 +217,6 @@ export default function Wills() {
                     <HighlightedWillCard 
                       key={will.id} 
                       will={will}
-                      hasVideo={false} 
-                      hasDocuments={false} 
                     />
                   ) : (
                     <WillCard 
@@ -261,8 +257,6 @@ export default function Wills() {
                     <HighlightedWillCard 
                       key={will.id} 
                       will={will}
-                      hasVideo={false} 
-                      hasDocuments={false} 
                     />
                   ) : (
                     <WillCard 
