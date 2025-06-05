@@ -83,20 +83,9 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
 
   const getVideoUrl = async (filePath: string): Promise<string | null> => {
     try {
-      // Check if the file exists first
-      const { data: fileExists, error: checkError } = await supabase.storage
-        .from('future-videos') // Changed from 'will_videos' to 'future-videos'
-        .list('', {
-          search: filePath
-        });
-      
-      if (checkError) {
-        console.error('Error checking if video exists:', checkError);
-      }
-      
-      // Get the public URL regardless of existence check (may fail silently)
+      // Use the correct will_videos bucket
       const { data } = supabase.storage
-        .from('future-videos') // Changed from 'will_videos' to 'future-videos'
+        .from('will_videos')
         .getPublicUrl(filePath);
       
       // Add a cache-busting parameter to avoid caching issues
@@ -158,7 +147,7 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
       
       // Then try to delete the file from storage
       const { error: storageError } = await supabase.storage
-        .from('future-videos') // Changed from 'will_videos' to 'future-videos'
+        .from('will_videos')
         .remove([videoToDelete.file_path]);
         
       // We don't throw on storage error since the DB record is the most important

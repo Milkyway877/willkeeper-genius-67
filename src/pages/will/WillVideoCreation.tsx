@@ -116,80 +116,24 @@ export function WillVideoCreation() {
         throw new Error('User is not authenticated');
       }
       
-      // Create a future message record for the video
-      const message = {
-        title: videoTitle,
-        recipient_name: recipient,
-        recipient_email: '',
-        message_type: 'video',
-        preview: 'Video Testament for Will',
-        content: 'Video Testament for Will',
-        message_url: recordedVideoPath,
-        status: 'scheduled' as const,
-        delivery_type: 'posthumous' as const,
-        delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
-        delivery_event: null,
-        category: 'story' as const,
-        user_id: session.user.id,
-      };
-      
       setProgress(50);
       
-      // Save to future_messages table
-      const { data: createdMessage, error: messageError } = await supabase
-        .from('future_messages')
-        .insert(message)
+      // Save video metadata to will_videos table instead of future_messages
+      const { data: createdVideo, error: videoError } = await supabase
+        .from('will_videos')
+        .insert({
+          will_id: willId,
+          user_id: session.user.id,
+          title: videoTitle,
+          file_path: recordedVideoPath,
+          duration: null // Can be calculated later if needed
+        })
         .select()
         .single();
         
-      if (messageError) throw messageError;
+      if (videoError) throw videoError;
       
       setProgress(80);
-      
-      // Add metadata for the will linking to the video
-      const { error: willVideoError } = await supabase
-        .from('future_messages')
-        .insert({
-          user_id: session.user.id,
-          title: `Video for Will: ${willId}`,
-          recipient_name: 'Will Video',
-          recipient_email: '',
-          message_type: 'metadata',
-          preview: `Video for Will: ${willId}`,
-          content: JSON.stringify({ will_id: willId, video_path: recordedVideoPath }),
-          message_url: recordedVideoPath,
-          status: 'scheduled' as const,
-          delivery_type: 'posthumous' as const,
-          delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
-          category: 'document' as const
-        });
-      
-      if (willVideoError) {
-        console.error('Error saving will video metadata:', willVideoError);
-      }
-      
-      // If documents were uploaded, register them as linked to the will
-      if (uploadedDocuments.length > 0) {
-        for (const docPath of uploadedDocuments) {
-          // Add metadata entry linking the document to the will
-          await supabase
-            .from('future_messages')
-            .insert({
-              user_id: session.user.id,
-              title: `Document for Will: ${willId}`,
-              recipient_name: 'Will Document',
-              recipient_email: '',
-              message_type: 'metadata',
-              preview: `Document for Will: ${willId}`,
-              content: JSON.stringify({ will_id: willId, doc_path: docPath }),
-              message_url: docPath,
-              status: 'scheduled' as const,
-              delivery_type: 'posthumous' as const,
-              delivery_date: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(), // 100 years in future
-              category: 'document' as const
-            });
-        }
-      }
       
       clearInterval(progressInterval);
       setProgress(100);

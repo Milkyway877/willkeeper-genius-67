@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Edit, FileVideo, Upload, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { Will } from '@/services/willService';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Tooltip,
   TooltipContent,
@@ -16,13 +17,14 @@ import {
 
 interface HighlightedWillCardProps {
   will: Will;
-  hasVideo?: boolean;
-  hasDocuments?: boolean;
 }
 
-export function HighlightedWillCard({ will, hasVideo = false, hasDocuments = false }: HighlightedWillCardProps) {
+export function HighlightedWillCard({ will }: HighlightedWillCardProps) {
   const navigate = useNavigate();
   const [showTooltip, setShowTooltip] = useState(true);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [hasDocuments, setHasDocuments] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Auto-hide tooltip after 10 seconds
@@ -33,6 +35,46 @@ export function HighlightedWillCard({ will, hasVideo = false, hasDocuments = fal
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    checkWillCompletionStatus();
+  }, [will.id]);
+
+  const checkWillCompletionStatus = async () => {
+    if (!will.id) return;
+
+    try {
+      // Check for videos in will_videos table
+      const { data: videos, error: videoError } = await supabase
+        .from('will_videos')
+        .select('id')
+        .eq('will_id', will.id)
+        .limit(1);
+
+      if (videoError) {
+        console.error('Error checking videos:', videoError);
+      } else {
+        setHasVideo((videos || []).length > 0);
+      }
+
+      // Check for documents in will_documents table
+      const { data: documents, error: docError } = await supabase
+        .from('will_documents')
+        .select('id')
+        .eq('will_id', will.id)
+        .limit(1);
+
+      if (docError) {
+        console.error('Error checking documents:', docError);
+      } else {
+        setHasDocuments((documents || []).length > 0);
+      }
+    } catch (error) {
+      console.error('Error checking will completion status:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleViewWill = () => {
     navigate(`/will/${will.id}`);
   };
@@ -40,6 +82,16 @@ export function HighlightedWillCard({ will, hasVideo = false, hasDocuments = fal
   const handleCompleteWill = () => {
     navigate(`/will/${will.id}`);
   };
+
+  if (isLoading) {
+    return (
+      <Card className="relative overflow-hidden border-2 border-willtank-400 bg-willtank-50 animate-pulse">
+        <CardContent className="p-5">
+          <div className="h-20 bg-gray-200 rounded"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const completionStatus = hasVideo && hasDocuments ? 'complete' : 'incomplete';
   const urgencyLevel = !hasVideo && !hasDocuments ? 'urgent' : 'moderate';
