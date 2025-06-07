@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +16,6 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserProfile } from '@/contexts/UserProfileContext';
-import { getDocumentUrl, deleteWillDocument } from '@/services/willService';
 
 interface DocumentUploadPanelProps {
   willId: string;
@@ -42,30 +41,10 @@ export function DocumentUploadPanel({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user } = useUserProfile();
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-
-  // Add an effect to check auth status directly from Supabase if context doesn't provide it
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!user) {
-        // Try to get session directly from Supabase
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          setIsAuthChecked(true);
-        }
-      } else {
-        setIsAuthChecked(true);
-      }
-    };
-    
-    checkAuth();
-  }, [user]);
 
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
-    // Get auth session directly 
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     
@@ -85,7 +64,6 @@ export function DocumentUploadPanel({
       const newDocuments = [];
       
       for (const file of files) {
-        // Check file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
           toast({
             title: "File too large",
@@ -95,18 +73,15 @@ export function DocumentUploadPanel({
           continue;
         }
         
-        // Create a unique filename
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `will_documents/${willId}/${fileName}`;
         
-        // Include user ID in the path + will prefix
-        const filePath = `will_docs/${willId}/${fileName}`;
-        
-        console.log('Uploading to bucket: future-documents, path:', filePath);
+        console.log('Uploading to bucket: will_documents, path:', filePath);
 
-        // Upload to Supabase with correct bucket name (future-documents)
+        // Upload to will_documents bucket
         const { error: uploadError } = await supabase.storage
-          .from('future-documents')
+          .from('will_documents')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: true
@@ -121,18 +96,31 @@ export function DocumentUploadPanel({
           });
           continue;
         }
-        
-        // Format file size
-        const sizeInKB = file.size / 1024;
-        let formattedSize;
-        
-        if (sizeInKB < 1024) {
-          formattedSize = `${sizeInKB.toFixed(1)} KB`;
-        } else {
-          formattedSize = `${(sizeInKB / 1024).toFixed(1)} MB`;
+
+        // Save metadata to will_documents table
+        const { error: dbError } = await supabase
+          .from('will_documents')
+          .insert({
+            will_id: willId,
+            user_id: userId,
+            file_name: file.name,
+            file_path: filePath,
+            file_size: file.size,
+            file_type: file.type
+          });
+
+        if (dbError) {
+          console.error('Error saving document metadata:', dbError);
+          // Try to clean up uploaded file
+          await supabase.storage.from('will_documents').remove([filePath]);
+          continue;
         }
         
-        // Add to documents list
+        const sizeInKB = file.size / 1024;
+        const formattedSize = sizeInKB < 1024 
+          ? `${sizeInKB.toFixed(1)} KB`
+          : `${(sizeInKB / 1024).toFixed(1)} MB`;
+        
         newDocuments.push({
           id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           name: file.name,
@@ -149,7 +137,6 @@ export function DocumentUploadPanel({
           description: `Successfully uploaded ${newDocuments.length} document(s).`
         });
         
-        // Pass document paths to parent component
         const allDocuments = [...uploadedDocuments, ...newDocuments];
         onDocumentsUploaded(allDocuments.map(doc => doc.path));
       }
@@ -170,39 +157,41 @@ export function DocumentUploadPanel({
 
   const handleRemoveDocument = async (id: string, path: string) => {
     try {
-      // Create a document object with the minimum required properties for deletion
-      const documentToDelete = {
-        id,
-        file_path: path,
-        will_id: willId,
-        user_id: "",
-        file_name: "",
-        file_size: 0,
-        file_type: "",
-        created_at: ""
-      };
-      
-      console.log(`Attempting to delete document: ${id}, path: ${path}`);
-      const success = await deleteWillDocument(documentToDelete);
-      
-      if (success) {
-        setUploadedDocuments(prev => {
-          const filtered = prev.filter(doc => doc.id !== id);
-          onDocumentsUploaded(filtered.map(doc => doc.path));
-          return filtered;
-        });
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('will_documents')
+        .remove([path]);
         
-        toast({
-          title: "Document Removed",
-          description: "Document has been removed successfully."
-        });
-      } else {
+      if (storageError) {
+        console.warn('Could not delete from storage:', storageError);
+      }
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('will_documents')
+        .delete()
+        .eq('file_path', path);
+
+      if (dbError) {
+        console.error('Error deleting from database:', dbError);
         toast({
           title: "Delete Failed",
           description: "Could not delete the document. Please try again.",
           variant: "destructive"
         });
+        return;
       }
+      
+      setUploadedDocuments(prev => {
+        const filtered = prev.filter(doc => doc.id !== id);
+        onDocumentsUploaded(filtered.map(doc => doc.path));
+        return filtered;
+      });
+      
+      toast({
+        title: "Document Removed",
+        description: "Document has been removed successfully."
+      });
     } catch (error) {
       console.error('Error deleting document:', error);
       toast({
@@ -215,33 +204,19 @@ export function DocumentUploadPanel({
   
   const handlePreviewDocument = async (path: string, name: string) => {
     try {
-      // Create a document object with the minimum required properties for URL retrieval
-      const documentForPreview = {
-        id: "",
-        file_path: path,
-        will_id: willId,
-        user_id: "",
-        file_name: name,
-        file_size: 0,
-        file_type: "",
-        created_at: ""
-      };
+      const { data } = supabase.storage
+        .from('will_documents')
+        .getPublicUrl(path);
       
-      console.log(`Getting preview URL for document: ${path}`);
-      const url = await getDocumentUrl(documentForPreview);
-      
-      if (!url) {
-        console.error('No URL returned for document preview');
+      if (data?.publicUrl) {
+        window.open(data.publicUrl, '_blank');
+      } else {
         toast({
           title: "Preview Failed",
           description: "Could not generate preview link",
           variant: "destructive"
         });
-        return;
       }
-      
-      // Open the document in a new tab
-      window.open(url, '_blank');
     } catch (error) {
       console.error('Error previewing document:', error);
       toast({
