@@ -137,14 +137,14 @@ export function WillVideoRecorder({
         throw new Error('User not authenticated');
       }
 
-      // Create filename with timestamp
+      // Create filename with user ID as folder and timestamp
       const timestamp = Date.now();
       const fileName = `video_${timestamp}.webm`;
-      const filePath = `will_videos/${session.user.id}/${fileName}`;
+      const filePath = `${session.user.id}/${fileName}`;
 
       console.log('Uploading video to bucket: will_videos, path:', filePath);
 
-      // Upload to will_videos bucket
+      // Upload to will_videos bucket with user ID as folder
       const { error: uploadError } = await supabase.storage
         .from('will_videos')
         .upload(filePath, recordedBlob, {
@@ -157,7 +157,7 @@ export function WillVideoRecorder({
         throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      console.log('Video uploaded successfully to storage');
+      console.log('Video uploaded successfully to storage at path:', filePath);
       
       // Pass the file path to parent component
       onVideoRecorded(filePath);

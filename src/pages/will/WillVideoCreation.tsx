@@ -65,9 +65,54 @@ export function WillVideoCreation() {
     fetchWillInfo();
   }, [willId, navigate, toast]);
   
-  const handleVideoRecorded = (videoPath: string) => {
-    setRecordedVideoPath(videoPath);
-    setCurrentStep('review');
+  const handleVideoRecorded = async (videoPath: string) => {
+    try {
+      // Save video metadata using edge function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/will-media-manager`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'save_video',
+          will_id: willId,
+          file_path: videoPath,
+          title: videoTitle,
+          duration: null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save video metadata');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save video metadata');
+      }
+
+      console.log('Video metadata saved successfully:', result.data);
+      setRecordedVideoPath(videoPath);
+      setCurrentStep('review');
+
+      toast({
+        title: 'Video Saved',
+        description: 'Your video testament has been recorded and saved successfully.'
+      });
+    } catch (error) {
+      console.error('Error saving video metadata:', error);
+      toast({
+        title: 'Save Error',
+        description: 'Video was uploaded but metadata could not be saved. Please try again.',
+        variant: 'destructive'
+      });
+    }
   };
   
   const handleDocumentsUploaded = (documents: string[]) => {
@@ -109,29 +154,6 @@ export function WillVideoCreation() {
           return Math.min(prev + increment, 95);
         });
       }, 300);
-      
-      // Get user session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('User is not authenticated');
-      }
-      
-      setProgress(50);
-      
-      // Save video metadata to will_videos table instead of future_messages
-      const { data: createdVideo, error: videoError } = await supabase
-        .from('will_videos')
-        .insert({
-          will_id: willId,
-          user_id: session.user.id,
-          title: videoTitle,
-          file_path: recordedVideoPath,
-          duration: null // Can be calculated later if needed
-        })
-        .select()
-        .single();
-        
-      if (videoError) throw videoError;
       
       setProgress(80);
       

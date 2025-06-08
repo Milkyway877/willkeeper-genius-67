@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,11 +74,12 @@ export function DocumentUploadPanel({
         
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `will_documents/${willId}/${fileName}`;
+        // Use user ID as folder structure for RLS compliance
+        const filePath = `${userId}/${fileName}`;
         
         console.log('Uploading to bucket: will_documents, path:', filePath);
 
-        // Upload to will_documents bucket
+        // Upload to will_documents bucket with user ID as folder
         const { error: uploadError } = await supabase.storage
           .from('will_documents')
           .upload(filePath, file, {
@@ -97,22 +97,42 @@ export function DocumentUploadPanel({
           continue;
         }
 
-        // Save metadata to will_documents table
-        const { error: dbError } = await supabase
-          .from('will_documents')
-          .insert({
-            will_id: willId,
-            user_id: userId,
-            file_name: file.name,
-            file_path: filePath,
-            file_size: file.size,
-            file_type: file.type
+        // Save metadata using the edge function
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const response = await fetch(`${supabase.supabaseUrl}/functions/v1/will-media-manager`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session?.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'save_document',
+              will_id: willId,
+              file_name: file.name,
+              file_path: filePath,
+              file_size: file.size,
+              file_type: file.type
+            })
           });
 
-        if (dbError) {
-          console.error('Error saving document metadata:', dbError);
+          if (!response.ok) {
+            throw new Error('Failed to save document metadata');
+          }
+
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to save document metadata');
+          }
+        } catch (metadataError) {
+          console.error('Error saving document metadata:', metadataError);
           // Try to clean up uploaded file
           await supabase.storage.from('will_documents').remove([filePath]);
+          toast({
+            title: "Metadata Save Failed",
+            description: `Could not save metadata for ${file.name}`,
+            variant: "destructive"
+          });
           continue;
         }
         
