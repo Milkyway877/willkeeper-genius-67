@@ -73,7 +73,7 @@ export function WillVideoCreation() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/will-media-manager`, {
+      const response = await fetch(`https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/will-media-manager`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

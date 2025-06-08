@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,7 +101,7 @@ export function DocumentUploadPanel({
         // Save metadata using the edge function
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          const response = await fetch(`${supabase.supabaseUrl}/functions/v1/will-media-manager`, {
+          const response = await fetch(`https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/will-media-manager`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session?.access_token}`,
