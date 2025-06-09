@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Video, Eye, Calendar, Clock, ArrowRight, Plus, Trash2, AlertTriangle } from 'lucide-react';
@@ -83,20 +84,25 @@ export function WillAttachedVideosSection({ willId }: WillAttachedVideosSectionP
 
   const getVideoUrl = async (filePath: string): Promise<string | null> => {
     try {
-      // Use the correct will_videos bucket
-      const { data } = supabase.storage
+      console.log('Getting signed URL for video path:', filePath);
+      
+      // Use signed URL for private bucket access
+      const { data, error } = await supabase.storage
         .from('will_videos')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
       
-      // Add a cache-busting parameter to avoid caching issues
-      const url = data?.publicUrl ? `${data.publicUrl}?t=${new Date().getTime()}` : null;
-      
-      if (!url) {
-        console.error('Failed to get video URL');
+      if (error) {
+        console.error('Error creating signed URL:', error);
         return null;
       }
       
-      return url;
+      if (!data?.signedUrl) {
+        console.error('No signed URL returned');
+        return null;
+      }
+      
+      console.log('Generated signed URL successfully');
+      return data.signedUrl;
     } catch (error) {
       console.error('Error getting video URL:', error);
       return null;

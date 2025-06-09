@@ -29,11 +29,13 @@ export function WillVideoRecorder({
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [videoTitle, setVideoTitle] = useState(initialTitle);
   const [recipient, setRecipient] = useState(initialRecipient);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const durationTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
 
@@ -72,7 +74,19 @@ export function WillVideoRecorder({
     if (!streamRef.current) return;
     
     chunksRef.current = [];
-    const mediaRecorder = new MediaRecorder(streamRef.current);
+    setRecordingDuration(0);
+    
+    // Use webm format with vp8/vp9 codec for better compatibility
+    const options = {
+      mimeType: 'video/webm;codecs=vp8,opus'
+    };
+    
+    // Fallback to basic webm if the preferred codec isn't supported
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options.mimeType = 'video/webm';
+    }
+    
+    const mediaRecorder = new MediaRecorder(streamRef.current, options);
     mediaRecorderRef.current = mediaRecorder;
     
     mediaRecorder.ondataavailable = (event) => {
@@ -87,10 +101,20 @@ export function WillVideoRecorder({
       const url = URL.createObjectURL(blob);
       setRecordedUrl(url);
       stopCamera();
+      
+      // Stop duration timer
+      if (durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
+      }
     };
     
     mediaRecorder.start();
     setIsRecording(true);
+    
+    // Start duration timer
+    durationTimerRef.current = setInterval(() => {
+      setRecordingDuration(prev => prev + 1);
+    }, 1000);
     
     toast({
       title: 'Recording Started',
@@ -112,6 +136,7 @@ export function WillVideoRecorder({
 
   const retakeVideo = () => {
     setRecordedBlob(null);
+    setRecordingDuration(0);
     if (recordedUrl) {
       URL.revokeObjectURL(recordedUrl);
       setRecordedUrl(null);
@@ -143,6 +168,8 @@ export function WillVideoRecorder({
       const filePath = `${session.user.id}/${fileName}`;
 
       console.log('Uploading video to bucket: will_videos, path:', filePath);
+      console.log('Video blob size:', recordedBlob.size, 'bytes');
+      console.log('Video duration:', recordingDuration, 'seconds');
 
       // Upload to will_videos bucket with user ID as folder
       const { error: uploadError } = await supabase.storage
@@ -191,12 +218,21 @@ export function WillVideoRecorder({
     onRecipientChange(newRecipient);
   };
 
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   React.useEffect(() => {
     startCamera();
     return () => {
       stopCamera();
       if (recordedUrl) {
         URL.revokeObjectURL(recordedUrl);
+      }
+      if (durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
       }
     };
   }, []);
@@ -246,6 +282,13 @@ export function WillVideoRecorder({
           {!streamRef.current && !recordedUrl && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900 rounded-lg">
               <p className="text-white">Initializing camera...</p>
+            </div>
+          )}
+          
+          {isRecording && (
+            <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center">
+              <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
+              REC {formatDuration(recordingDuration)}
             </div>
           )}
         </div>
@@ -298,6 +341,12 @@ export function WillVideoRecorder({
               <div className="w-3 h-3 bg-red-600 rounded-full mr-2 animate-pulse"></div>
               Recording in progress...
             </div>
+          </div>
+        )}
+        
+        {recordedBlob && (
+          <div className="text-center text-sm text-gray-600">
+            Duration: {formatDuration(recordingDuration)} | Size: {(recordedBlob.size / 1024 / 1024).toFixed(2)} MB
           </div>
         )}
       </CardContent>
