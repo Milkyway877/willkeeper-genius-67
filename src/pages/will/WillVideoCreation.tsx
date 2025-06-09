@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { WillVideoRecorder } from '@/pages/will/components/WillVideoRecorder';
@@ -31,12 +32,8 @@ export function WillVideoCreation() {
   useEffect(() => {
     async function fetchWillInfo() {
       if (!willId) {
-        toast({
-          title: 'Error',
-          description: 'No will ID provided. Please try again.',
-          variant: 'destructive'
-        });
-        navigate('/wills');
+        console.log('No will ID provided - user can still record video');
+        // Don't redirect, allow video recording without a will
         return;
       }
       
@@ -47,31 +44,51 @@ export function WillVideoCreation() {
           .eq('id', willId)
           .single();
           
-        if (error) throw error;
-        if (!data) throw new Error('Will not found');
+        if (error) {
+          console.error('Error fetching will:', error);
+          toast({
+            title: 'Warning',
+            description: 'Could not find the specified will, but you can still record your video.',
+            variant: 'default'
+          });
+          return;
+        }
         
-        setWillInfo(data);
+        if (data) {
+          setWillInfo(data);
+        }
       } catch (error) {
         console.error('Error fetching will information:', error);
         toast({
-          title: 'Error',
-          description: 'Could not find the specified will. Please try again.',
-          variant: 'destructive'
+          title: 'Warning',
+          description: 'Could not find the specified will, but you can still record your video.',
+          variant: 'default'
         });
-        navigate('/wills');
       }
     }
     
     fetchWillInfo();
-  }, [willId, navigate, toast]);
+  }, [willId, toast]);
   
   const handleVideoRecorded = async (videoPath: string) => {
     try {
+      console.log('Starting video metadata save process');
+      
       // Save video metadata using edge function
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('Not authenticated');
       }
+
+      const requestBody = {
+        action: 'save_video',
+        will_id: willId || null, // Allow null will_id
+        file_path: videoPath,
+        title: videoTitle,
+        duration: null
+      };
+
+      console.log('Sending request to edge function:', requestBody);
 
       const response = await fetch(`https://ksiinmxsycosnpchutuw.supabase.co/functions/v1/will-media-manager`, {
         method: 'POST',
@@ -79,20 +96,20 @@ export function WillVideoCreation() {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          action: 'save_video',
-          will_id: willId,
-          file_path: videoPath,
-          title: videoTitle,
-          duration: null
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('Edge function response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to save video metadata');
+        const errorText = await response.text();
+        console.error('Edge function error response:', errorText);
+        throw new Error(`Failed to save video metadata: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
+      console.log('Edge function success response:', result);
+      
       if (!result.success) {
         throw new Error(result.error || 'Failed to save video metadata');
       }
@@ -109,7 +126,7 @@ export function WillVideoCreation() {
       console.error('Error saving video metadata:', error);
       toast({
         title: 'Save Error',
-        description: 'Video was uploaded but metadata could not be saved. Please try again.',
+        description: error instanceof Error ? error.message : 'Video was uploaded but metadata could not be saved. Please try again.',
         variant: 'destructive'
       });
     }
@@ -130,14 +147,23 @@ export function WillVideoCreation() {
   };
   
   const handleContinueToDocuments = () => {
+    if (!willId) {
+      toast({
+        title: 'No Will Associated',
+        description: 'Documents can only be uploaded when associated with a will. Your video has been saved successfully.',
+        variant: 'default'
+      });
+      navigate('/wills');
+      return;
+    }
     setCurrentStep('documents');
   };
   
   const handleFinalizeVideo = async () => {
-    if (!willId || !recordedVideoPath) {
+    if (!recordedVideoPath) {
       toast({
         title: 'Error',
-        description: 'Missing required information. Please try again.',
+        description: 'No video recorded. Please try again.',
         variant: 'destructive'
       });
       return;
@@ -162,35 +188,29 @@ export function WillVideoCreation() {
       
       toast({
         title: 'Success',
-        description: 'Your video testament and supporting documents have been successfully attached to your will.',
+        description: 'Your video testament and supporting documents have been successfully processed.',
       });
       
-      // Navigate back to the will page after a short delay
+      // Navigate back to the appropriate page
       setTimeout(() => {
-        navigate(`/will/${willId}?videoAdded=true&docsAdded=${uploadedDocuments.length > 0}`);
+        if (willId) {
+          navigate(`/will/${willId}?videoAdded=true&docsAdded=${uploadedDocuments.length > 0}`);
+        } else {
+          navigate('/wills?videoAdded=true');
+        }
       }, 1500);
       
     } catch (error) {
       console.error('Error finalizing video testament:', error);
       toast({
         title: 'Error',
-        description: 'There was an error saving your video testament. Please try again.',
+        description: 'There was an error finalizing your video testament. Please try again.',
         variant: 'destructive'
       });
     } finally {
       setIsProcessing(false);
     }
   };
-  
-  if (!willInfo) {
-    return (
-      <div className="container max-w-4xl mx-auto py-8">
-        <div className="flex justify-center items-center h-40">
-          <div className="animate-pulse">Loading will information...</div>
-        </div>
-      </div>
-    );
-  }
   
   const renderStepIndicator = () => {
     const steps = [
@@ -238,14 +258,16 @@ export function WillVideoCreation() {
             }
           </Button>
           
-          <div className="text-sm bg-willtank-50 px-3 py-1 rounded-full border border-willtank-100 text-willtank-700">
-            <span className="font-medium">Will:</span> {willInfo.title}
-          </div>
+          {willInfo && (
+            <div className="text-sm bg-willtank-50 px-3 py-1 rounded-full border border-willtank-100 text-willtank-700">
+              <span className="font-medium">Will:</span> {willInfo.title}
+            </div>
+          )}
         </div>
         
         <h1 className="text-2xl font-bold mb-2">Create Video Testament</h1>
         <p className="text-gray-600">
-          Record a video message and upload supporting documents that will be delivered to your beneficiaries.
+          Record a video message {willInfo ? 'and upload supporting documents that will be delivered to your beneficiaries' : 'that can be attached to a will later'}.
         </p>
       </div>
       
@@ -263,16 +285,16 @@ export function WillVideoCreation() {
         <WillVideoReview
           videoTitle={videoTitle}
           recipient={recipient}
-          willTitle={willInfo.title}
+          willTitle={willInfo?.title || 'No Will Associated'}
           isProcessing={false}
           progress={0}
           onFinalize={handleContinueToDocuments}
-          finalizeButtonText="Continue to Documents"
-          finalizeButtonIcon={<ChevronRight className="ml-2 h-4 w-4" />}
+          finalizeButtonText={willId ? "Continue to Documents" : "Finish Video Recording"}
+          finalizeButtonIcon={willId ? <ChevronRight className="ml-2 h-4 w-4" /> : <FileCheck className="ml-2 h-4 w-4" />}
         />
       ) : (
         <DocumentUploadPanel 
-          willId={willId}
+          willId={willId!}
           onDocumentsUploaded={handleDocumentsUploaded}
           onFinalize={handleFinalizeVideo}
           isProcessing={isProcessing}
