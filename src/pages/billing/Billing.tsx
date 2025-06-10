@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export default function Billing() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { subscriptionStatus, loading, refreshSubscriptionStatus } = useSubscriptionStatus();
+  const { subscriptionStatus, loading, error, refreshSubscriptionStatus } = useSubscriptionStatus();
   const [isRedirecting, setIsRedirecting] = useState(false);
   
   const success = searchParams.get('success');
@@ -58,6 +58,39 @@ export default function Billing() {
       });
     }
   }, [success, canceled, trial, returnUrl, navigate, refreshSubscriptionStatus]);
+
+  // Added check for error state
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Card className="p-6 bg-red-50 border-red-200 mb-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+              <div>
+                <h3 className="font-semibold text-red-800">Error Loading Subscription</h3>
+                <p className="text-red-700">{error}</p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => refreshSubscriptionStatus()}
+              className="mt-4"
+              variant="outline"
+            >
+              Retry
+            </Button>
+          </Card>
+          
+          <Button 
+            onClick={() => navigate('/dashboard')}
+            className="mt-4"
+          >
+            Back to Dashboard
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
 
   if (loading) {
     return (

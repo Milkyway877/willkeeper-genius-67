@@ -29,7 +29,18 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
 
     console.log('Checking subscription status for user:', session.user.email);
 
-    const { data, error } = await supabase.functions.invoke('check-subscription');
+    // Add a timeout to prevent infinite waiting
+    const timeoutPromise = new Promise<{ status: string; error: string }>((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout checking subscription status')), 8000);
+    });
+
+    const checkPromise = supabase.functions.invoke('check-subscription');
+    
+    // Race between the actual check and the timeout
+    const { data, error } = await Promise.race([
+      checkPromise,
+      timeoutPromise
+    ]) as any;
 
     if (error) {
       console.error('Error checking subscription:', error);
@@ -107,6 +118,7 @@ export const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
     };
   } catch (error) {
     console.error('Error getting subscription status:', error);
+    // Ensure we return a valid status even on error
     return {
       isSubscribed: false,
       plan: null,
