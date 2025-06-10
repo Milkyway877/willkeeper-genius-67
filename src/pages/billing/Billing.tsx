@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -21,9 +20,6 @@ export default function Billing() {
   const returnUrl = searchParams.get('return_url');
 
   useEffect(() => {
-    // Refresh subscription status when page loads
-    refreshSubscriptionStatus();
-    
     // Handle success case
     if (success === 'true') {
       if (trial === 'true') {
@@ -57,7 +53,7 @@ export default function Billing() {
         description: 'Your payment was canceled. You can try again anytime.',
       });
     }
-  }, [success, canceled, trial, returnUrl, navigate, refreshSubscriptionStatus]);
+  }, [success, canceled, trial, returnUrl, navigate]);
 
   // Added check for error state
   if (error) {

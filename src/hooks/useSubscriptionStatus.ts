@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSubscriptionStatus, SubscriptionStatus } from '@/services/subscriptionService';
 
@@ -15,12 +15,21 @@ export function useSubscriptionStatus() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isRefreshingRef = useRef(false);
 
-  const refreshSubscriptionStatus = async () => {
+  const refreshSubscriptionStatus = useCallback(async () => {
+    // Prevent duplicate requests
+    if (isRefreshingRef.current) {
+      console.log('Subscription status refresh already in progress, skipping...');
+      return;
+    }
+
     try {
+      isRefreshingRef.current = true;
       setLoading(true);
       setError(null);
       
+      console.log('Refreshing subscription status...');
       const status = await getSubscriptionStatus();
       setSubscriptionStatus(status);
     } catch (err: any) {
@@ -39,12 +48,13 @@ export function useSubscriptionStatus() {
       });
     } finally {
       setLoading(false);
+      isRefreshingRef.current = false;
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshSubscriptionStatus();
-  }, []);
+  }, [refreshSubscriptionStatus]);
 
   return {
     subscriptionStatus,
