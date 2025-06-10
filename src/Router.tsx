@@ -16,7 +16,7 @@ import Tank from '@/pages/tank/Tank';
 import ContactsPage from '@/pages/ContactsPage';
 import DeathVerificationPage from '@/pages/DeathVerificationPage';
 import TreasuryPage from '@/pages/TreasuryPage';
-import Billing from '@/pages/billing/Billing';
+import Pricing from '@/pages/Pricing';
 import WillEditorPage from '@/pages/will/WillEditorPage';
 import { TrialSuccess } from '@/pages/TrialSuccess';
 
@@ -33,6 +33,7 @@ export function Router() {
             <Route path="/sign-up" element={<SignUp />} />
             <Route path="/recover" element={<Recover />} />
             <Route path="/trial-success" element={<TrialSuccess />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
@@ -70,7 +71,7 @@ export function Router() {
             } />
             <Route path="/billing" element={
               <ProtectedRoute>
-                <Billing />
+                <Pricing />
               </ProtectedRoute>
             } />
           </Routes>
