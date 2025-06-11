@@ -324,7 +324,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     }
   };
 
-  // Modified handleGenerateOfficialWill function - REMOVE subscription check, just generate and show preview
+  // Generate will and show preview (no subscription check here)
   const handleGenerateOfficialWill = async () => {
     try {
       if (!isComplete) {
@@ -366,7 +366,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     }
   };
 
-  // NEW function to handle Save and Finalize with subscription check
+  // Save and Finalize with subscription check (moved to preview dialog)
   const handleSaveAndFinalize = async () => {
     // Check subscription first
     if (!subscriptionStatus.isSubscribed) {
