@@ -116,6 +116,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [generatedWill, setGeneratedWill] = useState<Will | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
+  const [generatedWillContent, setGeneratedWillContent] = useState<string>('');
   
   // Add subscription flow hook
   const { 
@@ -234,30 +235,26 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
         return false;
       }
     },
-    debounceMs: 1000, // Faster auto-save for real-time preview
+    debounceMs: 1000,
     enabled: true
   });
 
   // Check if the document is complete
   useEffect(() => {
     const checkCompleteness = () => {
-      // Basic completeness check (could be enhanced)
       if (!personalInfo.fullName || !personalInfo.dateOfBirth || !personalInfo.address) {
         return false;
       }
       
-      // Check primary executor
       const primaryExecutor = executors.find(e => e.isPrimary);
       if (!primaryExecutor || !primaryExecutor.name) {
         return false;
       }
       
-      // Check beneficiaries
       if (!beneficiaries.length || !beneficiaries[0].name) {
         return false;
       }
       
-      // Check if beneficiary percentages add up to 100%
       const totalPercentage = beneficiaries.reduce((sum, b) => sum + (b.percentage || 0), 0);
       if (Math.abs(totalPercentage - 100) > 0.01) {
         return false;
@@ -274,12 +271,10 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     setShowAIHelper(field === showAIHelper ? null : field);
     setShowAISuggestionsPanel(true);
     
-    // Use an actual popup notification instead of toast
     const fieldName = field.replace(/([A-Z])/g, ' $1')
                           .replace(/_/g, ' ')
                           .trim();
     
-    // We'll use the toast only as a notification, our AIAssistantPopup provides the actual help
     toast({
       title: `AI Assistant activated for ${fieldName}`,
       description: "Check the suggestions panel for help."
@@ -328,46 +323,119 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
       setSaving(false);
     }
   };
-  
-  // Handle document download - only for subscribed users
-  const handleDownload = () => {
-    if (!subscriptionStatus.isSubscribed) {
+
+  // Modified handleGenerateOfficialWill function - REMOVE subscription check, just generate and show preview
+  const handleGenerateOfficialWill = async () => {
+    try {
+      if (!isComplete) {
+        toast({
+          title: "Document Incomplete",
+          description: "Please complete all required sections before generating your will.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!signature) {
+        toast({
+          title: "Signature Required",
+          description: "Please add your digital signature before generating your will.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setIsGenerating(true);
+      
+      // Generate will content with signature
+      const documentText = generateDocumentText();
+      const contentWithSignature = documentText + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
+      
+      setGeneratedWillContent(contentWithSignature);
+      setShowPreview(true);
+      
+    } catch (error) {
+      console.error("Error generating will:", error);
       toast({
-        title: "Subscription Required",
-        description: "Please subscribe to download your will document.",
+        title: "Generation Error",
+        description: "There was an error generating your will. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // NEW function to handle Save and Finalize with subscription check
+  const handleSaveAndFinalize = async () => {
+    // Check subscription first
+    if (!subscriptionStatus.isSubscribed) {
+      await handleWillSaved(true);
       return;
     }
-    
-    // Generate a formatted text document
-    const documentText = generateDocumentText();
-    downloadDocument(documentText, `${personalInfo.fullName}'s Will`, signature);
-  };
-  
-  // Handle AI assistance request from floating indicator
-  const handleAIAssistanceRequest = (field?: string) => {
-    setShowAISuggestionsPanel(true);
-    
-    if (field) {
-      // Specific field help
-      handleShowAIHelper(field);
-    } else {
-      // General advice
+
+    try {
+      setIsGenerating(true);
+      
+      // User is subscribed, proceed with finalization
+      const title = `${personalInfo.fullName}'s Will`;
+      
+      let finalWill: Will | null = null;
+      
+      if (willId) {
+        finalWill = await updateWill(willId, {
+          status: 'active',
+          content: generatedWillContent,
+          title: title
+        });
+      } else if (onSave) {
+        const documentData = {
+          title: title,
+          content: generatedWillContent,
+          status: 'active',
+          template_type: templateId,
+          document_url: '',
+        };
+        
+        finalWill = await createWill(documentData);
+        if (finalWill && onSave) {
+          onSave({ ...willContent, id: finalWill.id });
+        }
+      }
+      
+      if (finalWill) {
+        setGeneratedWill(finalWill);
+        setFinalizedWillId(finalWill.id);
+        setShowPreview(false);
+        setShowSuccessScreen(true);
+        
+        toast({
+          title: "Will Finalized Successfully!",
+          description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error finalizing will:", error);
       toast({
-        title: "AI Document Assistant",
-        description: "I can help you complete your will. Click on any field that needs assistance or on the question mark icon next to it.",
-        duration: 6000,
+        title: "Finalization Error",
+        description: "There was an error finalizing your will. Please try again.",
+        variant: "destructive"
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
-  
-  // Handle accepting an AI suggestion
+
+  const handleSubscriptionSuccessCallback = () => {
+    handleSubscriptionSuccess();
+    // After subscription success, automatically proceed with saving
+    handleSaveAndFinalize();
+  };
+
   const handleAcceptAISuggestion = (field: string, suggestion: string) => {
-    // Extract useful content from the suggestion
     let extractedContent = suggestion;
     
-    // For examples, extract just the example part
     if (suggestion.includes('For example:')) {
       const exampleMatch = suggestion.match(/For example:(.*?)(?:$|\n)/s);
       if (exampleMatch && exampleMatch[1]) {
@@ -375,7 +443,6 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
       }
     }
     
-    // Update the appropriate state based on the field
     if (field.startsWith('personal_')) {
       const personalField = field.replace('personal_', '') as keyof typeof personalInfo;
       setPersonalInfo(prev => ({
@@ -396,86 +463,17 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     });
   };
 
-  // Handle generating the official document - with immediate paywall check
-  const handleGenerateOfficialWill = async () => {
-    // IMMEDIATE PAYWALL CHECK - Before any other processing
-    if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true); // This will show subscription modal
-      return; // Stop execution here if not subscribed
-    }
+  const handleAIAssistanceRequest = (field?: string) => {
+    setShowAISuggestionsPanel(true);
     
-    try {
-      if (!isComplete) {
-        toast({
-          title: "Document Incomplete",
-          description: "Please complete all required sections before finalizing your will.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (!signature) {
-        toast({
-          title: "Signature Required",
-          description: "Please add your digital signature before finalizing your will.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setIsGenerating(true);
-      
-      // User is subscribed, proceed with finalization
-      const title = `${personalInfo.fullName}'s Will`;
-      
-      // Create will content with signature
-      const documentText = generateDocumentText();
-      const contentWithSignature = documentText + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
-      
-      // Save the will as active if not already saved
-      let finalWill: Will | null = null;
-      
-      if (willId) {
-        finalWill = await updateWill(willId, {
-          status: 'active',
-          content: contentWithSignature,
-          title: title
-        });
-      } else if (onSave) {
-        const documentData = {
-          title: title,
-          content: contentWithSignature,
-          status: 'active',
-          template_type: templateId,
-          document_url: '',
-        };
-        
-        finalWill = await createWill(documentData);
-        if (finalWill && onSave) {
-          onSave({ ...willContent, id: finalWill.id });
-        }
-      }
-      
-      if (finalWill) {
-        setGeneratedWill(finalWill);
-        setFinalizedWillId(finalWill.id);
-        setShowSuccessScreen(true);
-        
-        toast({
-          title: "Will Finalized Successfully!",
-          description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
-        });
-      }
-      
-    } catch (error) {
-      console.error("Error generating official will:", error);
+    if (field) {
+      handleShowAIHelper(field);
+    } else {
       toast({
-        title: "Finalization Error",
-        description: "There was an error finalizing your will. Please try again.",
-        variant: "destructive"
+        title: "AI Document Assistant",
+        description: "I can help you complete your will. Click on any field that needs assistance or on the question mark icon next to it.",
+        duration: 6000,
       });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -485,7 +483,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
       <SubscriptionModal 
         open={showSubscriptionModal}
         onClose={closeSubscriptionModal}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
+        onSubscriptionSuccess={handleSubscriptionSuccessCallback}
       />
       
       {showSuccessScreen && generatedWill && (
@@ -516,14 +514,6 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
               <Eye className="h-4 w-4 mr-2" />
               Preview
             </Button>
-            <Button 
-              onClick={handleDownload} 
-              disabled={!isComplete || !subscriptionStatus.isSubscribed || !finalizedWillId}
-              variant="outline"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Will
-            </Button>
           </div>
           <div className="flex items-center gap-2">
             {autoSaving && (
@@ -549,7 +539,6 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
               </div>
             )}
             
-            {/* AI Helper toggle button */}
             <Button 
               variant="outline" 
               size="sm"
@@ -720,7 +709,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                         guardians={guardians}
                         onUpdate={setGuardians}
                         onAiHelp={handleShowAIHelper}
-                        children={['Child 1', 'Child 2']} // Example - would be dynamic in real use
+                        children={['Child 1', 'Child 2']}
                       />
                     </div>
                   ) : (
@@ -767,6 +756,26 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                     </div>
                   )}
                 </div>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <Button 
+                  onClick={handleGenerateOfficialWill} 
+                  className="w-full"
+                  disabled={!isComplete || !signature || isGenerating}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating Will...
+                    </>
+                  ) : (
+                    <>
+                      <FileCheck className="h-4 w-4 mr-2" />
+                      Generate Will
+                    </>
+                  )}
+                </Button>
               </div>
             </Card>
           </ScrollArea>
@@ -934,41 +943,67 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                   {isGenerating ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Finalizing Will...
+                      Generating Will...
                     </>
                   ) : (
                     <>
                       <FileCheck className="h-4 w-4 mr-2" />
-                      Finalize Will
+                      Generate Will
                     </>
                   )}
                 </Button>
-                
-                {!subscriptionStatus.isSubscribed && (
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Subscription required to finalize and save your will
-                  </p>
-                )}
               </div>
             </Card>
-            
-            {/* Document Preview Dialog */}
-            <Dialog open={showPreview} onOpenChange={setShowPreview}>
-              <DialogContent className="max-w-5xl h-[90vh]">
-                <DialogHeader>
-                  <DialogTitle>Will Document Preview</DialogTitle>
-                </DialogHeader>
-                <div className="mt-2 h-full overflow-y-auto">
-                  <DocumentPreview 
-                    documentText={generateDocumentText()} 
-                    willContent={willContent}
-                    signature={signature || ""}
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          </ScrollArea>
         </div>
+        
+        {/* Document Preview Dialog */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-5xl h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Will Document Preview</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col h-full">
+              <div className="flex-1 overflow-y-auto mt-2">
+                <DocumentPreview 
+                  documentText={generatedWillContent || generateDocumentText()} 
+                  willContent={willContent}
+                  signature={signature || ""}
+                />
+              </div>
+              
+              {/* Save and Finalize Button - Only show if we have generated content */}
+              {generatedWillContent && (
+                <div className="flex justify-center pt-4 border-t border-gray-100">
+                  <Button 
+                    onClick={handleSaveAndFinalize}
+                    className="w-full max-w-md"
+                    size="lg"
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Finalizing Will...
+                      </>
+                    ) : (
+                      <>
+                        <FileCheck className="mr-2 h-5 w-5" />
+                        Save and Finalize
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+              
+              {!subscriptionStatus.isSubscribed && generatedWillContent && (
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  Subscription required to finalize and save your will
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
