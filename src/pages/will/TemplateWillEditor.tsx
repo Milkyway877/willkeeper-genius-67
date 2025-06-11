@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -13,14 +12,13 @@ import { ExecutorsSection } from './components/TemplateSections/ExecutorsSection
 import { FinalWishesSection } from './components/TemplateSections/FinalWishesSection';
 import { DigitalSignature } from './components/TemplateSections/DigitalSignature';
 import { WillPreviewSection } from './components/WillPreviewSection';
+import { WillPreviewModal } from './components/WillPreviewModal';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Save, FileCheck } from 'lucide-react';
+import { Loader2, Save, FileCheck, Sparkles } from 'lucide-react';
 import { generateWillContent } from '@/utils/willTemplateUtils';
-import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
-import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
-import { WillCreationSuccess } from './components/WillCreationSuccess';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 // Simplified form validation schema without videos/documents
 const willSchema = z.object({
@@ -152,18 +150,11 @@ Date: ${new Date().toLocaleDateString()}
   
   const [signature, setSignature] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
-  const [isFinalized, setIsFinalized] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [finalizedWill, setFinalizedWill] = useState<any>(null);
-  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [showWillPreview, setShowWillPreview] = useState<boolean>(false);
+  const [generatedWillContent, setGeneratedWillContent] = useState<string>('');
   
-  const { 
-    showSubscriptionModal, 
-    handleWillSaved, 
-    handleSubscriptionSuccess, 
-    closeSubscriptionModal,
-    subscriptionStatus 
-  } = useWillSubscriptionFlow();
+  const { subscriptionStatus } = useSubscriptionStatus();
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -245,18 +236,13 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
   
-  const handleFinalize = async () => {
-    if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true);
-      return;
-    }
-    
+  const handleGenerateWill = async () => {
     try {
       await form.trigger();
       if (!form.formState.isValid) {
         toast({
           title: "Form Incomplete",
-          description: "Please fill in all required fields before finalizing.",
+          description: "Please fill in all required fields before generating your will.",
           variant: "destructive"
         });
         return;
@@ -265,7 +251,7 @@ Date: ${new Date().toLocaleDateString()}
       if (!signature) {
         toast({
           title: "Signature Required",
-          description: "Please add your signature before finalizing your will.",
+          description: "Please add your signature before generating your will.",
           variant: "destructive"
         });
         return;
@@ -274,32 +260,17 @@ Date: ${new Date().toLocaleDateString()}
       setIsGenerating(true);
       
       const formValues = form.getValues();
-      
       const finalWillContent = generateWillContent(formValues, willContent);
       const contentWithSignature = finalWillContent + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
       
-      const willData = {
-        title: `${formValues.fullName}'s Will`,
-        content: contentWithSignature,
-        status: 'active',
-        template_type: templateId,
-        ai_generated: false,
-        document_url: '',
-      };
-      
-      const savedWill = await createWill(willData);
-      
-      if (savedWill && savedWill.id) {
-        setFinalizedWill(savedWill);
-        setIsFinalized(true);
-        setShowSuccessModal(true);
-      }
+      setGeneratedWillContent(contentWithSignature);
+      setShowWillPreview(true);
       
     } catch (error) {
-      console.error("Error finalizing will:", error);
+      console.error("Error generating will:", error);
       toast({
-        title: "Finalization Error",
-        description: "There was an error finalizing your will. Please try again.",
+        title: "Generation Error",
+        description: "There was an error generating your will. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -307,24 +278,18 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
 
-  // Show success modal instead of regular editor when finalized
-  if (showSuccessModal && finalizedWill) {
-    return (
-      <WillCreationSuccess 
-        will={finalizedWill} 
-        onClose={() => setShowSuccessModal(false)} 
-      />
-    );
-  }
+  const isFormComplete = () => {
+    const formValues = form.getValues();
+    return formValues.fullName && formValues.dateOfBirth && signature;
+  };
+
+  const handleWillFinalized = () => {
+    setShowWillPreview(false);
+    navigate('/wills');
+  };
 
   return (
     <div className="container mx-auto mb-16">
-      <SubscriptionModal 
-        open={showSubscriptionModal}
-        onClose={closeSubscriptionModal}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
-      
       <FormProvider {...form}>
         <form>
           <FormWatcher onChange={handleFormChange} />
@@ -337,6 +302,39 @@ Date: ${new Date().toLocaleDateString()}
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
               <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
+              
+              {/* Generate Will Button - appears after signature */}
+              {signature && (
+                <Card className="p-6 border-2 border-dashed border-green-300 bg-green-50">
+                  <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center">
+                      <Sparkles className="h-6 w-6 text-green-600 mr-2" />
+                      <h3 className="text-lg font-semibold text-green-800">Ready to Generate Your Will</h3>
+                    </div>
+                    <p className="text-green-700">
+                      Your will is complete and ready to be generated. Click the button below to create your official will document.
+                    </p>
+                    <Button 
+                      onClick={handleGenerateWill}
+                      size="lg"
+                      className="w-full max-w-md bg-green-600 hover:bg-green-700 text-white"
+                      disabled={!isFormComplete() || isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Generating Will...
+                        </>
+                      ) : (
+                        <>
+                          <FileCheck className="mr-2 h-5 w-5" />
+                          Generate Will
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </Card>
+              )}
             </div>
             
             <div className="lg:col-span-1">
@@ -346,7 +344,7 @@ Date: ${new Date().toLocaleDateString()}
                   content={willContent}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
-                  isWillFinalized={isFinalized}
+                  isWillFinalized={false}
                 />
                 
                 <Card className="mt-6 p-4">
@@ -362,30 +360,9 @@ Date: ${new Date().toLocaleDateString()}
                       Save Draft
                     </Button>
                     
-                    <Button 
-                      onClick={handleFinalize} 
-                      className="w-full"
-                      disabled={saving || isFinalized || isGenerating}
-                      type="button"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Finalizing Will...
-                        </>
-                      ) : (
-                        <>
-                          <FileCheck className="mr-2 h-4 w-4" />
-                          {isFinalized ? 'Will Finalized' : 'Finalize Will'}
-                        </>
-                      )}
-                    </Button>
-                    
-                    {!subscriptionStatus.isSubscribed && (
-                      <p className="text-xs text-gray-500 text-center">
-                        Subscription required to finalize and save your will
-                      </p>
-                    )}
+                    <div className="text-xs text-gray-500 text-center">
+                      Complete all sections and add your signature to generate your will
+                    </div>
                   </div>
                 </Card>
               </div>
@@ -393,6 +370,18 @@ Date: ${new Date().toLocaleDateString()}
           </div>
         </form>
       </FormProvider>
+
+      <WillPreviewModal
+        isOpen={showWillPreview}
+        onClose={() => setShowWillPreview(false)}
+        willContent={generatedWillContent}
+        willData={{
+          title: `${form.getValues().fullName || 'My'}'s Will`,
+          template_type: templateId,
+          ai_generated: false
+        }}
+        onSuccess={handleWillFinalized}
+      />
     </div>
   );
 }
