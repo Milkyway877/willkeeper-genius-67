@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   FileText, 
   Users, 
-  UserCog, 
+  UsersCog, 
   Building2, 
   ShieldCheck, 
   Heart,
@@ -39,12 +39,20 @@ interface DocumentWillEditorProps {
   content: string;
   onContentChange: (content: string) => void;
   className?: string;
+  templateId?: string;
+  initialData?: any;
+  willId?: string;
+  onSave?: (data: any) => Promise<void>;
 }
 
 export function DocumentWillEditor({ 
   content, 
   onContentChange, 
-  className 
+  className,
+  templateId,
+  initialData,
+  willId,
+  onSave
 }: DocumentWillEditorProps) {
   const [sections, setSections] = useState<DocumentSection[]>([
     {
@@ -66,7 +74,7 @@ export function DocumentWillEditor({
     {
       id: 'executors',
       title: 'Executors',
-      icon: UserCog,
+      icon: UsersCog,
       isComplete: false,
       isExpanded: false,
       fields: ['executors']
@@ -104,14 +112,17 @@ export function DocumentWillEditor({
   });
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    dateOfBirth: '',
-    address: '',
-    beneficiaries: [],
-    executors: [],
-    assets: [],
-    guardians: [],
-    finalWishes: ''
+    fullName: initialData?.fullName || '',
+    dateOfBirth: initialData?.dateOfBirth || '',
+    address: initialData?.address || '',
+    beneficiaries: initialData?.beneficiaries || [],
+    executors: initialData?.executors || [],
+    properties: initialData?.properties || [],
+    vehicles: initialData?.vehicles || [],
+    financialAccounts: initialData?.financialAccounts || [],
+    digitalAssets: initialData?.digitalAssets || [],
+    guardians: initialData?.guardians || [],
+    finalWishes: initialData?.finalWishes || ''
   });
 
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -140,7 +151,6 @@ export function DocumentWillEditor({
   };
 
   const handleAiAccept = (suggestion: string) => {
-    // Apply AI suggestion to the appropriate field
     console.log(`Applying AI suggestion for ${aiPopup.field}:`, suggestion);
     setAiPopup(prev => ({ ...prev, isVisible: false }));
   };
@@ -173,7 +183,7 @@ export function DocumentWillEditor({
         </Card>
 
         {/* Document Sections */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {sections.map((section) => {
             const IconComponent = section.icon;
             
@@ -182,40 +192,40 @@ export function DocumentWillEditor({
                 key={section.id}
                 ref={(el) => sectionRefs.current[section.id] = el}
                 className={cn(
-                  "border-2 transition-all duration-200",
-                  section.isExpanded ? "border-willtank-300 shadow-lg" : "border-gray-200 hover:border-willtank-200",
+                  "border-2 transition-all duration-200 shadow-lg",
+                  section.isExpanded ? "border-willtank-300 shadow-xl" : "border-gray-200 hover:border-willtank-200",
                   section.isComplete && "border-green-300 bg-green-50/30"
                 )}
               >
                 <CardHeader 
-                  className="cursor-pointer hover:bg-gray-50/50 transition-colors"
+                  className="cursor-pointer hover:bg-gray-50/50 transition-colors py-6"
                   onClick={() => toggleSection(section.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                       <div className={cn(
-                        "p-2 rounded-lg",
+                        "p-3 rounded-lg",
                         section.isComplete ? "bg-green-100 text-green-600" : "bg-willtank-100 text-willtank-600"
                       )}>
-                        <IconComponent className="h-5 w-5" />
+                        <IconComponent className="h-6 w-6" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg flex items-center gap-2">
+                        <CardTitle className="text-xl flex items-center gap-3">
                           {section.title}
                           {section.isComplete && (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <CheckCircle2 className="h-6 w-6 text-green-600" />
                           )}
                           {!section.isComplete && (
-                            <AlertCircle className="h-5 w-5 text-amber-500" />
+                            <AlertCircle className="h-6 w-6 text-amber-500" />
                           )}
                         </CardTitle>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 mt-2">
                           {section.isComplete ? 'Section completed' : 'Click to expand and complete'}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -225,24 +235,24 @@ export function DocumentWillEditor({
                         }}
                         className="text-willtank-600 hover:text-willtank-700"
                       >
-                        <Edit3 className="h-4 w-4 mr-1" />
+                        <Edit3 className="h-4 w-4 mr-2" />
                         AI Help
                       </Button>
                       
                       {section.isExpanded ? (
-                        <ChevronDown className="h-5 w-5 text-gray-400" />
+                        <ChevronDown className="h-6 w-6 text-gray-400" />
                       ) : (
-                        <ChevronRight className="h-5 w-5 text-gray-400" />
+                        <ChevronRight className="h-6 w-6 text-gray-400" />
                       )}
                     </div>
                   </div>
                 </CardHeader>
 
                 {section.isExpanded && (
-                  <CardContent className="pt-0 pb-6">
-                    <div className="border-t pt-4">
+                  <CardContent className="pt-0 pb-8">
+                    <div className="border-t pt-6">
                       {section.id === 'personal' && (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                           <TextField
                             label="Full Legal Name"
                             value={formData.fullName}
@@ -289,8 +299,14 @@ export function DocumentWillEditor({
 
                       {section.id === 'assets' && (
                         <AssetField
-                          assets={formData.assets}
-                          onUpdate={(assets) => setFormData(prev => ({ ...prev, assets }))}
+                          properties={formData.properties}
+                          vehicles={formData.vehicles}
+                          financialAccounts={formData.financialAccounts}
+                          digitalAssets={formData.digitalAssets}
+                          onUpdateProperties={(properties) => setFormData(prev => ({ ...prev, properties }))}
+                          onUpdateVehicles={(vehicles) => setFormData(prev => ({ ...prev, vehicles }))}
+                          onUpdateFinancialAccounts={(financialAccounts) => setFormData(prev => ({ ...prev, financialAccounts }))}
+                          onUpdateDigitalAssets={(digitalAssets) => setFormData(prev => ({ ...prev, digitalAssets }))}
                           onAiHelp={handleAiHelp}
                         />
                       )}

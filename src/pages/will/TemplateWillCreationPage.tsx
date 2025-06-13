@@ -18,6 +18,7 @@ export default function TemplateWillCreationPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<WillProgress | null>(null);
+  const [content, setContent] = useState<string>('');
   
   useEffect(() => {
     const loadData = async () => {
@@ -31,7 +32,6 @@ export default function TemplateWillCreationPage() {
         return;
       }
       
-      // Find the selected template
       const template = templates.find(t => t.id === templateId);
       if (!template) {
         toast({
@@ -46,9 +46,11 @@ export default function TemplateWillCreationPage() {
       setSelectedTemplate(template);
       
       try {
-        // Load any saved progress
         const savedProgress = await getWillProgress(templateId);
         setProgress(savedProgress);
+        if (savedProgress?.content) {
+          setContent(savedProgress.content);
+        }
       } catch (error) {
         console.error("Error loading progress:", error);
       } finally {
@@ -63,29 +65,31 @@ export default function TemplateWillCreationPage() {
     navigate('/will/create');
   };
   
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+  };
+  
   const handleSave = async (data: any) => {
     try {
-      // Save progress
       if (progress) {
         await saveWillProgress({
           ...progress,
           responses: data,
+          content: content,
           updated_at: new Date().toISOString()
         });
       }
       
-      // If there's a will ID, update the will
       if (progress?.will_id) {
         await updateWill(progress.will_id, {
           title: `${data.personalInfo?.fullName}'s Will`,
-          content: JSON.stringify(data),
+          content: content,
           updated_at: new Date().toISOString()
         });
       } else {
-        // Create a new will
         const willData = {
           title: `${data.personalInfo?.fullName}'s Will`,
-          content: JSON.stringify(data),
+          content: content,
           status: 'draft',
           template_type: templateId || '',
           ai_generated: false,
@@ -94,7 +98,6 @@ export default function TemplateWillCreationPage() {
         
         const savedWill = await createWill(willData);
         
-        // Update progress with will ID
         if (savedWill && progress) {
           await saveWillProgress({
             ...progress,
@@ -131,6 +134,8 @@ export default function TemplateWillCreationPage() {
         ) : (
           <div className="flex-1">
             <DocumentWillEditor 
+              content={content}
+              onContentChange={handleContentChange}
               templateId={templateId || ''} 
               initialData={progress?.responses} 
               willId={progress?.will_id}
