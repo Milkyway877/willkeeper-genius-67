@@ -2,41 +2,63 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { MessageCircleQuestion } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { MessageCircleQuestion, Sparkle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ContactFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: string;
   placeholder?: string;
-  required?: boolean;
+  type?: 'text' | 'email' | 'tel';
   tooltipText?: string;
-  className?: string;
   onAiHelp?: (position: { x: number, y: number }) => void;
+  required?: boolean;
+  error?: string;
+  className?: string; // Added className prop
 }
 
-export function ContactField({
-  label,
-  value,
-  onChange,
-  type = 'text',
+export function ContactField({ 
+  label, 
+  value, 
+  onChange, 
   placeholder,
-  required = false,
+  type = 'text',
   tooltipText,
-  className,
-  onAiHelp
+  onAiHelp,
+  required = false,
+  error,
+  className
 }: ContactFieldProps) {
-  const isEmpty = !value || value.trim() === '';
-  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
+  };
+
+  const handleAIHelp = (e: React.MouseEvent) => {
+    if (onAiHelp) {
+      e.stopPropagation();
+      
+      // Get the button element position
+      const rect = e.currentTarget.getBoundingClientRect();
+      
+      // Calculate position relative to the viewport
+      const posX = rect.right;
+      const posY = rect.top + (rect.height / 2);
+      
+      // Pass position to parent component
+      onAiHelp({ x: posX, y: posY });
+    }
+  };
+
   return (
-    <div className={`space-y-2 ${className || ''}`}>
-      <div className="flex items-center gap-2">
-        <Label className="text-sm font-medium text-gray-800">
-          {label}{required && <span className="text-red-500 ml-1">*</span>}
+    <div className={`relative space-y-1 ${className || ''}`}>
+      <div className="flex justify-between items-center">
+        <Label htmlFor={`contact-${label.replace(/\s+/g, '-').toLowerCase()}`} className="text-xs">
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </Label>
+        
         {onAiHelp && (
           <TooltipProvider>
             <Tooltip>
@@ -45,42 +67,30 @@ export function ContactField({
                   size="icon" 
                   variant="ghost" 
                   className="h-5 w-5 p-0"
-                  onClick={(e) => onAiHelp({ x: e.clientX, y: e.clientY })}
+                  onClick={handleAIHelp}
                 >
-                  <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
+                  <Sparkle className="h-3 w-3 text-amber-500" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs">{tooltipText || `Get help with ${label.toLowerCase()}`}</p>
+                <p className="text-xs">{tooltipText || `Get AI help with ${label.toLowerCase()}`}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}
       </div>
       
-      <div className="relative">
-        <Input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={
-            isEmpty 
-              ? `[${placeholder || `Enter ${label.toLowerCase()}`}]`
-              : placeholder || `Enter ${label.toLowerCase()}`
-          }
-          className={`
-            transition-all min-h-[42px] text-sm
-            ${isEmpty 
-              ? 'border-2 border-amber-300 bg-amber-50 focus:border-willtank-600 focus:bg-white placeholder:text-amber-700 placeholder:font-medium' 
-              : 'border-2 border-gray-300 bg-white focus:border-willtank-600 hover:border-gray-400'
-            }
-            focus:ring-2 focus:ring-willtank-100
-          `}
-        />
-        {isEmpty && (
-          <div className="absolute inset-0 pointer-events-none border-2 border-dashed border-amber-400 rounded-md bg-amber-50/20" />
-        )}
-      </div>
+      <Input 
+        id={`contact-${label.replace(/\s+/g, '-').toLowerCase()}`}
+        type={type}
+        value={value} 
+        onChange={handleChange}
+        placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+        className={`h-8 text-sm ${error ? 'border-red-500' : ''}`}
+        required={required}
+      />
+      
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
