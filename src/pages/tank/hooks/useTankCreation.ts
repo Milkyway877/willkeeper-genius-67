@@ -58,23 +58,26 @@ export const useTankCreation = () => {
     }
     
     if (currentStep === 3) {
-      if (!deliveryDate) {
-        toast({
-          title: 'Missing Date',
-          description: 'Please select a delivery date.'
-        });
-        return;
+      // For posthumous delivery, we don't require a date
+      if (deliveryType !== 'posthumous') {
+        if (!deliveryDate) {
+          toast({
+            title: 'Missing Date',
+            description: 'Please select a delivery date.'
+          });
+          return;
+        }
+        
+        if (deliveryDate < new Date()) {
+          toast({
+            title: 'Invalid Date',
+            description: 'The delivery date must be in the future.'
+          });
+          return;
+        }
       }
       
-      if (deliveryDate < new Date()) {
-        toast({
-          title: 'Invalid Date',
-          description: 'The delivery date must be in the future.'
-        });
-        return;
-      }
-      
-      if (deliveryType === 'date' && !recipientEmail.trim()) {
+      if (!recipientEmail.trim()) {
         toast({
           title: 'Missing Email',
           description: 'Please enter the recipient email address.'
@@ -115,8 +118,16 @@ export const useTankCreation = () => {
         });
       }, 500);
 
-      // Ensure we have a valid delivery date
-      const effectiveDeliveryDate = deliveryDate || new Date(Date.now() + 31536000000); // Default to 1 year in future
+      // For posthumous delivery, set a far future date that won't be used
+      // This satisfies database requirements while making it clear the message is posthumous
+      let effectiveDeliveryDate: Date;
+      
+      if (deliveryType === 'posthumous') {
+        // Set to a date far in the future to indicate posthumous delivery
+        effectiveDeliveryDate = new Date('2099-12-31');
+      } else {
+        effectiveDeliveryDate = deliveryDate || new Date(Date.now() + 31536000000); // Default to 1 year in future
+      }
       
       const message = {
         title: messageTitle,
@@ -143,9 +154,15 @@ export const useTankCreation = () => {
       setProgress(100);
       
       if (createdMessage) {
+        const deliveryTypeText = deliveryType === 'posthumous' 
+          ? 'posthumous delivery' 
+          : deliveryType === 'event' 
+            ? 'event-based delivery' 
+            : `delivery on ${effectiveDeliveryDate.toLocaleDateString()}`;
+            
         toast({
           title: 'Message Created',
-          description: 'Your future message has been successfully created.'
+          description: `Your future message has been successfully created with ${deliveryTypeText}.`
         });
         
         setTimeout(() => {

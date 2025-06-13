@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Calendar, Trophy, Ghost, Info } from 'lucide-react';
+import { Check, Calendar, Trophy, Ghost, Info, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
 
@@ -59,7 +59,7 @@ export const DeliveryMethodSelector = ({ onSelect }: DeliveryMethodSelectorProps
       features: [
         'Perfect for birthdays and anniversaries',
         'Exact date and time selection',
-        'Optional recurring delivery'
+        'Reliable scheduled delivery'
       ]
     },
     {
@@ -72,7 +72,7 @@ export const DeliveryMethodSelector = ({ onSelect }: DeliveryMethodSelectorProps
       features: [
         'Graduation, marriage, or new baby',
         'Verified by trusted contacts',
-        'Optional backup date settings'
+        'Flexible milestone triggers'
       ]
     },
     {
@@ -81,11 +81,11 @@ export const DeliveryMethodSelector = ({ onSelect }: DeliveryMethodSelectorProps
       icon: Ghost,
       iconBg: willId ? 'bg-green-100' : 'bg-purple-100',
       iconColor: willId ? 'text-green-600' : 'text-purple-600',
-      description: 'Messages delivered after your passing',
+      description: 'Messages delivered after your passing - no date required',
       features: [
-        'Multi-layered verification system',
-        'Integration with legal documents',
-        'Trusted contact confirmation'
+        'Triggered by death verification system',
+        'Multi-layered security verification',
+        'Trusted contact confirmation process'
       ],
       recommended: !!willId
     }
@@ -106,6 +106,20 @@ export const DeliveryMethodSelector = ({ onSelect }: DeliveryMethodSelectorProps
           </div>
         </div>
       )}
+
+      {/* Posthumous Delivery Information */}
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+        <div className="flex items-start">
+          <Shield className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+          <div>
+            <p className="font-medium text-blue-800">About Posthumous Delivery</p>
+            <p className="text-sm text-blue-700">
+              Posthumous messages are delivered automatically when our death verification system confirms your passing. 
+              No specific delivery date is needed - the system handles timing based on verification triggers.
+            </p>
+          </div>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {deliveryMethods.map(({ type, title, icon: Icon, iconBg, iconColor, description, features, recommended }) => (
@@ -121,21 +135,21 @@ export const DeliveryMethodSelector = ({ onSelect }: DeliveryMethodSelectorProps
                 <div className={`h-10 w-10 rounded-full ${iconBg} flex items-center justify-center mr-3`}>
                   <Icon className={`h-5 w-5 ${iconColor}`} />
                 </div>
-                <CardTitle>{title}</CardTitle>
+                <CardTitle className="text-sm">{title}</CardTitle>
                 {recommended && (
                   <span className="ml-2 bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
                     Required
                   </span>
                 )}
               </div>
-              <CardDescription>{description}</CardDescription>
+              <CardDescription className="text-xs">{description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2 text-sm">
+              <ul className="space-y-2 text-xs">
                 {features.map((feature, index) => (
                   <li key={index} className="flex items-start">
-                    <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                    {feature}
+                    <Check className="h-3 w-3 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
