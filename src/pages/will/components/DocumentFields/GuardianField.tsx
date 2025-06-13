@@ -47,35 +47,48 @@ export function GuardianField({ guardians, onUpdate, onAiHelp, children = [] }: 
   };
   
   if (!expanded) {
+    const displayValue = guardians.map(g => g.name).filter(name => name).join(', ') || '[Enter guardians]';
+    const isEmpty = !guardians.some(g => g.name);
+    
     return (
-      <div className="relative group">
-        <span 
-          className="cursor-pointer border-b border-dashed border-gray-300 hover:border-willtank-400 px-1"
-          onClick={() => setExpanded(true)}
-        >
-          {guardians.map(g => g.name).join(', ') || 'Guardian(s)'}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 inline-flex ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAiHelp('guardian', { x: e.clientX, y: e.clientY });
-                  }}
-                >
-                  <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Get AI help with guardians</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <span 
+        className={`group cursor-pointer inline-flex items-center relative
+          ${isEmpty 
+            ? 'bg-amber-100 border-b-2 border-dashed border-amber-400 text-amber-800 px-2 py-1 rounded-sm hover:bg-amber-200 transition-colors' 
+            : 'hover:bg-gray-100 px-1 rounded border-b border-gray-200 hover:border-gray-400'}`}
+        onClick={() => setExpanded(true)}
+      >
+        {displayValue}
+        <span className="absolute -top-5 left-0 text-[10px] bg-amber-50 text-amber-700 font-medium px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-amber-200 shadow-sm whitespace-nowrap">
+          Click to edit guardians
         </span>
-      </div>
+        {isEmpty && (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1 text-amber-500 group-hover:animate-pulse">
+            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 inline-flex ml-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAiHelp('guardian', { x: e.clientX, y: e.clientY });
+                }}
+              >
+                <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Get AI help with guardians</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </span>
     );
   }
   
