@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Download, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
+import { Check, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { DigitalSignature } from './DigitalSignature';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -328,13 +328,6 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     }
   };
   
-  // Handle document download - no restrictions during creation
-  const handleDownload = () => {
-    // Generate a formatted text document
-    const documentText = generateDocumentText();
-    downloadDocument(documentText, `${personalInfo.fullName}'s Will`, signature);
-  };
-  
   // Handle AI assistance request from floating indicator
   const handleAIAssistanceRequest = (field?: string) => {
     setShowAISuggestionsPanel(true);
@@ -490,19 +483,6 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
             <Button variant="outline" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               Save Draft
-            </Button>
-            <Button onClick={() => setShowPreview(true)} variant="outline">
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </Button>
-            {/* Allow download during creation - no restrictions */}
-            <Button 
-              onClick={handleDownload} 
-              disabled={!isComplete}
-              variant="outline"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Will
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -685,7 +665,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                       value={residualEstate} 
                       label="residualEstate" 
                       onEdit={(value) => setResidualEstate(value)}
-                      onAiHelp={() => handleShowAIHelper('residualEestate')}
+                      onAiHelp={() => handleShowAIHelper('residualEstate')}
                     />
                     .
                   </p>
@@ -905,7 +885,16 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                 </div>
               </div>
               
-              <div className="mt-6 pt-4 border-t border-gray-100">
+              <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
+                <Button 
+                  onClick={() => setShowPreview(true)} 
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview Will
+                </Button>
+                
                 <Button 
                   onClick={handleGenerateOfficialWill} 
                   className="w-full"
@@ -924,7 +913,6 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                   )}
                 </Button>
                 
-                {/* Remove subscription requirement message */}
                 <p className="text-xs text-gray-500 mt-2 text-center">
                   Free will creation - 24 hours secure access included
                 </p>
