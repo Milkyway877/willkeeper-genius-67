@@ -17,7 +17,7 @@ import ContactsPage from '@/pages/ContactsPage';
 import DeathVerificationPage from '@/pages/DeathVerificationPage';
 import TreasuryPage from '@/pages/TreasuryPage';
 import Pricing from '@/pages/Pricing';
-import WillEditorPage from '@/pages/will/WillEditorPage';
+import TemplateWillCreationPage from '@/pages/will/TemplateWillCreationPage';
 import { TrialSuccess } from '@/pages/TrialSuccess';
 
 const queryClient = new QueryClient();
@@ -46,7 +46,7 @@ export function Router() {
             } />
             <Route path="/will/:templateId" element={
               <ProtectedRoute>
-                <WillEditorPage />
+                <TemplateWillCreationPage />
               </ProtectedRoute>
             } />
             <Route path="/tank" element={

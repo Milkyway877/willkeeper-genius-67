@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { templates } from './config/wizardSteps';
 import { getWillProgress, WillProgress, saveWillProgress } from '@/services/willProgressService';
-import { DocumentWillEditor } from './components/DocumentWillEditor';
+import { TemplateWillEditor } from './TemplateWillEditor';
 import { createWill, updateWill } from '@/services/willService';
 
 export default function TemplateWillCreationPage() {
@@ -27,7 +27,7 @@ export default function TemplateWillCreationPage() {
           description: "Please select a template to create your will.",
           variant: "destructive"
         });
-        navigate('/will/create');
+        navigate('/wills');
         return;
       }
       
@@ -39,7 +39,7 @@ export default function TemplateWillCreationPage() {
           description: "The selected template was not found.",
           variant: "destructive"
         });
-        navigate('/will/create');
+        navigate('/wills');
         return;
       }
       
@@ -60,7 +60,7 @@ export default function TemplateWillCreationPage() {
   }, [templateId]);
   
   const handleBack = () => {
-    navigate('/will/create');
+    navigate('/wills');
   };
   
   const handleSave = async (data: any) => {
@@ -84,7 +84,7 @@ export default function TemplateWillCreationPage() {
       } else {
         // Create a new will
         const willData = {
-          title: `${data.personalInfo?.fullName}'s Will`,
+          title: `${data.personalInfo?.fullName || 'My'} Will`,
           content: JSON.stringify(data),
           status: 'draft',
           template_type: templateId || '',
@@ -103,8 +103,18 @@ export default function TemplateWillCreationPage() {
           });
         }
       }
+      
+      toast({
+        title: "Will Saved",
+        description: "Your will has been saved successfully.",
+      });
     } catch (error) {
       console.error("Error saving will:", error);
+      toast({
+        title: "Save Error",
+        description: "There was an error saving your will. Please try again.",
+        variant: "destructive"
+      });
     }
   };
   
@@ -114,12 +124,12 @@ export default function TemplateWillCreationPage() {
         <div className="flex justify-between items-start mb-4">
           <div>
             <Button variant="ghost" onClick={handleBack} className="mb-2">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Templates
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Wills
             </Button>
             
             <h1 className="text-2xl md:text-3xl font-bold">{selectedTemplate?.title || 'Create Your Will'}</h1>
             <p className="text-gray-500 mt-1">
-              Complete your legal will document with our interactive editor
+              Complete your legal will document with our step-by-step editor
             </p>
           </div>
         </div>
@@ -130,7 +140,7 @@ export default function TemplateWillCreationPage() {
           </div>
         ) : (
           <div className="flex-1">
-            <DocumentWillEditor 
+            <TemplateWillEditor 
               templateId={templateId || ''} 
               initialData={progress?.responses} 
               willId={progress?.will_id}
