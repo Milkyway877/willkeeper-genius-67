@@ -1,122 +1,145 @@
 
 import React, { useState } from 'react';
-import { MessageCircleQuestion } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { MessageCircleQuestion, AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface TextFieldProps {
-  value: string;
   label: string;
-  onEdit: (value: string) => void;
-  onAiHelp?: () => void;
+  value: string;
+  onChange: (value: string) => void;
   placeholder?: string;
-  multiline?: boolean;
   required?: boolean;
+  multiline?: boolean;
+  type?: string;
+  tooltipText?: string;
+  onAiHelp?: (field: string, position?: { x: number, y: number }) => void;
+  className?: string;
 }
 
 export function TextField({
-  value,
   label,
-  onEdit,
-  onAiHelp,
-  placeholder = '',
+  value,
+  onChange,
+  placeholder,
+  required = false,
   multiline = false,
-  required = false
+  type = 'text',
+  tooltipText,
+  onAiHelp,
+  className
 }: TextFieldProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value);
+  const [focused, setFocused] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
-  const handleClick = () => {
-    setEditValue(value);
-    setIsEditing(true);
+  const handleChange = (newValue: string) => {
+    onChange(newValue);
+    if (required && !newValue.trim()) {
+      setHasError(true);
+    } else {
+      setHasError(false);
+    }
   };
 
-  const handleSave = () => {
-    onEdit(editValue);
-    setIsEditing(false);
+  const handleAiClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onAiHelp) {
+      onAiHelp(label.toLowerCase().replace(/\s+/g, '_'), { x: e.clientX, y: e.clientY });
+    }
   };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-  };
-
-  if (!isEditing) {
-    const displayValue = value || `[${label.replace(/([A-Z])/g, ' $1').trim()}]`;
-    const isEmpty = !value || value.trim() === '';
-    
-    return (
-      <span 
-        className={`group cursor-pointer inline-flex items-center relative
-          ${isEmpty 
-            ? 'bg-amber-100 border-b-2 border-dashed border-amber-400 text-amber-800 px-2 py-1 rounded-sm hover:bg-amber-200 transition-colors' 
-            : 'hover:bg-gray-100 px-1 rounded border-b border-gray-200 hover:border-gray-400'}`}
-        onClick={handleClick}
-      >
-        {displayValue}
-        <span className="absolute -top-5 left-0 text-[10px] bg-amber-50 text-amber-700 font-medium px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-amber-200 shadow-sm whitespace-nowrap">
-          Click to edit {label}
-        </span>
-        {isEmpty && (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1 text-amber-500 group-hover:animate-pulse">
-            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
-            <path d="m15 5 4 4"></path>
-          </svg>
-        )}
-        {onAiHelp && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 inline-flex ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAiHelp();
-                  }}
-                >
-                  <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Get AI help with this field</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </span>
-    );
-  }
 
   return (
-    <div className="my-2 relative">
-      <label className="text-xs font-medium text-gray-700 mb-1 block">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>
+    <div className={cn("space-y-2", className)}>
+      <div className="flex items-center justify-between">
+        <Label 
+          htmlFor={label.replace(/\s+/g, '-').toLowerCase()}
+          className={cn(
+            "text-sm font-medium transition-colors",
+            focused ? "text-willtank-700" : "text-gray-700",
+            required && "after:content-['*'] after:text-red-500 after:ml-1"
+          )}
+        >
+          {label}
+        </Label>
+        
+        <div className="flex items-center gap-1">
+          {tooltipText && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertCircle className="h-4 w-4 text-gray-400" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-xs">{tooltipText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
+          {onAiHelp && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-willtank-100"
+                    onClick={handleAiClick}
+                  >
+                    <MessageCircleQuestion className="h-4 w-4 text-willtank-600" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Get AI help with this field</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      </div>
+
       {multiline ? (
         <Textarea
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-          className="min-h-[100px] bg-white shadow-sm border-2 focus:border-willtank-500 focus:ring-2 focus:ring-willtank-100"
+          id={label.replace(/\s+/g, '-').toLowerCase()}
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          className={cn(
+            "min-h-[120px] transition-all duration-200",
+            focused && "ring-2 ring-willtank-500 border-willtank-500",
+            hasError && "border-red-500 ring-red-500",
+            "text-sm leading-relaxed"
+          )}
         />
       ) : (
-        <input
-          type="text"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-          className="w-full p-2 border-2 rounded bg-white shadow-sm focus:border-willtank-500 focus:ring-2 focus:ring-willtank-100 font-medium"
+        <Input
+          id={label.replace(/\s+/g, '-').toLowerCase()}
+          type={type}
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          className={cn(
+            "h-10 transition-all duration-200",
+            focused && "ring-2 ring-willtank-500 border-willtank-500",
+            hasError && "border-red-500 ring-red-500"
+          )}
         />
       )}
-      
-      <div className="flex gap-2 mt-2 justify-end">
-        <Button size="sm" variant="outline" onClick={handleCancel}>
-          Cancel
-        </Button>
-        <Button size="sm" onClick={handleSave}>
-          Save
-        </Button>
-      </div>
+
+      {hasError && required && !value.trim() && (
+        <p className="text-xs text-red-600 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" />
+          This field is required
+        </p>
+      )}
     </div>
   );
 }

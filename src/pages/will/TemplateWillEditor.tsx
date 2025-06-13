@@ -20,6 +20,7 @@ import { generateWillContent } from '@/utils/willTemplateUtils';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
 import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 import { WillCreationSuccess } from './components/WillCreationSuccess';
+import { FileCheck as Users, UserCog as UsersCog, Building2 as Building2, ShieldCheck as ShieldCheck, PenTool as PenTool } from 'lucide-react';
 
 // Simplified form validation schema without videos/documents
 const willSchema = z.object({
@@ -309,75 +310,165 @@ Date: ${new Date().toLocaleDateString()}
   }
 
   return (
-    <div className="container mx-auto mb-16">
-      {/* Remove Subscription Modal - no barriers during creation */}
-      
-      <FormProvider {...form}>
-        <form>
-          <FormWatcher onChange={handleFormChange} />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <PersonalInfoSection defaultOpen={true} />
-              <BeneficiariesSection defaultOpen={false} />
-              <ExecutorsSection defaultOpen={false} />
-              <AssetsSection defaultOpen={false} />
-              <FinalWishesSection defaultOpen={false} />
-              <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-willtank-50">
+      <div className="container mx-auto px-4 py-8 mb-16">
+        {/* Remove Subscription Modal - no barriers during creation */}
+        
+        <FormProvider {...form}>
+          <form>
+            <FormWatcher onChange={handleFormChange} />
+            
+            {/* Enhanced Header */}
+            <div className="mb-8 text-center">
+              <h1 className="text-3xl font-bold text-willtank-800 mb-2">Create Your Will</h1>
+              <p className="text-willtank-600 max-w-2xl mx-auto">
+                Complete each section below to create a comprehensive and legally sound will. 
+                Our AI assistant is here to help guide you through the process.
+              </p>
             </div>
             
-            <div className="lg:col-span-1">
-              <div className="lg:sticky lg:top-24">
-                <WillPreviewSection 
-                  defaultOpen={true} 
-                  content={willContent}
-                  signature={signature}
-                  title={`${form.getValues().fullName || 'My'}'s Will`}
-                  isWillFinalized={isFinalized}
-                />
-                
-                <Card className="mt-6 p-4">
-                  <div className="space-y-4">
-                    <Button 
-                      onClick={handleSaveDraft} 
-                      variant="outline" 
-                      className="w-full"
-                      disabled={saving || isGenerating}
-                      type="button"
-                    >
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      Save Draft
-                    </Button>
-                    
-                    <Button 
-                      onClick={handleFinalize} 
-                      className="w-full"
-                      disabled={saving || isFinalized || isGenerating}
-                      type="button"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Finalizing Will...
-                        </>
-                      ) : (
-                        <>
-                          <FileCheck className="mr-2 h-4 w-4" />
-                          {isFinalized ? 'Will Finalized' : 'Finalize Will'}
-                        </>
-                      )}
-                    </Button>
-                    
-                    <p className="text-xs text-gray-500 text-center">
-                      Free will creation - 24 hours secure access included
-                    </p>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+              <div className="lg:col-span-3 space-y-8">
+                {/* Enhanced sections with better visibility */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-willtank-600 to-blue-600 text-white p-6">
+                    <h2 className="text-xl font-semib bold flex items-center gap-2">
+                      <FileCheck className="h-6 w-6" />
+                      Personal Information
+                    </h2>
+                    <p className="text-willtank-100 mt-1">Start with your basic information</p>
                   </div>
-                </Card>
+                  <div className="p-6">
+                    <PersonalInfoSection defaultOpen={true} />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <Users className="h-6 w-6" />
+                      Beneficiaries
+                    </h2>
+                    <p className="text-purple-100 mt-1">Who will inherit your assets</p>
+                  </div>
+                  <div className="p-6">
+                    <BeneficiariesSection defaultOpen={false} />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white p-6">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <UserCog className="h-6 w-6" />
+                      Executors
+                    </h2>
+                    <p className="text-green-100 mt-1">Who will manage your estate</p>
+                  </div>
+                  <div className="p-6">
+                    <ExecutorsSection defaultOpen={false} />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-6">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <Building2 className="h-6 w-6" />
+                      Assets & Property
+                    </h2>
+                    <p className="text-amber-100 mt-1">Detail your valuable possessions</p>
+                  </div>
+                  <div className="p-6">
+                    <AssetsSection defaultOpen={false} />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <ShieldCheck className="h-6 w-6" />
+                      Final Wishes
+                    </h2>
+                    <p className="text-blue-100 mt-1">Your final instructions and preferences</p>
+                  </div>
+                  <div className="p-6">
+                    <FinalWishesSection defaultOpen={false} />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-red-600 to-pink-600 text-white p-6">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                      <PenTool className="h-6 w-6" />
+                      Digital Signature
+                    </h2>
+                    <p className="text-red-100 mt-1">Sign your will digitally</p>
+                  </div>
+                  <div className="p-6">
+                    <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="lg:col-span-1">
+                <div className="lg:sticky lg:top-6 space-y-6">
+                  <WillPreviewSection 
+                    defaultOpen={true} 
+                    content={willContent}
+                    signature={signature}
+                    title={`${form.getValues().fullName || 'My'}'s Will`}
+                    isWillFinalized={isFinalized}
+                  />
+                  
+                  <Card className="bg-gradient-to-br from-willtank-50 to-blue-50 border-willtank-200">
+                    <div className="p-6 space-y-4">
+                      <div className="text-center">
+                        <h3 className="font-semibold text-willtank-800 mb-2">Ready to Complete?</h3>
+                        <p className="text-sm text-willtank-600 mb-4">
+                          Save your progress or finalize your will when ready.
+                        </p>
+                      </div>
+                      
+                      <Button 
+                        onClick={handleSaveDraft} 
+                        variant="outline" 
+                        className="w-full border-willtank-300 hover:bg-willtank-50"
+                        disabled={saving || isGenerating}
+                        type="button"
+                      >
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Draft
+                      </Button>
+                      
+                      <Button 
+                        onClick={handleFinalize} 
+                        className="w-full bg-willtank-600 hover:bg-willtank-700"
+                        disabled={saving || isFinalized || isGenerating}
+                        type="button"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Finalizing Will...
+                          </>
+                        ) : (
+                          <>
+                            <FileCheck className="mr-2 h-4 w-4" />
+                            {isFinalized ? 'Will Finalized' : 'Finalize Will'}
+                          </>
+                        )}
+                      </Button>
+                      
+                      <p className="text-xs text-gray-500 text-center">
+                        ✨ Free will creation - 24 hours secure access included
+                      </p>
+                    </div>
+                  </Card>
+                </div>
               </div>
             </div>
-          </div>
-        </form>
-      </FormProvider>
+          </form>
+        </FormProvider>
+      </div>
     </div>
   );
 }
