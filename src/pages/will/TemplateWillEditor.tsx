@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -158,6 +157,7 @@ Date: ${new Date().toLocaleDateString()}
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [finalizedWill, setFinalizedWill] = useState<any>(null);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -301,6 +301,13 @@ Date: ${new Date().toLocaleDateString()}
     }
   };
 
+  const handlePreview = () => {
+    const formValues = form.getValues();
+    const finalWillContent = generateWillContent(formValues, willContent);
+    setWillContent(finalWillContent);
+    setShowPreviewModal(true);
+  };
+
   // Show success modal instead of regular editor when finalized
   if (showSuccessModal && finalizedWill) {
     return (
@@ -313,9 +320,7 @@ Date: ${new Date().toLocaleDateString()}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-willtank-50">
-      <div className="container mx-auto px-4 py-8 mb-16">
-        {/* Remove Subscription Modal - no barriers during creation */}
-        
+      <div className="container mx-auto px-4 py-8 pb-32">
         <FormProvider {...form}>
           <form>
             <FormWatcher onChange={handleFormChange} />
@@ -442,6 +447,17 @@ Date: ${new Date().toLocaleDateString()}
                       </Button>
                       
                       <Button 
+                        onClick={handlePreview} 
+                        variant="outline" 
+                        className="w-full border-blue-300 hover:bg-blue-50"
+                        disabled={saving || isGenerating}
+                        type="button"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Preview Will
+                      </Button>
+                      
+                      <Button 
                         onClick={handleFinalize} 
                         className="w-full bg-willtank-600 hover:bg-willtank-700"
                         disabled={saving || isFinalized || isGenerating}
@@ -450,12 +466,12 @@ Date: ${new Date().toLocaleDateString()}
                         {isGenerating ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Finalizing Will...
+                            Generating...
                           </>
                         ) : (
                           <>
                             <FileCheck className="mr-2 h-4 w-4" />
-                            {isFinalized ? 'Will Finalized' : 'Finalize Will'}
+                            {isFinalized ? 'Will Generated' : 'Generate Will'}
                           </>
                         )}
                       </Button>
@@ -470,6 +486,15 @@ Date: ${new Date().toLocaleDateString()}
             </div>
           </form>
         </FormProvider>
+
+        {/* Preview Modal */}
+        <PreviewModal 
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          content={willContent}
+          signature={signature}
+          title={`${form.getValues().fullName || 'My'}'s Will Preview`}
+        />
       </div>
     </div>
   );

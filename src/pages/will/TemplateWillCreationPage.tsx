@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { templates } from './config/wizardSteps';
-import { getWillProgress, WillProgress, saveWillProgress } from '@/services/willProgressService';
-import { DocumentWillEditor } from './components/DocumentWillEditor';
-import { createWill, updateWill } from '@/services/willService';
+import { getWillProgress, WillProgress } from '@/services/willProgressService';
+import { TemplateWillEditor } from './TemplateWillEditor';
 
 export default function TemplateWillCreationPage() {
   const { templateId } = useParams();
@@ -18,7 +17,6 @@ export default function TemplateWillCreationPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [progress, setProgress] = useState<WillProgress | null>(null);
-  const [content, setContent] = useState<string>('');
   
   useEffect(() => {
     const loadData = async () => {
@@ -48,9 +46,6 @@ export default function TemplateWillCreationPage() {
       try {
         const savedProgress = await getWillProgress(templateId);
         setProgress(savedProgress);
-        if (savedProgress?.content) {
-          setContent(savedProgress.content);
-        }
       } catch (error) {
         console.error("Error loading progress:", error);
       } finally {
@@ -59,61 +54,15 @@ export default function TemplateWillCreationPage() {
     };
     
     loadData();
-  }, [templateId]);
+  }, [templateId, navigate, toast]);
   
   const handleBack = () => {
     navigate('/will/create');
   };
   
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-  };
-  
-  const handleSave = async (data: any) => {
-    try {
-      if (progress) {
-        await saveWillProgress({
-          ...progress,
-          responses: data,
-          content: content,
-          updated_at: new Date().toISOString()
-        });
-      }
-      
-      if (progress?.will_id) {
-        await updateWill(progress.will_id, {
-          title: `${data.personalInfo?.fullName}'s Will`,
-          content: content,
-          updated_at: new Date().toISOString()
-        });
-      } else {
-        const willData = {
-          title: `${data.personalInfo?.fullName}'s Will`,
-          content: content,
-          status: 'draft',
-          template_type: templateId || '',
-          ai_generated: false,
-          document_url: ''
-        };
-        
-        const savedWill = await createWill(willData);
-        
-        if (savedWill && progress) {
-          await saveWillProgress({
-            ...progress,
-            will_id: savedWill.id,
-            responses: data
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error saving will:", error);
-    }
-  };
-  
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4 min-h-[calc(100vh-64px)] flex flex-col pb-24">
+      <div className="container mx-auto px-4 py-4 min-h-[calc(100vh-64px)] flex flex-col">
         <div className="flex justify-between items-start mb-4">
           <div>
             <Button variant="ghost" onClick={handleBack} className="mb-2">
@@ -122,7 +71,7 @@ export default function TemplateWillCreationPage() {
             
             <h1 className="text-2xl md:text-3xl font-bold">{selectedTemplate?.title || 'Create Your Will'}</h1>
             <p className="text-gray-500 mt-1">
-              Complete your legal will document with our interactive editor
+              Complete your legal will document with our enhanced editor
             </p>
           </div>
         </div>
@@ -133,13 +82,11 @@ export default function TemplateWillCreationPage() {
           </div>
         ) : (
           <div className="flex-1">
-            <DocumentWillEditor 
-              content={content}
-              onContentChange={handleContentChange}
-              templateId={templateId || ''} 
-              initialData={progress?.responses} 
+            <TemplateWillEditor 
+              templateId={templateId || 'traditional'} 
+              initialData={progress?.responses || {}} 
+              isNew={!progress?.will_id}
               willId={progress?.will_id}
-              onSave={handleSave}
             />
           </div>
         )}
