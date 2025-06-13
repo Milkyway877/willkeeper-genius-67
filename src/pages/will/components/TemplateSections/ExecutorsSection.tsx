@@ -2,12 +2,13 @@
 import React, { useState } from 'react';
 import { TemplateWillSection } from '@/components/will/TemplateWillSection';
 import { InfoField } from '@/components/will/InfoField';
-import { UserCog, PlusCircle, Trash2 } from 'lucide-react';
+import { UserCog, PlusCircle, Trash2, MessageCircleQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Grid, GridItem } from '@/components/ui/grid';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ExecutorsSectionProps {
   defaultOpen?: boolean;
@@ -26,6 +27,7 @@ export function ExecutorsSection({ defaultOpen = false }: ExecutorsSectionProps)
   const [executors, setExecutors] = useState<Executor[]>([
     { id: '1', name: '', email: '', phone: '', address: '', isPrimary: true }
   ]);
+  const [expanded, setExpanded] = useState(defaultOpen);
 
   const addExecutor = () => {
     setExecutors([
@@ -52,6 +54,57 @@ export function ExecutorsSection({ defaultOpen = false }: ExecutorsSectionProps)
       isPrimary: exec.id === id
     })));
   };
+
+  const handleAiHelp = (field: string, position: { x: number, y: number }) => {
+    // AI help functionality - placeholder
+    console.log('AI help requested for:', field, position);
+  };
+
+  if (!expanded) {
+    const displayValue = executors.map(e => e.name).filter(name => name).join(', ') || '[Enter executors]';
+    const isEmpty = !executors.some(e => e.name);
+    
+    return (
+      <span 
+        className={`group cursor-pointer inline-flex items-center relative
+          ${isEmpty 
+            ? 'bg-amber-100 border-b-2 border-dashed border-amber-400 text-amber-800 px-2 py-1 rounded-sm hover:bg-amber-200 transition-colors' 
+            : 'hover:bg-gray-100 px-1 rounded border-b border-gray-200 hover:border-gray-400'}`}
+        onClick={() => setExpanded(true)}
+      >
+        {displayValue}
+        <span className="absolute -top-5 left-0 text-[10px] bg-amber-50 text-amber-700 font-medium px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-amber-200 shadow-sm whitespace-nowrap">
+          Click to edit executors
+        </span>
+        {isEmpty && (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1 text-amber-500 group-hover:animate-pulse">
+            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 inline-flex ml-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAiHelp('executor', { x: e.clientX, y: e.clientY });
+                }}
+              >
+                <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Get AI help with executors</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </span>
+    );
+  }
 
   return (
     <TemplateWillSection 
@@ -145,15 +198,26 @@ export function ExecutorsSection({ defaultOpen = false }: ExecutorsSectionProps)
         </Card>
       ))}
 
-      <Button 
-        variant="outline" 
-        className="w-full mt-2" 
-        onClick={addExecutor} 
-        type="button"
-      >
-        <PlusCircle className="h-4 w-4 mr-2" />
-        Add Alternate Executor
-      </Button>
+      <div className="flex justify-between items-center">
+        <Button 
+          variant="outline" 
+          className="w-full mt-2" 
+          onClick={addExecutor} 
+          type="button"
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add Alternate Executor
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setExpanded(false)}
+          className="text-xs ml-4"
+        >
+          Done
+        </Button>
+      </div>
     </TemplateWillSection>
   );
 }

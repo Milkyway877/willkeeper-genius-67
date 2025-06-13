@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TemplateWillSection } from '@/components/will/TemplateWillSection';
 import { InfoField } from '@/components/will/InfoField';
-import { Home, Car, Landmark, Laptop, PlusCircle } from 'lucide-react';
+import { Home, Car, Landmark, Laptop, PlusCircle, MessageCircleQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DocumentsUploader } from '@/pages/will/components/DocumentsUploader';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AssetsSectionProps {
   defaultOpen?: boolean;
@@ -14,10 +15,65 @@ interface AssetsSectionProps {
 }
 
 export function AssetsSection({ defaultOpen = false, contacts = [], responses = {} }: AssetsSectionProps) {
+  const [expanded, setExpanded] = useState(defaultOpen);
+  
   const handleDocumentsComplete = (documents: any[]) => {
     console.log('Documents uploaded:', documents);
     // This would update the form state with the uploaded documents
   };
+
+  const handleAiHelp = (field: string, position: { x: number, y: number }) => {
+    // AI help functionality - placeholder
+    console.log('AI help requested for:', field, position);
+  };
+
+  if (!expanded) {
+    // Check if any asset fields have values from responses
+    const hasAssets = responses?.primaryResidence || responses?.vehicleDescription || responses?.accountType || responses?.digitalAssetDescription;
+    const displayValue = hasAssets ? 'Assets added' : '[Enter assets]';
+    const isEmpty = !hasAssets;
+    
+    return (
+      <span 
+        className={`group cursor-pointer inline-flex items-center relative
+          ${isEmpty 
+            ? 'bg-amber-100 border-b-2 border-dashed border-amber-400 text-amber-800 px-2 py-1 rounded-sm hover:bg-amber-200 transition-colors' 
+            : 'hover:bg-gray-100 px-1 rounded border-b border-gray-200 hover:border-gray-400'}`}
+        onClick={() => setExpanded(true)}
+      >
+        {displayValue}
+        <span className="absolute -top-5 left-0 text-[10px] bg-amber-50 text-amber-700 font-medium px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-amber-200 shadow-sm whitespace-nowrap">
+          Click to edit assets
+        </span>
+        {isEmpty && (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1 text-amber-500 group-hover:animate-pulse">
+            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+            <path d="m15 5 4 4"></path>
+          </svg>
+        )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 inline-flex ml-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAiHelp('assets', { x: e.clientX, y: e.clientY });
+                }}
+              >
+                <MessageCircleQuestion className="h-3 w-3 text-willtank-600" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Get AI help with assets</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </span>
+    );
+  }
 
   return (
     <TemplateWillSection 
@@ -150,6 +206,17 @@ export function AssetsSection({ defaultOpen = false, contacts = [], responses = 
           responses={responses} 
           onComplete={handleDocumentsComplete} 
         />
+      </div>
+      
+      <div className="flex justify-end mt-4">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setExpanded(false)}
+          className="text-xs"
+        >
+          Done
+        </Button>
       </div>
     </TemplateWillSection>
   );
