@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   FileText, 
   Users, 
-  UsersCog, 
+  UserCog, 
   Building2, 
   ShieldCheck, 
   Heart,
@@ -74,7 +74,7 @@ export function DocumentWillEditor({
     {
       id: 'executors',
       title: 'Executors',
-      icon: UsersCog,
+      icon: UserCog,
       isComplete: false,
       isExpanded: false,
       fields: ['executors']

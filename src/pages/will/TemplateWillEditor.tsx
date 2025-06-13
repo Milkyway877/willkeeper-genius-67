@@ -20,7 +20,7 @@ import { generateWillContent } from '@/utils/willTemplateUtils';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
 import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 import { WillCreationSuccess } from './components/WillCreationSuccess';
-import { FileCheck as Users, UsersCog, Building2, ShieldCheck, PenTool } from 'lucide-react';
+import { FileCheck as Users, UserCog, Building2, ShieldCheck, PenTool } from 'lucide-react';
 
 // Simplified form validation schema without videos/documents
 const willSchema = z.object({
@@ -359,7 +359,7 @@ Date: ${new Date().toLocaleDateString()}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                   <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white p-6">
                     <h2 className="text-xl font-semibold flex items-center gap-2">
-                      <UsersCog className="h-6 w-6" />
+                      <UserCog className="h-6 w-6" />
                       Executors
                     </h2>
                     <p className="text-green-100 mt-1">Who will manage your estate</p>
