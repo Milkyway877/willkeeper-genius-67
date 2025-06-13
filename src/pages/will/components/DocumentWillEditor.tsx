@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck } from 'lucide-react';
+import { Check, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck, BookOpen, Lightbulb, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { DigitalSignature } from './DigitalSignature';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -20,7 +20,7 @@ import { DocumentPreview } from './DocumentPreview';
 import { createWill, updateWill, Will } from '@/services/willService';
 import { useFormAutoSave } from '@/hooks/use-form-auto-save';
 import { AIFloatingIndicator } from './AIFloatingIndicator';
-import { AISuggestionsPanel } from './AISuggestionsPanel';
+import { EnhancedAISuggestionsPanel } from './EnhancedAISuggestionsPanel';
 import { ContactField } from './DocumentFields/ContactField';
 import { WillCreationSuccess } from './WillCreationSuccess';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
@@ -470,7 +470,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
       {/* Main document area with scrolling */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* AI Suggestions Panel */}
-        <AISuggestionsPanel
+        <EnhancedAISuggestionsPanel
           isVisible={showAISuggestionsPanel}
           activeField={showAIHelper}
           onClose={() => setShowAISuggestionsPanel(false)}
