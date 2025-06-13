@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -12,10 +13,11 @@ import { ExecutorsSection } from './components/TemplateSections/ExecutorsSection
 import { FinalWishesSection } from './components/TemplateSections/FinalWishesSection';
 import { DigitalSignature } from './components/TemplateSections/DigitalSignature';
 import { WillPreviewSection } from './components/WillPreviewSection';
+import { PreviewModal } from './components/PreviewModal';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Save, FileCheck } from 'lucide-react';
+import { Loader2, Save, FileCheck, Eye, Check, AlertCircle } from 'lucide-react';
 import { generateWillContent } from '@/utils/willTemplateUtils';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
 import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';

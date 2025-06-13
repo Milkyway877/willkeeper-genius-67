@@ -19,65 +19,112 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
   const [animationComplete, setAnimationComplete] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   
-  // Enhanced field-specific AI assistance with more comprehensive suggestions
+  // Comprehensive field-specific AI assistance
   useEffect(() => {
     if (isVisible) {
       setIsLoading(true);
       
       // Simulate AI processing time
       setTimeout(() => {
-        const fieldSuggestions: Record<string, string[]> = {
-          'full_legal_name': [
-            "Use your complete legal name as it appears on official documents like your driver's license or passport.",
-            "Include middle names if they commonly appear on your legal documents to avoid confusion."
-          ],
-          'date_of_birth': [
-            "Enter your date of birth in the format MM/DD/YYYY for consistency.",
-            "Ensure this matches the date on your official identification documents."
-          ],
-          'current_address': [
-            "Provide your complete current legal residence address including apartment numbers.",
-            "Use the address where you primarily reside and receive mail for legal purposes."
-          ],
-          'beneficiaries': [
-            "List all individuals or organizations who should inherit your assets.",
-            "Consider including contingent beneficiaries in case your primary choices cannot inherit.",
-            "Specify the percentage or specific assets each beneficiary should receive."
-          ],
-          'executors': [
-            "Choose someone you trust who is organized and willing to handle estate matters.",
-            "Consider selecting an alternate executor in case your first choice cannot serve.",
-            "Your executor should be responsible, detail-oriented, and available when needed."
-          ],
-          'assets': [
-            "Include all significant assets: real estate, bank accounts, investments, vehicles, and valuable personal property.",
-            "Be specific about account numbers and locations to help your executor locate assets.",
-            "Consider both tangible assets (property, jewelry) and intangible assets (stocks, digital accounts)."
-          ],
-          'guardians': [
-            "Select guardians who share your values and can provide a stable, loving environment.",
-            "Discuss your choice with potential guardians before naming them in your will.",
-            "Consider the guardian's age, health, financial stability, and relationship with your children."
-          ],
-          'final_wishes': [
-            "Include preferences for funeral arrangements, burial or cremation, and memorial services.",
-            "Specify any charitable donations you'd like made in your memory.",
-            "Add any special instructions for the distribution of personal items with sentimental value."
-          ],
-          'personal': [
-            "Ensure all personal information is current and matches your legal documents.",
-            "Double-check spelling and formatting for accuracy."
+        const fieldGuidance: Record<string, { title: string, suggestions: string[], examples?: string[] }> = {
+          'full_legal_name': {
+            title: 'Legal Name Guidance',
+            suggestions: [
+              "Enter your complete legal name exactly as it appears on your driver's license, passport, or birth certificate.",
+              "Include your middle name if it appears on your government-issued ID to avoid any confusion.",
+              "Do not use nicknames, abbreviations, or preferred names - use your official legal name only."
+            ],
+            examples: ["John Michael Smith", "Mary Elizabeth Johnson-Davis"]
+          },
+          'date_of_birth': {
+            title: 'Date of Birth Requirements',
+            suggestions: [
+              "Enter your date of birth in MM/DD/YYYY format to match legal document standards.",
+              "This date must match your official identification documents for legal validity.",
+              "Double-check the date for accuracy as this is used for identity verification."
+            ]
+          },
+          'current_address': {
+            title: 'Legal Residence Address',
+            suggestions: [
+              "Provide your complete current legal residence address including apartment or unit numbers.",
+              "Use the address where you primarily reside and receive official mail.",
+              "This should be your domicile address for legal purposes, not a P.O. Box or temporary address."
+            ],
+            examples: ["123 Main Street, Apt 4B, Anytown, CA 90210", "456 Oak Avenue, Springfield, IL 62701"]
+          },
+          'beneficiaries': {
+            title: 'Beneficiary Information',
+            suggestions: [
+              "List all individuals or organizations who should inherit your assets, including their full legal names.",
+              "Specify the percentage or specific assets each beneficiary should receive (percentages should total 100%).",
+              "Consider naming contingent beneficiaries in case your primary beneficiaries cannot inherit.",
+              "Include relationship to you and contact information to help executors locate beneficiaries."
+            ],
+            examples: ["Spouse: 50%, Children: 25% each", "Primary: John Smith (son), Contingent: Local Charity"]
+          },
+          'executors': {
+            title: 'Choosing Your Executor',
+            suggestions: [
+              "Select someone you trust completely who is organized, responsible, and willing to handle estate matters.",
+              "Choose someone who is likely to outlive you and be available when needed.",
+              "Consider selecting an alternate executor in case your first choice cannot serve.",
+              "Your executor should be detail-oriented and comfortable handling financial and legal tasks."
+            ],
+            examples: ["Primary: Spouse or adult child", "Alternate: Trusted sibling or close friend", "Professional: Attorney or bank trust department"]
+          },
+          'assets': {
+            title: 'Asset Documentation',
+            suggestions: [
+              "Include all significant assets: real estate, bank accounts, investment accounts, vehicles, and valuable personal property.",
+              "Be specific about account numbers, financial institutions, and property addresses to help your executor.",
+              "Consider both tangible assets (house, car, jewelry) and intangible assets (stocks, bonds, digital accounts).",
+              "Don't forget retirement accounts, life insurance policies, and business interests."
+            ],
+            examples: ["Real Estate: Primary residence, rental properties", "Financial: Checking, savings, 401(k), IRA accounts", "Personal: Jewelry, art, collections"]
+          },
+          'guardians': {
+            title: 'Guardian Selection Guidance',
+            suggestions: [
+              "Choose guardians who share your values and can provide a stable, loving environment for your children.",
+              "Discuss your choice with potential guardians before naming them to ensure they're willing and able.",
+              "Consider the guardian's age, health, financial stability, and existing relationship with your children.",
+              "Name alternate guardians in case your first choice cannot serve when needed."
+            ],
+            examples: ["Primary: Close family member who knows your children well", "Alternate: Trusted friends with similar values"]
+          },
+          'final_wishes': {
+            title: 'Final Arrangements',
+            suggestions: [
+              "Include your preferences for funeral arrangements, burial or cremation, and memorial services.",
+              "Specify any charitable donations you'd like made in your memory.",
+              "Add instructions for the distribution of personal items with sentimental value.",
+              "Include any special requests for your funeral or memorial service."
+            ],
+            examples: ["Cremation with memorial service at local church", "Burial in family plot, donations to favorite charity", "Simple service, distribute photo albums to grandchildren"]
+          },
+          'personal': {
+            title: 'Personal Information Tips',
+            suggestions: [
+              "Ensure all personal information is current and matches your legal documents.",
+              "Use your legal name as it appears on government-issued identification.",
+              "Provide your primary legal residence address for jurisdictional purposes."
+            ]
+          }
+        };
+        
+        const guidance = fieldGuidance[field] || fieldGuidance[field.toLowerCase()] || {
+          title: 'General Guidance',
+          suggestions: [
+            "Provide accurate and complete information for this section.",
+            "Consider how this information affects your estate planning goals.",
+            "Consult with a legal professional for complex situations."
           ]
         };
         
-        const suggestions = fieldSuggestions[field] || fieldSuggestions[field.toLowerCase()] || [
-          "Let me help you complete this section with appropriate legal language and guidance.",
-          "Consider consulting with a legal professional for complex situations."
-        ];
-        
-        setCurrentSuggestions(suggestions);
+        setCurrentSuggestions(guidance.suggestions);
         setIsLoading(false);
-      }, 800);
+      }, 600);
     }
   }, [field, isVisible]);
 
@@ -124,7 +171,7 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
     <AnimatePresence>
       <motion.div
         ref={popupRef}
-        className="fixed z-[9999] max-w-sm"
+        className="fixed z-[9999] max-w-md"
         initial={{ opacity: 0, scale: 0.9, y: -10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: -10 }}
@@ -132,13 +179,13 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
         onAnimationComplete={() => setAnimationComplete(true)}
       >
         <Card className="shadow-2xl border-2 border-willtank-200 bg-white">
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-amber-100">
-                  <Lightbulb className="h-4 w-4 text-amber-600" />
+                <div className="p-2 rounded-lg bg-blue-100">
+                  <Lightbulb className="h-5 w-5 text-blue-600" />
                 </div>
-                <h3 className="text-sm font-semibold text-willtank-800">AI Document Assistant</h3>
+                <h3 className="text-sm font-semibold text-willtank-800">Field Assistance</h3>
               </div>
               <Button 
                 size="icon" 
@@ -151,18 +198,18 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
             </div>
             
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
+              <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-6 w-6 animate-spin text-willtank-600" />
-                <span className="ml-2 text-sm text-willtank-700">Generating suggestions...</span>
+                <span className="ml-2 text-sm text-willtank-700">Loading guidance...</span>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {currentSuggestions.map((suggestion, index) => (
                   <div 
                     key={index} 
-                    className="bg-gradient-to-r from-willtank-50 to-blue-50 p-3 rounded-lg border border-willtank-100"
+                    className="bg-gradient-to-r from-blue-50 to-willtank-50 p-4 rounded-lg border border-blue-100"
                   >
-                    <p className="text-sm text-willtank-800 leading-relaxed mb-3">{suggestion}</p>
+                    <p className="text-sm text-gray-800 leading-relaxed mb-3">{suggestion}</p>
                     
                     <div className="flex justify-end gap-2">
                       <Button 
@@ -171,7 +218,7 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
                         className="h-7 text-xs hover:bg-gray-50"
                         onClick={onDismiss}
                       >
-                        Not Helpful
+                        Got it
                       </Button>
                       <Button 
                         size="sm" 
@@ -179,15 +226,15 @@ export function AIAssistantPopup({ field, isVisible, onAccept, onDismiss, positi
                         onClick={() => onAccept(suggestion)}
                       >
                         <Check className="h-3 w-3 mr-1" /> 
-                        Apply Suggestion
+                        Apply Guidance
                       </Button>
                     </div>
                   </div>
                 ))}
                 
-                <div className="pt-2 border-t border-gray-100">
+                <div className="pt-3 border-t border-gray-100">
                   <p className="text-xs text-gray-500 text-center">
-                    💡 These suggestions are AI-generated. Consider consulting a legal professional for complex situations.
+                    💡 This guidance is based on legal best practices. Consider consulting an attorney for complex situations.
                   </p>
                 </div>
               </div>
