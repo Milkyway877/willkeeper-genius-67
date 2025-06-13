@@ -65,6 +65,26 @@ interface Message {
   messageUrl?: string;
 }
 
+// Chart configuration for proper ChartContainer usage
+const chartConfig = {
+  letters: {
+    label: "Letters",
+    color: "#8b5cf6",
+  },
+  videos: {
+    label: "Videos", 
+    color: "#3b82f6",
+  },
+  audio: {
+    label: "Audio",
+    color: "#10b981",
+  },
+  documents: {
+    label: "Documents",
+    color: "#f59e0b",
+  },
+};
+
 export const TankDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -364,24 +384,26 @@ export const TankDashboard: React.FC = () => {
           <CardContent>
             {messageTypeData.length > 0 ? (
               <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={messageTypeData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {messageTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ChartContainer config={chartConfig}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={messageTypeData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {messageTypeData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
               </div>
             ) : (
               <div className="h-[200px] flex items-center justify-center">
