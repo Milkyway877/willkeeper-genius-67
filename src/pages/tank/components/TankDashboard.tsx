@@ -46,7 +46,8 @@ import {
   Send,
   Archive,
   TrendingUp,
-  Shield
+  Shield,
+  Edit
 } from 'lucide-react';
 import { getFutureMessages, deleteFutureMessage, checkScheduledMessages } from '@/services/tankService';
 import { MessagePreview } from './preview/MessagePreview';
@@ -158,6 +159,10 @@ export const TankDashboard: React.FC = () => {
   
   const handleViewMessage = (id: string) => {
     navigate(`/tank/message/${id}`);
+  };
+  
+  const handleEditMessage = (id: string) => {
+    navigate(`/tank/create?edit=${id}`);
   };
   
   const handlePreviewMessage = (message: Message) => {
@@ -513,6 +518,13 @@ export const TankDashboard: React.FC = () => {
                             onClick={() => handlePreviewMessage(message)}
                           >
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditMessage(message.id)}
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
