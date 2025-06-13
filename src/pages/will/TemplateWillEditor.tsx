@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -157,14 +156,6 @@ Date: ${new Date().toLocaleDateString()}
   const [finalizedWill, setFinalizedWill] = useState<any>(null);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   
-  const { 
-    showSubscriptionModal, 
-    handleWillSaved, 
-    handleSubscriptionSuccess, 
-    closeSubscriptionModal,
-    subscriptionStatus 
-  } = useWillSubscriptionFlow();
-  
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
     defaultValues: {
@@ -246,11 +237,6 @@ Date: ${new Date().toLocaleDateString()}
   };
   
   const handleFinalize = async () => {
-    if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true);
-      return;
-    }
-    
     try {
       await form.trigger();
       if (!form.formState.isValid) {
@@ -293,6 +279,11 @@ Date: ${new Date().toLocaleDateString()}
         setFinalizedWill(savedWill);
         setIsFinalized(true);
         setShowSuccessModal(true);
+        
+        toast({
+          title: "Will Finalized Successfully!",
+          description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
+        });
       }
       
     } catch (error) {
@@ -319,11 +310,7 @@ Date: ${new Date().toLocaleDateString()}
 
   return (
     <div className="container mx-auto mb-16">
-      <SubscriptionModal 
-        open={showSubscriptionModal}
-        onClose={closeSubscriptionModal}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
+      {/* Remove Subscription Modal - no barriers during creation */}
       
       <FormProvider {...form}>
         <form>
@@ -381,11 +368,9 @@ Date: ${new Date().toLocaleDateString()}
                       )}
                     </Button>
                     
-                    {!subscriptionStatus.isSubscribed && (
-                      <p className="text-xs text-gray-500 text-center">
-                        Subscription required to finalize and save your will
-                      </p>
-                    )}
+                    <p className="text-xs text-gray-500 text-center">
+                      Free will creation - 24 hours secure access included
+                    </p>
                   </div>
                 </Card>
               </div>

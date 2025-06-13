@@ -24,7 +24,6 @@ import { AISuggestionsPanel } from './AISuggestionsPanel';
 import { ContactField } from './DocumentFields/ContactField';
 import { WillCreationSuccess } from './WillCreationSuccess';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
-import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 import '../../../MobileStyles.css';
 import { 
   Executor, 
@@ -117,14 +116,14 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
   
-  // Add subscription flow hook
-  const { 
-    showSubscriptionModal, 
-    handleWillSaved, 
-    handleSubscriptionSuccess, 
-    closeSubscriptionModal,
-    subscriptionStatus 
-  } = useWillSubscriptionFlow();
+  // Add subscription flow hook - no barriers during creation
+  // const { 
+  //   showSubscriptionModal, 
+  //   handleWillSaved, 
+  //   handleSubscriptionSuccess, 
+  //   closeSubscriptionModal,
+  //   subscriptionStatus 
+  // } = useWillSubscriptionFlow();
   
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -329,17 +328,8 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     }
   };
   
-  // Handle document download - only for subscribed users
+  // Handle document download - no restrictions during creation
   const handleDownload = () => {
-    if (!subscriptionStatus.isSubscribed) {
-      toast({
-        title: "Subscription Required",
-        description: "Please subscribe to download your will document.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     // Generate a formatted text document
     const documentText = generateDocumentText();
     downloadDocument(documentText, `${personalInfo.fullName}'s Will`, signature);
@@ -396,14 +386,8 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     });
   };
 
-  // Handle generating the official document - with immediate paywall check
+  // Handle generating the official document - NO PAYWALL during creation
   const handleGenerateOfficialWill = async () => {
-    // IMMEDIATE PAYWALL CHECK - Before any other processing
-    if (!subscriptionStatus.isSubscribed) {
-      await handleWillSaved(true); // This will show subscription modal
-      return; // Stop execution here if not subscribed
-    }
-    
     try {
       if (!isComplete) {
         toast({
@@ -425,14 +409,14 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
 
       setIsGenerating(true);
       
-      // User is subscribed, proceed with finalization
+      // Allow finalization without subscription check
       const title = `${personalInfo.fullName}'s Will`;
       
       // Create will content with signature
       const documentText = generateDocumentText();
       const contentWithSignature = documentText + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
       
-      // Save the will as active if not already saved
+      // Save the will as active
       let finalWill: Will | null = null;
       
       if (willId) {
@@ -463,7 +447,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
         
         toast({
           title: "Will Finalized Successfully!",
-          description: "Your will has been finalized and saved. You can now add video testimonies in the Tank section.",
+          description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
         });
       }
       
@@ -481,12 +465,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
 
   return (
     <div className="container mx-auto mb-28">
-      {/* Subscription Modal */}
-      <SubscriptionModal 
-        open={showSubscriptionModal}
-        onClose={closeSubscriptionModal}
-        onSubscriptionSuccess={handleSubscriptionSuccess}
-      />
+      {/* Remove Subscription Modal - no barriers during creation */}
       
       {showSuccessScreen && generatedWill && (
         <WillCreationSuccess 
@@ -516,9 +495,10 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
               <Eye className="h-4 w-4 mr-2" />
               Preview
             </Button>
+            {/* Allow download during creation - no restrictions */}
             <Button 
               onClick={handleDownload} 
-              disabled={!isComplete || !subscriptionStatus.isSubscribed || !finalizedWillId}
+              disabled={!isComplete}
               variant="outline"
             >
               <Download className="h-4 w-4 mr-2" />
@@ -944,11 +924,10 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                   )}
                 </Button>
                 
-                {!subscriptionStatus.isSubscribed && (
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Subscription required to finalize and save your will
-                  </p>
-                )}
+                {/* Remove subscription requirement message */}
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Free will creation - 24 hours secure access included
+                </p>
               </div>
             </Card>
             
