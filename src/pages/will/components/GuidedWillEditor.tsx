@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -294,7 +293,7 @@ export function GuidedWillEditor({ willContent, onContentChange, onSave, readOnl
     onSave();
     toast({
       title: "Will Updated",
-      description: "Your will has been saved successfully."
+      description: "Your will has been saved successfully. Free 24-hour secure access included."
     });
     
     // Reset validation states
@@ -510,6 +509,12 @@ export function GuidedWillEditor({ willContent, onContentChange, onSave, readOnl
               <Upload className="mr-2" />
               Upload Additional Files
             </Button>
+          </div>
+          
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700 text-center">
+              ✅ Free will creation with 24 hours secure access included
+            </p>
           </div>
         </div>
       )}

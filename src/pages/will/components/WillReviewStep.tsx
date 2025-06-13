@@ -173,14 +173,19 @@ export const WillReviewStep = ({
           </Button>
         </div>
       ) : (
-        <Button
-          onClick={handleFinalizeWill}
-          className="w-full"
-          size="lg"
-        >
-          <Check className="mr-2 h-4 w-4" />
-          Finalize and Save Will
-        </Button>
+        <div className="space-y-4">
+          <Button
+            onClick={handleFinalizeWill}
+            className="w-full"
+            size="lg"
+          >
+            <Check className="mr-2 h-4 w-4" />
+            Finalize and Save Will
+          </Button>
+          <p className="text-xs text-gray-500 text-center">
+            Free will creation - 24 hours secure access included
+          </p>
+        </div>
       )}
     </div>
   );

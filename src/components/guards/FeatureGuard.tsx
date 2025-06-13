@@ -13,6 +13,7 @@ interface FeatureGuardProps {
   featureName: string;
   featureDescription?: string;
   showUpgrade?: boolean;
+  allowCreation?: boolean; // New prop to allow creation phase
 }
 
 export const FeatureGuard: React.FC<FeatureGuardProps> = ({
@@ -20,7 +21,8 @@ export const FeatureGuard: React.FC<FeatureGuardProps> = ({
   requiredTier,
   featureName,
   featureDescription,
-  showUpgrade = true
+  showUpgrade = true,
+  allowCreation = true // Default to allowing creation
 }) => {
   const { subscriptionStatus, loading } = useSubscriptionStatus();
   const navigate = useNavigate();
@@ -36,7 +38,8 @@ export const FeatureGuard: React.FC<FeatureGuardProps> = ({
 
   const hasAccess = checkFeatureAccess(requiredTier, subscriptionStatus.tier);
 
-  if (hasAccess) {
+  // Allow access during creation phase or if user has subscription
+  if (hasAccess || allowCreation) {
     return <>{children}</>;
   }
 
