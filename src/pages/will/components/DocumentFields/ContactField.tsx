@@ -14,6 +14,7 @@ interface ContactFieldProps {
   placeholder?: string;
   required?: boolean;
   tooltipText?: string;
+  className?: string;
   onAiHelp?: (position: { x: number, y: number }) => void;
 }
 
@@ -25,12 +26,13 @@ export function ContactField({
   placeholder,
   required = false,
   tooltipText,
+  className,
   onAiHelp
 }: ContactFieldProps) {
   const isEmpty = !value || value.trim() === '';
   
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2 ${className || ''}`}>
       <div className="flex items-center gap-2">
         <Label className="text-sm font-medium text-gray-800">
           {label}{required && <span className="text-red-500 ml-1">*</span>}
