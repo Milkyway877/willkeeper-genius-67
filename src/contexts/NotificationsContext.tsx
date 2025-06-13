@@ -33,7 +33,7 @@ interface SubscriptionState {
   channel: RealtimeChannel | null;
 }
 
-export function NotificationsProvider({ children }: { children: React.ReactNode }) {
+export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -296,7 +296,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       {children}
     </NotificationsContext.Provider>
   );
-}
+};
 
 export const useNotifications = () => {
   const context = useContext(NotificationsContext);

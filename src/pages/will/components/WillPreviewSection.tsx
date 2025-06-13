@@ -4,8 +4,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WillPreview } from './WillPreview';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Download, FileCheck } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils';
 
 interface WillPreviewSectionProps {
   defaultOpen?: boolean;
@@ -28,6 +29,50 @@ export function WillPreviewSection({
 }: WillPreviewSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [activeTab, setActiveTab] = useState('formatted');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadProfessional = () => {
+    setIsDownloading(true);
+    try {
+      // Try to parse content as JSON for structured data
+      let willContentObj;
+      try {
+        if (typeof content === 'string' && content.trim().startsWith('{')) {
+          willContentObj = JSON.parse(content);
+        } else {
+          // If not JSON, create a basic structure from the text content
+          willContentObj = {
+            personalInfo: {
+              fullName: content.match(/I, ([^,]+),/)?.[1] || '[Full Name]',
+              address: content.match(/residing at ([^,]+),/)?.[1] || '[Address]',
+              dateOfBirth: content.match(/born on ([^.]+)/)?.[1] || '[Date of Birth]'
+            },
+            executors: [],
+            beneficiaries: [],
+            finalArrangements: content.includes('FINAL ARRANGEMENTS') 
+              ? content.split('FINAL ARRANGEMENTS')[1]?.split('\n\n')[0] 
+              : 'No specific arrangements specified'
+          };
+        }
+      } catch (e) {
+        console.log('Could not parse content as JSON, using fallback structure');
+        willContentObj = {
+          personalInfo: {
+            fullName: '[Full Name]',
+            address: '[Address]',
+            dateOfBirth: '[Date of Birth]'
+          },
+          executors: [],
+          beneficiaries: [],
+          finalArrangements: 'No specific arrangements specified'
+        };
+      }
+      
+      downloadProfessionalDocument(willContentObj, signature, title);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -44,7 +89,7 @@ export function WillPreviewSection({
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="formatted">Formatted</TabsTrigger>
-                <TabsTrigger value="professional">Legal Format</TabsTrigger>
+                <TabsTrigger value="professional">Professional</TabsTrigger>
               </TabsList>
               
               <TabsContent value="formatted" className="mt-4">
@@ -73,7 +118,26 @@ export function WillPreviewSection({
               </TabsContent>
             </Tabs>
             
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleDownloadProfessional}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <Download className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileCheck className="mr-2 h-4 w-4" />
+                    Download Professional Will
+                  </>
+                )}
+              </Button>
+              
               {isWillFinalized && (
                 <div className="text-xs text-green-600 text-center">
                   ✓ Will has been finalized and saved
