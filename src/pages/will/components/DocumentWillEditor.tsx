@@ -694,7 +694,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
                       value={residualEstate} 
                       label="residualEstate" 
                       onEdit={(value) => setResidualEstate(value)}
-                      onAiHelp={() => handleShowAIHelper('residualEestate')}
+                      onAiHelp={() => handleShowAIHelper('residualEstate')}
                     />
                     .
                   </p>
