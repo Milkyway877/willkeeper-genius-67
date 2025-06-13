@@ -46,9 +46,10 @@ export function InfoField({
                 {...field} 
                 className={cn(
                   "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 focus:ring-2 focus:ring-willtank-100 transition-all",
+                  !field.value && "bg-amber-50 border-amber-300 placeholder:text-amber-700",
                   className
                 )}
-                placeholder={props.placeholder || `Enter ${label.toLowerCase()}`} 
+                placeholder={props.placeholder || `[Enter ${label.toLowerCase()}]`} 
               />
             </FormControl>
             <FormMessage />
@@ -71,9 +72,10 @@ export function InfoField({
         name={name} 
         className={cn(
           "bg-white border-2 focus:border-willtank-600 shadow-sm hover:border-gray-400 focus:ring-2 focus:ring-willtank-100 transition-all",
+          "bg-amber-50 border-amber-300 placeholder:text-amber-700",
           className
         )} 
-        placeholder={props.placeholder || `Enter ${label.toLowerCase()}`}
+        placeholder={props.placeholder || `[Enter ${label.toLowerCase()}]`}
         {...props} 
       />
     </div>

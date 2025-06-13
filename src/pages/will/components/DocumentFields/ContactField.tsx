@@ -16,7 +16,7 @@ interface ContactFieldProps {
   onAiHelp?: (position: { x: number, y: number }) => void;
   required?: boolean;
   error?: string;
-  className?: string; // Added className prop
+  className?: string;
 }
 
 export function ContactField({ 
@@ -85,8 +85,8 @@ export function ContactField({
         type={type}
         value={value} 
         onChange={handleChange}
-        placeholder={placeholder || `Enter ${label.toLowerCase()}`}
-        className={`h-8 text-sm ${error ? 'border-red-500' : ''}`}
+        placeholder={placeholder || `[Enter ${label.toLowerCase()}]`}
+        className={`h-8 text-sm ${error ? 'border-red-500' : ''} ${!value ? 'bg-amber-50 border-amber-300 placeholder:text-amber-700' : ''}`}
         required={required}
       />
       
