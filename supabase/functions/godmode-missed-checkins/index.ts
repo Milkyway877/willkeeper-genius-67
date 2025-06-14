@@ -1,16 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
-const resendApiKey = Deno.env.get("RESEND_API_KEY") as string;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { corsHeaders } from "../_shared/cors.ts";
+import { getSupabaseClient, formatError } from "../_shared/db-helper.ts";
+import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from "../_shared/email-helper.ts";
 
 interface GodModeRequest {
   action: 'auto_scan' | 'process_user';
@@ -40,7 +32,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("GODMODE Error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: error.message }),
+      JSON.stringify({ error: "Internal server error", details: formatError(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -49,6 +41,7 @@ serve(async (req) => {
 async function scanAndProcessAllMissedCheckins() {
   console.log('🚀 GODMODE: Scanning for missed check-ins...');
   
+  const supabase = getSupabaseClient();
   const now = new Date();
   
   // Find all users with enabled check-in systems and missed check-ins
@@ -99,7 +92,7 @@ async function scanAndProcessAllMissedCheckins() {
       results.push({
         userId: user.user_id,
         success: false,
-        error: error.message
+        error: formatError(error)
       });
     }
   }
@@ -117,6 +110,8 @@ async function scanAndProcessAllMissedCheckins() {
 
 async function processUserMissedCheckin(userId: string, force: boolean = false) {
   console.log(`🎯 GODMODE: Processing user ${userId}`);
+  
+  const supabase = getSupabaseClient();
   
   // Get comprehensive user data
   const [userResult, settingsResult, checkinResult, lastNotificationResult] = await Promise.all([
@@ -235,7 +230,7 @@ async function sendUserReminder(user: any, daysOverdue: number, urgencyLevel: st
 
   const colors = urgencyColors[urgencyLevel as keyof typeof urgencyColors];
   
-  const userEmailContent = buildEmailLayout(`
+  const emailContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h1 style="color: ${colors.primary};">
         ${urgencyLevel === 'severe' ? '🚨 CRITICAL: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : '📅 '}
@@ -259,7 +254,7 @@ async function sendUserReminder(user: any, daysOverdue: number, urgencyLevel: st
       </div>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${supabaseUrl.replace('supabase.co', 'lovable.app')}/check-ins" 
+        <a href="https://willtank.com/check-ins" 
            style="background-color: ${colors.primary}; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
           ${urgencyLevel === 'severe' ? '🚨 COMPLETE CHECK-IN NOW' : 'COMPLETE CHECK-IN'}
         </a>
@@ -273,13 +268,16 @@ async function sendUserReminder(user: any, daysOverdue: number, urgencyLevel: st
       <p>If you're unable to check in due to technical issues, please contact support@willtank.com immediately.</p>
       <p>Best regards,<br>WillTank Automated Protection System</p>
     </div>
-  `);
+  `;
 
   try {
-    const emailResponse = await sendEmail({
+    const resend = getResendClient();
+    
+    const response = await resend.emails.send({
+      from: "WillTank GODMODE <godmode@willtank.com>",
       to: [user.email],
       subject: `${urgencyLevel === 'severe' ? '🚨 CRITICAL: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : ''}WillTank Check-in Required (${daysOverdue} days overdue)`,
-      html: userEmailContent,
+      html: buildDefaultEmailLayout(emailContent),
       tags: [
         { name: 'type', value: 'godmode_user_reminder' },
         { name: 'urgency', value: urgencyLevel },
@@ -287,15 +285,23 @@ async function sendUserReminder(user: any, daysOverdue: number, urgencyLevel: st
       ]
     });
 
-    console.log(`✅ User reminder sent to ${user.email}: ${emailResponse.id}`);
-    return { success: true, emailId: emailResponse.id };
+    if (isEmailSendSuccess(response)) {
+      console.log(`✅ User reminder sent to ${user.email}: ${response.id}`);
+      return { success: true, emailId: response.id };
+    } else {
+      const errorMsg = formatResendError(response);
+      console.error('❌ Error sending user reminder:', errorMsg);
+      return { success: false, error: errorMsg };
+    }
   } catch (error) {
     console.error('❌ Error sending user reminder:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: formatError(error) };
   }
 }
 
 async function sendContactNotifications(userId: string, userFullName: string, userEmail: string, daysOverdue: number, urgencyLevel: string) {
+  const supabase = getSupabaseClient();
+  
   // Get all contacts
   const [executorsResult, beneficiariesResult, trustedContactsResult] = await Promise.all([
     supabase.from('will_executors').select('*').eq('user_id', userId),
@@ -355,6 +361,7 @@ async function sendContactNotifications(userId: string, userFullName: string, us
   }
 
   const notifications = [];
+  const resend = getResendClient();
   
   const urgencyColors = {
     mild: { bg: '#fef3c7', border: '#fcd34d', text: '#92400e', primary: '#4a6cf7' },
@@ -370,7 +377,7 @@ async function sendContactNotifications(userId: string, userFullName: string, us
 
   for (const contact of contacts) {
     try {
-      const emailContent = buildEmailLayout(`
+      const emailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: ${colors.primary};">
             ${urgencyLevel === 'severe' ? '🚨 CRITICAL ALERT: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : '📅 '}
@@ -427,12 +434,13 @@ async function sendContactNotifications(userId: string, userFullName: string, us
           <p>Your prompt attention to this matter is crucial for ${userFullName}'s digital legacy protection.</p>
           <p>Best regards,<br>WillTank GODMODE Automated System</p>
         </div>
-      `);
+      `;
 
-      const emailResponse = await sendEmail({
+      const response = await resend.emails.send({
+        from: "WillTank GODMODE <godmode@willtank.com>",
         to: [contact.email],
         subject: `${urgencyLevel === 'severe' ? '🚨 CRITICAL: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : ''}${userFullName} - Check-in Alert (${daysOverdue} days overdue)`,
-        html: emailContent,
+        html: buildDefaultEmailLayout(emailContent),
         tags: [
           { name: 'type', value: 'godmode_contact_alert' },
           { name: 'contact_type', value: contact.type },
@@ -441,15 +449,26 @@ async function sendContactNotifications(userId: string, userFullName: string, us
         ]
       });
 
-      notifications.push({
-        contact_name: contact.name,
-        contact_email: contact.email,
-        contact_type: contact.type,
-        email_id: emailResponse.id,
-        success: true
-      });
-
-      console.log(`✅ Contact notification sent to ${contact.name} (${contact.email}): ${emailResponse.id}`);
+      if (isEmailSendSuccess(response)) {
+        notifications.push({
+          contact_name: contact.name,
+          contact_email: contact.email,
+          contact_type: contact.type,
+          email_id: response.id,
+          success: true
+        });
+        console.log(`✅ Contact notification sent to ${contact.name} (${contact.email}): ${response.id}`);
+      } else {
+        const errorMsg = formatResendError(response);
+        notifications.push({
+          contact_name: contact.name,
+          contact_email: contact.email,
+          contact_type: contact.type,
+          success: false,
+          error: errorMsg
+        });
+        console.error(`❌ Error sending notification to ${contact.name}:`, errorMsg);
+      }
     } catch (error) {
       console.error(`❌ Error sending notification to ${contact.name}:`, error);
       notifications.push({
@@ -457,69 +476,11 @@ async function sendContactNotifications(userId: string, userFullName: string, us
         contact_email: contact.email,
         contact_type: contact.type,
         success: false,
-        error: error.message
+        error: formatError(error)
       });
     }
   }
 
   console.log(`📧 Sent ${notifications.filter(n => n.success).length}/${notifications.length} contact notifications`);
   return { notifications };
-}
-
-// Email helper functions - inline to avoid dependencies
-function buildEmailLayout(content: string): string {
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>WillTank GODMODE</title>
-    </head>
-    <body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: Arial, sans-serif;">
-      <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h2 style="color: #4a6cf7; margin: 0;">WillTank</h2>
-          <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">Automated Protection System</p>
-        </div>
-        ${content}
-        <div style="border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px; text-align: center;">
-          <p style="color: #6b7280; font-size: 12px; margin: 0;">
-            This is an automated message from WillTank's GODMODE system.<br>
-            If you have questions, contact support@willtank.com
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-async function sendEmail(options: {
-  to: string[];
-  subject: string;
-  html: string;
-  tags?: Array<{ name: string; value: string }>;
-}) {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${resendApiKey}`,
-    },
-    body: JSON.stringify({
-      from: "WillTank GODMODE <godmode@willtank.com>",
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      tags: options.tags || []
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Email send failed: ${error}`);
-  }
-
-  return await response.json();
 }
