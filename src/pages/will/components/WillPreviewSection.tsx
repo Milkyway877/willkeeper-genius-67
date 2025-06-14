@@ -11,6 +11,7 @@ import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils'
 interface WillPreviewSectionProps {
   defaultOpen?: boolean;
   content: string;
+  formData?: any;
   signature?: string | null;
   title?: string;
   isWillFinalized?: boolean;
@@ -21,6 +22,7 @@ interface WillPreviewSectionProps {
 export function WillPreviewSection({ 
   defaultOpen = true, 
   content,
+  formData = null,
   signature = null,
   title = "Will Preview",
   isWillFinalized = false,
@@ -34,38 +36,42 @@ export function WillPreviewSection({
   const handleDownloadProfessional = () => {
     setIsDownloading(true);
     try {
-      // Try to parse content as JSON for structured data
-      let willContentObj;
-      try {
-        if (typeof content === 'string' && content.trim().startsWith('{')) {
-          willContentObj = JSON.parse(content);
-        } else {
-          // If not JSON, create a basic structure from the text content
+      // Use structured form data if available, otherwise fallback to content parsing
+      let willContentObj = formData;
+      
+      if (!willContentObj && content) {
+        // Fallback to parsing content if no form data available
+        try {
+          if (typeof content === 'string' && content.trim().startsWith('{')) {
+            willContentObj = JSON.parse(content);
+          } else {
+            // Create basic structure from text content
+            willContentObj = {
+              personalInfo: {
+                fullName: content.match(/I, ([^,]+),/)?.[1] || '[Full Name]',
+                address: content.match(/residing at ([^,]+),/)?.[1] || '[Address]',
+                dateOfBirth: content.match(/born on ([^.]+)/)?.[1] || '[Date of Birth]'
+              },
+              executors: [],
+              beneficiaries: [],
+              finalArrangements: content.includes('FINAL ARRANGEMENTS') 
+                ? content.split('FINAL ARRANGEMENTS')[1]?.split('\n\n')[0] 
+                : 'No specific arrangements specified'
+            };
+          }
+        } catch (e) {
+          console.log('Could not parse content, using empty structure');
           willContentObj = {
             personalInfo: {
-              fullName: content.match(/I, ([^,]+),/)?.[1] || '[Full Name]',
-              address: content.match(/residing at ([^,]+),/)?.[1] || '[Address]',
-              dateOfBirth: content.match(/born on ([^.]+)/)?.[1] || '[Date of Birth]'
+              fullName: '[Full Name]',
+              address: '[Address]',
+              dateOfBirth: '[Date of Birth]'
             },
             executors: [],
             beneficiaries: [],
-            finalArrangements: content.includes('FINAL ARRANGEMENTS') 
-              ? content.split('FINAL ARRANGEMENTS')[1]?.split('\n\n')[0] 
-              : 'No specific arrangements specified'
+            finalArrangements: 'No specific arrangements specified'
           };
         }
-      } catch (e) {
-        console.log('Could not parse content as JSON, using fallback structure');
-        willContentObj = {
-          personalInfo: {
-            fullName: '[Full Name]',
-            address: '[Address]',
-            dateOfBirth: '[Date of Birth]'
-          },
-          executors: [],
-          beneficiaries: [],
-          finalArrangements: 'No specific arrangements specified'
-        };
       }
       
       downloadProfessionalDocument(willContentObj, signature, title);
@@ -107,7 +113,7 @@ export function WillPreviewSection({
               <TabsContent value="professional" className="mt-4">
                 <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
                   <WillPreview 
-                    content={content} 
+                    content={formData || content} 
                     signature={signature}
                     formatted={true}
                     useProfessionalFormat={true}

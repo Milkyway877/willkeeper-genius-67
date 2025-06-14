@@ -156,6 +156,8 @@ Date: ${new Date().toLocaleDateString()}
   const [finalizedWill, setFinalizedWill] = useState<any>(null);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   
+  const [formData, setFormData] = useState<WillFormValues | null>(null);
+  
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
     defaultValues: {
@@ -181,6 +183,9 @@ Date: ${new Date().toLocaleDateString()}
     console.log("Form values updated:", values);
     
     if (!values) return;
+    
+    // Store the structured form data
+    setFormData(values);
     
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
@@ -331,6 +336,7 @@ Date: ${new Date().toLocaleDateString()}
                 <WillPreviewSection 
                   defaultOpen={true} 
                   content={willContent}
+                  formData={formData}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                   isWillFinalized={isFinalized}
