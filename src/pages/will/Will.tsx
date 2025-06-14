@@ -47,7 +47,8 @@ export default function Will() {
     promptCount, 
     timeRemaining,
     formattedTimeRemaining,
-    dismissPrompt 
+    dismissPrompt,
+    triggerPrompt 
   } = useRandomSubscriptionPrompts();
 
   useEffect(() => {
