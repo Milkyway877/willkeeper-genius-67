@@ -82,7 +82,7 @@ export function CountdownBanner({
             className={`${style.buttonColor} font-medium`}
           >
             <Crown className="h-4 w-4 mr-2" />
-            Upgrade Now - $9.99/month
+            Upgrade Now
           </Button>
         </div>
       </div>

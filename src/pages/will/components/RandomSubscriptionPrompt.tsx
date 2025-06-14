@@ -33,7 +33,7 @@ export function RandomSubscriptionPrompt({
         return {
           title: "🚨 URGENT: Your Will Expires in Minutes!",
           description: `Your will document will be permanently deleted in ${formattedTimeRemaining}! Upgrade NOW to keep your will safe in WillTank forever.`,
-          buttonText: "SECURE MY WILL NOW - $9.99/month",
+          buttonText: "SECURE MY WILL NOW",
           alertVariant: "destructive" as const,
           icon: <AlertTriangle className="h-5 w-5 animate-pulse" />,
           bgColor: "bg-red-50 border-red-200",
