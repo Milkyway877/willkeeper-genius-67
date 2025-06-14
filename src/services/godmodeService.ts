@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface MonitoringStatus {
@@ -55,7 +54,8 @@ export const getMonitoringStatus = async (willId: string): Promise<MonitoringSta
 
     if (error || !data) return null;
 
-    const subscriptionDeadline = new Date(data.wills.subscription_required_after);
+    // Access the first element of the wills array since it's a relationship
+    const subscriptionDeadline = new Date(data.wills[0].subscription_required_after);
     const now = new Date();
     const timeRemaining = Math.max(0, subscriptionDeadline.getTime() - now.getTime());
 
