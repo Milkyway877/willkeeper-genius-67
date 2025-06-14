@@ -1,7 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4'
-import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from '../_shared/email-helper.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,7 +47,6 @@ serve(async (req) => {
     // Check rate limiting
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
     // Get recent reset attempts for this email
     const { data: recentAttempts, error: rateLimitError } = await supabaseClient
@@ -116,52 +114,6 @@ serve(async (req) => {
         if (resetError) {
           console.error('Supabase reset error:', resetError);
           throw new Error('Failed to send reset email');
-        }
-
-        // Try to send custom branded email as well
-        try {
-          const resend = getResendClient();
-          
-          const emailContent = `
-            <div style="text-align: center; padding: 40px 20px;">
-              <h1 style="color: #1f2937; font-size: 28px; margin-bottom: 20px;">Reset Your WillTank Password</h1>
-              <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
-                You requested to reset your password for your WillTank account. Click the button below to create a new password.
-              </p>
-              <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px;">
-                This link will expire in 1 hour for your security.
-              </p>
-              <div style="margin: 30px 0;">
-                <a href="${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/auth/reset-password" 
-                   style="background-color: #1f2937; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">
-                  Reset Password
-                </a>
-              </div>
-              <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-                If you didn't request this password reset, you can safely ignore this email.
-              </p>
-              <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
-                For security reasons, this link can only be used once.
-              </p>
-            </div>
-          `;
-
-          const emailResponse = await resend.emails.send({
-            from: 'WillTank Security <security@willtank.com>',
-            to: [normalizedEmail],
-            subject: 'Reset Your WillTank Password',
-            html: buildDefaultEmailLayout(emailContent),
-          });
-
-          if (!isEmailSendSuccess(emailResponse)) {
-            console.error('Custom email send failed:', formatResendError(emailResponse));
-            // Don't fail the whole operation if custom email fails
-          } else {
-            console.log('Custom reset email sent successfully');
-          }
-        } catch (customEmailError) {
-          console.error('Custom email error (non-critical):', customEmailError);
-          // Continue - Supabase email should still work
         }
 
         resetSuccess = true;
