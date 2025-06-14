@@ -38,12 +38,16 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     promptCount, 
     timeRemaining,
     formattedTimeRemaining,
+    hasWills,
     dismissPrompt,
     triggerPrompt 
   } = useRandomSubscriptionPrompts();
   
-  // Show countdown banner for non-subscribers
-  const shouldShowCountdown = !subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial;
+  // Show countdown banner only for users who have wills and are not subscribed
+  const shouldShowCountdown = !subscriptionStatus.isSubscribed && 
+                             !subscriptionStatus.isTrial && 
+                             hasWills && 
+                             timeRemaining > 0;
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -151,8 +155,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Global Countdown Banner */}
-          {showAuthenticatedLayout && shouldShowCountdown && timeRemaining > 0 && (
+          {/* Global Countdown Banner - Only show for users with wills */}
+          {showAuthenticatedLayout && shouldShowCountdown && (
             <CountdownBanner
               timeRemaining={timeRemaining}
               formattedTimeRemaining={formattedTimeRemaining}
@@ -195,8 +199,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         </motion.div>
       </div>
 
-      {/* Global Random Subscription Prompt */}
-      {showAuthenticatedLayout && (
+      {/* Global Random Subscription Prompt - Only show for users with wills */}
+      {showAuthenticatedLayout && hasWills && (
         <RandomSubscriptionPrompt
           isOpen={showPrompt}
           onClose={dismissPrompt}
