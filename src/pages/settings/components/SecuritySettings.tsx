@@ -6,8 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { Shield, Key, Save, Loader2, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { getUserSecurity, createUserSecurity, disable2FA, validateTOTP } from '@/services/encryptionService';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { getUserSecurity, createUserSecurity, disable2FA } from '@/services/encryptionService';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -15,7 +15,6 @@ export function SecuritySettings() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [disabling2FA, setDisabling2FA] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
   
@@ -35,7 +34,6 @@ export function SecuritySettings() {
     try {
       setLoading(true);
       
-      // Check if the user is authenticated
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -50,10 +48,8 @@ export function SecuritySettings() {
       
       console.log("Fetching security settings for user:", user.id);
       
-      // Get user security settings from the database
       let userSecurity = await getUserSecurity();
       
-      // If no security record exists, create one
       if (!userSecurity) {
         console.log("No security record found, creating one...");
         userSecurity = await createUserSecurity();
@@ -85,7 +81,6 @@ export function SecuritySettings() {
     }
   };
   
-  // Toggle security setting
   const toggleSecurity = async (setting: keyof typeof security) => {
     if (setting === 'twoFactorEnabled') {
       if (security.twoFactorEnabled) {
@@ -114,7 +109,6 @@ export function SecuritySettings() {
     });
   };
   
-  // Handle disabling 2FA
   const handle2FADisable = async (code: string) => {
     try {
       setDisabling2FA(true);
@@ -122,7 +116,6 @@ export function SecuritySettings() {
       
       console.log("Attempting to disable 2FA with code:", code);
       
-      // Attempt to disable 2FA
       const result = await disable2FA(code);
       
       if (result.success) {
@@ -153,7 +146,6 @@ export function SecuritySettings() {
     }
   };
   
-  // Handle password change
   const handlePasswordChange = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

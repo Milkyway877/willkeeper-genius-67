@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -10,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { check2FAStatus } from '@/services/encryptionService';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
 
@@ -60,10 +60,6 @@ export function SignInForm() {
       password: '',
     },
   });
-  
-  const generateVerificationCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  };
 
   const onSubmit = async (data: SignInFormInputs) => {
     try {
@@ -81,7 +77,7 @@ export function SignInForm() {
         return;
       }
       
-      // We'll first check if the credentials are valid without signing in
+      // First, validate credentials without signing in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -96,65 +92,48 @@ export function SignInForm() {
         setIsLoading(false);
         return;
       }
-      
-      // User exists and password is correct - check if verification is required
-      // For now, direct the user to the dashboard immediately after successful login
-      toast({
-        title: "Login successful",
-        description: "You've been signed in successfully.",
-      });
-      
-      // Navigate directly to dashboard
-      navigate('/dashboard', { replace: true });
-      
-      /* Disable verification flow temporarily 
-      // User exists and password is correct, now proceed with verification
-      // Sign out the user to require verification
+
+      // Sign out immediately to check 2FA status
       await supabase.auth.signOut();
       
-      // Generate and send verification code
-      const verificationCode = generateVerificationCode();
+      // Check if user has 2FA enabled
+      // We need to temporarily sign in to check security settings
+      const { data: tempAuthData } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
       
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification', {
-        body: {
-          email: data.email,
-          code: verificationCode,
-          type: 'login'
+      if (tempAuthData?.user) {
+        const has2FA = await check2FAStatus();
+        
+        // Sign out again
+        await supabase.auth.signOut();
+        
+        if (has2FA) {
+          // Store password temporarily for 2FA verification
+          sessionStorage.setItem('auth_password', data.password);
+          
+          // Redirect to 2FA verification
+          navigate(`/auth/2fa-verification?email=${encodeURIComponent(data.email)}`, { replace: true });
+        } else {
+          // No 2FA required, sign in directly
+          const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+            email: data.email,
+            password: data.password,
+          });
+          
+          if (finalSignInError) {
+            throw new Error(finalSignInError.message);
+          }
+          
+          toast({
+            title: "Login successful",
+            description: "You've been signed in successfully.",
+          });
+          
+          navigate('/dashboard', { replace: true });
         }
-      });
-      
-      if (emailError) {
-        throw new Error("Failed to send verification code");
       }
-      
-      // Store verification code in database
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: data.email,
-          code: verificationCode,
-          type: 'login',
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes expiry
-          used: false
-        });
-      
-      if (storeError) {
-        console.error("Error storing verification code:", storeError);
-        throw new Error("Failed to process verification");
-      }
-      
-      toast({
-        title: "Verification code sent",
-        description: "Please check your email for the verification code.",
-      });
-      
-      // Save user credentials in session storage for verification page
-      sessionStorage.setItem('auth_email', data.email);
-      sessionStorage.setItem('auth_password', data.password);
-      
-      // Navigate to verification page
-      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=login`);
-      */
       
     } catch (error: any) {
       console.error("Sign in error:", error);
@@ -226,6 +205,10 @@ export function SignInForm() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const generateVerificationCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
   return (
@@ -303,7 +286,7 @@ export function SignInForm() {
           </div>
           
           <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">After signing in, you'll need to verify your login with a 6-digit code sent to your email.</p>
+            <p className="font-medium">After signing in, users with 2FA enabled will need to verify with their authenticator app.</p>
           </div>
         </div>
       </form>

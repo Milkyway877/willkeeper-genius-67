@@ -15,7 +15,7 @@ export interface EncryptionKey {
   last_used: string | null;
 }
 
-// Get user security settings
+// Get user security settings with proper error handling
 export const getUserSecurity = async () => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -31,9 +31,15 @@ export const getUserSecurity = async () => {
       .from('user_security')
       .select('*')
       .eq('user_id', user.id)
-      .maybeSingle();
+      .limit(1)
+      .single();
     
     if (error) {
+      // If no record exists, that's okay - we'll handle it
+      if (error.code === 'PGRST116') {
+        console.log('No security record found for user:', user.id);
+        return null;
+      }
       console.error('Error fetching user security:', error);
       return null;
     }
@@ -43,6 +49,17 @@ export const getUserSecurity = async () => {
   } catch (error) {
     console.error('Error in getUserSecurity:', error);
     return null;
+  }
+};
+
+// Check if user has 2FA enabled
+export const check2FAStatus = async (): Promise<boolean> => {
+  try {
+    const security = await getUserSecurity();
+    return security?.google_auth_enabled || false;
+  } catch (error) {
+    console.error('Error checking 2FA status:', error);
+    return false;
   }
 };
 
@@ -273,7 +290,6 @@ export const disable2FA = async (code: string) => {
       .from('user_security')
       .update({ 
         google_auth_enabled: false,
-        // Keep the existing secret so we don't have to regenerate it if the user enables 2FA again
       })
       .eq('user_id', user.id);
     
@@ -494,7 +510,6 @@ export const updateEncryptionKeyStatus = async (keyId: string, status: string): 
       .from('encryption_keys')
       .update({ 
         status,
-        // No need to update updated_at as it's likely handled by the database
       })
       .eq('id', keyId);
     

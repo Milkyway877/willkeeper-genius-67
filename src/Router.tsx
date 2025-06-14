@@ -10,6 +10,7 @@ import Index from '@/pages/Index';
 import SignIn from '@/pages/auth/SignIn';
 import SignUp from '@/pages/auth/SignUp';
 import Recover from '@/pages/auth/Recover';
+import TwoFactorVerification from '@/pages/auth/TwoFactorVerification';
 import Dashboard from '@/pages/Dashboard';
 import Wills from '@/pages/wills/Wills';
 import Tank from '@/pages/tank/Tank';
@@ -18,6 +19,7 @@ import DeathVerificationPage from '@/pages/DeathVerificationPage';
 import TreasuryPage from '@/pages/TreasuryPage';
 import Billing from '@/pages/billing/Billing';
 import WillEditorPage from '@/pages/will/WillEditorPage';
+import IDSecurity from '@/pages/security/IDSecurity';
 import { TrialSuccess } from '@/pages/TrialSuccess';
 
 const queryClient = new QueryClient();
@@ -29,11 +31,17 @@ export function Router() {
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/sign-in" element={<SignIn />} />
-            <Route path="/sign-up" element={<SignUp />} />
-            <Route path="/recover" element={<Recover />} />
+            <Route path="/auth/signin" element={<SignIn />} />
+            <Route path="/auth/signup" element={<SignUp />} />
+            <Route path="/auth/recover" element={<Recover />} />
+            <Route path="/auth/2fa-verification" element={<TwoFactorVerification />} />
             <Route path="/trial-success" element={<TrialSuccess />} />
             <Route path="/pricing" element={<Billing />} />
+            <Route path="/security/IDSecurity" element={
+              <ProtectedRoute>
+                <IDSecurity />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />

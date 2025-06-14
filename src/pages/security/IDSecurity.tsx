@@ -15,8 +15,7 @@ import {
   AlertCircle, 
   CheckCircle, 
   RefreshCw, 
-  Lock,
-  Unlock
+  Lock
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -24,8 +23,7 @@ import {
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+  DialogTitle 
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,8 +32,7 @@ import {
   getUserSecurity,
   generateTOTPSecret,
   setup2FA,
-  disable2FA,
-  validateTOTP
+  disable2FA
 } from '@/services/encryptionService';
 
 export default function IDSecurity() {
@@ -51,7 +48,6 @@ export default function IDSecurity() {
     secret: '',
     qrCodeUrl: ''
   });
-  const [enableTwoFactor, setEnableTwoFactor] = useState(false);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [setupComplete, setSetupComplete] = useState(false);
 
@@ -64,7 +60,6 @@ export default function IDSecurity() {
       setLoading(true);
       const data = await getUserSecurity();
       setSecurity(data);
-      setEnableTwoFactor(data?.google_auth_enabled || false);
       
       if (!data?.google_auth_secret) {
         // Generate a new secret if user doesn't have one
@@ -83,17 +78,25 @@ export default function IDSecurity() {
     }
   };
 
+  const handle2FAToggle = async (enabled: boolean) => {
+    if (enabled && !security?.google_auth_enabled) {
+      // User wants to enable 2FA - don't change state yet, they need to complete setup
+      setActiveTab("2fa");
+    } else if (!enabled && security?.google_auth_enabled) {
+      // User wants to disable 2FA - show confirmation dialog
+      setShowDisableDialog(true);
+    }
+  };
+
   const handle2FASetup = async (otpCode: string) => {
     try {
       setSetting2FA(true);
       setVerificationError(null);
       
-      // Clean up the code
       const cleanCode = otpCode.replace(/\s+/g, '');
       
       console.log("Setting up 2FA with code:", cleanCode, "and secret:", totp.secret);
       
-      // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
@@ -102,10 +105,8 @@ export default function IDSecurity() {
       
       console.log("Setting up 2FA for user:", user.id);
       
-      // Clean up secret - remove spaces
       const cleanSecret = totp.secret.replace(/\s+/g, '');
       
-      // Call our edge function to validate and store the 2FA settings
       const { data, error } = await supabase.functions.invoke('two-factor-auth', {
         body: {
           action: 'validate',
@@ -128,7 +129,6 @@ export default function IDSecurity() {
         return;
       }
       
-      // Store recovery codes if returned
       if (data.recoveryCodes && data.recoveryCodes.length > 0) {
         setRecoveryCodes(data.recoveryCodes);
         setSetupComplete(true);
@@ -139,7 +139,7 @@ export default function IDSecurity() {
         description: "Your account is now protected with 2FA.",
       });
       
-      await fetchSecurityData(); // Refresh security data
+      await fetchSecurityData();
       
     } catch (error) {
       console.error("Error setting up authenticator:", error);
@@ -158,17 +158,15 @@ export default function IDSecurity() {
       setDisabling2FA(true);
       setVerificationError(null);
       
-      // Clean up the code
       const cleanCode = otpCode.replace(/\s+/g, '');
       
       console.log("Disabling 2FA with code:", cleanCode);
       
-      // Call the disable2FA function
       const result = await disable2FA(cleanCode);
       
       if (result.success) {
         setShowDisableDialog(false);
-        await fetchSecurityData(); // Refresh security data
+        await fetchSecurityData();
         
         toast({
           title: '2FA Disabled',
@@ -187,18 +185,6 @@ export default function IDSecurity() {
       );
     } finally {
       setDisabling2FA(false);
-    }
-  };
-
-  const toggleTwoFactor = (enabled: boolean) => {
-    console.log("Toggle 2FA to:", enabled);
-    setEnableTwoFactor(enabled);
-    if (!enabled && security?.google_auth_enabled) {
-      setShowDisableDialog(true);
-    } else if (enabled && !security?.google_auth_enabled) {
-      // We don't show dialog here because the user still needs to set up 2FA
-      // Just update the UI state to reflect their intent
-      setActiveTab("2fa");
     }
   };
 
@@ -284,11 +270,11 @@ export default function IDSecurity() {
                     {!loading && security !== null && (
                       <div className="flex items-center gap-2">
                         <Switch 
-                          checked={enableTwoFactor} 
+                          checked={security?.google_auth_enabled || false} 
                           disabled={loading || setting2FA}
-                          onCheckedChange={toggleTwoFactor}
+                          onCheckedChange={handle2FAToggle}
                         />
-                        {enableTwoFactor ? (
+                        {security?.google_auth_enabled ? (
                           <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
                             Enabled
                           </span>
@@ -313,7 +299,7 @@ export default function IDSecurity() {
                         <CheckCircle className="h-4 w-4 text-green-600" />
                         <AlertTitle className="text-green-800">Two-factor authentication is enabled</AlertTitle>
                         <AlertDescription className="text-green-700">
-                          Your account is protected with an additional layer of security.
+                          Your account is protected with an additional layer of security. You will be required to enter a verification code from your authenticator app when signing in.
                         </AlertDescription>
                       </Alert>
                       
@@ -322,52 +308,6 @@ export default function IDSecurity() {
                         <p className="text-sm text-gray-600 mb-4">
                           You're using an authenticator app to generate verification codes.
                         </p>
-                        
-                        <Dialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
-                              <Lock className="mr-2 h-4 w-4" /> Disable 2FA
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
-                              <DialogDescription>
-                                This will reduce the security of your account. Are you sure you want to continue?
-                              </DialogDescription>
-                            </DialogHeader>
-                            
-                            <div className="py-4">
-                              <Alert variant="destructive" className="mb-4">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertTitle>Security Warning</AlertTitle>
-                                <AlertDescription>
-                                  Disabling two-factor authentication will make your account more vulnerable to unauthorized access.
-                                </AlertDescription>
-                              </Alert>
-                              
-                              <p className="text-sm mb-2">
-                                Enter the verification code from your authenticator app to confirm:
-                              </p>
-                              
-                              <TwoFactorInput 
-                                onSubmit={handle2FADisable} 
-                                loading={disabling2FA}
-                                error={verificationError}
-                              />
-                            </div>
-                            
-                            <DialogFooter>
-                              <Button 
-                                variant="outline" 
-                                onClick={() => setShowDisableDialog(false)}
-                                disabled={disabling2FA}
-                              >
-                                Cancel
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
                       </div>
                     </div>
                   ) : (
@@ -509,6 +449,48 @@ export default function IDSecurity() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Dialog for disabling 2FA */}
+        <Dialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+              <DialogDescription>
+                This will reduce the security of your account. Are you sure you want to continue?
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Security Warning</AlertTitle>
+                <AlertDescription>
+                  Disabling two-factor authentication will make your account more vulnerable to unauthorized access.
+                </AlertDescription>
+              </Alert>
+              
+              <p className="text-sm mb-4">
+                Enter the verification code from your authenticator app to confirm:
+              </p>
+              
+              <TwoFactorInput 
+                onSubmit={handle2FADisable} 
+                loading={disabling2FA}
+                error={verificationError}
+              />
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDisableDialog(false)}
+                disabled={disabling2FA}
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
