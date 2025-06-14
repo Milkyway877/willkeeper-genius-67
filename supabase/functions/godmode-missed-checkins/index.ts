@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { getResendClient, buildDefaultEmailLayout } from "../_shared/email-helper.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +9,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+const resendApiKey = Deno.env.get("RESEND_API_KEY") as string;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface GodModeRequest {
@@ -224,7 +224,6 @@ async function processUserMissedCheckin(userId: string, force: boolean = false) 
 }
 
 async function sendUserReminder(user: any, daysOverdue: number, urgencyLevel: string) {
-  const resend = getResendClient();
   const userFullName = user.full_name || 
     (user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.email);
 
@@ -236,7 +235,7 @@ async function sendUserReminder(user: any, daysOverdue: number, urgencyLevel: st
 
   const colors = urgencyColors[urgencyLevel as keyof typeof urgencyColors];
   
-  const userEmailContent = `
+  const userEmailContent = buildEmailLayout(`
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h1 style="color: ${colors.primary};">
         ${urgencyLevel === 'severe' ? '🚨 CRITICAL: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : '📅 '}
@@ -274,14 +273,13 @@ async function sendUserReminder(user: any, daysOverdue: number, urgencyLevel: st
       <p>If you're unable to check in due to technical issues, please contact support@willtank.com immediately.</p>
       <p>Best regards,<br>WillTank Automated Protection System</p>
     </div>
-  `;
+  `);
 
   try {
-    const emailResponse = await resend.emails.send({
-      from: "WillTank GODMODE <godmode@willtank.com>",
+    const emailResponse = await sendEmail({
       to: [user.email],
       subject: `${urgencyLevel === 'severe' ? '🚨 CRITICAL: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : ''}WillTank Check-in Required (${daysOverdue} days overdue)`,
-      html: buildDefaultEmailLayout(userEmailContent),
+      html: userEmailContent,
       tags: [
         { name: 'type', value: 'godmode_user_reminder' },
         { name: 'urgency', value: urgencyLevel },
@@ -356,7 +354,6 @@ async function sendContactNotifications(userId: string, userFullName: string, us
     return { notifications: [] };
   }
 
-  const resend = getResendClient();
   const notifications = [];
   
   const urgencyColors = {
@@ -373,7 +370,7 @@ async function sendContactNotifications(userId: string, userFullName: string, us
 
   for (const contact of contacts) {
     try {
-      const emailContent = `
+      const emailContent = buildEmailLayout(`
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: ${colors.primary};">
             ${urgencyLevel === 'severe' ? '🚨 CRITICAL ALERT: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : '📅 '}
@@ -430,13 +427,12 @@ async function sendContactNotifications(userId: string, userFullName: string, us
           <p>Your prompt attention to this matter is crucial for ${userFullName}'s digital legacy protection.</p>
           <p>Best regards,<br>WillTank GODMODE Automated System</p>
         </div>
-      `;
+      `);
 
-      const emailResponse = await resend.emails.send({
-        from: "WillTank GODMODE <godmode@willtank.com>",
+      const emailResponse = await sendEmail({
         to: [contact.email],
         subject: `${urgencyLevel === 'severe' ? '🚨 CRITICAL: ' : urgencyLevel === 'moderate' ? '⚠️ URGENT: ' : ''}${userFullName} - Check-in Alert (${daysOverdue} days overdue)`,
-        html: buildDefaultEmailLayout(emailContent),
+        html: emailContent,
         tags: [
           { name: 'type', value: 'godmode_contact_alert' },
           { name: 'contact_type', value: contact.type },
@@ -468,4 +464,62 @@ async function sendContactNotifications(userId: string, userFullName: string, us
 
   console.log(`📧 Sent ${notifications.filter(n => n.success).length}/${notifications.length} contact notifications`);
   return { notifications };
+}
+
+// Email helper functions - inline to avoid dependencies
+function buildEmailLayout(content: string): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>WillTank GODMODE</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: Arial, sans-serif;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h2 style="color: #4a6cf7; margin: 0;">WillTank</h2>
+          <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">Automated Protection System</p>
+        </div>
+        ${content}
+        <div style="border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px; text-align: center;">
+          <p style="color: #6b7280; font-size: 12px; margin: 0;">
+            This is an automated message from WillTank's GODMODE system.<br>
+            If you have questions, contact support@willtank.com
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+async function sendEmail(options: {
+  to: string[];
+  subject: string;
+  html: string;
+  tags?: Array<{ name: string; value: string }>;
+}) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${resendApiKey}`,
+    },
+    body: JSON.stringify({
+      from: "WillTank GODMODE <godmode@willtank.com>",
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      tags: options.tags || []
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Email send failed: ${error}`);
+  }
+
+  return await response.json();
 }
