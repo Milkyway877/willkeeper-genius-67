@@ -150,7 +150,7 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
   }
 };
 
-// Enhanced sendVerificationRequest to use the new notification system
+// Enhanced sendVerificationRequest to use the auto-contact-notifier system
 export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
   try {
     // Get contact details
@@ -175,7 +175,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
     // Get user profile for name
     const { data: userProfile } = await supabase
       .from('user_profiles')
-      .select('first_name, last_name, full_name')
+      .select('first_name, last_name, full_name, email')
       .eq('id', session.user.id)
       .single();
       
@@ -183,114 +183,49 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       (userProfile?.first_name && userProfile?.last_name ? 
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
     
-    // Try using the emailService function first
+    // Update the contact status first
     try {
-      console.log('Sending verification request via emailService');
-      const result = await sendTrustedContactInvitation(
-        contactId,
-        contact.name,
-        contact.email
-      );
+      await supabase
+        .from('trusted_contacts')
+        .update({
+          invitation_sent_at: new Date().toISOString(),
+          invitation_status: 'pending'
+        })
+        .eq('id', contactId);
+    } catch (updateError) {
+      console.error('Error updating contact status:', updateError);
+      // Continue anyway
+    }
+    
+    // Use the auto-contact-notifier function
+    try {
+      console.log('Sending verification via auto-contact-notifier');
       
-      if (result.success) {
-        console.log('Verification request sent successfully via emailService');
-        return true;
-      } else {
-        console.error('emailService failed, trying direct methods');
-        throw new Error(result.error || 'emailService failed');
-      }
-    } catch (emailServiceError) {
-      console.error('Error with emailService:', emailServiceError);
-      
-      // Direct fallback - update the contact status first
-      try {
-        await supabase
-          .from('trusted_contacts')
-          .update({
-            invitation_sent_at: new Date().toISOString(),
-            invitation_status: 'pending'
-          })
-          .eq('id', contactId);
-      } catch (updateError) {
-        console.error('Error updating contact status:', updateError);
-        // Continue anyway
-      }
-      
-      // Try direct function invocation
-      try {
-        console.log('Attempting to send verification via direct invoke');
-        
-        const { data, error: fnError } = await supabase.functions.invoke('send-contact-invitation', {
-          body: {
-            contact: {
-              contactId: contact.id,
-              contactType: 'trusted',
-              name: contact.name,
-              email: contact.email,
-              userId: session.user.id,
-              userFullName
-            },
-            emailDetails: {
-              subject: `Important: ${userFullName} has named you as a trusted contact`,
-              includeVerificationInstructions: false,
-              includeUserBio: true,
-              priority: 'high'
-            }
+      const { data, error: fnError } = await supabase.functions.invoke('auto-contact-notifier', {
+        body: {
+          action: 'welcome_contact',
+          contact: {
+            contactId: contact.id,
+            contactType: 'trusted_contact',
+            name: contact.name,
+            email: contact.email,
+            userId: session.user.id,
+            userFullName,
+            userEmail: userProfile?.email || session.user.email || ''
           }
-        });
-        
-        if (fnError) {
-          console.error('Error from functions.invoke:', fnError);
-          throw new Error('Functions invoke error');
         }
-        
-        console.log('Verification sent successfully via direct invoke');
-        return true;
-      } catch (invokeError) {
-        console.error('Error with direct invoke:', invokeError);
-        
-        // Try fetch as final fallback
-        try {
-          console.log('Attempting to send verification via fetch');
-          
-          const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-              'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-            },
-            body: JSON.stringify({
-              contact: {
-                contactId: contact.id,
-                contactType: 'trusted',
-                name: contact.name,
-                email: contact.email,
-                userId: session.user.id,
-                userFullName
-              },
-              emailDetails: {
-                subject: `Important: ${userFullName} has named you as a trusted contact`,
-                includeVerificationInstructions: false,
-                includeUserBio: true,
-                priority: 'high'
-              }
-            })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Error from fetch:', errorData);
-            throw new Error('Fetch error');
-          }
-          
-          console.log('Verification sent successfully via fetch');
-          return true;
-        } catch (fetchError) {
-          console.error('Error with fetch:', fetchError);
-          return false;
-        }
+      });
+      
+      if (fnError) {
+        console.error('Error from auto-contact-notifier:', fnError);
+        return false;
       }
+      
+      console.log('Verification sent successfully via auto-contact-notifier');
+      return true;
+    } catch (invokeError) {
+      console.error('Error with auto-contact-notifier:', invokeError);
+      return false;
     }
   } catch (error) {
     console.error('Error in sendVerificationRequest:', error);
@@ -343,15 +278,8 @@ export const resendInvitation = async (contactId: string): Promise<boolean> => {
       })
       .eq('id', contactId);
       
-    // Use the emailService to send the invitation
-    const result = await sendTrustedContactInvitation(
-      contactId,
-      contact.name,
-      contact.email,
-      "This is a reminder about your role as a trusted contact."
-    );
-    
-    return result.success;
+    // Use sendVerificationRequest which now uses auto-contact-notifier
+    return await sendVerificationRequest(contactId);
   } catch (error) {
     console.error('Error in resendInvitation:', error);
     return false;

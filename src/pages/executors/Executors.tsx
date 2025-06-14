@@ -67,8 +67,7 @@ import {
   updateExecutor, 
   updateBeneficiary, 
   deleteExecutor, 
-  deleteBeneficiary, 
-  sendVerificationRequest 
+  deleteBeneficiary
 } from '@/services/executorService';
 
 // Define a separate type for form data to handle both executor and beneficiary fields
@@ -89,7 +88,6 @@ export default function Executors() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [isSendingVerification, setIsSendingVerification] = useState<boolean>(false);
   
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [editItemId, setEditItemId] = useState<string | null>(null);
@@ -212,31 +210,6 @@ export default function Executors() {
       });
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleVerificationRequest = async (id: string, type: 'executor' | 'beneficiary') => {
-    setIsSendingVerification(true);
-    try {
-      const success = await sendVerificationRequest(id, type);
-      
-      if (success) {
-        toast({
-          title: "Verification Sent",
-          description: `A verification request has been sent.`
-        });
-      } else {
-        throw new Error('Failed to send verification');
-      }
-    } catch (error) {
-      console.error('Error sending verification:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send the verification request.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSendingVerification(false);
     }
   };
 
@@ -535,7 +508,7 @@ export default function Executors() {
             <CardHeader>
               <CardTitle>Executors</CardTitle>
               <CardDescription>
-                The people who will manage your estate and execute your will after your passing.
+                The people who will manage your estate and execute your will after your passing. Welcome emails are sent automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -595,9 +568,9 @@ export default function Executors() {
                               Verified
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                               <XCircle className="mr-1 h-3 w-3" />
-                              Pending
+                              Notified
                             </span>
                           )}
                         </TableCell>
@@ -637,21 +610,6 @@ export default function Executors() {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
-                            
-                            {!executor.isVerified && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleVerificationRequest(executor.id, 'executor')}
-                                disabled={isSendingVerification}
-                              >
-                                {isSendingVerification ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Send className="h-4 w-4 text-blue-500" />
-                                )}
-                              </Button>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -679,7 +637,7 @@ export default function Executors() {
             <CardHeader>
               <CardTitle>Beneficiaries</CardTitle>
               <CardDescription>
-                The people who will receive portions of your estate after your passing.
+                The people who will receive portions of your estate after your passing. Welcome emails are sent automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -746,9 +704,9 @@ export default function Executors() {
                               Verified
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                               <XCircle className="mr-1 h-3 w-3" />
-                              Pending
+                              Notified
                             </span>
                           )}
                         </TableCell>
@@ -788,21 +746,6 @@ export default function Executors() {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
-                            
-                            {!beneficiary.isVerified && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleVerificationRequest(beneficiary.id, 'beneficiary')}
-                                disabled={isSendingVerification}
-                              >
-                                {isSendingVerification ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Send className="h-4 w-4 text-blue-500" />
-                                )}
-                              </Button>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>
