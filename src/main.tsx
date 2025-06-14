@@ -303,10 +303,6 @@ const router = createBrowserRouter([
         element: <Notifications />,
       },
       {
-        path: "/will-unlock",
-        element: <ExecutorAccessPage />,
-      },
-      {
         path: "/will-unlock/:verificationId",
         element: <WillUnlockPage />,
       },
