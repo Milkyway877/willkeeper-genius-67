@@ -123,6 +123,8 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     showPrompt, 
     urgencyLevel, 
     promptCount, 
+    timeRemaining,
+    formattedTimeRemaining,
     dismissPrompt 
   } = useRandomSubscriptionPrompts();
 
@@ -465,6 +467,8 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
         onClose={dismissPrompt}
         urgencyLevel={urgencyLevel}
         promptCount={promptCount}
+        timeRemaining={timeRemaining}
+        formattedTimeRemaining={formattedTimeRemaining}
       />
       
       {showSuccessScreen && generatedWill && (
@@ -672,7 +676,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                       value={residualEstate} 
                       label="residualEstate" 
                       onEdit={(value) => setResidualEstate(value)}
-                      onAiHelp={() => handleShowAIHelper('residualEstate')}
+                      onAiHelp={() => handleShowAIHelper('residualEestate')}
                     />
                     .
                   </p>

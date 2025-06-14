@@ -45,8 +45,9 @@ export default function Will() {
     showPrompt, 
     urgencyLevel, 
     promptCount, 
-    dismissPrompt,
-    triggerPrompt 
+    timeRemaining,
+    formattedTimeRemaining,
+    dismissPrompt 
   } = useRandomSubscriptionPrompts();
 
   useEffect(() => {
@@ -675,6 +676,8 @@ export default function Will() {
         onClose={dismissPrompt}
         urgencyLevel={urgencyLevel}
         promptCount={promptCount}
+        timeRemaining={timeRemaining}
+        formattedTimeRemaining={formattedTimeRemaining}
       />
     </>
   );
