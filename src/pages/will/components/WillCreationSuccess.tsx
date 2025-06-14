@@ -38,6 +38,8 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
     showPrompt, 
     urgencyLevel, 
     promptCount, 
+    timeRemaining,
+    formattedTimeRemaining,
     dismissPrompt,
     triggerPrompt 
   } = useRandomSubscriptionPrompts();
@@ -214,6 +216,8 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
         onClose={dismissPrompt}
         urgencyLevel={urgencyLevel}
         promptCount={promptCount}
+        timeRemaining={timeRemaining}
+        formattedTimeRemaining={formattedTimeRemaining}
       />
     </>
   );
