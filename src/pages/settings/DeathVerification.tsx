@@ -34,25 +34,24 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      console.log('Fetching death verification settings...');
+      console.log('DeathVerification: Fetching settings...');
       
       const fetchedSettings = await getDeathVerificationSettings();
       
       if (fetchedSettings) {
-        console.log('Settings fetched successfully:', fetchedSettings);
+        console.log('DeathVerification: Settings fetched successfully:', fetchedSettings);
         setSettings(fetchedSettings);
       } else {
-        console.log('No settings found, using defaults');
+        console.log('DeathVerification: No settings found, using defaults');
         setSettings(DEFAULT_SETTINGS);
       }
     } catch (error) {
-      console.error('Error fetching death verification settings:', error);
+      console.error('DeathVerification: Error fetching settings:', error);
       toast({
         title: "Error",
         description: "Failed to load check-in settings. Please try again.",
         variant: "destructive"
       });
-      // Use defaults on error
       setSettings(DEFAULT_SETTINGS);
     } finally {
       setLoading(false);
@@ -62,12 +61,12 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const handleSave = async () => {
     try {
       setSaving(true);
-      console.log('Saving settings:', settings);
+      console.log('DeathVerification: Saving settings:', settings);
       
       const updatedSettings = await saveDeathVerificationSettings(settings);
       
       if (updatedSettings) {
-        console.log('Settings saved successfully:', updatedSettings);
+        console.log('DeathVerification: Settings saved successfully:', updatedSettings);
         setSettings(updatedSettings);
         
         toast({
@@ -82,7 +81,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
         throw new Error("Failed to save settings - no response from server");
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
+      console.error('DeathVerification: Error saving settings:', error);
       toast({
         title: "Error",
         description: "There was an error saving your settings. Please try again.",
@@ -93,43 +92,42 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
     }
   };
   
-  // Simplified toggle for check-in enabled
+  // Simplified toggle for check-in enabled - NO optimistic updates
   const toggleCheckInEnabled = async () => {
     if (toggling) {
-      console.log('Toggle already in progress, ignoring request');
+      console.log('DeathVerification: Toggle already in progress, ignoring request');
       return;
     }
     
     const newEnabledState = !settings.check_in_enabled;
-    console.log(`Toggling check-in from ${settings.check_in_enabled} to ${newEnabledState}`);
+    console.log(`DeathVerification: Starting toggle from ${settings.check_in_enabled} to ${newEnabledState}`);
     
     try {
       setToggling(true);
       
-      // Update local state immediately for better UX
-      const updatedSettings = { 
+      // Prepare the settings to save - DO NOT update local state yet
+      const settingsToSave = { 
         ...settings, 
         check_in_enabled: newEnabledState 
       };
-      setSettings(updatedSettings);
       
-      // Save to database
-      const result = await saveDeathVerificationSettings(updatedSettings);
+      console.log('DeathVerification: Saving toggle state to database...');
+      const result = await saveDeathVerificationSettings(settingsToSave);
       
       if (!result) {
-        throw new Error("Failed to save toggle state");
+        throw new Error("Failed to save toggle state - no server response");
       }
       
-      console.log('Toggle saved successfully:', result);
+      console.log('DeathVerification: Toggle saved successfully, server response:', result);
       
       // If enabling check-ins, create initial check-in
       if (newEnabledState) {
         try {
-          console.log('Creating initial check-in...');
+          console.log('DeathVerification: Creating initial check-in...');
           await createInitialCheckin();
-          console.log('Initial check-in created successfully');
+          console.log('DeathVerification: Initial check-in created successfully');
         } catch (checkinError) {
-          console.error('Failed to create initial check-in:', checkinError);
+          console.error('DeathVerification: Failed to create initial check-in:', checkinError);
           toast({
             title: "Warning",
             description: "Check-ins enabled but initial check-in failed. You may need to check in manually.",
@@ -138,7 +136,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
         }
       }
       
-      // Update state with server response
+      // NOW update the local state with the server response
       setSettings(result);
       
       // Notify parent component
@@ -154,13 +152,9 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       });
       
     } catch (error) {
-      console.error('Error toggling check-in status:', error);
+      console.error('DeathVerification: Error toggling check-in status:', error);
       
-      // Revert local state on error
-      setSettings(prev => ({
-        ...prev,
-        check_in_enabled: !newEnabledState
-      }));
+      // DO NOT revert state - keep original state since we never changed it optimistically
       
       toast({
         title: "Error",

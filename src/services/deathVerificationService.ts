@@ -108,7 +108,17 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
       const { data, error } = await supabase
         .from('death_verification_settings')
         .update({
-          ...settings,
+          check_in_enabled: settings.check_in_enabled,
+          check_in_frequency: settings.check_in_frequency,
+          grace_period: settings.grace_period,
+          beneficiary_verification_interval: settings.beneficiary_verification_interval,
+          reminder_frequency: settings.reminder_frequency,
+          pin_system_enabled: settings.pin_system_enabled,
+          executor_override_enabled: settings.executor_override_enabled,
+          trusted_contact_enabled: settings.trusted_contact_enabled,
+          trusted_contact_email: settings.trusted_contact_email,
+          failsafe_enabled: settings.failsafe_enabled,
+          notification_preferences: settings.notification_preferences,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', session.user.id)
@@ -128,8 +138,18 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
       const { data, error } = await supabase
         .from('death_verification_settings')
         .insert({
-          ...settings,
-          user_id: session.user.id
+          user_id: session.user.id,
+          check_in_enabled: settings.check_in_enabled,
+          check_in_frequency: settings.check_in_frequency,
+          grace_period: settings.grace_period,
+          beneficiary_verification_interval: settings.beneficiary_verification_interval,
+          reminder_frequency: settings.reminder_frequency,
+          pin_system_enabled: settings.pin_system_enabled,
+          executor_override_enabled: settings.executor_override_enabled,
+          trusted_contact_enabled: settings.trusted_contact_enabled,
+          trusted_contact_email: settings.trusted_contact_email,
+          failsafe_enabled: settings.failsafe_enabled,
+          notification_preferences: settings.notification_preferences
         })
         .select()
         .single();
