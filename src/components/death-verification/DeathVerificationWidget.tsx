@@ -208,7 +208,7 @@ export function DeathVerificationWidget() {
             : status === 'grace-period' 
               ? 'Check-In Required' 
               : 'Check-In Overdue'}
-          <Bot className="h-4 w-4 ml-2 text-willtank-600" title="GODMODE Protected" />
+          <Bot className="h-4 w-4 ml-2 text-willtank-600" />
         </CardTitle>
         <CardDescription>
           {checkin 

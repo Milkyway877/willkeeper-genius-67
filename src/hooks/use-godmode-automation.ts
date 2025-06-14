@@ -181,44 +181,48 @@ export function useGodModeAutomation() {
 
   // Subscribe to real-time updates
   useEffect(() => {
-    fetchAutomationData();
+    const initializeData = async () => {
+      await fetchAutomationData();
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
 
-    // Subscribe to new GODMODE notifications
-    const subscription = supabase
-      .channel('godmode_notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'death_verification_logs',
-          filter: `user_id=eq.${session.user.id}`,
-        },
-        (payload) => {
-          console.log('📡 Real-time GODMODE update:', payload);
-          
-          if (payload.new.action === 'godmode_notifications_sent') {
-            // Show real-time toast
-            const details = payload.new.details as any;
-            toast({
-              title: "🚀 GODMODE Activated",
-              description: `Automated notifications sent to ${details?.contacts_notified || 0} contacts`,
-              duration: 5000,
-            });
+      // Subscribe to new GODMODE notifications
+      const subscription = supabase
+        .channel('godmode_notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'death_verification_logs',
+            filter: `user_id=eq.${session.user.id}`,
+          },
+          (payload) => {
+            console.log('📡 Real-time GODMODE update:', payload);
             
-            // Refresh data
-            fetchAutomationData();
+            if (payload.new.action === 'godmode_notifications_sent') {
+              // Show real-time toast
+              const details = payload.new.details as any;
+              toast({
+                title: "🚀 GODMODE Activated",
+                description: `Automated notifications sent to ${details?.contacts_notified || 0} contacts`,
+                duration: 5000,
+              });
+              
+              // Refresh data
+              fetchAutomationData();
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    return () => {
-      subscription.unsubscribe();
+      return () => {
+        subscription.unsubscribe();
+      };
     };
+
+    initializeData();
   }, [fetchAutomationData, toast]);
 
   return {
