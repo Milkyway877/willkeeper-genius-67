@@ -133,6 +133,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   // Check if we're on the landing page (index route)
   const isLandingPage = location.pathname === '/';
   
+  // Only show FloatingAssistant on authenticated inner pages (not landing page or auth pages)
+  const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage;
+  
   return (
     <>
       <div className={cn(
@@ -191,8 +194,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           
           {showAuthenticatedLayout && (
             <>
-              {/* Only show FloatingAssistant if not on landing page */}
-              {!isLandingPage && <FloatingAssistant />}
+              {/* Only show FloatingAssistant on authenticated inner pages (not landing page) */}
+              {shouldShowFloatingAssistant && <FloatingAssistant />}
               <FloatingHelp />
             </>
           )}
