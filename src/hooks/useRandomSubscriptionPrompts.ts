@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSubscriptionStatus } from './useSubscriptionStatus';
-import { getWills } from '@/services/willService';
+import { checkUserHasWill } from '@/services/willCheckService';
 
 interface RandomPromptState {
   showPrompt: boolean;
@@ -28,23 +28,24 @@ export function useRandomSubscriptionPrompts() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Don't show prompts if user is already subscribed
-  const shouldShowPrompts = !subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial;
+  // Don't show prompts if user is already subscribed OR has no wills
+  const shouldShowPrompts = !subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial && promptState.hasWills;
 
-  // Check if user has any wills and initialize countdown
+  // Check if user has any wills and initialize countdown - ONLY if they have wills
   useEffect(() => {
-    if (!shouldShowPrompts) return;
-
     const checkUserWills = async () => {
       try {
-        const wills = await getWills();
-        const hasWills = wills.length > 0;
+        const willStatus = await checkUserHasWill();
+        const hasWills = willStatus.hasWill;
+        
+        console.log('useRandomSubscriptionPrompts: Will status check:', { hasWills, willCount: willStatus.willCount });
         
         if (!hasWills) {
-          // No wills, no countdown needed
+          // No wills, no prompts needed - clear any existing state
           setPromptState(prev => ({
             ...prev,
             hasWills: false,
+            showPrompt: false,
             timeRemaining: 24 * 60 * 60 * 1000,
             countdownStarted: null
           }));
@@ -77,16 +78,16 @@ export function useRandomSubscriptionPrompts() {
           hasWills: true
         }));
       } catch (error) {
-        console.error('Error checking user wills:', error);
+        console.error('Error checking user wills in useRandomSubscriptionPrompts:', error);
       }
     };
 
     checkUserWills();
-  }, [shouldShowPrompts]);
+  }, []);
 
   // Real-time countdown updater - only if user has wills
   useEffect(() => {
-    if (!shouldShowPrompts || !promptState.countdownStarted || !promptState.hasWills) return;
+    if (!shouldShowPrompts || !promptState.countdownStarted) return;
 
     countdownRef.current = setInterval(() => {
       const now = new Date();
@@ -109,7 +110,7 @@ export function useRandomSubscriptionPrompts() {
         clearInterval(countdownRef.current);
       }
     };
-  }, [shouldShowPrompts, promptState.countdownStarted, promptState.hasWills]);
+  }, [shouldShowPrompts, promptState.countdownStarted]);
 
   const dismissPrompt = useCallback(() => {
     const newCount = promptState.promptCount + 1;
@@ -124,7 +125,7 @@ export function useRandomSubscriptionPrompts() {
   }, [promptState.promptCount]);
 
   const triggerPrompt = useCallback(() => {
-    if (!shouldShowPrompts || !promptState.hasWills) return;
+    if (!shouldShowPrompts) return;
     
     // Don't show if just dismissed (wait time based on urgency)
     if (promptState.lastDismissed) {
@@ -141,11 +142,11 @@ export function useRandomSubscriptionPrompts() {
       ...prev,
       showPrompt: true
     }));
-  }, [shouldShowPrompts, promptState.lastDismissed, promptState.urgencyLevel, promptState.hasWills]);
+  }, [shouldShowPrompts, promptState.lastDismissed, promptState.urgencyLevel]);
 
   // Auto-trigger prompts based on urgency - only if user has wills
   useEffect(() => {
-    if (!shouldShowPrompts || !promptState.hasWills) return;
+    if (!shouldShowPrompts) return;
 
     // Clear existing interval
     if (intervalRef.current) {
@@ -169,7 +170,7 @@ export function useRandomSubscriptionPrompts() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [shouldShowPrompts, triggerPrompt, promptState.urgencyLevel, promptState.hasWills]);
+  }, [shouldShowPrompts, triggerPrompt, promptState.urgencyLevel]);
 
   // Format time remaining for display
   const formatTimeRemaining = useCallback(() => {
@@ -181,13 +182,13 @@ export function useRandomSubscriptionPrompts() {
   }, [promptState.timeRemaining]);
 
   return {
-    showPrompt: promptState.showPrompt && promptState.hasWills,
+    showPrompt: promptState.showPrompt && promptState.hasWills && shouldShowPrompts,
     urgencyLevel: promptState.urgencyLevel,
     promptCount: promptState.promptCount,
     timeRemaining: promptState.timeRemaining,
     formattedTimeRemaining: formatTimeRemaining(),
     hasWills: promptState.hasWills,
     dismissPrompt,
-    triggerPrompt: () => shouldShowPrompts && promptState.hasWills && triggerPrompt()
+    triggerPrompt: () => shouldShowPrompts && triggerPrompt()
   };
 }

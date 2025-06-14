@@ -4,14 +4,14 @@ import { useFreemiumFlow } from '@/hooks/useFreemiumFlow';
 import { FreemiumUpgradeModal } from '@/components/freemium/FreemiumUpgradeModal';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Sparkles } from 'lucide-react';
-import { getWills } from '@/services/willService';
+import { checkUserHasWill } from '@/services/willCheckService';
 
 interface FreemiumLayoutProps {
   children: React.ReactNode;
 }
 
 export const FreemiumLayout: React.FC<FreemiumLayoutProps> = ({ children }) => {
-  const [hasWills, setHasWills] = useState(false);
+  const [willStatus, setWillStatus] = useState({ hasWill: false, willCount: 0 });
   const {
     showUpgradeModal,
     expiredContent,
@@ -21,27 +21,27 @@ export const FreemiumLayout: React.FC<FreemiumLayoutProps> = ({ children }) => {
     subscriptionStatus
   } = useFreemiumFlow();
 
-  // Check if user has wills
+  // Check if user has wills - only show subscription prompts if they do
   useEffect(() => {
-    const checkUserWills = async () => {
-      try {
-        const wills = await getWills();
-        setHasWills(wills.length > 0);
-      } catch (error) {
-        console.error('Error checking user wills:', error);
-        setHasWills(false);
+    const checkWillStatus = async () => {
+      if (!subscriptionStatus.isSubscribed) {
+        const status = await checkUserHasWill();
+        setWillStatus(status);
       }
     };
 
-    if (!subscriptionStatus.isSubscribed) {
-      checkUserWills();
-    }
+    checkWillStatus();
   }, [subscriptionStatus.isSubscribed]);
 
-  // Show grace period indicator if user has content in grace period AND has wills
+  // Only show grace period indicator if user has wills AND has content in grace period
   const gracePeriodContent = expiredContent.gracePeriodContent;
-  const hasGracePeriodContent = gracePeriodContent.length > 0 && hasWills;
+  const hasGracePeriodContent = gracePeriodContent.length > 0 && willStatus.hasWill;
   const shortestTimeRemaining = hasGracePeriodContent ? Math.min(...gracePeriodContent.map(c => c.expires_in_hours)) : 0;
+
+  // Don't show any subscription-related UI if user hasn't created a will
+  if (!willStatus.hasWill) {
+    return <>{children}</>;
+  }
 
   return (
     <>
@@ -75,9 +75,9 @@ export const FreemiumLayout: React.FC<FreemiumLayoutProps> = ({ children }) => {
       {/* Main content */}
       {children}
 
-      {/* Upgrade modal - only show if conditions are met and user has wills */}
+      {/* Upgrade modal - only show if user has wills and conditions are met */}
       <FreemiumUpgradeModal
-        open={showUpgradeModal && hasWills}
+        open={showUpgradeModal && willStatus.hasWill}
         onClose={closeUpgradeModal}
         expiresInHours={hasGracePeriodContent ? shortestTimeRemaining : undefined}
         hasExpiredContent={expiredContent.hasExpiredContent}
