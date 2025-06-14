@@ -31,6 +31,7 @@ import AccountActivation from './pages/auth/AccountActivation';
 import EmailVerification from './pages/auth/EmailVerification';
 import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
 import AuthCallback from './pages/auth/AuthCallback';
+import TwoFactorVerification from './pages/auth/TwoFactorVerification';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -180,6 +181,10 @@ const router = createBrowserRouter([
       {
         path: "/auth/signup",
         element: <SecureSignUp />,
+      },
+      {
+        path: "/auth/2fa-verification",
+        element: <TwoFactorVerification />,
       },
       {
         path: "/auth/verification",
