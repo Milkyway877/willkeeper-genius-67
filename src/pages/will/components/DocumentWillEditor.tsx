@@ -24,6 +24,8 @@ import { EnhancedAISuggestionsPanel } from './EnhancedAISuggestionsPanel';
 import { ContactField } from './DocumentFields/ContactField';
 import { WillCreationSuccess } from './WillCreationSuccess';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
+import { useRandomSubscriptionPrompts } from '@/hooks/useRandomSubscriptionPrompts';
+import { RandomSubscriptionPrompt } from './RandomSubscriptionPrompt';
 import '../../../MobileStyles.css';
 import { 
   Executor, 
@@ -116,19 +118,18 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [finalizedWillId, setFinalizedWillId] = useState<string | null>(willId || null);
   
-  // Add subscription flow hook - no barriers during creation
-  // const { 
-  //   showSubscriptionModal, 
-  //   handleWillSaved, 
-  //   handleSubscriptionSuccess, 
-  //   closeSubscriptionModal,
-  //   subscriptionStatus 
-  // } = useWillSubscriptionFlow();
-  
+  // Add random subscription prompts
+  const { 
+    showPrompt, 
+    urgencyLevel, 
+    promptCount, 
+    dismissPrompt 
+  } = useRandomSubscriptionPrompts();
+
   const documentRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Generate document text function
+  // Generate document text function - Fixed signature handling
   const generateDocumentText = (): string => {
     const primaryExecutor = executors.find(e => e.isPrimary);
     const alternateExecutors = executors.filter(e => !e.isPrimary);
@@ -191,7 +192,7 @@ ${guardians.length > 0 ? (
 ARTICLE VII: FINAL ARRANGEMENTS
 ${finalArrangements || '[No specific final arrangements specified]'}
 
-${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date().toLocaleDateString()}` : ''}
+${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
     `;
   };
 
@@ -379,7 +380,7 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
     });
   };
 
-  // Handle generating the official document - NO PAYWALL during creation
+  // Handle generating the official document - Fixed signature content handling
   const handleGenerateOfficialWill = async () => {
     try {
       if (!isComplete) {
@@ -405,9 +406,9 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
       // Allow finalization without subscription check
       const title = `${personalInfo.fullName}'s Will`;
       
-      // Create will content with signature
+      // Create will content with signature - Fixed to not include base64 in text
       const documentText = generateDocumentText();
-      const contentWithSignature = documentText + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
+      const contentWithSignature = documentText + `\n\nDigitally signed on: ${new Date().toLocaleDateString()}`;
       
       // Save the will as active
       let finalWill: Will | null = null;
@@ -458,7 +459,13 @@ ${signature ? `\nDigitally signed by: ${personalInfo.fullName}\nDate: ${new Date
 
   return (
     <div className="container mx-auto mb-28">
-      {/* Remove Subscription Modal - no barriers during creation */}
+      {/* Random Subscription Prompt */}
+      <RandomSubscriptionPrompt
+        isOpen={showPrompt}
+        onClose={dismissPrompt}
+        urgencyLevel={urgencyLevel}
+        promptCount={promptCount}
+      />
       
       {showSuccessScreen && generatedWill && (
         <WillCreationSuccess 

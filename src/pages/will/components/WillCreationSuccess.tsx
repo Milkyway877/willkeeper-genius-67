@@ -1,127 +1,219 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  CheckCircle, 
+  Download, 
+  Eye, 
+  Share2, 
+  Calendar, 
+  Shield,
+  Lock,
+  Crown,
+  X
+} from 'lucide-react';
+import { Will } from '@/services/willService';
+import { downloadDocument } from '@/utils/documentUtils';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, FileVideo, Upload, ArrowRight } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { Will } from "@/services/willService";
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useRandomSubscriptionPrompts } from '@/hooks/useRandomSubscriptionPrompts';
+import { RandomSubscriptionPrompt } from './RandomSubscriptionPrompt';
 
 interface WillCreationSuccessProps {
   will: Will;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps) {
+  const { toast } = useToast();
   const navigate = useNavigate();
+  const { subscriptionStatus } = useSubscriptionStatus();
+  const { 
+    showPrompt, 
+    urgencyLevel, 
+    promptCount, 
+    dismissPrompt,
+    triggerPrompt 
+  } = useRandomSubscriptionPrompts();
 
-  useEffect(() => {
-    // Launch confetti when component mounts
-    const launchConfetti = () => {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#2D8B75', '#5BBBA3', '#8CD9C7']
+  const handleDownload = async () => {
+    if (!subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial) {
+      toast({
+        title: "Upgrade Required",
+        description: "Download functionality requires a WillTank subscription. Upgrade now to download your will!",
+        variant: "destructive"
       });
-      
-      // Launch additional confetti bursts
-      setTimeout(() => {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.7 },
-          colors: ['#2D8B75', '#5BBBA3', '#8CD9C7']
-        });
-      }, 250);
-    };
+      triggerPrompt(); // Show subscription prompt
+      return;
+    }
 
-    launchConfetti();
-
-    // Set session storage to highlight the newly created will on dashboard
-    sessionStorage.setItem('newlyCreatedWill', will.id);
-    
-    // Auto-redirect to dashboard after 3 seconds
-    const redirectTimer = setTimeout(() => {
-      handleNavigateToDashboard();
-    }, 3000);
-    
-    return () => {
-      clearTimeout(redirectTimer);
-    };
-  }, [will.id]);
-
-  const handleNavigateToDashboard = () => {
-    navigate('/wills');
+    try {
+      await downloadDocument(will.content, `${will.title}.pdf`);
+      toast({
+        title: "Download Started",
+        description: "Your will document is being downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "There was an error downloading your document. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleNavigateToWill = () => {
-    navigate(`/will/${will.id}`);
+  const handleUpgrade = () => {
+    navigate('/pricing');
+    onClose();
   };
+
+  const isDownloadDisabled = !subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-      <Card className="w-full max-w-xl mx-auto animate-fade-in">
-        <CardContent className="p-8 space-y-6 text-center">
-          <div className="bg-green-100 rounded-full p-6 inline-flex mb-6">
-            <CheckCircle2 className="h-16 w-16 text-green-600" />
-          </div>
-          
-          <div>
-            <h2 className="text-3xl font-bold mb-4">🎉 Congratulations!</h2>
-            <h3 className="text-xl font-semibold mb-2">Your Will Has Been Created Successfully!</h3>
-            <p className="text-gray-600">
-              "{will.title}" has been finalized and is now ready for the next important steps.
-            </p>
-          </div>
-          
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
-            <h4 className="font-medium text-amber-800 flex items-center justify-center">
-              <Upload className="mr-2 h-5 w-5" />
-              Complete Your Will Package
-            </h4>
-            <p className="text-sm text-amber-700">
-              To cement your will and ensure its legal validity, you must:
-            </p>
-            <div className="space-y-2 text-sm text-amber-700">
-              <div className="flex items-center">
-                <FileVideo className="mr-2 h-4 w-4" />
-                <span>Record a video testament explaining your wishes</span>
-              </div>
-              <div className="flex items-center">
-                <Upload className="mr-2 h-4 w-4" />
-                <span>Upload supporting documents and identification</span>
-              </div>
+    <>
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl text-green-600">
+                <CheckCircle className="h-6 w-6" />
+                Will Successfully Created!
+              </DialogTitle>
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          </div>
+          </DialogHeader>
           
-          <div className="space-y-3">
-            <Button 
-              onClick={handleNavigateToWill}
-              className="w-full bg-willtank-600 hover:bg-willtank-700 text-white"
-            >
-              <div className="flex items-center justify-center">
-                <span>Complete Video & Documents Now</span>
-                <ArrowRight className="h-4 w-4 ml-2" />
+          <div className="space-y-6">
+            <Card className="p-4 bg-green-50 border-green-200">
+              <div className="flex items-center gap-3">
+                <Shield className="h-8 w-8 text-green-600" />
+                <div>
+                  <h3 className="font-semibold text-green-900">Your Will is Ready</h3>
+                  <p className="text-sm text-green-700">
+                    {will.title} has been created and saved to your WillTank dashboard.
+                  </p>
+                </div>
               </div>
-            </Button>
+            </Card>
+
+            {!subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <div className="space-y-2">
+                    <p className="font-medium">⏰ 24-Hour Free Access</p>
+                    <p className="text-sm">
+                      Your will is accessible for 24 hours. After that, you'll need to upgrade to WillTank 
+                      to keep your will permanently stored and secure.
+                    </p>
+                    <Button 
+                      size="sm" 
+                      onClick={handleUpgrade}
+                      className="mt-2 bg-amber-600 hover:bg-amber-700"
+                    >
+                      <Crown className="h-4 w-4 mr-2" />
+                      Upgrade to WillTank - $9.99/month
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
             
-            <Button 
-              onClick={handleNavigateToDashboard}
-              variant="outline" 
-              className="w-full"
-            >
-              Go to Dashboard (Auto-redirecting in 3s...)
-            </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="p-4">
+                <h4 className="font-medium mb-2">Document Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Title:</span>
+                    <span className="font-medium">{will.title}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <Badge variant="outline" className="bg-green-100 text-green-800">
+                      {will.status}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Created:</span>
+                    <span>{new Date(will.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="p-4">
+                <h4 className="font-medium mb-2">Next Steps</h4>
+                <ul className="space-y-1 text-sm text-gray-600">
+                  <li>• Review your will document</li>
+                  <li>• Share access with executors</li>
+                  <li>• Store physical copies safely</li>
+                  <li>• Update regularly as needed</li>
+                </ul>
+              </Card>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={() => navigate(`/will/${will.id}`)} 
+                variant="outline" 
+                className="flex-1"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View Will
+              </Button>
+              
+              <Button 
+                onClick={handleDownload}
+                disabled={isDownloadDisabled}
+                className={`flex-1 ${isDownloadDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                variant={isDownloadDisabled ? "outline" : "default"}
+              >
+                {isDownloadDisabled ? (
+                  <>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Download (Upgrade Required)
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+              
+              <Button variant="outline" className="flex-1">
+                <Share2 className="h-4 w-4 mr-2" />
+                Share Access
+              </Button>
+            </div>
+
+            {isDownloadDisabled && (
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-2">
+                  Want to download your will? Upgrade to unlock all features.
+                </p>
+                <Button onClick={handleUpgrade} size="sm">
+                  <Crown className="h-4 w-4 mr-2" />
+                  Upgrade Now
+                </Button>
+              </div>
+            )}
           </div>
-          
-          <div className="text-xs text-gray-500">
-            <p>
-              Your will is saved and you can complete these mandatory steps anytime from your dashboard.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </DialogContent>
+      </Dialog>
+
+      <RandomSubscriptionPrompt
+        isOpen={showPrompt}
+        onClose={dismissPrompt}
+        urgencyLevel={urgencyLevel}
+        promptCount={promptCount}
+      />
+    </>
   );
 }
