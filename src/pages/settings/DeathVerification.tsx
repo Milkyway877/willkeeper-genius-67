@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -19,18 +20,13 @@ interface DeathVerificationProps {
   onSettingsChange?: () => void;
 }
 
-// Component is still named DeathVerification for compatibility,
-// but UI text is updated to use "Check-ins" terminology
 export default function DeathVerification({ onSettingsChange }: DeathVerificationProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
   
-  // Death verification settings state
   const [settings, setSettings] = useState<DeathVerificationSettings>(DEFAULT_SETTINGS);
-  // Keep track of original enabled state to handle optimistic updates
-  const [originalEnabled, setOriginalEnabled] = useState(false);
   
   useEffect(() => {
     fetchSettings();
@@ -43,16 +39,14 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       
       if (fetchedSettings) {
         setSettings(fetchedSettings);
-        setOriginalEnabled(fetchedSettings.check_in_enabled);
       } else {
         setSettings(DEFAULT_SETTINGS);
-        setOriginalEnabled(false);
       }
     } catch (error) {
       console.error('Error fetching death verification settings:', error);
       toast({
         title: "Error",
-        description: "Failed to load death verification settings. Please try again.",
+        description: "Failed to load check-in settings. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -69,12 +63,10 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       if (updatedSettings) {
         toast({
           title: "Settings Saved",
-          description: "Your death verification settings have been saved successfully."
+          description: "Your check-in settings have been saved successfully."
         });
         setSettings(updatedSettings);
-        setOriginalEnabled(updatedSettings.check_in_enabled);
         
-        // Notify parent component about the change
         if (onSettingsChange) {
           onSettingsChange();
         }
@@ -93,43 +85,53 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
     }
   };
   
-  // Simplified toggle for check-in enabled with better error handling
+  // Simplified toggle for check-in enabled
   const toggleCheckInEnabled = async () => {
-    if (toggling) return; // Prevent multiple concurrent toggles
+    if (toggling) {
+      console.log('Toggle already in progress, ignoring...');
+      return;
+    }
     
     try {
       setToggling(true);
+      console.log('Toggling check-in enabled from:', settings.check_in_enabled);
       
-      // Optimistic update
       const newEnabledState = !settings.check_in_enabled;
-      setSettings(prev => ({ ...prev, check_in_enabled: newEnabledState }));
       
-      // Create a new settings object with the updated value
+      // Create updated settings object
       const updatedSettings = { 
         ...settings, 
         check_in_enabled: newEnabledState 
       };
       
+      console.log('Attempting to save settings:', updatedSettings);
+      
       // Save the updated settings
       const result = await saveDeathVerificationSettings(updatedSettings);
       
       if (result) {
-        // If enabling check-ins and there's no initial check-in yet
-        if (newEnabledState && !originalEnabled) {
+        console.log('Settings saved successfully:', result);
+        
+        // If enabling check-ins, create initial check-in
+        if (newEnabledState) {
           try {
+            console.log('Creating initial check-in...');
             await createInitialCheckin();
             console.log('Initial check-in created successfully');
           } catch (checkinError) {
             console.error('Failed to create initial check-in:', checkinError);
             // Don't fail the entire operation if check-in creation fails
+            toast({
+              title: "Warning",
+              description: "Check-ins enabled but initial check-in failed. You may need to check in manually.",
+              variant: "destructive"
+            });
           }
         }
         
-        // Update state with the result from the server
+        // Update local state with server response
         setSettings(result);
-        setOriginalEnabled(result.check_in_enabled);
         
-        // Notify parent component about the change
         if (onSettingsChange) {
           onSettingsChange();
         }
@@ -141,24 +143,19 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
             : "You have disabled the check-in system."
         });
       } else {
-        throw new Error("Failed to update check-in status");
+        throw new Error("Failed to update check-in status - no result returned");
       }
     } catch (error) {
       console.error('Error toggling check-in status:', error);
       
-      // Revert the optimistic update
-      setSettings(prev => ({
-        ...prev,
-        check_in_enabled: originalEnabled
-      }));
-      
       toast({
         title: "Error",
-        description: "There was an error updating the check-in status. Please try again.",
+        description: `Failed to ${settings.check_in_enabled ? 'disable' : 'enable'} check-ins. Please try again.`,
         variant: "destructive"
       });
     } finally {
       setToggling(false);
+      console.log('Toggle operation completed');
     }
   };
   
@@ -193,7 +190,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-willtank-600 mb-4" />
-        <p className="text-gray-600">Loading death verification settings...</p>
+        <p className="text-gray-600">Loading check-in settings...</p>
       </div>
     );
   }

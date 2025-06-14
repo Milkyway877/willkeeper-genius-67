@@ -309,6 +309,7 @@ export interface Database {
           pin_system_enabled: boolean;
           executor_override_enabled: boolean;
           trusted_contact_enabled: boolean;
+          trusted_contact_email?: string | null;
           failsafe_enabled: boolean;
           notification_preferences: any;
           created_at?: string | null;
@@ -325,6 +326,7 @@ export interface Database {
           pin_system_enabled?: boolean;
           executor_override_enabled?: boolean;
           trusted_contact_enabled?: boolean;
+          trusted_contact_email?: string | null;
           failsafe_enabled?: boolean;
           notification_preferences?: any;
           created_at?: string | null;
@@ -341,6 +343,7 @@ export interface Database {
           pin_system_enabled?: boolean;
           executor_override_enabled?: boolean;
           trusted_contact_enabled?: boolean;
+          trusted_contact_email?: string | null;
           failsafe_enabled?: boolean;
           notification_preferences?: any;
           created_at?: string | null;
