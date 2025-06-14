@@ -5,12 +5,16 @@ import { PageTransition } from '@/components/animations/PageTransition';
 import { cn } from '@/lib/utils';
 import { FloatingAssistant } from '@/components/ui/FloatingAssistant';
 import { FloatingHelp } from '@/components/ui/FloatingHelp';
+import { CountdownBanner } from '@/components/ui/CountdownBanner';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useRandomSubscriptionPrompts } from '@/hooks/useRandomSubscriptionPrompts';
+import { RandomSubscriptionPrompt } from '@/pages/will/components/RandomSubscriptionPrompt';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,6 +29,21 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
+  const { subscriptionStatus } = useSubscriptionStatus();
+  
+  // Global subscription prompts
+  const { 
+    showPrompt, 
+    urgencyLevel, 
+    promptCount, 
+    timeRemaining,
+    formattedTimeRemaining,
+    dismissPrompt,
+    triggerPrompt 
+  } = useRandomSubscriptionPrompts();
+  
+  // Show countdown banner for non-subscribers
+  const shouldShowCountdown = !subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial;
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -111,59 +130,82 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const isLandingPage = location.pathname === '/';
   
   return (
-    <div className={cn(
-      "flex h-screen w-full",
-      shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
-    )}>
-      {showAuthenticatedLayout && (
-        <WillTankSidebar 
-          isCollapsed={!showSidebar} 
-          onToggle={toggleSidebar}
-        />
-      )}
-      
-      <motion.div 
-        className={cn(
-          "flex flex-col w-full transition-all duration-300",
-          showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
-        )}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
-        
-        {isMobile && showAuthenticatedLayout && showMobileNotification && (
-          <MobileNotification onDismiss={handleDismissMobileNotification} />
+    <>
+      <div className={cn(
+        "flex h-screen w-full",
+        shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
+      )}>
+        {showAuthenticatedLayout && (
+          <WillTankSidebar 
+            isCollapsed={!showSidebar} 
+            onToggle={toggleSidebar}
+          />
         )}
         
-        <main className={cn(
-          "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
-          shouldHaveCreamBackground && "relative"
-        )}>
-          {shouldHaveCreamBackground && (
-            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-              <div className="absolute top-1/4 -right-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-1/4 -left-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
-              <div className="absolute inset-0 dot-pattern opacity-[0.03] animate-dot-pattern"></div>
-            </div>
+        <motion.div 
+          className={cn(
+            "flex flex-col w-full transition-all duration-300",
+            showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
+          )}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Global Countdown Banner */}
+          {showAuthenticatedLayout && shouldShowCountdown && timeRemaining > 0 && (
+            <CountdownBanner
+              timeRemaining={timeRemaining}
+              formattedTimeRemaining={formattedTimeRemaining}
+              urgencyLevel={urgencyLevel}
+            />
           )}
           
-          <div className="relative z-10">
-            <PageTransition>
-              {children}
-            </PageTransition>
-          </div>
-        </main>
-        
-        {showAuthenticatedLayout && (
-          <>
-            {/* Only show FloatingAssistant if not on landing page */}
-            {!isLandingPage && <FloatingAssistant />}
-            <FloatingHelp />
-          </>
-        )}
-      </motion.div>
-    </div>
+          <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
+          
+          {isMobile && showAuthenticatedLayout && showMobileNotification && (
+            <MobileNotification onDismiss={handleDismissMobileNotification} />
+          )}
+          
+          <main className={cn(
+            "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
+            shouldHaveCreamBackground && "relative"
+          )}>
+            {shouldHaveCreamBackground && (
+              <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                <div className="absolute top-1/4 -right-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-1/4 -left-20 w-64 h-64 bg-black opacity-5 rounded-full blur-3xl"></div>
+                <div className="absolute inset-0 dot-pattern opacity-[0.03] animate-dot-pattern"></div>
+              </div>
+            )}
+            
+            <div className="relative z-10">
+              <PageTransition>
+                {children}
+              </PageTransition>
+            </div>
+          </main>
+          
+          {showAuthenticatedLayout && (
+            <>
+              {/* Only show FloatingAssistant if not on landing page */}
+              {!isLandingPage && <FloatingAssistant />}
+              <FloatingHelp />
+            </>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Global Random Subscription Prompt */}
+      {showAuthenticatedLayout && (
+        <RandomSubscriptionPrompt
+          isOpen={showPrompt}
+          onClose={dismissPrompt}
+          urgencyLevel={urgencyLevel}
+          promptCount={promptCount}
+          timeRemaining={timeRemaining}
+          formattedTimeRemaining={formattedTimeRemaining}
+        />
+      )}
+    </>
   );
 }

@@ -3,7 +3,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Clock, Shield, X } from 'lucide-react';
+import { AlertTriangle, Clock, Shield, X, Timer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface RandomSubscriptionPromptProps {
@@ -11,41 +11,53 @@ interface RandomSubscriptionPromptProps {
   onClose: () => void;
   urgencyLevel: 'normal' | 'high' | 'critical';
   promptCount: number;
+  timeRemaining: number;
+  formattedTimeRemaining: string;
 }
 
 export function RandomSubscriptionPrompt({ 
   isOpen, 
   onClose, 
   urgencyLevel, 
-  promptCount 
+  promptCount,
+  timeRemaining,
+  formattedTimeRemaining
 }: RandomSubscriptionPromptProps) {
   const navigate = useNavigate();
 
   const getUrgencyContent = () => {
+    const isExpiringSoon = timeRemaining < 60 * 60 * 1000; // Less than 1 hour
+    
     switch (urgencyLevel) {
       case 'critical':
         return {
-          title: "⚠️ URGENT: Your Will Expires Soon!",
-          description: "Your will document will be permanently deleted in less than 24 hours! Upgrade now to keep your will safe in WillTank forever.",
-          buttonText: "Secure My Will Now - Only $9.99/month",
+          title: "🚨 URGENT: Your Will Expires in Minutes!",
+          description: `Your will document will be permanently deleted in ${formattedTimeRemaining}! Upgrade NOW to keep your will safe in WillTank forever.`,
+          buttonText: "SECURE MY WILL NOW - $9.99/month",
           alertVariant: "destructive" as const,
-          icon: <AlertTriangle className="h-5 w-5" />
+          icon: <AlertTriangle className="h-5 w-5 animate-pulse" />,
+          bgColor: "bg-red-50 border-red-200",
+          textColor: "text-red-900"
         };
       case 'high':
         return {
-          title: "🔒 Secure Your Will in WillTank",
-          description: "Don't risk losing your important will document! Upgrade within 24 hours to ensure your will stays protected and accessible to your loved ones.",
-          buttonText: "Upgrade to WillTank Security",
-          alertVariant: "default" as const,
-          icon: <Shield className="h-5 w-5" />
+          title: "⚠️ Will Expiring Soon!",
+          description: `Only ${formattedTimeRemaining} left! Don't risk losing your important will document. Upgrade to WillTank to ensure permanent protection.`,
+          buttonText: "Upgrade to WillTank - Save My Will",
+          alertVariant: "destructive" as const,
+          icon: <Clock className="h-5 w-5" />,
+          bgColor: "bg-orange-50 border-orange-200",
+          textColor: "text-orange-900"
         };
       default:
         return {
-          title: "⏰ 24-Hour Will Protection Reminder",
-          description: "Your will is currently stored temporarily. Upgrade to WillTank to ensure permanent, secure storage for your family's peace of mind.",
+          title: "⏰ Will Protection Reminder",
+          description: `Time remaining: ${formattedTimeRemaining}. Your will is currently stored temporarily. Upgrade to WillTank for permanent, secure storage.`,
           buttonText: "Protect My Will Long-Term",
           alertVariant: "default" as const,
-          icon: <Clock className="h-5 w-5" />
+          icon: <Shield className="h-5 w-5" />,
+          bgColor: "bg-blue-50 border-blue-200",
+          textColor: "text-blue-900"
         };
     }
   };
@@ -80,6 +92,19 @@ export function RandomSubscriptionPrompt({
             </AlertDescription>
           </Alert>
           
+          {/* Live Countdown Timer */}
+          <div className={`${content.bgColor} p-4 rounded-lg border-2 ${urgencyLevel === 'critical' ? 'animate-pulse' : ''}`}>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Timer className="h-6 w-6 text-red-600" />
+              <div className="text-center">
+                <div className={`text-2xl font-mono font-bold ${content.textColor}`}>
+                  {formattedTimeRemaining}
+                </div>
+                <div className="text-sm text-gray-600">Time Remaining</div>
+              </div>
+            </div>
+          </div>
+          
           <div className="space-y-3">
             <p className="text-sm text-gray-600">
               {content.description}
@@ -97,20 +122,20 @@ export function RandomSubscriptionPrompt({
             </div>
             
             {urgencyLevel === 'critical' && (
-              <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
+              <div className="bg-red-50 border border-red-200 p-3 rounded-lg animate-pulse">
                 <div className="flex items-center gap-2 text-red-800 font-medium mb-1">
-                  <Clock className="h-4 w-4" />
-                  Time Remaining: Less than 24 hours
+                  <AlertTriangle className="h-4 w-4" />
+                  FINAL WARNING
                 </div>
                 <p className="text-sm text-red-700">
-                  After 24 hours, your will document will be permanently deleted and cannot be recovered.
+                  After the countdown reaches zero, your will document will be permanently deleted and cannot be recovered.
                 </p>
               </div>
             )}
           </div>
           
           <div className="flex flex-col gap-2">
-            <Button onClick={handleUpgrade} className="w-full">
+            <Button onClick={handleUpgrade} className={`w-full ${urgencyLevel === 'critical' ? 'bg-red-600 hover:bg-red-700 animate-pulse' : ''}`}>
               {content.buttonText}
             </Button>
             <Button variant="outline" onClick={onClose} className="w-full">
