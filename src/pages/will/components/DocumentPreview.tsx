@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WillContent } from './types';
 import { WillPreview } from './WillPreview';
+import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
 
 interface DocumentPreviewProps {
   willContent: WillContent;
