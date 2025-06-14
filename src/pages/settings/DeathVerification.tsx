@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -26,10 +25,12 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toggleProcessing, setToggleProcessing] = useState(false);
+  const [toggling, setToggling] = useState(false);
   
   // Death verification settings state
   const [settings, setSettings] = useState<DeathVerificationSettings>(DEFAULT_SETTINGS);
+  // Keep track of original enabled state to handle optimistic updates
+  const [originalEnabled, setOriginalEnabled] = useState(false);
   
   useEffect(() => {
     fetchSettings();
@@ -42,8 +43,10 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       
       if (fetchedSettings) {
         setSettings(fetchedSettings);
+        setOriginalEnabled(fetchedSettings.check_in_enabled);
       } else {
         setSettings(DEFAULT_SETTINGS);
+        setOriginalEnabled(false);
       }
     } catch (error) {
       console.error('Error fetching death verification settings:', error);
@@ -69,6 +72,12 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
           description: "Your death verification settings have been saved successfully."
         });
         setSettings(updatedSettings);
+        setOriginalEnabled(updatedSettings.check_in_enabled);
+        
+        // Notify parent component about the change
+        if (onSettingsChange) {
+          onSettingsChange();
+        }
       } else {
         throw new Error("Failed to save settings");
       }
@@ -84,15 +93,21 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
     }
   };
   
-  // Handle toggle for check-in enabled
+  // Simplified toggle for check-in enabled with better error handling
   const toggleCheckInEnabled = async () => {
+    if (toggling) return; // Prevent multiple concurrent toggles
+    
     try {
-      setToggleProcessing(true);
+      setToggling(true);
+      
+      // Optimistic update
+      const newEnabledState = !settings.check_in_enabled;
+      setSettings(prev => ({ ...prev, check_in_enabled: newEnabledState }));
       
       // Create a new settings object with the updated value
       const updatedSettings = { 
         ...settings, 
-        check_in_enabled: !settings.check_in_enabled 
+        check_in_enabled: newEnabledState 
       };
       
       // Save the updated settings
@@ -100,13 +115,19 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       
       if (result) {
         // If enabling check-ins and there's no initial check-in yet
-        if (!settings.check_in_enabled) {
-          // Create initial check-in
-          await createInitialCheckin();
+        if (newEnabledState && !originalEnabled) {
+          try {
+            await createInitialCheckin();
+            console.log('Initial check-in created successfully');
+          } catch (checkinError) {
+            console.error('Failed to create initial check-in:', checkinError);
+            // Don't fail the entire operation if check-in creation fails
+          }
         }
         
-        // Update local state
+        // Update state with the result from the server
         setSettings(result);
+        setOriginalEnabled(result.check_in_enabled);
         
         // Notify parent component about the change
         if (onSettingsChange) {
@@ -124,19 +145,20 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       }
     } catch (error) {
       console.error('Error toggling check-in status:', error);
+      
+      // Revert the optimistic update
+      setSettings(prev => ({
+        ...prev,
+        check_in_enabled: originalEnabled
+      }));
+      
       toast({
         title: "Error",
         description: "There was an error updating the check-in status. Please try again.",
         variant: "destructive"
       });
-      
-      // Revert the local state back to the original value
-      setSettings(prev => ({
-        ...prev,
-        check_in_enabled: !prev.check_in_enabled
-      }));
     } finally {
-      setToggleProcessing(false);
+      setToggling(false);
     }
   };
   
@@ -189,11 +211,14 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
             <Shield className="text-willtank-700 mr-2" size={18} />
             <h3 className="font-medium">Check-in System</h3>
           </div>
-          <Switch 
-            checked={settings.check_in_enabled}
-            disabled={toggleProcessing} 
-            onCheckedChange={toggleCheckInEnabled}
-          />
+          <div className="flex items-center space-x-2">
+            {toggling && <Loader2 className="h-4 w-4 animate-spin text-willtank-600" />}
+            <Switch 
+              checked={settings.check_in_enabled}
+              disabled={toggling} 
+              onCheckedChange={toggleCheckInEnabled}
+            />
+          </div>
         </div>
         
         <div className="p-6">
@@ -434,7 +459,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       <div className="flex justify-end">
         <Button 
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || toggling}
           className="px-6"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}

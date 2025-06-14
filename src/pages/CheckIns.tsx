@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History, Shield, Info } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -27,6 +27,7 @@ import { Link } from 'react-router-dom';
 export default function CheckIns() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [loading, setLoading] = useState(true);
   const [checkins, setCheckins] = useState<DeathVerificationCheckin[]>([]);
@@ -34,10 +35,21 @@ export default function CheckIns() {
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Get the initial tab from location state or default to 'settings'
+  const initialTab = location.state?.activeTab || 'settings';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
     fetchData();
   }, [refreshKey]);
+
+  // Handle tab switching from location state
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   const fetchData = async () => {
     try {
@@ -121,7 +133,7 @@ export default function CheckIns() {
           </div>
         </div>
         
-        <Tabs defaultValue="settings">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 border-b w-full justify-start rounded-none pb-0">
             <TabsTrigger value="settings" className="rounded-t-lg rounded-b-none border-b-0">Settings</TabsTrigger>
             <TabsTrigger value="automation" className="rounded-t-lg rounded-b-none border-b-0">🚀 GODMODE</TabsTrigger>

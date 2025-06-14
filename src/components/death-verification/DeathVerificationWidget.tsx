@@ -7,6 +7,7 @@ import { format, formatDistanceToNow, addDays, isValid } from 'date-fns';
 import { parseISO } from 'date-fns';
 import { Shield, CheckSquare, AlertTriangle, AlertCircle, Clock, Bot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import {
   getDeathVerificationSettings,
   getLatestCheckin,
@@ -18,6 +19,7 @@ import { useNotificationTriggers } from '@/hooks/use-notification-triggers';
 
 export function DeathVerificationWidget() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { triggerDeathVerificationCheckIn } = useNotificationTriggers();
   
   const [checkin, setCheckin] = useState<DeathVerificationCheckin | null>(null);
@@ -76,6 +78,10 @@ export function DeathVerificationWidget() {
     } finally {
       setCheckingIn(false);
     }
+  };
+  
+  const handleConfigureSettings = () => {
+    navigate('/check-ins', { state: { activeTab: 'settings' } });
   };
   
   // Get status based on next check-in date
@@ -186,7 +192,7 @@ export function DeathVerificationWidget() {
           </Alert>
         </CardContent>
         <CardFooter>
-          <Button variant="outline" onClick={() => window.location.hash = '#settings'} className="w-full">
+          <Button variant="outline" onClick={handleConfigureSettings} className="w-full">
             Configure Check-In Settings
           </Button>
         </CardFooter>
