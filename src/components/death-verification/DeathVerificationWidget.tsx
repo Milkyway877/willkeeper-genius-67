@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, formatDistanceToNow, addDays, isValid } from 'date-fns';
 import { parseISO } from 'date-fns';
-import { Shield, CheckSquare, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
+import { Shield, CheckSquare, AlertTriangle, AlertCircle, Clock, Bot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   getDeathVerificationSettings,
@@ -209,11 +208,12 @@ export function DeathVerificationWidget() {
             : status === 'grace-period' 
               ? 'Check-In Required' 
               : 'Check-In Overdue'}
+          <Bot className="h-4 w-4 ml-2 text-willtank-600" title="GODMODE Protected" />
         </CardTitle>
         <CardDescription>
           {checkin 
-            ? `Last checked in ${safeFormatDistance(checkin.checked_in_at)}`
-            : 'No previous check-ins found'}
+            ? `Last checked in ${safeFormatDistance(checkin.checked_in_at)} • GODMODE automation active`
+            : 'No previous check-ins found • GODMODE automation ready'}
         </CardDescription>
       </CardHeader>
       
@@ -221,9 +221,10 @@ export function DeathVerificationWidget() {
         {status === 'active' && (
           <Alert className="bg-green-50 text-green-800 border-green-200 mb-4">
             <CheckSquare className="h-4 w-4" />
-            <AlertTitle>Status: Protected</AlertTitle>
+            <AlertTitle>Status: Protected by GODMODE</AlertTitle>
             <AlertDescription>
-              Your will is protected by our check-in system. Next check-in due {checkin ? safeFormatDistance(checkin.next_check_in) : 'soon'}.
+              Your will is protected by our automated check-in system. Next check-in due {checkin ? safeFormatDistance(checkin.next_check_in) : 'soon'}. 
+              GODMODE will automatically notify your contacts if you miss check-ins.
             </AlertDescription>
           </Alert>
         )}
@@ -231,9 +232,10 @@ export function DeathVerificationWidget() {
         {status === 'grace-period' && (
           <Alert className="bg-amber-50 text-amber-800 border-amber-200 mb-4">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Check-In Needed</AlertTitle>
+            <AlertTitle>Check-In Needed - GODMODE Monitoring</AlertTitle>
             <AlertDescription>
-              Your check-in is {checkin && checkin.next_check_in ? safeFormatDistance(checkin.next_check_in) : ''} overdue. Please check in soon to prevent the verification process from starting.
+              Your check-in is {checkin && checkin.next_check_in ? safeFormatDistance(checkin.next_check_in) : ''} overdue. 
+              GODMODE automation will begin notifying your contacts soon. Please check in to prevent notifications.
             </AlertDescription>
           </Alert>
         )}
@@ -241,9 +243,10 @@ export function DeathVerificationWidget() {
         {status === 'overdue' && (
           <Alert className="bg-red-50 text-red-800 border-red-200 mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Check-In Critically Overdue</AlertTitle>
+            <AlertTitle>🚨 GODMODE Activated</AlertTitle>
             <AlertDescription>
-              Your check-in is significantly overdue. The verification process may have started. Please check in immediately.
+              Your check-in is critically overdue. GODMODE automation has likely notified your contacts. 
+              Please check in immediately to stop the verification process.
             </AlertDescription>
           </Alert>
         )}
