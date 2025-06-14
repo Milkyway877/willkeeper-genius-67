@@ -18,12 +18,14 @@ serve(async (req) => {
   }
 
   try {
-    const { action, executorName, executorEmail, otpCode } = await req.json();
+    const { action, executorName, executorEmail, deceasedEmail, otpCode, contactVerification } = await req.json();
     
     if (action === 'request_access') {
-      return await requestExecutorAccess(executorName, executorEmail);
-    } else if (action === 'unlock_will') {
-      return await unlockWillWithOTP(executorName, executorEmail, otpCode);
+      return await requestExecutorAccess(executorName, executorEmail, deceasedEmail);
+    } else if (action === 'verify_otp') {
+      return await verifyOTP(executorName, executorEmail, deceasedEmail, otpCode);
+    } else if (action === 'verify_contacts') {
+      return await verifyContactsAndUnlock(executorName, executorEmail, deceasedEmail, contactVerification);
     }
 
     return new Response(
@@ -40,21 +42,36 @@ serve(async (req) => {
   }
 });
 
-async function requestExecutorAccess(executorName: string, executorEmail: string) {
-  if (!executorName || !executorEmail) {
+async function requestExecutorAccess(executorName: string, executorEmail: string, deceasedEmail: string) {
+  if (!executorName || !executorEmail || !deceasedEmail) {
     return new Response(
-      JSON.stringify({ error: "Executor name and email are required" }),
+      JSON.stringify({ error: "All fields are required" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  // Find the executor in the database
+  // First find the deceased user
+  const { data: deceasedUser, error: deceasedError } = await supabase
+    .from('user_profiles')
+    .select('id, first_name, last_name, email')
+    .ilike('email', deceasedEmail.trim())
+    .single();
+
+  if (deceasedError || !deceasedUser) {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Deceased person not found in WillTank records" 
+      }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Find the executor in the database for this deceased user
   const { data: executor, error: executorError } = await supabase
     .from('will_executors')
-    .select(`
-      *,
-      user_profiles!inner(id, first_name, last_name, email)
-    `)
+    .select('*')
+    .eq('user_id', deceasedUser.id)
     .ilike('name', executorName.trim())
     .ilike('email', executorEmail.trim())
     .single();
@@ -63,7 +80,7 @@ async function requestExecutorAccess(executorName: string, executorEmail: string
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: "Executor not found. Please check your full name and email address exactly as provided by the deceased." 
+        error: "Executor not found for this deceased person. Please check your details." 
       }),
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -82,6 +99,7 @@ async function requestExecutorAccess(executorName: string, executorEmail: string
       otp_code: otp,
       expires_at: expiresAt.toISOString(),
       used: false,
+      step: 'otp_sent',
       created_at: new Date().toISOString()
     });
 
@@ -95,16 +113,16 @@ async function requestExecutorAccess(executorName: string, executorEmail: string
 
   // Send OTP via email
   const resend = getResendClient();
-  const deceasedName = `${executor.user_profiles.first_name || ''} ${executor.user_profiles.last_name || ''}`.trim() || executor.user_profiles.email;
+  const deceasedName = `${deceasedUser.first_name || ''} ${deceasedUser.last_name || ''}`.trim() || deceasedUser.email;
 
   const otpEmailContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #4f46e5;">🔐 Will Access Verification</h1>
+      <h1 style="color: #4f46e5;">🔐 Executor Will Access - Step 2/4</h1>
       <p>Hello ${executorName},</p>
-      <p>You have requested access to the will of <strong>${deceasedName}</strong>.</p>
+      <p>You are proceeding with access to the will of <strong>${deceasedName}</strong>.</p>
       
       <div style="background-color: #f8fafc; border: 2px solid #4f46e5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-        <h2 style="color: #4f46e5; margin-top: 0;">Your One-Time Access Code</h2>
+        <h2 style="color: #4f46e5; margin-top: 0;">Your Access Code - Step 2</h2>
         <div style="font-size: 32px; font-weight: bold; color: #1f2937; letter-spacing: 4px; margin: 15px 0;">
           ${otp}
         </div>
@@ -112,18 +130,16 @@ async function requestExecutorAccess(executorName: string, executorEmail: string
       </div>
 
       <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 15px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="color: #dc2626; margin-top: 0;">⚠️ Important Security Notice</h3>
+        <h3 style="color: #dc2626; margin-top: 0;">⚠️ Multi-Step Security Process</h3>
         <ul style="color: #7f1d1d; margin: 10px 0;">
-          <li>This code can only be used <strong>once</strong></li>
-          <li>The will can only be downloaded <strong>once</strong></li>
-          <li>After download, access will be permanently frozen</li>
+          <li>This is step 2 of a 4-step verification process</li>
+          <li>After this code, you'll need to verify contact information</li>
+          <li>Only one download will be allowed after full verification</li>
           <li>Do not share this code with anyone</li>
         </ul>
       </div>
 
-      <p>Enter this code at the will unlock portal to access and download the will documents.</p>
-      
-      <p>If you did not request this access, please contact WillTank security immediately.</p>
+      <p>Enter this code in the portal to proceed to contact verification.</p>
 
       <p>Best regards,<br>
       WillTank Security Team</p>
@@ -134,28 +150,32 @@ async function requestExecutorAccess(executorName: string, executorEmail: string
     const emailResponse = await resend.emails.send({
       from: "WillTank Security <security@willtank.com>",
       to: [executorEmail],
-      subject: `🔐 Will Access Code for ${deceasedName} - Expires in 15 minutes`,
+      subject: `🔐 Step 2: Access Code for ${deceasedName} - Expires in 15 minutes`,
       html: buildDefaultEmailLayout(otpEmailContent)
     });
 
     // Log the access request
     await supabase.from('death_verification_logs').insert({
       user_id: executor.user_id,
-      action: 'executor_otp_sent',
+      action: 'executor_otp_sent_enhanced',
       details: {
         executor_name: executorName,
         executor_email: executorEmail,
+        deceased_name: deceasedName,
+        deceased_email: deceasedEmail,
         executor_id: executor.id,
         email_id: emailResponse.id,
-        otp_expires_at: expiresAt.toISOString()
+        otp_expires_at: expiresAt.toISOString(),
+        verification_step: 'otp_sent'
       }
     });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Access code sent to your email. Check your inbox and enter the 6-digit code.",
-        expiresIn: "15 minutes"
+        message: "Access code sent to your email. This is step 2 of 4 in the verification process.",
+        expiresIn: "15 minutes",
+        nextStep: "otp_verification"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -168,10 +188,24 @@ async function requestExecutorAccess(executorName: string, executorEmail: string
   }
 }
 
-async function unlockWillWithOTP(executorName: string, executorEmail: string, otpCode: string) {
-  if (!executorName || !executorEmail || !otpCode) {
+async function verifyOTP(executorName: string, executorEmail: string, deceasedEmail: string, otpCode: string) {
+  if (!executorName || !executorEmail || !deceasedEmail || !otpCode) {
     return new Response(
       JSON.stringify({ error: "All fields are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Find the deceased user
+  const { data: deceasedUser } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .ilike('email', deceasedEmail.trim())
+    .single();
+
+  if (!deceasedUser) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Invalid session" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -180,16 +214,14 @@ async function unlockWillWithOTP(executorName: string, executorEmail: string, ot
   const { data: executor, error: executorError } = await supabase
     .from('will_executors')
     .select('*')
+    .eq('user_id', deceasedUser.id)
     .ilike('name', executorName.trim())
     .ilike('email', executorEmail.trim())
     .single();
 
   if (executorError || !executor) {
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: "Executor not found" 
-      }),
+      JSON.stringify({ success: false, error: "Executor not found" }),
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -214,42 +246,148 @@ async function unlockWillWithOTP(executorName: string, executorEmail: string, ot
     );
   }
 
-  // Mark OTP as used
+  // Update OTP record to mark as used for this step
   await supabase
     .from('executor_otps')
-    .update({ used: true, used_at: new Date().toISOString() })
+    .update({ step: 'otp_verified' })
+    .eq('id', otpRecord.id);
+
+  // Log the OTP verification
+  await supabase.from('death_verification_logs').insert({
+    user_id: executor.user_id,
+    action: 'executor_otp_verified',
+    details: {
+      executor_name: executorName,
+      executor_email: executorEmail,
+      executor_id: executor.id,
+      verification_step: 'otp_verified'
+    }
+  });
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      message: "OTP verified successfully. Proceed to contact verification.",
+      nextStep: "contact_verification"
+    }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+async function verifyContactsAndUnlock(executorName: string, executorEmail: string, deceasedEmail: string, contactVerification: any) {
+  if (!executorName || !executorEmail || !deceasedEmail || !contactVerification) {
+    return new Response(
+      JSON.stringify({ error: "All fields are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Find the deceased user
+  const { data: deceasedUser } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .ilike('email', deceasedEmail.trim())
+    .single();
+
+  if (!deceasedUser) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Invalid session" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Find the executor
+  const { data: executor } = await supabase
+    .from('will_executors')
+    .select('*')
+    .eq('user_id', deceasedUser.id)
+    .ilike('name', executorName.trim())
+    .ilike('email', executorEmail.trim())
+    .single();
+
+  if (!executor) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Executor not found" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Verify the OTP session is valid
+  const { data: otpRecord } = await supabase
+    .from('executor_otps')
+    .select('*')
+    .eq('executor_id', executor.id)
+    .eq('step', 'otp_verified')
+    .gt('expires_at', new Date().toISOString())
+    .single();
+
+  if (!otpRecord) {
+    return new Response(
+      JSON.stringify({ success: false, error: "Invalid verification session" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Get beneficiaries and executors to verify contacts
+  const { data: beneficiaries } = await supabase
+    .from('will_beneficiaries')
+    .select('*')
+    .eq('user_id', deceasedUser.id);
+
+  const { data: allExecutors } = await supabase
+    .from('will_executors')
+    .select('*')
+    .eq('user_id', deceasedUser.id);
+
+  // Verify at least 2 contacts match
+  const allContacts = [
+    ...(beneficiaries || []).map(b => b.name.toLowerCase()),
+    ...(allExecutors || []).map(e => e.name.toLowerCase())
+  ];
+
+  const providedContacts = [
+    contactVerification.contact1Name?.toLowerCase(),
+    contactVerification.contact2Name?.toLowerCase(),
+    contactVerification.contact3Name?.toLowerCase()
+  ].filter(Boolean);
+
+  const matchCount = providedContacts.filter(contact => 
+    allContacts.some(dbContact => 
+      dbContact.includes(contact) || contact.includes(dbContact)
+    )
+  ).length;
+
+  if (matchCount < 2) {
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Contact verification failed. Please ensure you provide accurate names of beneficiaries or executors." 
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Mark OTP as fully used
+  await supabase
+    .from('executor_otps')
+    .update({ 
+      used: true, 
+      used_at: new Date().toISOString(),
+      step: 'contacts_verified'
+    })
     .eq('id', otpRecord.id);
 
   // Get complete will package
-  const userId = executor.user_id;
-
-  // Get user profile
-  const { data: userProfile, error: userError } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+  const userId = deceasedUser.id;
 
   // Get wills
-  const { data: wills, error: willsError } = await supabase
+  const { data: wills } = await supabase
     .from('wills')
     .select('*')
     .eq('user_id', userId);
 
-  // Get beneficiaries
-  const { data: beneficiaries, error: beneficiariesError } = await supabase
-    .from('will_beneficiaries')
-    .select('*')
-    .eq('user_id', userId);
-
-  // Get all executors
-  const { data: allExecutors, error: allExecutorsError } = await supabase
-    .from('will_executors')
-    .select('*')
-    .eq('user_id', userId);
-
   // Get future messages/digital assets
-  const { data: digitalAssets, error: assetsError } = await supabase
+  const { data: digitalAssets } = await supabase
     .from('future_messages')
     .select('*')
     .eq('user_id', userId);
@@ -257,15 +395,22 @@ async function unlockWillWithOTP(executorName: string, executorEmail: string, ot
   // Create comprehensive will package
   const willPackage = {
     deceased: {
-      name: `${userProfile?.first_name || ''} ${userProfile?.last_name || ''}`.trim() || userProfile?.email,
-      email: userProfile?.email,
+      name: `${deceasedUser.first_name || ''} ${deceasedUser.last_name || ''}`.trim() || deceasedUser.email,
+      email: deceasedUser.email,
       id: userId,
-      profile: userProfile
+      profile: deceasedUser
     },
     wills: wills || [],
     beneficiaries: beneficiaries || [],
     executors: allExecutors || [],
     digitalAssets: digitalAssets || [],
+    verificationDetails: {
+      executorName,
+      executorEmail,
+      contactVerification,
+      verifiedAt: new Date().toISOString(),
+      matchedContacts: matchCount
+    },
     accessDetails: {
       unlockedAt: new Date().toISOString(),
       unlockedBy: {
@@ -273,35 +418,40 @@ async function unlockWillWithOTP(executorName: string, executorEmail: string, ot
         email: executorEmail,
         executorId: executor.id
       },
-      otpUsed: otpCode,
-      accessType: "one_time_download"
+      accessType: "enhanced_one_time_download",
+      verificationSteps: ["deceased_verified", "executor_verified", "otp_verified", "contacts_verified"]
     },
     instructions: `
-      This package contains the complete will and digital legacy information for ${userProfile?.first_name || ''} ${userProfile?.last_name || ''}.
+      This package contains the complete will and digital legacy information for ${deceasedUser.first_name || ''} ${deceasedUser.last_name || ''}.
       
-      IMPORTANT: This is a ONE-TIME ACCESS. After this download, the will access will be permanently frozen.
-      
-      Please handle this information with care and in accordance with legal requirements.
+      IMPORTANT: This is a ONE-TIME ACCESS with enhanced security verification.
       
       Package includes:
       - Legal will documents
-      - Beneficiary information
+      - Beneficiary information with contact details
       - Digital asset instructions
       - Future messages/time capsules
       - Complete executor information
+      - Full verification audit trail
+      
+      This download has been verified through a 4-step security process and access is now permanently frozen.
     `
   };
 
-  // Log the successful unlock
+  // Log the successful unlock with enhanced details
   await supabase.from('death_verification_logs').insert({
     user_id: userId,
-    action: 'will_unlocked_by_executor',
+    action: 'will_unlocked_enhanced_verification',
     details: {
       executor_name: executorName,
       executor_email: executorEmail,
       executor_id: executor.id,
-      otp_used: otpCode,
+      deceased_name: deceasedUser.first_name + ' ' + deceasedUser.last_name,
+      deceased_email: deceasedEmail,
+      contact_verification: contactVerification,
+      matched_contacts: matchCount,
       unlock_timestamp: new Date().toISOString(),
+      verification_steps_completed: ["deceased_verified", "executor_verified", "otp_verified", "contacts_verified"],
       package_contents: {
         wills_count: wills?.length || 0,
         beneficiaries_count: beneficiaries?.length || 0,
@@ -320,8 +470,13 @@ async function unlockWillWithOTP(executorName: string, executorEmail: string, ot
     JSON.stringify({ 
       success: true, 
       willPackage,
-      message: "Will successfully unlocked. This is your only download opportunity.",
-      warning: "Access is now permanently frozen. Save this download securely."
+      message: "Enhanced verification complete. Will successfully unlocked.",
+      warning: "This is your only download opportunity. Access is now permanently frozen.",
+      verificationSummary: {
+        stepsCompleted: 4,
+        contactsMatched: matchCount,
+        securityLevel: "Enhanced"
+      }
     }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );

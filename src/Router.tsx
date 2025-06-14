@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -21,6 +20,7 @@ import Billing from '@/pages/billing/Billing';
 import WillEditorPage from '@/pages/will/WillEditorPage';
 import IDSecurity from '@/pages/security/IDSecurity';
 import { TrialSuccess } from '@/pages/TrialSuccess';
+import EnhancedExecutorLogin from '@/pages/will-unlock/EnhancedExecutorLogin';
 
 const queryClient = new QueryClient();
 
@@ -82,6 +82,7 @@ export function Router() {
                 <Billing />
               </ProtectedRoute>
             } />
+            <Route path="/executor-access" element={<EnhancedExecutorLogin />} />
           </Routes>
           <Toaster />
           <Sonner />
