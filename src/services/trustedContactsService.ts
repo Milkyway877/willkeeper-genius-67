@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { sendTrustedContactInvitation } from './emailService';
+import { sendContactWelcomeNotification } from './contactNotificationService';
 
 export interface TrustedContact {
   id: string;
@@ -55,6 +56,17 @@ export const createTrustedContact = async (contact: {
       return null;
     }
     
+    // Get user profile for welcome notification
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('first_name, last_name, full_name, email')
+      .eq('id', session.user.id)
+      .single();
+      
+    const userFullName = userProfile?.full_name || 
+      (userProfile?.first_name && userProfile?.last_name ? 
+        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
+    
     const newContact = {
       name: contact.name,
       email: contact.email,
@@ -71,6 +83,24 @@ export const createTrustedContact = async (contact: {
     if (error) {
       console.error('Error creating trusted contact:', error);
       return null;
+    }
+    
+    // Send welcome notification to the new trusted contact
+    if (data && userProfile) {
+      try {
+        await sendContactWelcomeNotification({
+          contactId: data.id,
+          contactName: contact.name,
+          contactEmail: contact.email,
+          contactType: 'trusted_contact',
+          userFullName,
+          userEmail: userProfile.email
+        });
+        console.log('Welcome notification sent to trusted contact');
+      } catch (welcomeError) {
+        console.error('Error sending welcome notification:', welcomeError);
+        // Don't fail the contact creation if welcome email fails
+      }
     }
     
     return data;
@@ -120,7 +150,7 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
   }
 };
 
-// Send verification request using the trusted contact invitation service
+// Enhanced sendVerificationRequest to use the new notification system
 export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
   try {
     // Get contact details
@@ -339,7 +369,7 @@ interface StatusCheckResponse {
   };
 }
 
-// Method to trigger a status check for all contacts
+// Enhanced triggerStatusCheck to use the new notification system
 export const triggerStatusCheck = async (): Promise<StatusCheckResponse> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -349,45 +379,48 @@ export const triggerStatusCheck = async (): Promise<StatusCheckResponse> => {
       return { success: false, error: 'Not authenticated' };
     }
     
-    // Try direct functions invoke first
+    // Try using the new missed checkin notification function
     try {
-      console.log('Attempting status check via direct invoke');
-      const { data, error: fnError } = await supabase.functions.invoke('send-status-check', {
-        body: { userId: session.user.id }
+      console.log('Attempting to trigger missed checkin notifications');
+      const { data, error: fnError } = await supabase.functions.invoke('send-missed-checkin-notifications', {
+        body: { 
+          userId: session.user.id,
+          action: 'process_user',
+          daysOverdue: 1 // Manual trigger - treat as 1 day overdue
+        }
       });
       
       if (fnError) {
         console.error('Error from functions.invoke:', fnError);
-        throw new Error(fnError.message || 'Failed to send status check via functions invoke');
+        throw new Error(fnError.message || 'Failed to trigger notifications');
       }
       
-      return { success: true, stats: data?.stats };
+      return { 
+        success: true, 
+        stats: {
+          total: 1,
+          successful: data?.success ? 1 : 0,
+          failed: data?.success ? 0 : 1
+        }
+      };
     } catch (invokeError) {
-      console.error('Error with functions.invoke for status check:', invokeError);
+      console.error('Error with missed checkin notifications:', invokeError);
       
-      // Try fetch as fallback
+      // Fallback to original status check method
       try {
-        console.log('Attempting status check via fetch');
-        const response = await fetch(`${window.location.origin}/functions/v1/send-status-check`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': SUPABASE_PUBLISHABLE_KEY || ''
-          },
-          body: JSON.stringify({ userId: session.user.id })
+        console.log('Falling back to original status check method');
+        const { data, error: fnError } = await supabase.functions.invoke('send-status-check', {
+          body: { userId: session.user.id }
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Error sending status check:', errorData);
-          throw new Error(errorData.message || 'Failed to send status check');
+        if (fnError) {
+          console.error('Error from functions.invoke:', fnError);
+          throw new Error(fnError.message || 'Failed to send status check via functions invoke');
         }
         
-        const responseData = await response.json();
-        return { success: true, stats: responseData.stats };
-      } catch (fetchError) {
-        console.error('Fetch error with send-status-check:', fetchError);
+        return { success: true, stats: data?.stats };
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
         throw new Error('All methods to trigger status check failed');
       }
     }

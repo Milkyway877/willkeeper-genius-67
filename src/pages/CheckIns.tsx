@@ -4,6 +4,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DeathVerification from './settings/DeathVerification';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
+import { TrustedContacts } from '@/components/death-verification/TrustedContacts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -77,6 +78,10 @@ export default function CheckIns() {
     setRefreshKey(prev => prev + 1);
   };
 
+  const handleContactsChange = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -109,14 +114,7 @@ export default function CheckIns() {
                 <Info className="h-4 w-4" />
                 <AlertTitle>Trusted Contacts</AlertTitle>
                 <AlertDescription className="text-sm">
-                  Manage your trusted contacts in the Tank page under Verification & Contacts tab.
-                  <div className="mt-2">
-                    <Link to="/tank">
-                      <Button variant="outline" size="sm">
-                        Go to Tank
-                      </Button>
-                    </Link>
-                  </div>
+                  Manage your trusted contacts in the Manage Contacts tab below.
                 </AlertDescription>
               </Alert>
             </div>
@@ -136,6 +134,23 @@ export default function CheckIns() {
 
           <TabsContent value="contacts">
             <div className="space-y-6">
+              {/* Trusted Contacts Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Shield className="mr-2 h-5 w-5 text-willtank-600" />
+                    Trusted Contacts
+                  </CardTitle>
+                  <CardDescription>
+                    Manage trusted contacts who can verify your status and receive notifications
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TrustedContacts onContactsChange={handleContactsChange} />
+                </CardContent>
+              </Card>
+
+              {/* Executors Section */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -152,6 +167,11 @@ export default function CheckIns() {
                       <User className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                       <h3 className="font-medium mb-1">No executors found</h3>
                       <p className="text-sm">Add executors in the will settings to enable them for check-ins</p>
+                      <Link to="/will">
+                        <Button variant="outline" className="mt-3">
+                          Go to Will Settings
+                        </Button>
+                      </Link>
                     </div>
                   ) : (
                     <Table>
@@ -184,6 +204,7 @@ export default function CheckIns() {
                 </CardContent>
               </Card>
 
+              {/* Beneficiaries Section */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -200,6 +221,11 @@ export default function CheckIns() {
                       <User className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                       <h3 className="font-medium mb-1">No beneficiaries found</h3>
                       <p className="text-sm">Add beneficiaries in the will settings to enable them for check-ins</p>
+                      <Link to="/will">
+                        <Button variant="outline" className="mt-3">
+                          Go to Will Settings
+                        </Button>
+                      </Link>
                     </div>
                   ) : (
                     <Table>
