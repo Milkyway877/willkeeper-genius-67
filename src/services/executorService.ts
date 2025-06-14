@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { sendContactWelcomeNotification } from './contactNotificationService';
 
 export interface Executor {
   id: string;
@@ -11,9 +11,9 @@ export interface Executor {
   primary_executor: boolean;
   compensation?: string;
   notes?: string;
-  isVerified?: boolean; // Not in DB, computed based on verification status
-  address?: string; // Adding address field since it's used in the UI
-  invitation_status?: string; // Adding for ContactsManager.tsx
+  isVerified?: boolean;
+  address?: string;
+  invitation_status?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -28,10 +28,10 @@ export interface Beneficiary {
   allocation_percentage?: number;
   specific_assets?: string;
   notes?: string;
-  isVerified?: boolean; // Not in DB, computed based on verification status
-  address?: string; // Adding address field since it's used in the UI
-  invitation_status?: string; // Adding for ContactsManager.tsx
-  percentage?: number; // Adding for compatibility with UI
+  isVerified?: boolean;
+  address?: string;
+  invitation_status?: string;
+  percentage?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -137,9 +137,21 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'user_id' |
       return null;
     }
     
+    // Get user profile for welcome notification
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('first_name, last_name, full_name, email')
+      .eq('id', session.user.id)
+      .single();
+      
+    const userFullName = userProfile?.full_name || 
+      (userProfile?.first_name && userProfile?.last_name ? 
+        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
+    
     const newExecutor = {
       ...executor,
-      user_id: session.user.id
+      user_id: session.user.id,
+      invitation_status: 'notified'
     };
     
     const { data, error } = await supabase
@@ -151,6 +163,29 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'user_id' |
     if (error) {
       console.error('Error creating executor:', error);
       return null;
+    }
+    
+    // Automatically send welcome notification if email is provided
+    if (data && executor.email && userProfile) {
+      try {
+        await sendContactWelcomeNotification({
+          contactId: data.id,
+          contactName: executor.name,
+          contactEmail: executor.email,
+          contactType: 'executor',
+          userFullName,
+          userEmail: userProfile.email,
+          additionalInfo: {
+            relation: executor.relation,
+            phone: executor.phone,
+            isPrimary: executor.primary_executor
+          }
+        });
+        console.log('Welcome notification sent to executor automatically');
+      } catch (welcomeError) {
+        console.error('Error sending automatic welcome notification:', welcomeError);
+        // Don't fail the creation if welcome email fails
+      }
     }
     
     return data;
@@ -169,9 +204,21 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'u
       return null;
     }
     
+    // Get user profile for welcome notification
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('first_name, last_name, full_name, email')
+      .eq('id', session.user.id)
+      .single();
+      
+    const userFullName = userProfile?.full_name || 
+      (userProfile?.first_name && userProfile?.last_name ? 
+        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
+    
     const newBeneficiary = {
       ...beneficiary,
-      user_id: session.user.id
+      user_id: session.user.id,
+      invitation_status: 'notified'
     };
     
     const { data, error } = await supabase
@@ -183,6 +230,28 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'u
     if (error) {
       console.error('Error creating beneficiary:', error);
       return null;
+    }
+    
+    // Automatically send welcome notification if email is provided
+    if (data && beneficiary.email && userProfile) {
+      try {
+        await sendContactWelcomeNotification({
+          contactId: data.id,
+          contactName: beneficiary.name,
+          contactEmail: beneficiary.email,
+          contactType: 'beneficiary',
+          userFullName,
+          userEmail: userProfile.email,
+          additionalInfo: {
+            relation: beneficiary.relation,
+            phone: beneficiary.phone
+          }
+        });
+        console.log('Welcome notification sent to beneficiary automatically');
+      } catch (welcomeError) {
+        console.error('Error sending automatic welcome notification:', welcomeError);
+        // Don't fail the creation if welcome email fails
+      }
     }
     
     return data;
@@ -268,99 +337,6 @@ export const deleteBeneficiary = async (id: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error in deleteBeneficiary:', error);
-    return false;
-  }
-};
-
-export const sendVerificationRequest = async (contactId: string, contactType: 'executor' | 'beneficiary'): Promise<boolean> => {
-  try {
-    let contact;
-    
-    if (contactType === 'executor') {
-      const { data: executorData, error: executorError } = await supabase
-        .from('will_executors')
-        .select('*')
-        .eq('id', contactId)
-        .single();
-        
-      if (executorError || !executorData) {
-        console.error('Error fetching executor:', executorError);
-        return false;
-      }
-      
-      contact = {
-        id: executorData.id,
-        name: executorData.name,
-        email: executorData.email
-      };
-    } else {
-      const { data: beneficiaryData, error: beneficiaryError } = await supabase
-        .from('will_beneficiaries')
-        .select('*')
-        .eq('id', contactId)
-        .single();
-        
-      if (beneficiaryError || !beneficiaryData) {
-        console.error('Error fetching beneficiary:', beneficiaryError);
-        return false;
-      }
-      
-      contact = {
-        id: beneficiaryData.id,
-        name: beneficiaryData.beneficiary_name,
-        email: beneficiaryData.email
-      };
-    }
-    
-    if (!contact.email) {
-      console.error('Contact does not have an email address');
-      return false;
-    }
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      console.error('No authenticated user found');
-      return false;
-    }
-    
-    const { data: userProfile } = await supabase
-      .from('user_profiles')
-      .select('first_name, last_name, full_name')
-      .eq('id', session.user.id)
-      .single();
-      
-    const userFullName = userProfile?.full_name || 
-      (userProfile?.first_name && userProfile?.last_name ? 
-        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
-    
-    // Call the edge function to send the invitation
-    const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({
-        contact: {
-          contactId: contact.id,
-          contactType: contactType,
-          name: contact.name,
-          email: contact.email,
-          userId: session.user.id,
-          userFullName
-        }
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error from invitation edge function:', errorData);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in sendVerificationRequest:', error);
     return false;
   }
 };

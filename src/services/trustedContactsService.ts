@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
-import { sendTrustedContactInvitation } from './emailService';
 import { sendContactWelcomeNotification } from './contactNotificationService';
 
 export interface TrustedContact {
@@ -71,7 +70,8 @@ export const createTrustedContact = async (contact: {
       name: contact.name,
       email: contact.email,
       user_id: session.user.id,
-      invitation_status: 'pending'
+      invitation_status: 'notified',
+      invitation_sent_at: new Date().toISOString()
     };
     
     const { data, error } = await supabase
@@ -85,7 +85,7 @@ export const createTrustedContact = async (contact: {
       return null;
     }
     
-    // Send welcome notification to the new trusted contact
+    // Automatically send welcome notification
     if (data && userProfile) {
       try {
         await sendContactWelcomeNotification({
@@ -96,9 +96,9 @@ export const createTrustedContact = async (contact: {
           userFullName,
           userEmail: userProfile.email
         });
-        console.log('Welcome notification sent to trusted contact');
+        console.log('Welcome notification sent to trusted contact automatically');
       } catch (welcomeError) {
-        console.error('Error sending welcome notification:', welcomeError);
+        console.error('Error sending automatic welcome notification:', welcomeError);
         // Don't fail the contact creation if welcome email fails
       }
     }
@@ -369,8 +369,8 @@ interface StatusCheckResponse {
   };
 }
 
-// Enhanced triggerStatusCheck to use the new notification system
-export const triggerStatusCheck = async (): Promise<StatusCheckResponse> => {
+// Enhanced triggerStatusCheck to use the new automated system
+export const triggerStatusCheck = async (): Promise<{ success: boolean; error?: string; stats?: any }> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -379,14 +379,14 @@ export const triggerStatusCheck = async (): Promise<StatusCheckResponse> => {
       return { success: false, error: 'Not authenticated' };
     }
     
-    // Try using the new missed checkin notification function
+    // Use the new automated missed checkin notifications function
     try {
-      console.log('Attempting to trigger missed checkin notifications');
+      console.log('Triggering automated missed checkin notifications');
       const { data, error: fnError } = await supabase.functions.invoke('send-missed-checkin-notifications', {
         body: { 
           userId: session.user.id,
           action: 'process_user',
-          daysOverdue: 1 // Manual trigger - treat as 1 day overdue
+          daysOverdue: 1
         }
       });
       
@@ -404,25 +404,8 @@ export const triggerStatusCheck = async (): Promise<StatusCheckResponse> => {
         }
       };
     } catch (invokeError) {
-      console.error('Error with missed checkin notifications:', invokeError);
-      
-      // Fallback to original status check method
-      try {
-        console.log('Falling back to original status check method');
-        const { data, error: fnError } = await supabase.functions.invoke('send-status-check', {
-          body: { userId: session.user.id }
-        });
-        
-        if (fnError) {
-          console.error('Error from functions.invoke:', fnError);
-          throw new Error(fnError.message || 'Failed to send status check via functions invoke');
-        }
-        
-        return { success: true, stats: data?.stats };
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        throw new Error('All methods to trigger status check failed');
-      }
+      console.error('Error with automated notifications:', invokeError);
+      return { success: false, error: invokeError instanceof Error ? invokeError.message : 'Unknown error' };
     }
   } catch (error) {
     console.error('Error in triggerStatusCheck:', error);
