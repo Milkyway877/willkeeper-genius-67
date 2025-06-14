@@ -77,7 +77,7 @@ export function SignInForm() {
         return;
       }
       
-      // First, validate credentials without signing in
+      // Sign in the user
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -93,46 +93,33 @@ export function SignInForm() {
         return;
       }
 
-      // Sign out immediately to check 2FA status
-      await supabase.auth.signOut();
+      if (!authData?.user) {
+        toast({
+          title: "Authentication failed",
+          description: "Failed to authenticate user",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
       
-      // Check if user has 2FA enabled
-      // We need to temporarily sign in to check security settings
-      const { data: tempAuthData } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
+      // Check if user has 2FA enabled (user is now authenticated)
+      const has2FA = await check2FAStatus();
       
-      if (tempAuthData?.user) {
-        const has2FA = await check2FAStatus();
+      if (has2FA) {
+        // Store email for 2FA verification page and redirect
+        sessionStorage.setItem('auth_email', data.email);
         
-        // Sign out again
-        await supabase.auth.signOut();
+        // Redirect to 2FA verification (user stays signed in)
+        navigate(`/auth/2fa-verification?email=${encodeURIComponent(data.email)}`, { replace: true });
+      } else {
+        // No 2FA required, user is already signed in
+        toast({
+          title: "Login successful",
+          description: "You've been signed in successfully.",
+        });
         
-        if (has2FA) {
-          // Store password temporarily for 2FA verification
-          sessionStorage.setItem('auth_password', data.password);
-          
-          // Redirect to 2FA verification
-          navigate(`/auth/2fa-verification?email=${encodeURIComponent(data.email)}`, { replace: true });
-        } else {
-          // No 2FA required, sign in directly
-          const { error: finalSignInError } = await supabase.auth.signInWithPassword({
-            email: data.email,
-            password: data.password,
-          });
-          
-          if (finalSignInError) {
-            throw new Error(finalSignInError.message);
-          }
-          
-          toast({
-            title: "Login successful",
-            description: "You've been signed in successfully.",
-          });
-          
-          navigate('/dashboard', { replace: true });
-        }
+        navigate('/dashboard', { replace: true });
       }
       
     } catch (error: any) {

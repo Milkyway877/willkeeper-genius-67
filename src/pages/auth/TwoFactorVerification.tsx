@@ -19,16 +19,28 @@ export default function TwoFactorVerification() {
   const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
-    const email = searchParams.get('email');
-    const password = sessionStorage.getItem('auth_password');
+    const checkAuthState = async () => {
+      const email = searchParams.get('email') || sessionStorage.getItem('auth_email');
+      
+      if (!email) {
+        // No email provided, redirect back to sign in
+        navigate('/auth/signin', { replace: true });
+        return;
+      }
+      
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // User not authenticated, redirect to sign in
+        navigate('/auth/signin', { replace: true });
+        return;
+      }
+      
+      setUserEmail(email);
+    };
     
-    if (!email || !password) {
-      // Redirect back to sign in if no credentials
-      navigate('/auth/signin', { replace: true });
-      return;
-    }
-    
-    setUserEmail(email);
+    checkAuthState();
   }, [searchParams, navigate]);
 
   const handleVerification = async (code: string) => {
@@ -36,11 +48,10 @@ export default function TwoFactorVerification() {
       setLoading(true);
       setError(null);
 
-      // Get stored credentials
-      const email = searchParams.get('email');
-      const password = sessionStorage.getItem('auth_password');
+      // Get current authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!email || !password) {
+      if (!user) {
         throw new Error('Authentication session expired. Please sign in again.');
       }
 
@@ -58,25 +69,15 @@ export default function TwoFactorVerification() {
         return;
       }
 
-      // If code is valid, sign in the user
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        throw new Error(signInError.message);
-      }
-
-      // Clear stored credentials
-      sessionStorage.removeItem('auth_password');
+      // Clear stored email
+      sessionStorage.removeItem('auth_email');
       
       toast({
         title: "Login successful",
         description: "You've been signed in successfully with 2FA verification.",
       });
 
-      // Navigate to dashboard
+      // Navigate to dashboard (user is already authenticated)
       navigate('/dashboard', { replace: true });
 
     } catch (error: any) {
@@ -88,7 +89,9 @@ export default function TwoFactorVerification() {
   };
 
   const handleBackToSignIn = () => {
-    sessionStorage.removeItem('auth_password');
+    sessionStorage.removeItem('auth_email');
+    // Sign out the user before going back to sign in
+    supabase.auth.signOut();
     navigate('/auth/signin', { replace: true });
   };
 
