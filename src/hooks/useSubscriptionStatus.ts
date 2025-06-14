@@ -16,6 +16,7 @@ export function useSubscriptionStatus() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isRefreshingRef = useRef(false);
+  const previousSubscriptionState = useRef<boolean>(false);
 
   const refreshSubscriptionStatus = useCallback(async () => {
     // Prevent duplicate requests
@@ -31,6 +32,32 @@ export function useSubscriptionStatus() {
       
       console.log('Refreshing subscription status...');
       const status = await getSubscriptionStatus();
+      
+      // Check if subscription status changed from unsubscribed to subscribed
+      const wasUnsubscribed = !previousSubscriptionState.current;
+      const isNowSubscribed = status.isSubscribed || status.isTrial;
+      
+      if (wasUnsubscribed && isNowSubscribed) {
+        console.log('User upgraded from free to subscribed - triggering GODMODE cleanup');
+        
+        // Get current user
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          // Trigger subscription upgrade handler
+          await supabase.functions.invoke('handle-subscription-upgrade', {
+            body: {
+              user_id: session.user.id,
+              user_email: session.user.email
+            }
+          });
+          
+          console.log('GODMODE cleanup completed for subscription upgrade');
+        }
+      }
+      
+      // Update previous state
+      previousSubscriptionState.current = isNowSubscribed;
+      
       setSubscriptionStatus(status);
     } catch (err: any) {
       console.error('Error fetching subscription status:', err);

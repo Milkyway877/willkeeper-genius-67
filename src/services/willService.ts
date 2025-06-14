@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
+import { initializeWillMonitoring } from "./godmodeService";
 
 export interface Will {
   id: string;
@@ -158,7 +159,8 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       ...will,
       user_id: session.user.id,
       document_url: will.document_url || '',
-      status: will.status || 'draft'
+      status: will.status || 'draft',
+      subscription_required_after: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
     };
     
     console.log('Creating will with data:', willToCreate);
@@ -173,6 +175,12 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       console.error('Error creating will:', error);
       inProgressOperations.creatingDraft = false;
       return null;
+    }
+    
+    // Initialize GODMODE monitoring for this will
+    if (data) {
+      console.log('Initializing GODMODE monitoring for will:', data.id);
+      await initializeWillMonitoring(data.id);
     }
     
     if (will.status === 'active') {

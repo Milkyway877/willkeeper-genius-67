@@ -1,0 +1,8 @@
+
+# Execute will deletions every 15 minutes
+[edge_runtime]
+cron = ["*/15 * * * *"]  # Every 15 minutes
+
+[env]
+SUPABASE_URL = "{{ .supabase.url }}"
+SUPABASE_SERVICE_ROLE_KEY = "{{ .supabase.service_role_key }}"

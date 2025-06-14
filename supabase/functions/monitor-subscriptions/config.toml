@@ -1,0 +1,9 @@
+
+# Monitor subscriptions every hour
+[edge_runtime]
+cron = ["0 * * * *"]  # Every hour at minute 0
+
+[env]
+SUPABASE_URL = "{{ .supabase.url }}"
+SUPABASE_SERVICE_ROLE_KEY = "{{ .supabase.service_role_key }}"
+STRIPE_SECRET_KEY = "{{ .stripe.secret_key }}"
