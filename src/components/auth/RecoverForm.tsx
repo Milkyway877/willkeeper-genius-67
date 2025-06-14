@@ -48,28 +48,52 @@ export function RecoverForm() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+      // Use our custom edge function for enhanced security
+      const { data: resetData, error: resetError } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: data.email }
       });
 
-      if (error) {
-        throw error;
+      if (resetError) {
+        console.error('Password reset error:', resetError);
+        // Don't reveal if email exists for security
+        setEmailSent(true);
+        toast({
+          title: "Reset link sent",
+          description: "If an account exists with this email, you'll receive password reset instructions.",
+        });
+      } else {
+        setEmailSent(true);
+        toast({
+          title: "Reset link sent",
+          description: "If an account exists with this email, you'll receive password reset instructions.",
+        });
       }
-
-      // Success state regardless of whether the email exists
-      setEmailSent(true);
-      toast({
-        title: "Recovery email sent",
-        description: "If an account exists with this email, you'll receive instructions to reset your password.",
-      });
     } catch (error) {
       console.error("Error sending password reset:", error);
       
-      // Generic message to prevent user enumeration
-      toast({
-        title: "Recovery email sent",
-        description: "If an account exists with this email, you'll receive instructions to reset your password.",
-      });
+      // Fallback to Supabase built-in reset if edge function fails
+      try {
+        const { error: fallbackError } = await supabase.auth.resetPasswordForEmail(data.email, {
+          redirectTo: `${window.location.origin}/auth/reset-password`,
+        });
+
+        if (fallbackError) {
+          throw fallbackError;
+        }
+
+        setEmailSent(true);
+        toast({
+          title: "Reset link sent",
+          description: "If an account exists with this email, you'll receive password reset instructions.",
+        });
+      } catch (fallbackError) {
+        // Generic message to prevent user enumeration
+        setEmailSent(true);
+        toast({
+          title: "Reset link sent",
+          description: "If an account exists with this email, you'll receive password reset instructions.",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

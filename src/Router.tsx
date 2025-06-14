@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,6 +10,7 @@ import Index from '@/pages/Index';
 import SignIn from '@/pages/auth/SignIn';
 import SignUp from '@/pages/auth/SignUp';
 import Recover from '@/pages/auth/Recover';
+import ResetPassword from '@/pages/auth/ResetPassword';
 import TwoFactorVerification from '@/pages/auth/TwoFactorVerification';
 import Dashboard from '@/pages/Dashboard';
 import Wills from '@/pages/wills/Wills';
@@ -34,6 +36,7 @@ export function Router() {
             <Route path="/auth/signin" element={<SignIn />} />
             <Route path="/auth/signup" element={<SignUp />} />
             <Route path="/auth/recover" element={<Recover />} />
+            <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/auth/2fa-verification" element={<TwoFactorVerification />} />
             <Route path="/trial-success" element={<TrialSuccess />} />
             <Route path="/pricing" element={<Billing />} />
