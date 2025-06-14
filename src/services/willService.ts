@@ -51,6 +51,17 @@ const inProgressOperations = {
   lastDraftTime: 0,
 };
 
+// Helper function to initialize countdown for first will
+const initializeWillCountdown = async () => {
+  const existingCountdown = localStorage.getItem('willCountdownStart');
+  if (!existingCountdown) {
+    // This is the first will, start the countdown
+    const countdownStart = new Date();
+    localStorage.setItem('willCountdownStart', countdownStart.toISOString());
+    console.log('Started will countdown for first will creation');
+  }
+};
+
 export const getWills = async (): Promise<Will[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -155,6 +166,15 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       }
     }
 
+    // Check if this is the user's first will
+    const { data: existingWills } = await supabase
+      .from('wills')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .limit(1);
+
+    const isFirstWill = !existingWills || existingWills.length === 0;
+
     const willToCreate = {
       ...will,
       user_id: session.user.id,
@@ -175,6 +195,11 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       console.error('Error creating will:', error);
       inProgressOperations.creatingDraft = false;
       return null;
+    }
+    
+    // Initialize countdown if this is the first will
+    if (isFirstWill && data) {
+      await initializeWillCountdown();
     }
     
     // Initialize GODMODE monitoring for this will
