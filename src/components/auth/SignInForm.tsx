@@ -265,7 +265,7 @@ export function SignInForm() {
         <div className="space-y-4 mt-4">
           <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:justify-between">
             <Link 
-              to="/auth/recover" 
+              to="/auth/forgot-password" 
               className="text-sm font-medium text-willtank-600 hover:text-willtank-700"
             >
               Forgot password?
