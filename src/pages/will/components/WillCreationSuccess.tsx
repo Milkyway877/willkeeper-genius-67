@@ -14,7 +14,8 @@ import {
   Shield,
   Lock,
   Crown,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { Will } from '@/services/willService';
 import { downloadDocument } from '@/utils/documentUtils';
