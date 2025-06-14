@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DeathVerificationSettings {
@@ -12,7 +11,7 @@ export interface DeathVerificationSettings {
   pin_system_enabled: boolean;
   executor_override_enabled: boolean;
   trusted_contact_enabled: boolean;
-  trusted_contact_email?: string; // Add this field to fix the error
+  trusted_contact_email?: string;
   failsafe_enabled: boolean;
   notification_preferences: {
     email: boolean;
@@ -52,13 +51,15 @@ export const DEFAULT_SETTINGS: DeathVerificationSettings = {
 
 export const getDeathVerificationSettings = async (): Promise<DeathVerificationSettings | null> => {
   try {
+    console.log('deathVerificationService: Getting user session...');
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      console.error('No authenticated user found');
+      console.error('deathVerificationService: No authenticated user found');
       return null;
     }
     
+    console.log('deathVerificationService: Fetching settings for user:', session.user.id);
     const { data, error } = await supabase
       .from('death_verification_settings')
       .select('*')
@@ -67,28 +68,32 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
     
     if (error) {
       if (error.code === 'PGRST116') {
-        // No settings found, return default settings
+        console.log('deathVerificationService: No settings found, returning defaults');
         return DEFAULT_SETTINGS;
       }
-      console.error('Error fetching death verification settings:', error);
+      console.error('deathVerificationService: Error fetching settings:', error);
       return null;
     }
     
+    console.log('deathVerificationService: Settings fetched successfully:', data);
     return data || DEFAULT_SETTINGS;
   } catch (error) {
-    console.error('Error in getDeathVerificationSettings:', error);
+    console.error('deathVerificationService: Exception in getDeathVerificationSettings:', error);
     return null;
   }
 };
 
 export const saveDeathVerificationSettings = async (settings: DeathVerificationSettings): Promise<DeathVerificationSettings | null> => {
   try {
+    console.log('deathVerificationService: Getting user session for save...');
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      console.error('No authenticated user found');
+      console.error('deathVerificationService: No authenticated user found for save');
       return null;
     }
+    
+    console.log('deathVerificationService: Saving settings for user:', session.user.id, settings);
     
     // Check if settings already exist for this user
     const { data: existingSettings } = await supabase
@@ -98,6 +103,7 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
       .single();
     
     if (existingSettings) {
+      console.log('deathVerificationService: Updating existing settings...');
       // Update existing settings
       const { data, error } = await supabase
         .from('death_verification_settings')
@@ -110,12 +116,14 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
         .single();
       
       if (error) {
-        console.error('Error updating death verification settings:', error);
+        console.error('deathVerificationService: Error updating settings:', error);
         return null;
       }
       
+      console.log('deathVerificationService: Settings updated successfully:', data);
       return data;
     } else {
+      console.log('deathVerificationService: Creating new settings...');
       // Insert new settings
       const { data, error } = await supabase
         .from('death_verification_settings')
@@ -127,31 +135,33 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
         .single();
       
       if (error) {
-        console.error('Error inserting death verification settings:', error);
+        console.error('deathVerificationService: Error inserting settings:', error);
         return null;
       }
       
+      console.log('deathVerificationService: Settings created successfully:', data);
       return data;
     }
   } catch (error) {
-    console.error('Error in saveDeathVerificationSettings:', error);
+    console.error('deathVerificationService: Exception in saveDeathVerificationSettings:', error);
     return null;
   }
 };
 
 export const createInitialCheckin = async (): Promise<DeathVerificationCheckin | null> => {
   try {
+    console.log('deathVerificationService: Creating initial checkin...');
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      console.error('No authenticated user found');
+      console.error('deathVerificationService: No authenticated user found for checkin');
       return null;
     }
     
     // Get the user's settings to determine check-in frequency
     const settings = await getDeathVerificationSettings();
     if (!settings) {
-      console.error('Failed to get death verification settings');
+      console.error('deathVerificationService: Failed to get settings for checkin');
       return null;
     }
     
@@ -160,7 +170,9 @@ export const createInitialCheckin = async (): Promise<DeathVerificationCheckin |
     const nextCheckIn = new Date();
     nextCheckIn.setDate(now.getDate() + settings.check_in_frequency);
     
-    // Create the check-in record - Changed 'active' to 'alive'
+    console.log('deathVerificationService: Creating checkin record with next checkin:', nextCheckIn);
+    
+    // Create the check-in record
     const { data, error } = await supabase
       .from('death_verification_checkins')
       .insert({
@@ -173,13 +185,14 @@ export const createInitialCheckin = async (): Promise<DeathVerificationCheckin |
       .single();
     
     if (error) {
-      console.error('Error creating initial check-in:', error);
+      console.error('deathVerificationService: Error creating initial checkin:', error);
       return null;
     }
     
+    console.log('deathVerificationService: Initial checkin created successfully:', data);
     return data;
   } catch (error) {
-    console.error('Error in createInitialCheckin:', error);
+    console.error('deathVerificationService: Exception in createInitialCheckin:', error);
     return null;
   }
 };
@@ -238,7 +251,7 @@ export const performCheckin = async (notes?: string): Promise<DeathVerificationC
     const nextCheckIn = new Date();
     nextCheckIn.setDate(now.getDate() + settings.check_in_frequency);
     
-    // Create the check-in record - Changed 'active' to 'alive'
+    // Create the check-in record
     const { data, error } = await supabase
       .from('death_verification_checkins')
       .insert({

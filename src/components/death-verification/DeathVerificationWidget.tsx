@@ -34,13 +34,18 @@ export function DeathVerificationWidget() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('DeathVerificationWidget: Fetching data...');
+      
       const fetchedSettings = await getDeathVerificationSettings();
       const latestCheckin = await getLatestCheckin();
+      
+      console.log('DeathVerificationWidget: Settings:', fetchedSettings);
+      console.log('DeathVerificationWidget: Latest checkin:', latestCheckin);
       
       setSettings(fetchedSettings);
       setCheckin(latestCheckin);
     } catch (error) {
-      console.error('Error fetching verification data:', error);
+      console.error('DeathVerificationWidget: Error fetching verification data:', error);
       toast({
         title: "Error",
         description: "Failed to load check-in information",
@@ -54,9 +59,12 @@ export function DeathVerificationWidget() {
   const handleCheckin = async () => {
     try {
       setCheckingIn(true);
+      console.log('DeathVerificationWidget: Performing check-in...');
+      
       const newCheckin = await performCheckin();
       
       if (newCheckin) {
+        console.log('DeathVerificationWidget: Check-in successful:', newCheckin);
         setCheckin(newCheckin);
         await triggerDeathVerificationCheckIn();
         
@@ -69,7 +77,7 @@ export function DeathVerificationWidget() {
         throw new Error("Failed to perform check-in");
       }
     } catch (error) {
-      console.error('Error during check-in:', error);
+      console.error('DeathVerificationWidget: Error during check-in:', error);
       toast({
         title: "Check-in Failed",
         description: "There was an error recording your check-in. Please try again.",
@@ -81,7 +89,12 @@ export function DeathVerificationWidget() {
   };
   
   const handleConfigureSettings = () => {
-    navigate('/check-ins', { state: { activeTab: 'settings' } });
+    console.log('DeathVerificationWidget: Navigating to check-ins settings...');
+    // Navigate to check-ins page with settings tab active
+    navigate('/check-ins', { 
+      state: { activeTab: 'settings' },
+      replace: false // Don't replace current history entry
+    });
   };
   
   // Get status based on next check-in date
@@ -192,7 +205,11 @@ export function DeathVerificationWidget() {
           </Alert>
         </CardContent>
         <CardFooter>
-          <Button variant="outline" onClick={handleConfigureSettings} className="w-full">
+          <Button 
+            variant="outline" 
+            onClick={handleConfigureSettings} 
+            className="w-full"
+          >
             Configure Check-In Settings
           </Button>
         </CardFooter>

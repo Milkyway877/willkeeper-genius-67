@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -35,11 +34,15 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const fetchSettings = async () => {
     try {
       setLoading(true);
+      console.log('Fetching death verification settings...');
+      
       const fetchedSettings = await getDeathVerificationSettings();
       
       if (fetchedSettings) {
+        console.log('Settings fetched successfully:', fetchedSettings);
         setSettings(fetchedSettings);
       } else {
+        console.log('No settings found, using defaults');
         setSettings(DEFAULT_SETTINGS);
       }
     } catch (error) {
@@ -49,6 +52,8 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
         description: "Failed to load check-in settings. Please try again.",
         variant: "destructive"
       });
+      // Use defaults on error
+      setSettings(DEFAULT_SETTINGS);
     } finally {
       setLoading(false);
     }
@@ -57,21 +62,24 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const handleSave = async () => {
     try {
       setSaving(true);
+      console.log('Saving settings:', settings);
       
       const updatedSettings = await saveDeathVerificationSettings(settings);
       
       if (updatedSettings) {
+        console.log('Settings saved successfully:', updatedSettings);
+        setSettings(updatedSettings);
+        
         toast({
           title: "Settings Saved",
           description: "Your check-in settings have been saved successfully."
         });
-        setSettings(updatedSettings);
         
         if (onSettingsChange) {
           onSettingsChange();
         }
       } else {
-        throw new Error("Failed to save settings");
+        throw new Error("Failed to save settings - no response from server");
       }
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -88,74 +96,79 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   // Simplified toggle for check-in enabled
   const toggleCheckInEnabled = async () => {
     if (toggling) {
-      console.log('Toggle already in progress, ignoring...');
+      console.log('Toggle already in progress, ignoring request');
       return;
     }
     
+    const newEnabledState = !settings.check_in_enabled;
+    console.log(`Toggling check-in from ${settings.check_in_enabled} to ${newEnabledState}`);
+    
     try {
       setToggling(true);
-      console.log('Toggling check-in enabled from:', settings.check_in_enabled);
       
-      const newEnabledState = !settings.check_in_enabled;
-      
-      // Create updated settings object
+      // Update local state immediately for better UX
       const updatedSettings = { 
         ...settings, 
         check_in_enabled: newEnabledState 
       };
+      setSettings(updatedSettings);
       
-      console.log('Attempting to save settings:', updatedSettings);
-      
-      // Save the updated settings
+      // Save to database
       const result = await saveDeathVerificationSettings(updatedSettings);
       
-      if (result) {
-        console.log('Settings saved successfully:', result);
-        
-        // If enabling check-ins, create initial check-in
-        if (newEnabledState) {
-          try {
-            console.log('Creating initial check-in...');
-            await createInitialCheckin();
-            console.log('Initial check-in created successfully');
-          } catch (checkinError) {
-            console.error('Failed to create initial check-in:', checkinError);
-            // Don't fail the entire operation if check-in creation fails
-            toast({
-              title: "Warning",
-              description: "Check-ins enabled but initial check-in failed. You may need to check in manually.",
-              variant: "destructive"
-            });
-          }
-        }
-        
-        // Update local state with server response
-        setSettings(result);
-        
-        if (onSettingsChange) {
-          onSettingsChange();
-        }
-        
-        toast({
-          title: result.check_in_enabled ? "Check-ins Enabled" : "Check-ins Disabled",
-          description: result.check_in_enabled 
-            ? "You have successfully enabled the check-in system." 
-            : "You have disabled the check-in system."
-        });
-      } else {
-        throw new Error("Failed to update check-in status - no result returned");
+      if (!result) {
+        throw new Error("Failed to save toggle state");
       }
+      
+      console.log('Toggle saved successfully:', result);
+      
+      // If enabling check-ins, create initial check-in
+      if (newEnabledState) {
+        try {
+          console.log('Creating initial check-in...');
+          await createInitialCheckin();
+          console.log('Initial check-in created successfully');
+        } catch (checkinError) {
+          console.error('Failed to create initial check-in:', checkinError);
+          toast({
+            title: "Warning",
+            description: "Check-ins enabled but initial check-in failed. You may need to check in manually.",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      // Update state with server response
+      setSettings(result);
+      
+      // Notify parent component
+      if (onSettingsChange) {
+        onSettingsChange();
+      }
+      
+      toast({
+        title: result.check_in_enabled ? "Check-ins Enabled" : "Check-ins Disabled",
+        description: result.check_in_enabled 
+          ? "You have successfully enabled the check-in system." 
+          : "You have disabled the check-in system."
+      });
+      
     } catch (error) {
       console.error('Error toggling check-in status:', error);
       
+      // Revert local state on error
+      setSettings(prev => ({
+        ...prev,
+        check_in_enabled: !newEnabledState
+      }));
+      
       toast({
         title: "Error",
-        description: `Failed to ${settings.check_in_enabled ? 'disable' : 'enable'} check-ins. Please try again.`,
+        description: `Failed to ${newEnabledState ? 'enable' : 'disable'} check-ins. Please try again.`,
         variant: "destructive"
       });
     } finally {
       setToggling(false);
-      console.log('Toggle operation completed');
     }
   };
   

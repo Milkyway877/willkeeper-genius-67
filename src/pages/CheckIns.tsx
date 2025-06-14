@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -41,12 +42,14 @@ export default function CheckIns() {
   const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
+    console.log('CheckIns: Component mounted or refreshKey changed:', refreshKey);
     fetchData();
   }, [refreshKey]);
 
   // Handle tab switching from location state
   useEffect(() => {
     if (location.state?.activeTab) {
+      console.log('CheckIns: Switching to tab:', location.state.activeTab);
       setActiveTab(location.state.activeTab);
     }
   }, [location.state]);
@@ -54,27 +57,37 @@ export default function CheckIns() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('CheckIns: Fetching all data...');
+      
       // Fetch settings
       const fetchedSettings = await getDeathVerificationSettings();
       if (fetchedSettings) {
+        console.log('CheckIns: Settings fetched:', fetchedSettings);
         setSettings(fetchedSettings);
+      } else {
+        console.log('CheckIns: No settings found, using defaults');
+        setSettings(DEFAULT_SETTINGS);
       }
       
       // Fetch check-in history
       const latestCheckin = await getLatestCheckin();
       if (latestCheckin) {
+        console.log('CheckIns: Latest checkin:', latestCheckin);
         setCheckins([latestCheckin]);
       } else {
+        console.log('CheckIns: No checkins found');
         setCheckins([]);
       }
 
       // Fetch contacts
       const fetchedExecutors = await getExecutors();
       const fetchedBeneficiaries = await getBeneficiaries();
+      console.log('CheckIns: Executors:', fetchedExecutors);
+      console.log('CheckIns: Beneficiaries:', fetchedBeneficiaries);
       setExecutors(fetchedExecutors);
       setBeneficiaries(fetchedBeneficiaries);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('CheckIns: Error fetching data:', error);
       toast({
         title: "Error",
         description: "Failed to load check-in data",
@@ -87,10 +100,12 @@ export default function CheckIns() {
 
   // Callback function to refresh the data when settings change
   const handleSettingsChange = () => {
+    console.log('CheckIns: Settings changed, refreshing data...');
     setRefreshKey(prev => prev + 1);
   };
 
   const handleContactsChange = () => {
+    console.log('CheckIns: Contacts changed, refreshing data...');
     setRefreshKey(prev => prev + 1);
   };
 
