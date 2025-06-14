@@ -1,4 +1,3 @@
-
 export const generateProfessionalDocumentPreview = (willContent: any, signature?: string | null): string => {
   try {
     let content;
@@ -94,6 +93,21 @@ export const generateProfessionalDocumentPreview = (willContent: any, signature?
         color: #1a1a1a;
       ">
         
+        <!-- WillTank Logo Watermark -->
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          opacity: 0.12;
+          z-index: 0;
+          pointer-events: none;
+        ">
+          <img src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
+               alt="WillTank Watermark" 
+               style="height: 200px; width: auto;" />
+        </div>
+        
         <!-- Header with Logo and Branding -->
         <div style="
           background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -102,6 +116,7 @@ export const generateProfessionalDocumentPreview = (willContent: any, signature?
           margin: 0 0 32px 0;
           text-align: center;
           position: relative;
+          z-index: 1;
         ">
           <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
             <img src="/lovable-uploads/6f404753-7188-4c3d-ba16-7d17fbc490b3.png" 
@@ -111,7 +126,7 @@ export const generateProfessionalDocumentPreview = (willContent: any, signature?
           </div>
           <p style="margin: 0; font-size: 12pt; color: white; font-style: italic;">Your Trusted Legacy Keeper</p>
           <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.3);">
-            <p style="margin: 0; font-size: 10pt; color: white;">Official Legal Document | Generated on ${currentDate}</p>
+            <p style="margin: 0; font-size: 10pt; color: white;">Digital Will Document | Generated on ${currentDate}</p>
           </div>
         </div>
 
@@ -119,7 +134,7 @@ export const generateProfessionalDocumentPreview = (willContent: any, signature?
         <div style="padding: 0 40px 40px 40px; position: relative; z-index: 1; color: #1a1a1a;">
           <!-- Document Title -->
           <div style="text-align: center; margin-bottom: 40px; padding: 24px; border: 2px solid #6366f1; background: #f8faff;">
-            <h1 style="font-size: 22pt; font-weight: bold; margin: 0 0 8px 0; color: #1a1a1a; letter-spacing: 1px;">LAST WILL AND TESTAMENT</h1>
+            <h1 style="font-size: 22pt; font-weight: bold; margin: 0 0 8px 0; color: #1a1a1a; letter-spacing: 1px;">DIGITAL LAST WILL AND TESTAMENT</h1>
             <h2 style="font-size: 14pt; margin: 0 0 8px 0; color: #6366f1;">OF</h2>
             <h2 style="font-size: 18pt; font-weight: bold; margin: 0; color: #1a1a1a; text-transform: uppercase;">${fullName}</h2>
           </div>
@@ -127,7 +142,7 @@ export const generateProfessionalDocumentPreview = (willContent: any, signature?
           <!-- Opening Statement -->
           <div style="margin-bottom: 32px; padding: 20px; background: #f9fafb; border-left: 4px solid #6366f1;">
             <p style="text-align: justify; text-indent: 2em; margin: 0; font-size: 12pt; line-height: 1.8; color: #1a1a1a;">
-              I, <strong>${fullName}</strong>, residing at ${address}, being of sound mind and memory, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+              I, <strong>${fullName}</strong>, residing at ${address}, being of sound mind and memory, do hereby make, publish, and declare this to be my Digital Last Will and Testament, hereby revoking all wills and codicils previously made by me.
             </p>
           </div>
           
@@ -135,7 +150,7 @@ export const generateProfessionalDocumentPreview = (willContent: any, signature?
           <div style="margin: 24px 0;">
             <h3 style="font-size: 14pt; font-weight: bold; margin: 0 0 12px 0; color: #1a1a1a; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">ARTICLE I: PERSONAL INFORMATION</h3>
             <p style="text-align: justify; margin: 0; line-height: 1.6; color: #1a1a1a;">
-              I declare that I was born on <strong>${dateOfBirth}</strong> and that I am creating this will to ensure my wishes are carried out after my death.
+              I declare that I was born on <strong>${dateOfBirth}</strong> and that I am creating this digital will to ensure my wishes are carried out after my death.
             </p>
           </div>
           
@@ -176,61 +191,60 @@ export const generateProfessionalDocumentPreview = (willContent: any, signature?
             </p>
           </div>
           
-          <!-- Signature Section -->
-          <div style="margin-top: 48px; page-break-inside: avoid; border: 1px solid #d1d5db; padding: 24px; background: #f9fafb;">
-            <p style="margin: 0 0 24px 0; font-size: 12pt; text-align: center; font-weight: bold; color: #1a1a1a;">
-              IN WITNESS WHEREOF, I have hereunto set my hand this _____ day of _____________, 2024.
-            </p>
-            
-            <div style="margin: 24px 0; text-align: center;">
-              <div style="border-bottom: 2px solid #1a1a1a; width: 300px; margin: 0 auto 8px auto; height: 40px;">&nbsp;</div>
-              <p style="margin: 0; font-weight: bold; font-size: 12pt; color: #1a1a1a;">${fullName}</p>
-              <p style="margin: 0; font-style: italic; color: #374151;">Testator</p>
+          <!-- Digital Signature Section -->
+          <div style="margin-top: 48px; page-break-inside: avoid; border: 2px solid #6366f1; padding: 32px; background: #f8faff; position: relative; z-index: 1;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h3 style="font-size: 16pt; font-weight: bold; margin: 0 0 8px 0; color: #6366f1;">DIGITAL SIGNATURE</h3>
+              <p style="margin: 0; font-size: 11pt; color: #1a1a1a; font-style: italic;">
+                This will has been digitally signed and authenticated
+              </p>
             </div>
             
-            ${signature ? `
-              <div style="margin: 32px 0; text-align: center; padding: 16px; border: 1px dashed #6366f1; background: white;">
-                <p style="margin: 0 0 8px 0; font-weight: bold; color: #6366f1;">Digital Signature:</p>
-                <img src="${signature}" alt="Digital signature" style="max-width: 200px; max-height: 80px; border: 1px solid #d1d5db;" />
-                <p style="margin: 8px 0 0 0; font-size: 9pt; color: #374151;">
+            <p style="margin: 0 0 24px 0; font-size: 12pt; text-align: center; font-weight: bold; color: #1a1a1a;">
+              IN WITNESS WHEREOF, I have digitally signed this will on ${new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}.
+            </p>
+            
+            <!-- Signature Display -->
+            <div style="margin: 32px 0; text-align: center; padding: 24px; border: 2px solid #6366f1; background: white; border-radius: 8px;">
+              ${signature ? `
+                <div style="margin-bottom: 16px;">
+                  <img src="${signature}" alt="Digital signature of ${fullName}" 
+                       style="max-width: 300px; max-height: 120px; border: 1px solid #d1d5db; padding: 8px; background: white;" />
+                </div>
+                <p style="margin: 0; font-weight: bold; font-size: 14pt; color: #1a1a1a;">${fullName}</p>
+                <p style="margin: 4px 0 0 0; font-style: italic; color: #6366f1; font-size: 12pt;">Testator</p>
+                <p style="margin: 8px 0 0 0; font-size: 10pt; color: #374151;">
                   Digitally signed on: ${new Date().toLocaleString()}
                 </p>
-              </div>
-            ` : ''}
+              ` : `
+                <div style="border: 2px dashed #d1d5db; padding: 32px; margin-bottom: 16px; background: #f9fafb;">
+                  <p style="margin: 0; color: #6b7280; font-style: italic;">Signature will appear here when document is signed</p>
+                </div>
+                <div style="border-bottom: 2px solid #1a1a1a; width: 300px; margin: 0 auto 8px auto; height: 40px;">&nbsp;</div>
+                <p style="margin: 0; font-weight: bold; font-size: 12pt; color: #1a1a1a;">${fullName}</p>
+                <p style="margin: 0; font-style: italic; color: #374151;">Testator</p>
+              `}
+            </div>
             
-            <!-- Witnesses Section -->
-            <div style="margin-top: 40px; border-top: 1px solid #d1d5db; padding-top: 24px;">
-              <h4 style="font-size: 12pt; font-weight: bold; margin: 0 0 12px 0; color: #1a1a1a;">WITNESSES</h4>
-              <p style="margin: 0 0 24px 0; font-size: 10pt; line-height: 1.4; color: #1f2937;">
-                The foregoing instrument was signed by ${fullName} as their Last Will and Testament in our presence, and we, at their request and in their presence, and in the presence of each other, have subscribed our names as witnesses.
+            <!-- Digital Will Authentication -->
+            <div style="margin-top: 24px; padding: 16px; background: #e0f2fe; border: 1px solid #0891b2; border-radius: 4px;">
+              <h4 style="font-size: 11pt; font-weight: bold; margin: 0 0 8px 0; color: #0891b2;">DIGITAL AUTHENTICATION</h4>
+              <p style="margin: 0; font-size: 9pt; line-height: 1.4; color: #164e63;">
+                This digital will has been created and authenticated through WillTank's secure platform. 
+                The digital signature above serves as the testator's legal authorization and intent to execute this will. 
+                No witnesses are required for this digital will format.
               </p>
-              
-              <div style="display: flex; justify-content: space-between; margin-top: 32px;">
-                <div style="width: 45%;">
-                  <div style="border-bottom: 1px solid #1a1a1a; margin-bottom: 8px; height: 30px;">&nbsp;</div>
-                  <p style="margin: 0; font-size: 10pt; font-weight: bold; color: #1a1a1a;">Witness 1</p>
-                  <p style="margin: 0; font-size: 9pt; color: #374151;">Print Name</p>
-                  <br>
-                  <div style="border-bottom: 1px solid #1a1a1a; margin-bottom: 8px; height: 20px;">&nbsp;</div>
-                  <p style="margin: 0; font-size: 9pt; color: #374151;">Address</p>
-                </div>
-                
-                <div style="width: 45%;">
-                  <div style="border-bottom: 1px solid #1a1a1a; margin-bottom: 8px; height: 30px;">&nbsp;</div>
-                  <p style="margin: 0; font-size: 10pt; font-weight: bold; color: #1a1a1a;">Witness 2</p>
-                  <p style="margin: 0; font-size: 9pt; color: #374151;">Print Name</p>
-                  <br>
-                  <div style="border-bottom: 1px solid #1a1a1a; margin-bottom: 8px; height: 20px;">&nbsp;</div>
-                  <p style="margin: 0; font-size: 9pt; color: #374151;">Address</p>
-                </div>
-              </div>
             </div>
           </div>
           
           <!-- Footer -->
           <div style="margin-top: 32px; text-align: center; padding: 16px; border-top: 2px solid #6366f1; background: #f8faff;">
             <p style="margin: 0; font-size: 9pt; color: #374151;">
-              This document was professionally generated by WillTank on ${currentDate}
+              This digital will document was professionally generated by WillTank on ${currentDate}
             </p>
             <p style="margin: 4px 0 0 0; font-size: 8pt; color: #6b7280;">
               WillTank - Your Trusted Legacy Keeper | Secure • Professional • Reliable
