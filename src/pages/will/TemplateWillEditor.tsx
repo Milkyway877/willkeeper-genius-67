@@ -191,6 +191,35 @@ Date: ${new Date().toLocaleDateString()}
     setWillContent(newContent);
   };
   
+  // Transform form data to structured format for professional preview
+  const getStructuredData = () => {
+    if (!formData) return null;
+    
+    return {
+      personalInfo: {
+        fullName: formData.fullName || '',
+        dateOfBirth: formData.dateOfBirth || '',
+        address: formData.homeAddress || '',
+        email: formData.email || '',
+        phoneNumber: formData.phoneNumber || ''
+      },
+      executors: formData.executors || [],
+      beneficiaries: formData.beneficiaries || [],
+      funeralPreferences: formData.funeralPreferences || '',
+      memorialService: formData.memorialService || '',
+      obituary: formData.obituary || '',
+      charitableDonations: formData.charitableDonations || '',
+      specialInstructions: formData.specialInstructions || '',
+      finalArrangements: [
+        formData.funeralPreferences,
+        formData.memorialService,
+        formData.obituary,
+        formData.charitableDonations,
+        formData.specialInstructions
+      ].filter(Boolean).join('\n\n') || 'No specific arrangements specified'
+    };
+  };
+  
   const handleSignatureChange = (signatureData: string | null) => {
     setSignature(signatureData);
   };
@@ -336,7 +365,7 @@ Date: ${new Date().toLocaleDateString()}
                 <WillPreviewSection 
                   defaultOpen={true} 
                   content={willContent}
-                  formData={formData}
+                  structuredData={getStructuredData()}
                   signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                   isWillFinalized={isFinalized}

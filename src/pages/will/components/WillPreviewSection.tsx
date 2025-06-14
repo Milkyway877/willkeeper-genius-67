@@ -11,7 +11,7 @@ import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils'
 interface WillPreviewSectionProps {
   defaultOpen?: boolean;
   content: string;
-  formData?: any;
+  structuredData?: any;
   signature?: string | null;
   title?: string;
   isWillFinalized?: boolean;
@@ -22,7 +22,7 @@ interface WillPreviewSectionProps {
 export function WillPreviewSection({ 
   defaultOpen = true, 
   content,
-  formData = null,
+  structuredData = null,
   signature = null,
   title = "Will Preview",
   isWillFinalized = false,
@@ -36,45 +36,9 @@ export function WillPreviewSection({
   const handleDownloadProfessional = () => {
     setIsDownloading(true);
     try {
-      // Use structured form data if available, otherwise fallback to content parsing
-      let willContentObj = formData;
-      
-      if (!willContentObj && content) {
-        // Fallback to parsing content if no form data available
-        try {
-          if (typeof content === 'string' && content.trim().startsWith('{')) {
-            willContentObj = JSON.parse(content);
-          } else {
-            // Create basic structure from text content
-            willContentObj = {
-              personalInfo: {
-                fullName: content.match(/I, ([^,]+),/)?.[1] || '[Full Name]',
-                address: content.match(/residing at ([^,]+),/)?.[1] || '[Address]',
-                dateOfBirth: content.match(/born on ([^.]+)/)?.[1] || '[Date of Birth]'
-              },
-              executors: [],
-              beneficiaries: [],
-              finalArrangements: content.includes('FINAL ARRANGEMENTS') 
-                ? content.split('FINAL ARRANGEMENTS')[1]?.split('\n\n')[0] 
-                : 'No specific arrangements specified'
-            };
-          }
-        } catch (e) {
-          console.log('Could not parse content, using empty structure');
-          willContentObj = {
-            personalInfo: {
-              fullName: '[Full Name]',
-              address: '[Address]',
-              dateOfBirth: '[Date of Birth]'
-            },
-            executors: [],
-            beneficiaries: [],
-            finalArrangements: 'No specific arrangements specified'
-          };
-        }
-      }
-      
-      downloadProfessionalDocument(willContentObj, signature, title);
+      // Use structured data if available, otherwise fallback to parsing content
+      const dataToDownload = structuredData || content;
+      downloadProfessionalDocument(dataToDownload, signature, title);
     } finally {
       setIsDownloading(false);
     }
@@ -113,7 +77,7 @@ export function WillPreviewSection({
               <TabsContent value="professional" className="mt-4">
                 <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
                   <WillPreview 
-                    content={formData || content} 
+                    content={structuredData || content} 
                     signature={signature}
                     formatted={true}
                     useProfessionalFormat={true}

@@ -1,7 +1,30 @@
+
 export const generateProfessionalDocumentPreview = (willContent: any, signature?: string | null): string => {
   try {
-    // Handle both structured object and parsed JSON content
-    const content = typeof willContent === 'string' ? JSON.parse(willContent) : willContent;
+    let content;
+    
+    // Handle different types of input data
+    if (typeof willContent === 'string') {
+      try {
+        content = JSON.parse(willContent);
+      } catch (e) {
+        // If it's not JSON, create a basic structure from text
+        content = {
+          personalInfo: {
+            fullName: willContent.match(/I, ([^,]+),/)?.[1] || '[Full Name]',
+            address: willContent.match(/residing at ([^,]+),/)?.[1] || '[Address]',
+            dateOfBirth: willContent.match(/born on ([^.]+)/)?.[1] || '[Date of Birth]'
+          },
+          executors: [],
+          beneficiaries: [],
+          finalArrangements: 'No specific arrangements specified'
+        };
+      }
+    } else if (willContent && typeof willContent === 'object') {
+      content = willContent;
+    } else {
+      throw new Error('Invalid content provided');
+    }
     
     // Extract data with fallbacks for missing fields
     const personalInfo = content.personalInfo || {};
