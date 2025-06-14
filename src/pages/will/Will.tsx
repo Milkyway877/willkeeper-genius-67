@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2, Video, Eye, FileCheck } from 'lucide-react';
+import { FileText, Download, Copy, Clock, Save, Edit, Plus, Loader2, Video, Eye, FileCheck, Lock, Crown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +13,10 @@ import { DocumentPreview } from './components/DocumentPreview';
 import { WillContent } from './components/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { downloadProfessionalDocument } from '@/utils/professionalDocumentUtils';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useRandomSubscriptionPrompts } from '@/hooks/useRandomSubscriptionPrompts';
+import { RandomSubscriptionPrompt } from './components/RandomSubscriptionPrompt';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Will() {
   const [willContent, setWillContent] = useState("");
@@ -34,6 +38,16 @@ export default function Will() {
   const [searchParams] = useSearchParams();
   const videoAdded = searchParams.get('videoAdded') === 'true';
   const docsAdded = searchParams.get('docsAdded') === 'true';
+
+  // Add subscription status and prompts
+  const { subscriptionStatus } = useSubscriptionStatus();
+  const { 
+    showPrompt, 
+    urgencyLevel, 
+    promptCount, 
+    dismissPrompt,
+    triggerPrompt 
+  } = useRandomSubscriptionPrompts();
 
   useEffect(() => {
     const fetchWillData = async () => {
@@ -243,7 +257,18 @@ export default function Will() {
     navigate('/wills');
   };
 
+  // Updated download function with subscription protection
   const handleDownloadProfessionalDocument = () => {
+    if (!subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial) {
+      toast({
+        title: "Upgrade Required",
+        description: "Download functionality requires a WillTank subscription. Upgrade now to download your will!",
+        variant: "destructive"
+      });
+      triggerPrompt();
+      return;
+    }
+
     if (parsedWillContent) {
       downloadProfessionalDocument(
         parsedWillContent,
@@ -258,6 +283,12 @@ export default function Will() {
       });
     }
   };
+
+  const handleUpgrade = () => {
+    navigate('/pricing');
+  };
+
+  const isDownloadDisabled = !subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial;
 
   // Render the will content based on the active view
   const renderWillContent = () => {
@@ -414,173 +445,237 @@ export default function Will() {
   }
 
   return (
-    <Layout>
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">My Will</h1>
-            <p className="text-gray-600">View and edit your will document.</p>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button onClick={handleViewAllWills} variant="outline">
-              View All Wills
-            </Button>
-            <Button onClick={handleCreateNewWill} variant="default">
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Will
-            </Button>
-            {isEditing ? (
-              <Button onClick={handleSave} variant="default">
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
-              </Button>
-            ) : (
-              activeView === 'raw' && (
-                <Button onClick={() => setIsEditing(true)} variant="outline">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Will
-                </Button>
-              )
-            )}
-            {activeView === 'raw' && (
-              <Button variant="outline" onClick={copyToClipboard}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy
-              </Button>
-            )}
-            <Button variant="outline" onClick={handleDownloadProfessionalDocument}>
-              <Download className="mr-2 h-4 w-4" />
-              Download PDF
-            </Button>
-          </div>
-        </div>
-        
-        <Tabs defaultValue="formatted" className="mb-6" onValueChange={(value) => setActiveView(value as 'formatted' | 'raw')}>
-          <TabsList>
-            <TabsTrigger value="formatted">
-              <Eye className="h-4 w-4 mr-2" />
-              Professional View
-            </TabsTrigger>
-            <TabsTrigger value="raw">
-              <FileText className="h-4 w-4 mr-2" />
-              Raw Content
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            {renderWillContent()}
-
-            {/* Add Video Testament Section */}
-            {currentWill && !isLoading && (
-              <div className="mt-6">
-                <WillAttachedVideosSection willId={currentWill.id} />
-              </div>
-            )}
-            
-            {/* Add Supporting Documents Section */}
-            {currentWill && !isLoading && (
-              <WillAttachedDocumentsSection willId={currentWill.id} />
-            )}
-          </div>
-          
-          <div>
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6"
-            >
-              <h3 className="text-lg font-medium mb-4">Will Information</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Status</p>
-                  <div className="flex items-center">
-                    <div className="h-2.5 w-2.5 rounded-full bg-green-500 mr-2"></div>
-                    <p className="font-medium text-green-700">
-                      {currentWill?.status || 'Draft'}
-                    </p>
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Created On</p>
-                  <p className="font-medium">{createdDate}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Last Modified</p>
-                  <p className="font-medium">Today at {lastSaved}</p>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Template Type</p>
-                  <p className="font-medium">{currentWill?.template_type || 'Custom'}</p>
-                </div>
-                
-                {currentWill?.ai_generated && (
+    <>
+      <Layout>
+        <div className="max-w-5xl mx-auto">
+          {!subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial && (
+            <Alert className="mb-6 border-amber-200 bg-amber-50">
+              <Clock className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Generation Method</p>
-                    <div className="flex items-center">
-                      <div className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-2"></div>
-                      <p className="font-medium text-blue-700">AI Generated</p>
-                    </div>
+                    <p className="font-medium">⏰ 24-Hour Free Access</p>
+                    <p className="text-sm">Your will will be deleted after 24 hours. Upgrade to WillTank to keep it safe forever.</p>
                   </div>
-                )}
-                
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Encryption Status</p>
-                  <div className="flex items-center">
-                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-2"></div>
-                    <p className="font-medium text-blue-700">AES-256 Encrypted</p>
-                  </div>
-                </div>
-              </div>
-              
-              {activeView === 'formatted' && parsedWillContent && (
-                <div className="mt-6 pt-6 border-t border-gray-100">
                   <Button 
-                    onClick={handleDownloadProfessionalDocument}
-                    className="w-full flex items-center gap-2 bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700"
+                    size="sm" 
+                    onClick={handleUpgrade}
+                    className="ml-4 bg-amber-600 hover:bg-amber-700"
                   >
-                    <FileCheck className="h-4 w-4" />
-                    Download Official Will
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade Now
                   </Button>
                 </div>
-              )}
-            </motion.div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">My Will</h1>
+              <p className="text-gray-600">View and edit your will document.</p>
+            </div>
             
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.2 }}
-              className="bg-willtank-50 rounded-xl border border-willtank-100 p-6"
-            >
-              <h3 className="text-lg font-medium mb-4">AI Recommendations</h3>
+            <div className="flex gap-2">
+              <Button onClick={handleViewAllWills} variant="outline">
+                View All Wills
+              </Button>
+              <Button onClick={handleCreateNewWill} variant="default">
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Will
+              </Button>
+              {isEditing ? (
+                <Button onClick={handleSave} variant="default">
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </Button>
+              ) : (
+                activeView === 'raw' && (
+                  <Button onClick={() => setIsEditing(true)} variant="outline">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Will
+                  </Button>
+                )
+              )}
+              {activeView === 'raw' && (
+                <Button variant="outline" onClick={copyToClipboard}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </Button>
+              )}
+              <Button 
+                variant={isDownloadDisabled ? "outline" : "default"}
+                onClick={handleDownloadProfessionalDocument}
+                disabled={isDownloadDisabled}
+                className={isDownloadDisabled ? 'opacity-50' : ''}
+              >
+                {isDownloadDisabled ? (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Download (Upgrade Required)
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+          
+          <Tabs defaultValue="formatted" className="mb-6" onValueChange={(value) => setActiveView(value as 'formatted' | 'raw')}>
+            <TabsList>
+              <TabsTrigger value="formatted">
+                <Eye className="h-4 w-4 mr-2" />
+                Professional View
+              </TabsTrigger>
+              <TabsTrigger value="raw">
+                <FileText className="h-4 w-4 mr-2" />
+                Raw Content
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              {renderWillContent()}
+
+              {/* Add Video Testament Section */}
+              {currentWill && !isLoading && (
+                <div className="mt-6">
+                  <WillAttachedVideosSection willId={currentWill.id} />
+                </div>
+              )}
               
-              <div className="space-y-3">
-                <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Add digital executor details</p>
-                  <p className="text-gray-600">Specify who will manage your online accounts and digital assets.</p>
+              {/* Add Supporting Documents Section */}
+              {currentWill && !isLoading && (
+                <WillAttachedDocumentsSection willId={currentWill.id} />
+              )}
+            </div>
+            
+            <div>
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6"
+              >
+                <h3 className="text-lg font-medium mb-4">Will Information</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Status</p>
+                    <div className="flex items-center">
+                      <div className="h-2.5 w-2.5 rounded-full bg-green-500 mr-2"></div>
+                      <p className="font-medium text-green-700">
+                        {currentWill?.status || 'Draft'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Created On</p>
+                    <p className="font-medium">{createdDate}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Last Modified</p>
+                    <p className="font-medium">Today at {lastSaved}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Template Type</p>
+                    <p className="font-medium">{currentWill?.template_type || 'Custom'}</p>
+                  </div>
+                  
+                  {currentWill?.ai_generated && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Generation Method</p>
+                      <div className="flex items-center">
+                        <div className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-2"></div>
+                        <p className="font-medium text-blue-700">AI Generated</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Encryption Status</p>
+                    <div className="flex items-center">
+                      <div className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-2"></div>
+                      <p className="font-medium text-blue-700">AES-256 Encrypted</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Update property inventory</p>
-                  <p className="text-gray-600">Your property inventory was last updated 6 months ago.</p>
-                </div>
+                {activeView === 'formatted' && parsedWillContent && (
+                  <div className="mt-6 pt-6 border-t border-gray-100">
+                    <Button 
+                      onClick={handleDownloadProfessionalDocument}
+                      disabled={isDownloadDisabled}
+                      className={`w-full flex items-center gap-2 ${
+                        isDownloadDisabled 
+                          ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' 
+                          : 'bg-gradient-to-r from-willtank-500 to-willtank-600 hover:from-willtank-600 hover:to-willtank-700'
+                      }`}
+                    >
+                      {isDownloadDisabled ? (
+                        <>
+                          <Lock className="h-4 w-4" />
+                          Upgrade Required
+                        </>
+                      ) : (
+                        <>
+                          <FileCheck className="h-4 w-4" />
+                          Download Official Will
+                        </>
+                      )}
+                    </Button>
+                    {isDownloadDisabled && (
+                      <p className="text-xs text-center text-gray-600 mt-2">
+                        Upgrade to WillTank to download your will
+                      </p>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+                className="bg-willtank-50 rounded-xl border border-willtank-100 p-6"
+              >
+                <h3 className="text-lg font-medium mb-4">AI Recommendations</h3>
                 
-                <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
-                  <p className="text-willtank-800 font-medium mb-1">Add video testimony</p>
-                  <p className="text-gray-600">Recording a video testimony provides additional context to your will.</p>
+                <div className="space-y-3">
+                  <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
+                    <p className="text-willtank-800 font-medium mb-1">Add digital executor details</p>
+                    <p className="text-gray-600">Specify who will manage your online accounts and digital assets.</p>
+                  </div>
+                  
+                  <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
+                    <p className="text-willtank-800 font-medium mb-1">Update property inventory</p>
+                    <p className="text-gray-600">Your property inventory was last updated 6 months ago.</p>
+                  </div>
+                  
+                  <div className="bg-white p-3 rounded-lg border border-willtank-100 text-sm">
+                    <p className="text-willtank-800 font-medium mb-1">Add video testimony</p>
+                    <p className="text-gray-600">Recording a video testimony provides additional context to your will.</p>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
         </div>
-      </div>
-    </Layout>
+      </Layout>
+
+      <RandomSubscriptionPrompt
+        isOpen={showPrompt}
+        onClose={dismissPrompt}
+        urgencyLevel={urgencyLevel}
+        promptCount={promptCount}
+      />
+    </>
   );
 }

@@ -49,8 +49,6 @@ ${willContent.residualEstate || 'I give all the rest and residue of my estate to
 
 ARTICLE VI: FINAL ARRANGEMENTS
 ${willContent.finalArrangements || '[No specific final arrangements specified]'}
-
-${signature ? 'Digitally signed on: ' + new Date().toLocaleDateString() : ''}
       `;
     } catch (error) {
       console.error("Error generating document preview:", error);
