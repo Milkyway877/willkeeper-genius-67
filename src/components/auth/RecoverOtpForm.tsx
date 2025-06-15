@@ -15,7 +15,8 @@ const schema = z.object({
   otp: z.string().length(6, "Enter the 6-digit code"),
   newPassword: z.string()
     .min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
+    // Updated regex: require at least one lowercase, uppercase, digit, and ANY special character
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])/, 
       'Password must contain uppercase, lowercase, number, and special character'),
   confirmPassword: z.string().min(8, 'Password must be at least 8 characters'),
   twoFACode: z.string().optional(),
