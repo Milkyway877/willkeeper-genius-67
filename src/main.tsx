@@ -25,13 +25,6 @@ import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
 import SecureSignIn from './pages/auth/SecureSignIn';
 import SecureSignUp from './pages/auth/SecureSignUp';
-import SecureRecover from './pages/auth/SecureRecover';
-import AuthResetPassword from './pages/auth/ResetPassword';
-import AccountActivation from './pages/auth/AccountActivation';
-import EmailVerification from './pages/auth/EmailVerification';
-import VerifyEmailBanner from './pages/auth/VerifyEmailBanner';
-import AuthCallback from './pages/auth/AuthCallback';
-import TwoFactorVerification from './pages/auth/TwoFactorVerification';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -60,10 +53,6 @@ import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
-import SecurePasswordReset from './pages/auth/SecurePasswordReset';
-import RecoveryCodeReset from './pages/auth/RecoveryCodeReset';
-import DirectPasswordReset from './pages/auth/DirectPasswordReset';
-import Recover from './pages/auth/Recover';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
