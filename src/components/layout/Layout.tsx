@@ -15,6 +15,7 @@ import { useUserProfile } from '@/contexts/UserProfileContext';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useWillSubscriptionFlow } from "@/hooks/useWillSubscriptionFlow";
 import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
+import { WillTankLoader } from '@/components/ui/WillTankLoader';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -117,12 +118,8 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
 
   // On loading, optionally show loading skeleton instead of content
   if (eligibilityLoading || subscriptionLoading) {
-    // Optionally a skeleton, for now just loading indicator
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900">
-        <span className="text-lg font-semibold animate-pulse">Loading...</span>
-      </div>
-    );
+    // Use branded loader instead of plain Loading text
+    return <WillTankLoader />;
   }
   // Otherwise, proceed as normal
 
