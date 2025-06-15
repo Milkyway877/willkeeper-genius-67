@@ -17,6 +17,7 @@ export function NotificationDropdown() {
 
   const handleMarkAsRead = async (id: string) => {
     await markAsRead(id);
+    // notifications hook will update unreadCount, ripple to bell
   };
 
   return (

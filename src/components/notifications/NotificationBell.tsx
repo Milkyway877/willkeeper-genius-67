@@ -11,7 +11,7 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ onClick, className = "" }: NotificationBellProps) {
-  const { unreadCount } = useSimpleNotifications();
+  const { unreadCount, notifications, loading } = useSimpleNotifications();
 
   return (
     <Button 
@@ -19,12 +19,13 @@ export function NotificationBell({ onClick, className = "" }: NotificationBellPr
       size="icon"
       className={`relative ${className}`}
       onClick={onClick}
+      aria-label="Show notifications"
     >
       <Bell className="h-5 w-5" />
-      {unreadCount > 0 && (
+      {(unreadCount > 0 && !loading) && (
         <Badge 
           variant="destructive" 
-          className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs font-bold rounded-full flex items-center justify-center"
+          className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 text-xs font-bold rounded-full flex items-center justify-center animate-fade-in"
         >
           {unreadCount > 99 ? '99+' : unreadCount}
         </Badge>
@@ -32,3 +33,4 @@ export function NotificationBell({ onClick, className = "" }: NotificationBellPr
     </Button>
   );
 }
+

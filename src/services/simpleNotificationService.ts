@@ -13,12 +13,50 @@ export interface CreateNotificationParams {
 export async function createNotification({ title, description, type = 'info' }: CreateNotificationParams) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session) {
       console.error('No active session found');
       return null;
     }
 
+    // Try edge function first
+    try {
+      const response = await fetch(`${window.location.origin}/functions/v1/create-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          type
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.notification_id) {
+        toast({
+          title,
+          description,
+          variant: type === 'security' ? 'destructive' : 'default',
+        });
+        return {
+          id: result.notification_id,
+          title,
+          description,
+          type,
+          read: false,
+          created_at: new Date().toISOString(),
+        };
+      }
+      // If fails, fallback to direct DB insert
+    } catch (edgeError) {
+      console.warn('Edge function failed, falling back:', edgeError);
+    }
+
+    // Fallback to direct insert
     const { data, error } = await supabase
       .from('notifications')
       .insert({
@@ -31,21 +69,29 @@ export async function createNotification({ title, description, type = 'info' }: 
       .select()
       .single();
 
-    if (error) {
-      console.error('Error creating notification:', error);
+    if (!error) {
+      toast({
+        title,
+        description,
+        variant: type === 'security' ? 'destructive' : 'default',
+      });
+      return data;
+    } else {
+      console.error('Error creating notification [fallback]:', error);
+      toast({
+        title: "Notification Error",
+        description: "Failed to create notification. Please retry.",
+        variant: "destructive",
+      });
       return null;
     }
-
-    // Show toast notification
-    toast({
-      title,
-      description,
-      variant: type === 'security' ? 'destructive' : 'default',
-    });
-
-    return data;
   } catch (error) {
     console.error('Error in createNotification:', error);
+    toast({
+      title: "Notification Error",
+      description: "An unexpected error occurred.",
+      variant: "destructive",
+    });
     return null;
   }
 }
@@ -62,3 +108,4 @@ export const createSecurityNotification = (title: string, description: string) =
 
 export const createInfoNotification = (title: string, description: string) =>
   createNotification({ title, description, type: 'info' });
+
