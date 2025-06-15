@@ -61,6 +61,8 @@ import API from './pages/API';
 import FAQ from './pages/FAQ';
 import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
 import SecurePasswordReset from './pages/auth/SecurePasswordReset';
+import RecoveryCodeReset from './pages/auth/RecoveryCodeReset';
+import DirectPasswordReset from './pages/auth/DirectPasswordReset';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
@@ -322,6 +324,14 @@ const router = createBrowserRouter([
       {
         path: "/auth/secure-password-reset",
         element: <SecurePasswordReset />,
+      },
+      {
+        path: "/auth/recovery-reset",
+        element: <RecoveryCodeReset />,
+      },
+      {
+        path: "/auth/direct-password-reset",
+        element: <DirectPasswordReset />,
       },
       {
         path: "*",
