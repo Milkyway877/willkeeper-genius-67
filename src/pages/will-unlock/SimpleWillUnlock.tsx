@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Shield, Users, FileText, Phone, ArrowRight } from 'lucide-react';
@@ -48,7 +47,7 @@ export default function SimpleWillUnlock() {
                   <ul className="list-disc ml-6 text-gray-700 text-sm">
                     <li>Death certificate</li>
                     <li>Photo ID (executor or solicitor)</li>
-                    <li>Legal document appointing you as executor</li>
+                    <li>Screenshot of the email you received appointing you as an executor</li>
                     <li>Contact details for the deceased</li>
                   </ul>
                 </div>
