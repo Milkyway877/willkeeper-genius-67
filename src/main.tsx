@@ -60,6 +60,7 @@ import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
+import SecurePasswordReset from './pages/auth/SecurePasswordReset';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
@@ -317,6 +318,10 @@ const router = createBrowserRouter([
       {
         path: "/will-unlock",
         element: <SimpleWillUnlock />,
+      },
+      {
+        path: "/auth/secure-password-reset",
+        element: <SecurePasswordReset />,
       },
       {
         path: "*",
