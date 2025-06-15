@@ -8,10 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
-import { RecoverOtpForm } from './RecoverOtpForm';
 import { supabase } from '@/integrations/supabase/client';
 
 const recoverSchema = z.object({
@@ -22,15 +21,12 @@ type RecoverFormInputs = z.infer<typeof recoverSchema>;
 
 export function RecoverForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [otpStage, setOtpStage] = useState<'request' | 'otp'>('request');
-  const [email, setEmail] = useState('');
   const { captchaRef, handleCaptchaValidation } = useCaptcha();
+  const navigate = useNavigate();
 
   const form = useForm<RecoverFormInputs>({
     resolver: zodResolver(recoverSchema),
-    defaultValues: {
-      email: '',
-    },
+    defaultValues: { email: '' },
   });
 
   const onSubmit = async (data: RecoverFormInputs) => {
@@ -45,25 +41,23 @@ export function RecoverForm() {
         return;
       }
     }
-
     setIsLoading(true);
     try {
-      // New plan: just call the edge function which will both send the email and store the OTP in DB with the correct expiry.
-      const resp = await supabase.functions.invoke("send-verification", {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      // Use existing send-verification edge function & database for password reset
+      await supabase.functions.invoke("send-verification", {
         body: {
           email: data.email,
-          code: Math.floor(100000 + Math.random() * 900000).toString(), // The function expects a "code" field, but doesn't use it for password resets; that's OK.
+          code,
           type: "password-reset",
         },
       });
-      // Always continue to OTP stage for privacy
-      setEmail(data.email);
-      setOtpStage('otp');
       toast({
         title: "Verification code sent",
         description: "If an account exists with this email, you'll receive a verification code to reset your password.",
       });
-
+      // Go to the now password-reset aware EmailVerification flow!
+      navigate(`/auth/verification?email=${encodeURIComponent(data.email)}&type=password-reset`);
     } catch (error) {
       toast({
         title: "Verification code sent",
@@ -73,22 +67,6 @@ export function RecoverForm() {
       setIsLoading(false);
     }
   };
-
-  // OTP stage: show OTP + password entry form instead of this
-  if (otpStage === 'otp' && email) {
-    return (
-      <RecoverOtpForm
-        email={email}
-        onSuccess={() => {
-          setOtpStage('request');
-          setEmail('');
-        }}
-        onBack={() => {
-          setOtpStage('request');
-        }}
-      />
-    );
-  }
 
   return (
     <Form {...form}>
