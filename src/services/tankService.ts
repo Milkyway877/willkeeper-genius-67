@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "@/services/notificationService";
 import { MessageCategory } from "@/pages/tank/types";
@@ -347,5 +346,30 @@ export const getValidStatusValues = async (): Promise<string[] | null> => {
   } catch (error) {
     console.error('Error in getValidStatusValues:', error);
     return null;
+  }
+};
+
+/**
+ * Checks if the user has any Tank (future) messages.
+ * Returns: { hasTankMessage: boolean }
+ */
+export const checkUserHasTankMessage = async (): Promise<{ hasTankMessage: boolean }> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return { hasTankMessage: false };
+    }
+    const { count, error } = await supabase
+      .from('future_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', session.user.id);
+    if (error) {
+      console.error('Error checking for tank messages:', error);
+      return { hasTankMessage: false };
+    }
+    return { hasTankMessage: (count ?? 0) > 0 };
+  } catch (e) {
+    console.error('Exception in checkUserHasTankMessage:', e);
+    return { hasTankMessage: false };
   }
 };
