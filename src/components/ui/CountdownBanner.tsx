@@ -5,16 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Timer, Crown, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Add source to props
 interface CountdownBannerProps {
   timeRemaining: number;
   formattedTimeRemaining: string;
   urgencyLevel: 'normal' | 'high' | 'critical';
+  triggerSource?: "will" | "tank-message";
 }
 
 export function CountdownBanner({ 
   timeRemaining, 
   formattedTimeRemaining, 
-  urgencyLevel 
+  urgencyLevel,
+  triggerSource
 }: CountdownBannerProps) {
   const navigate = useNavigate();
 
@@ -47,6 +50,30 @@ export function CountdownBanner({
     }
   };
 
+  const getBannerText = () => {
+    if (triggerSource === "tank-message") {
+      return (
+        <>
+          {urgencyLevel === 'critical' ? '🚨 URGENT:' : '⏰'} 
+          {" "}
+          You have created a Tank message. Upgrade to keep your messages securely stored. 
+          <span className="font-mono font-bold text-lg bg-black bg-opacity-20 px-2 py-1 rounded mx-2">{formattedTimeRemaining}</span>
+          left before they are deleted.
+        </>
+      );
+    }
+    // default is will
+    return (
+      <>
+        {urgencyLevel === 'critical' ? '🚨 URGENT:' : '⏰'} 
+        {" "}
+        You have created a Will. Upgrade to keep your will document securely stored. 
+        <span className="font-mono font-bold text-lg bg-black bg-opacity-20 px-2 py-1 rounded mx-2">{formattedTimeRemaining}</span>
+        left before it is deleted.
+      </>
+    );
+  };
+
   const style = getBannerStyle();
 
   const handleUpgrade = () => {
@@ -64,12 +91,7 @@ export function CountdownBanner({
               <Timer className="h-5 w-5" />
             )}
             <div className="flex items-center gap-2">
-              <span className="font-medium">
-                {urgencyLevel === 'critical' ? '🚨 URGENT:' : '⏰'} Your will expires in
-              </span>
-              <span className="font-mono font-bold text-lg bg-black bg-opacity-20 px-2 py-1 rounded">
-                {formattedTimeRemaining}
-              </span>
+              {getBannerText()}
             </div>
             <span className="text-sm opacity-90">
               Upgrade to WillTank to keep it safe forever

@@ -15,6 +15,7 @@ import { useUserProfile } from '@/contexts/UserProfileContext';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useRandomSubscriptionPrompts } from '@/hooks/useRandomSubscriptionPrompts';
 import { RandomSubscriptionPrompt } from '@/pages/will/components/RandomSubscriptionPrompt';
+import { useWillSubscriptionFlow } from "@/hooks/useWillSubscriptionFlow";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -43,11 +44,20 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     triggerPrompt 
   } = useRandomSubscriptionPrompts();
   
-  // Show countdown banner only for users who have wills and are not subscribed
-  const shouldShowCountdown = !subscriptionStatus.isSubscribed && 
-                             !subscriptionStatus.isTrial && 
-                             hasWills && 
-                             timeRemaining > 0;
+  // Subscription flow custom hook (now gives triggerSource, eligibility etc)
+  const { 
+    showSubscriptionModal, 
+    triggerSource, 
+    hasWill,
+    hasTankMessage
+  } = useWillSubscriptionFlow();
+  
+  // Show countdown banner only for users who have wills/messages and are not subscribed
+  const shouldShowCountdown =
+    !subscriptionStatus.isSubscribed &&
+    !subscriptionStatus.isTrial &&
+    (hasWills || hasWill || hasTankMessage) &&
+    timeRemaining > 0;
   
   // Check if mobile notification has been dismissed before
   useEffect(() => {
@@ -158,12 +168,13 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Global Countdown Banner - Only show for users with wills */}
+          {/* Global Countdown Banner - Only show for users with content */}
           {showAuthenticatedLayout && shouldShowCountdown && (
             <CountdownBanner
               timeRemaining={timeRemaining}
               formattedTimeRemaining={formattedTimeRemaining}
               urgencyLevel={urgencyLevel}
+              triggerSource={triggerSource ?? (hasTankMessage ? "tank-message" : "will")}
             />
           )}
           
