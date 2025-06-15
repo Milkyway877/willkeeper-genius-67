@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -7,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
+import { RecoverOtpForm } from './RecoverOtpForm';
 
 const recoverSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -20,7 +21,8 @@ type RecoverFormInputs = z.infer<typeof recoverSchema>;
 
 export function RecoverForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [otpStage, setOtpStage] = useState<'request' | 'otp'>('request');
+  const [email, setEmail] = useState('');
   const { captchaRef, handleCaptchaValidation } = useCaptcha();
 
   const form = useForm<RecoverFormInputs>({
@@ -42,21 +44,21 @@ export function RecoverForm() {
         return;
       }
     }
-    setIsLoading(true);
 
+    setIsLoading(true);
     try {
-      const resp = await fetch("/functions/v1/send-password-reset", {
+      await fetch("/functions/v1/send-password-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: data.email }),
       });
-      setEmailSent(true);
+      setEmail(data.email);
+      setOtpStage('otp');
       toast({
         title: "Verification code sent",
         description: "If an account exists with this email, you'll receive a verification code to reset your password.",
       });
     } catch (error) {
-      setEmailSent(true);
       toast({
         title: "Verification code sent",
         description: "If an account exists with this email, you'll receive a verification code to reset your password.",
@@ -66,34 +68,19 @@ export function RecoverForm() {
     }
   };
 
-  if (emailSent) {
+  // OTP stage: show OTP + password entry form instead of this
+  if (otpStage === 'otp' && email) {
     return (
-      <div className="space-y-6">
-        <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-green-800">
-          <h3 className="font-medium text-lg">Check your email</h3>
-          <p className="mt-1">
-            We've sent a verification code to the email address you provided.
-            Please check your inbox and enter the code to reset your password.
-          </p>
-        </div>
-        
-        <div className="text-sm text-muted-foreground">
-          <p>Didn't receive an email? Check your spam folder or <button
-            type="button"
-            className="font-medium text-willtank-600 hover:text-willtank-700"
-            onClick={() => setEmailSent(false)}
-          >try again</button>.</p>
-        </div>
-        
-        <div className="text-center">
-          <Link 
-            to="/auth/signin" 
-            className="font-medium text-willtank-600 hover:text-willtank-700"
-          >
-            Return to sign in
-          </Link>
-        </div>
-      </div>
+      <RecoverOtpForm
+        email={email}
+        onSuccess={() => {
+          setOtpStage('request');
+          setEmail('');
+        }}
+        onBack={() => {
+          setOtpStage('request');
+        }}
+      />
     );
   }
 
@@ -113,14 +100,14 @@ export function RecoverForm() {
             </FormItem>
           )}
         />
-          
+
         <div>
-          <Captcha 
+          <Captcha
             ref={captchaRef}
-            onValidated={handleCaptchaValidation} 
+            onValidated={handleCaptchaValidation}
           />
         </div>
-        
+
         <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
           {isLoading ? (
             <>
@@ -132,14 +119,14 @@ export function RecoverForm() {
             </>
           )}
         </Button>
-        
+
         <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
           <p className="font-medium">We'll send you a verification code for resetting your password.</p>
         </div>
-        
+
         <div className="text-center text-sm">
-          <Link 
-            to="/auth/signin" 
+          <Link
+            to="/auth/signin"
             className="font-medium text-willtank-600 hover:text-willtank-700"
           >
             Back to sign in
