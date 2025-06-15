@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from '../_shared/email-helper.ts';
@@ -58,13 +57,13 @@ serve(async (req) => {
     // Check if user exists
     const { data: userExists } = await supabaseClient.auth.admin.getUserByEmail(normalizedEmail);
 
-    let resetToken: string | null = null, expiresAtStr: string | null = null, userId: string | null = null;
+    let otpCode: string | null = null, expiresAtStr: string | null = null, userId: string | null = null;
 
     if (userExists.user) {
       userId = userExists.user.id;
-      // Generate random token (UUID v4) and expiry (1h)
-      resetToken = crypto.randomUUID();
-      const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+      // Generate random 6-digit OTP and expiry (15min)
+      otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
       expiresAtStr = expiresAt.toISOString();
 
       // Store in DB
@@ -72,7 +71,7 @@ serve(async (req) => {
         .from('password_reset_tokens')
         .insert({
           email: normalizedEmail,
-          token: resetToken,
+          otp_code: otpCode,
           expires_at: expiresAtStr,
           used: false,
           created_at: now.toISOString(),
@@ -80,30 +79,28 @@ serve(async (req) => {
     }
 
     // Always send ok response, but only send an email to real users
-    if (userExists.user) {
+    if (userExists.user && otpCode) {
       // Build branded email
-      const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:5173';
-      const resetUrl = `${siteUrl}/auth/reset-password?token=${resetToken}`;
       const resend = getResendClient();
-
       const logoSection = `
         <div style="text-align:center;margin-bottom:24px;">
           <img src="https://willtank.com/logo.svg" alt="WillTank logo" style="height:48px;"/>
         </div>`;
       const emailContent = `
         ${logoSection}
-        <h2 style="text-align:center;">Reset Your WillTank Password</h2>
-        <p style="font-size:16px;">You requested to reset your WillTank account password. Click the button below to set a new password. This link will expire in 1 hour, or after it is used.</p>
-        <div style="text-align:center;margin:32px 0;">
-          <a class="button" href="${resetUrl}" style="background:#4F46E5; color:#fff; padding:16px 32px; border-radius:8px; font-size:18px; text-decoration:none;">Reset Password</a>
+        <h2 style="text-align:center;">Your WillTank Password Reset Code</h2>
+        <p style="font-size:16px;">Use the code below to reset your WillTank account password. Do not share this code with anyone.</p>
+        <div style="text-align:center; margin:32px 0;">
+          <div style="display:inline-block; background:#fff; border:2px solid #4F46E5; color:#222; font-size:32px; letter-spacing:9px; border-radius:8px; padding:12px 24px;"><b>${otpCode}</b></div>
         </div>
-        <p>If you did not request a password reset, you can safely ignore this email, or contact us at <a href="mailto:support@willtank.com">support@willtank.com</a>.</p>
+        <p>This code expires in 15 minutes.</p>
+        <p>If you did not request a password reset, ignore this email or contact us at <a href="mailto:support@willtank.com">support@willtank.com</a>.</p>
       `;
       const html = buildDefaultEmailLayout(emailContent);
       const emailResp = await resend.emails.send({
         from: 'WillTank <support@willtank.com>',
         to: normalizedEmail,
-        subject: 'WillTank Password Reset',
+        subject: 'Your WillTank Password Reset Code',
         html,
       });
 
@@ -113,7 +110,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Password reset instructions sent if account exists' }),
+      JSON.stringify({ success: true, message: 'Password reset code sent if account exists' }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -123,7 +120,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('General error:', error);
     return new Response(
-      JSON.stringify({ success: true, message: 'Password reset instructions sent if account exists' }),
+      JSON.stringify({ success: true, message: 'Password reset code sent if account exists' }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
