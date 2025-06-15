@@ -48,28 +48,14 @@ export function RecoverForm() {
 
     setIsLoading(true);
     try {
-      // Use the existing unified verification code function for password resets
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      // Send the code by calling the send-verification function
-      const { error: invokeError } = await supabase.functions.invoke("send-verification", {
+      // New plan: just call the edge function which will both send the email and store the OTP in DB with the correct expiry.
+      const resp = await supabase.functions.invoke("send-verification", {
         body: {
           email: data.email,
-          code: verificationCode,
+          code: Math.floor(100000 + Math.random() * 900000).toString(), // The function expects a "code" field, but doesn't use it for password resets; that's OK.
           type: "password-reset",
         },
       });
-
-      // Store the verification code in the email_verification_codes table
-      const { error: storeError } = await supabase
-        .from('email_verification_codes')
-        .insert({
-          email: data.email.toLowerCase().trim(),
-          code: verificationCode,
-          type: "password-reset",
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-          used: false,
-        });
-
       // Always continue to OTP stage for privacy
       setEmail(data.email);
       setOtpStage('otp');

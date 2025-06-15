@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -15,7 +14,6 @@ const schema = z.object({
   otp: z.string().length(6, "Enter the 6-digit code"),
   newPassword: z.string()
     .min(8, 'Password must be at least 8 characters')
-    // Updated regex: require at least one lowercase, uppercase, digit, and ANY special character
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])/, 
       'Password must contain uppercase, lowercase, number, and special character'),
   confirmPassword: z.string().min(8, 'Password must be at least 8 characters'),
@@ -49,42 +47,33 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
     },
   });
 
-  // Helper: check if there is a user with this email, and if they have 2FA enabled
-  async function getUser2FAStatus(email: string) {
-    // Supabase: fetch user id from auth.users table by email
-    const { data: users, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email.toLowerCase().trim());
-
-    const userId = users && users.length > 0 ? users[0].id : undefined;
-    if (!userId) return false;
-    const { data: securityRow } = await supabase
-      .from('user_security')
-      .select('google_auth_enabled')
-      .eq('user_id', userId)
-      .maybeSingle();
-    return !!securityRow?.google_auth_enabled;
+  // Helper: validate the OTP for this password reset using an edge function
+  async function verifyOtp(email: string, code: string) {
+    const { data, error } = await supabase.functions.invoke("verify-reset-otp", {
+      body: { email, code },
+    });
+    // data will have { valid: true/false, twoFARequired?: bool }
+    if (error) return { valid: false };
+    return data;
   }
 
-  // Helper: handle password reset (after validating OTP and optional 2FA)
+  // Helper: reset password using an edge function (which will check OTP & 2FA)
+  async function resetPassword({ email, otp, newPassword, twoFACode }: { email: string, otp: string, newPassword: string, twoFACode?: string }) {
+    const { data, error } = await supabase.functions.invoke("complete-password-reset", {
+      body: { email, otp, newPassword, twoFACode },
+    });
+    if (error) return { success: false, reason: "unexpected_error" };
+    return data;
+  }
+
   async function handlePasswordReset(values: RecoverOtpInputs) {
     setIsLoading(true);
     set2FAError(null);
 
     try {
-      // 1. Look up unused, unexpired, and not-used code in email_verification_codes
-      const { data: verificationData, error: verificationError } = await supabase
-        .from('email_verification_codes')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .eq('code', values.otp)
-        .eq('type', 'password-reset')
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .single();
-
-      if (verificationError || !verificationData) {
+      // Step 1: verify the code
+      const verifyRes = await verifyOtp(email, values.otp);
+      if (!verifyRes.valid) {
         toast({
           title: 'Invalid or Expired Code',
           description: 'The code is invalid or expired. Please try again.',
@@ -94,68 +83,33 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
         return;
       }
 
-      // 2. Mark code as used
-      await supabase
-        .from('email_verification_codes')
-        .update({ used: true })
-        .eq('id', verificationData.id);
-
-      // 3. Fetch user ID from users table by email
-      const { data: users, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email.toLowerCase().trim());
-
-      if (!users || users.length === 0) {
-        toast({
-          title: "No user found",
-          description: "There is no account associated with this email.",
-          variant: "destructive",
-        });
+      // Step 2: If 2FA is required, prompt for it
+      if (verifyRes.twoFARequired && !(values.twoFACode || twoFACode)) {
+        setShow2FA(true);
         setIsLoading(false);
         return;
       }
-      const userId = users[0].id;
 
-      // Only check 2FA if user exists
-      const { data: secRow } = await supabase
-        .from('user_security')
-        .select('google_auth_enabled, google_auth_secret')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (secRow?.google_auth_enabled) {
-        // If user has 2FA and not provided, prompt for 2FA input
-        if (!values.twoFACode && !twoFACode) {
-          setShow2FA(true);
-          setIsLoading(false);
-          return;
-        }
-        // Validate TOTP code using otplib (which matches backend)
-        // We'll make a remote call to an existing edge function or use the same validation logic
-
-        // For simplicity, we'll invoke a universal `two-factor-auth` function
-        const { data: twoFAData, error: twoFAError } = await supabase.functions.invoke('two-factor-auth', {
-          body: {
-            user_id: userId,
-            code: values.twoFACode || twoFACode,
-            email,
-          }
-        });
-        if (twoFAError || !twoFAData?.success) {
-          setShow2FA(true);
-          set2FAError("2FA code is incorrect; please try again.");
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // 4. Update the password with Supabase admin API
-      const { error: pwErr } = await supabase.auth.admin.updateUserById(userId, {
-        password: values.newPassword,
+      // Step 3: actually reset password
+      const resetRes = await resetPassword({
+        email,
+        otp: values.otp,
+        newPassword: values.newPassword,
+        twoFACode: values.twoFACode || twoFACode,
       });
-      if (pwErr) {
-        toast({ title: "Password reset failed", description: "Check your code and try again.", variant: "destructive" });
+
+      if (!resetRes.success && resetRes.reason === "invalid_2fa") {
+        setShow2FA(true);
+        set2FAError("2FA code is incorrect; please try again.");
+        setIsLoading(false);
+        return;
+      }
+      if (!resetRes.success) {
+        toast({
+          title: 'Could not reset password',
+          description: 'Please check your code and try again.',
+          variant: 'destructive',
+        });
         setIsLoading(false);
         return;
       }
@@ -180,23 +134,14 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
   }
 
   function handleResendCode() {
-    // Call same logic as the forgot password page
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Call edge function to re-issue the code, which will handle email and DB storage
     supabase.functions.invoke('send-verification', {
       body: {
         email,
-        code: verificationCode,
+        code: Math.floor(100000 + Math.random() * 900000).toString(),
         type: 'password-reset'
       }
     }).then(() => {
-      // Store in email_verification_codes table
-      supabase.from('email_verification_codes').insert({
-        email: email.toLowerCase().trim(),
-        code: verificationCode,
-        type: "password-reset",
-        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-        used: false,
-      });
       toast({ title: "New code sent", description: "Check your inbox for a new code." });
     });
   }
