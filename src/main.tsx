@@ -63,6 +63,7 @@ import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
 import SecurePasswordReset from './pages/auth/SecurePasswordReset';
 import RecoveryCodeReset from './pages/auth/RecoveryCodeReset';
 import DirectPasswordReset from './pages/auth/DirectPasswordReset';
+import Recover from './pages/auth/Recover';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
@@ -184,6 +185,10 @@ const router = createBrowserRouter([
       {
         path: "/auth/signup",
         element: <SecureSignUp />,
+      },
+      {
+        path: "/auth/recover",
+        element: <Recover />,
       },
       {
         path: "/auth/2fa-verification",
