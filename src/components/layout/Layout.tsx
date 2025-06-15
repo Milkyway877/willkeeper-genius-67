@@ -181,7 +181,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         <SubscriptionModal
           open={showSubscriptionModal}
           onClose={closeSubscriptionModal}
-          onSuccess={handleSubscriptionSuccess}
+          onSubscriptionSuccess={handleSubscriptionSuccess}
           triggerSource={triggerSource}
         />
       )}
