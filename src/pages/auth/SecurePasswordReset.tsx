@@ -27,10 +27,14 @@ export default function SecurePasswordReset() {
     setChecking(true);
     try {
       // Step 1a: Find user in user_profiles by email
+      const emailQuery = email.trim().toLowerCase();
       const { data: userList, error: userError } = await supabase
         .from("user_profiles")
         .select("id, email")
-        .ilike("email", email.trim().toLowerCase());
+        .eq("email", emailQuery); // Exact match, emails are stored lowercase
+
+      console.log("Querying for user:", emailQuery);
+      console.log("user_profiles result:", userList, userError);
 
       if (userError || !userList || userList.length === 0) {
         toast({
@@ -50,6 +54,8 @@ export default function SecurePasswordReset() {
         .select("user_id, google_auth_enabled, google_auth_secret")
         .eq("user_id", user_id)
         .maybeSingle();
+
+      console.log("user_security result:", secData, secError);
 
       if (secError || !secData || !secData.user_id) {
         toast({
@@ -252,3 +258,4 @@ export default function SecurePasswordReset() {
     </div>
   );
 }
+
