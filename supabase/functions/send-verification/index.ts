@@ -2,7 +2,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { corsHeaders } from "../_shared/cors.ts"; // Import shared CORS headers
+// Corrected shared CORS import
+import { corsHeaders } from "../_shared/cors.ts";
 
 // Helper: generate a random 6-digit code
 function generateOTP() {
@@ -31,7 +32,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Insert the OTP into the email_verification_codes table for all types
+    // Store all verification codes in one table for all types
     const { error: insertError } = await supabase
       .from("email_verification_codes")
       .insert([{
@@ -47,7 +48,7 @@ serve(async (req) => {
       throw new Error("Could not store code");
     }
 
-    // Compose subject and email content
+    // Compose subject and email content per type
     let subject = "Verify your email";
     let actionText = "verify your email";
 
