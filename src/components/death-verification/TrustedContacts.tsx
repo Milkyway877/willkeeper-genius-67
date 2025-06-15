@@ -73,12 +73,21 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     }
   };
   
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target;
-    setNewContact(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox' && 'checked' in e.target) {
+      setNewContact(prev => ({
+        ...prev,
+        [name]: (e.target as HTMLInputElement).checked
+      }));
+    } else {
+      setNewContact(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
   
   const validateEmail = (email: string) => {
