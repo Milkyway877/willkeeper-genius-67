@@ -13,9 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
-// Removed useRandomSubscriptionPrompts and RandomSubscriptionPrompt imports
 import { useWillSubscriptionFlow } from "@/hooks/useWillSubscriptionFlow";
-// Add SubscriptionModal (shadcn/ui or your own)
 import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 
 interface LayoutProps {
@@ -31,47 +29,51 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { profile } = useUserProfile();
-  const { subscriptionStatus } = useSubscriptionStatus();
-  
-  // Removed useRandomSubscriptionPrompts and related state
+  const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
 
-  // Subscription flow custom hook - unified
-  const { 
-    showSubscriptionModal, 
+  // Unified, unconditionally called:
+  const {
+    showSubscriptionModal,
     closeSubscriptionModal,
     handleSubscriptionSuccess,
     triggerSource,
     hasWill,
     hasTankMessage,
-    eligibilityLoading
+    eligibilityLoading,
   } = useWillSubscriptionFlow();
-  
-  // Only show CountdownBanner if user has content (hasWill or hasTankMessage)
-  // and NOT during eligibility loading
+
+  // Always define shouldShowCountdown after hooks above
   const shouldShowCountdown =
     !subscriptionStatus.isSubscribed &&
     !subscriptionStatus.isTrial &&
     (hasWill || hasTankMessage) &&
     !eligibilityLoading;
 
+  // All the effect hooks now do not return early before hooks, only guard inside
   useEffect(() => {
     const dismissedNotification = localStorage.getItem('dismissedMobileNotification');
     if (dismissedNotification === 'true') {
       setShowMobileNotification(false);
     }
   }, []);
-  
+
   const handleDismissMobileNotification = () => {
     setShowMobileNotification(false);
     localStorage.setItem('dismissedMobileNotification', 'true');
   };
-  
+
   useEffect(() => {
     if (isMobile) setShowSidebar(false);
   }, [isMobile]);
-  
+
   useEffect(() => {
-    if (forceAuthenticated && !location.pathname.includes('/auth/')) {
+    // Guard: Only navigate if profile and subscription have loaded
+    if (
+      forceAuthenticated &&
+      !location.pathname.includes('/auth/') &&
+      !subscriptionLoading &&
+      (profile !== undefined)
+    ) {
       const checkAuthStatus = async () => {
         const { data } = await supabase.auth.getSession();
         if (!data.session) {
@@ -84,13 +86,13 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       };
       checkAuthStatus();
     }
-  }, [forceAuthenticated, location.pathname, navigate, profile]);
-  
+  }, [forceAuthenticated, location.pathname, navigate, profile, subscriptionLoading]);
+
   const toggleSidebar = () => setShowSidebar(!showSidebar);
-  
+
   const isAuthPage = location.pathname.includes('/auth/');
   const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
-  
+
   useEffect(() => {
     if (location.pathname === '/help' && location.search) {
       const params = new URLSearchParams(location.search);
@@ -100,13 +102,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       }
     }
   }, [location]);
-  
-  useEffect(() => {
-    if (selectedTopic && location.pathname === '/help') {
-      // Handled by Help page
-    }
-  }, [selectedTopic, location.pathname]);
-  
+
+  // No conditional returns
+
   const shouldHaveCreamBackground = !isAuthPage && 
     !location.pathname.includes('/dashboard') && 
     !location.pathname.includes('/will') && 
@@ -116,6 +114,17 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/search');
   const isLandingPage = location.pathname === '/';
   const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage;
+
+  // On loading, optionally show loading skeleton instead of content
+  if (eligibilityLoading || subscriptionLoading) {
+    // Optionally a skeleton, for now just loading indicator
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <span className="text-lg font-semibold animate-pulse">Loading...</span>
+      </div>
+    );
+  }
+  // Otherwise, proceed as normal
 
   return (
     <>
@@ -138,10 +147,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Only show for users with will/tank-content */}
           {showAuthenticatedLayout && shouldShowCountdown && (
             <CountdownBanner
-              timeRemaining={0} // You should update to pass the actual timeRemaining via useWillSubscriptionFlow if you want countdowns
+              timeRemaining={0}
               formattedTimeRemaining={""}
               urgencyLevel={"normal"}
               triggerSource={triggerSource ?? (hasTankMessage ? "tank-message" : "will")}
@@ -177,7 +185,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           )}
         </motion.div>
       </div>
-      {/* Global Subscription Modal: show only if user has will or tank message */}
       {showAuthenticatedLayout && (hasWill || hasTankMessage) && (
         <SubscriptionModal
           open={showSubscriptionModal}
@@ -185,7 +192,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           onSubscriptionSuccess={handleSubscriptionSuccess}
         />
       )}
-      {/* REMOVED RandomSubscriptionPrompt and old useRandomSubscriptionPrompts controlled dialog */}
     </>
   );
 }

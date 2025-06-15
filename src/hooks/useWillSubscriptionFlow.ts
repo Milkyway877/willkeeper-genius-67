@@ -6,17 +6,14 @@ import { toast } from 'sonner';
 
 type TriggerSource = "will" | "tank-message" | null;
 
-// Central eligibility hook with refresh support and race condition protection
+// Central eligibility hook with strict race & call order guards
 const useEligibilityCheck = () => {
   const [hasWill, setHasWill] = useState(false);
   const [hasTankMessage, setHasTankMessage] = useState(false);
   const [eligibilityLoading, setEligibilityLoading] = useState(true);
-  const pendingRequestRef = useRef<Promise<void> | null>(null);
-
-  // Ref for canceling outdated fetches
   const currentRequestId = useRef(0);
 
-  // Main fetcher - debounced manually
+  // Fetcher always runs, never conditional
   const fetchEligibility = useCallback(async () => {
     setEligibilityLoading(true);
     currentRequestId.current += 1;
@@ -26,7 +23,7 @@ const useEligibilityCheck = () => {
       const willStatus = await checkUserHasWill();
       const tankStatus = await checkUserHasTankMessage();
 
-      if (requestId !== currentRequestId.current) return; // Outdated response, skip
+      if (requestId !== currentRequestId.current) return;
       setHasWill(!!willStatus.hasWill);
       setHasTankMessage(!!tankStatus.hasTankMessage);
     } catch (err) {
@@ -38,14 +35,11 @@ const useEligibilityCheck = () => {
     }
   }, []);
 
-  // Effect for initial load
   useEffect(() => {
     fetchEligibility();
-    // Don't deps on fetchEligibility, it's stable
     // eslint-disable-next-line
   }, []);
 
-  // Public trigger for consumers to refresh state after changes
   const refreshEligibility = useCallback(() => {
     fetchEligibility();
   }, [fetchEligibility]);
@@ -54,38 +48,38 @@ const useEligibilityCheck = () => {
 };
 
 export const useWillSubscriptionFlow = () => {
+  // All stateful hooks (order matters - no conditionals above these)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [willStatus, setWillStatus] = useState({ hasWill: false, willCount: 0 });
   const { subscriptionStatus, refreshSubscriptionStatus } = useSubscriptionStatus();
-  const [triggerSource, setTriggerSource] = useState<TriggerSource>(null);
+  const [triggerSource, setTriggerSource] = useState<"will" | "tank-message" | null>(null);
 
-  // Central eligibility; always keep in sync
+  // Strict hook call order
   const [
     hasWill,
     hasTankMessage,
     eligibilityLoading,
-    refreshEligibility
+    refreshEligibility,
   ] = useEligibilityCheck();
 
-  // Update will status on mount and whenever eligibility refreshes
+  // Sync willStatus on eligibility change
   useEffect(() => {
-    const checkWills = async () => {
+    let mounted = true;
+    async function checkWills() {
       const status = await checkUserHasWill();
-      setWillStatus(status);
-    };
+      if (mounted) setWillStatus(status);
+    }
     checkWills();
+    return () => { mounted = false; };
   }, [hasWill]);
 
-  // This is called upon will/tank message creation OR deletion
+  // Strictly organized callbacks, never skipping hooks
   const handleWillOrTankMessageSaved = useCallback(
-    async (source: TriggerSource, isFirst: boolean = false) => {
-      // Re-fetch eligibility for authoritative status
+    async (source: "will" | "tank-message" | null, isFirst: boolean = false) => {
       await refreshEligibility();
-
       const status = await checkUserHasWill();
       setWillStatus(status);
 
-      // Show only if appropriate:
       if (
         isFirst &&
         !subscriptionStatus.isSubscribed &&
@@ -93,10 +87,9 @@ export const useWillSubscriptionFlow = () => {
       ) {
         setShowSubscriptionModal(true);
         setTriggerSource(source);
-        let msg =
-          source === "tank-message"
-            ? 'Tank message saved! Upgrade to unlock secure storage and premium messaging features.'
-            : 'Will saved successfully! Upgrade to unlock Tank messages and premium features.';
+        const msg = source === "tank-message"
+          ? 'Tank message saved! Upgrade to unlock secure storage and premium messaging features.'
+          : 'Will saved successfully! Upgrade to unlock Tank messages and premium features.';
         toast.success(msg);
       } else {
         toast.success(
@@ -105,13 +98,11 @@ export const useWillSubscriptionFlow = () => {
             : 'Will saved successfully!'
         );
       }
-      // Always refresh eligibility after save
       refreshEligibility();
     },
     [subscriptionStatus.isSubscribed, hasTankMessage, refreshEligibility]
   );
 
-  // Call this after a will/tank message is deleted to recheck eligibility on dashboard/sidebar/etc
   const handleContentDeleted = useCallback(() => {
     refreshEligibility();
   }, [refreshEligibility]);
@@ -130,6 +121,9 @@ export const useWillSubscriptionFlow = () => {
 
   // Only show if user has at least one will or tank message AND everything is done loading
   const isEligible = !eligibilityLoading && (hasWill || hasTankMessage);
+
+  // Debug order: always log when run, for debug only (remove in production)
+  // console.log('useWillSubscriptionFlow order', { hasWill, hasTankMessage, eligibilityLoading });
 
   return {
     showSubscriptionModal: showSubscriptionModal && isEligible,
