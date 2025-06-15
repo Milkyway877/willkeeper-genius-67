@@ -1,4 +1,3 @@
-
 project_id = "ksiinmxsycosnpchutuw"
 
 [api]
@@ -28,6 +27,9 @@ site_url = "http://localhost:3000"
 [functions]
 [functions.message-ai]
 verify_jwt = true
+
+[functions.executor-will-unlock]
+verify_jwt = false
 
 [functions.send-future-message]
 verify_jwt = false
