@@ -45,7 +45,7 @@ export default function SimpleWillUnlock() {
         toast({
           title: 'Access code sent!',
           description: 'Check your email for the OTP code. Continue the verification process as instructed.',
-          variant: 'success'
+          variant: 'default' // <-- FIXED: previously was 'success'
         });
       } else {
         toast({
