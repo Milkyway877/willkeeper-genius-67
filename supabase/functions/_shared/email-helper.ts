@@ -1,4 +1,3 @@
-
 import { Resend } from 'https://esm.sh/resend@1.1.0';
 
 export const getResendClient = () => {

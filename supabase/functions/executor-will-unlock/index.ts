@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { getResendClient, buildDefaultEmailLayout } from "../_shared/email-helper.ts";
@@ -112,7 +111,17 @@ async function requestExecutorAccess(executorName: string, executorEmail: string
   }
 
   // Send OTP via email
-  const resend = getResendClient();
+  let resend;
+  try {
+    resend = getResendClient();
+  } catch (e) {
+    console.error("Failed to initialize Resend client. Missing RESEND_API_KEY?", e);
+    return new Response(
+      JSON.stringify({ error: "Email service is not configured. Please contact support." }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   const deceasedName = `${deceasedUser.first_name || ''} ${deceasedUser.last_name || ''}`.trim() || deceasedUser.email;
 
   const otpEmailContent = `
