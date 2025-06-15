@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SimpleAvatar } from '@/components/user/SimpleAvatar';
@@ -20,6 +21,7 @@ import {
   Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ContactSupportButton } from '@/components/common/ContactSupportButton';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -99,6 +101,9 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
+                {/* Add Contact Support button for authenticated users (dashboard, etc) */}
+                <ContactSupportButton className="hidden md:inline-flex" />
+
                 {!showSearchInput ? (
                   <Button 
                     variant="ghost" 
