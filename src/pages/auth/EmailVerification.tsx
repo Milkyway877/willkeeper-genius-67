@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ export default function EmailVerification() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
   const { toast } = useToast();
   
   const form = useForm({
