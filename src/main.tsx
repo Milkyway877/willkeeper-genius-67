@@ -188,35 +188,35 @@ const router = createBrowserRouter([
       },
       {
         path: "/auth/recover",
-        element: <Recover />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/2fa-verification",
-        element: <TwoFactorVerification />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/verification",
-        element: <EmailVerification />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/forgot-password",
-        element: <SecureRecover />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/reset-password",
-        element: <AuthResetPassword />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/activate",
-        element: <AccountActivation />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/verify-email",
-        element: <VerifyEmailBanner />,
+        element: <SecureSignIn />,
       },
       {
         path: "/auth/callback",
-        element: <AuthCallback />,
+        element: <SecureSignIn />,
       },
       {
         path: "/dashboard",
@@ -327,18 +327,6 @@ const router = createBrowserRouter([
         element: <SimpleWillUnlock />,
       },
       {
-        path: "/auth/secure-password-reset",
-        element: <SecurePasswordReset />,
-      },
-      {
-        path: "/auth/recovery-reset",
-        element: <RecoveryCodeReset />,
-      },
-      {
-        path: "/auth/direct-password-reset",
-        element: <DirectPasswordReset />,
-      },
-      {
         path: "*",
         element: <NotFound />,
       },
@@ -355,3 +343,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 )
+
+// IMPORTANT: main.tsx is long and should be refactored for maintainability.
