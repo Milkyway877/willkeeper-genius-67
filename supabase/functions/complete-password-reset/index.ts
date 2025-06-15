@@ -88,7 +88,7 @@ serve(async (req) => {
       .eq('email', email.toLowerCase().trim())
       .eq('otp_code', otp);
 
-    // Optionally: Send notification of password change to user
+    // Optionally: Send notification of password change
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders });
   } catch (e) {

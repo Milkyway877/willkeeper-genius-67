@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -37,7 +36,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Insert the OTP into the password_reset_tokens table
+    // Insert the OTP into the password_reset_tokens table if for password-reset
     if (type === "password-reset") {
       const { error: insertError } = await supabase
         .from("password_reset_tokens")
@@ -46,6 +45,8 @@ serve(async (req) => {
           otp_code: code,
           expires_at: expiresAt,
           used: false,
+          // explicitly add created_at for easier debugging if needed
+          created_at: new Date().toISOString(),
         }]);
       if (insertError) {
         console.error("Failed to store OTP code:", insertError);
