@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -134,16 +133,7 @@ export default function CheckIns() {
                 <li>Regular check-in reminders by email</li>
                 <li>Multi-contact verification system</li>
                 <li>PIN-protected will access</li>
-                <li>🚀 GODMODE automated protection</li>
               </ul>
-              
-              <Alert className="mt-4 bg-willtank-100 border-willtank-200">
-                <Info className="h-4 w-4" />
-                <AlertTitle>GODMODE Automation</AlertTitle>
-                <AlertDescription className="text-sm">
-                  Our advanced automation system monitors check-ins 24/7 and automatically notifies your contacts when needed.
-                </AlertDescription>
-              </Alert>
             </div>
           </div>
         </div>
@@ -151,17 +141,12 @@ export default function CheckIns() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 border-b w-full justify-start rounded-none pb-0">
             <TabsTrigger value="settings" className="rounded-t-lg rounded-b-none border-b-0">Settings</TabsTrigger>
-            <TabsTrigger value="automation" className="rounded-t-lg rounded-b-none border-b-0">🚀 GODMODE</TabsTrigger>
             <TabsTrigger value="contacts" className="rounded-t-lg rounded-b-none border-b-0">Manage Contacts</TabsTrigger>
             <TabsTrigger value="history" className="rounded-t-lg rounded-b-none border-b-0">Check-in History</TabsTrigger>
           </TabsList>
           
           <TabsContent value="settings">
             <DeathVerification onSettingsChange={handleSettingsChange} />
-          </TabsContent>
-
-          <TabsContent value="automation">
-            <GodModeAutomation />
           </TabsContent>
 
           <TabsContent value="contacts">
