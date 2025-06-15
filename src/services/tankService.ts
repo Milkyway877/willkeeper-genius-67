@@ -350,8 +350,7 @@ export const getValidStatusValues = async (): Promise<string[] | null> => {
 };
 
 /**
- * Checks if the user has any Tank (future) messages.
- * Returns: { hasTankMessage: boolean }
+ * Checks if the user has any finalized Tank (future) messages.
  */
 export const checkUserHasTankMessage = async (): Promise<{ hasTankMessage: boolean }> => {
   try {
@@ -359,10 +358,13 @@ export const checkUserHasTankMessage = async (): Promise<{ hasTankMessage: boole
     if (!session?.user) {
       return { hasTankMessage: false };
     }
+    // Count only future messages that are NOT drafts (status != 'draft')
+    // We consider 'scheduled', 'processing', or 'delivered' as valid (not 'draft')
     const { count, error } = await supabase
       .from('future_messages')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .not('status', 'eq', 'draft');
     if (error) {
       console.error('Error checking for tank messages:', error);
       return { hasTankMessage: false };

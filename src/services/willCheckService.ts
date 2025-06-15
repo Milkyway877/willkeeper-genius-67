@@ -14,10 +14,12 @@ export const checkUserHasWill = async (): Promise<WillCheckResult> => {
       return { hasWill: false, willCount: 0 };
     }
 
+    // Only count finalized (non-draft) wills for eligibility 
     const { data: wills, error } = await supabase
       .from('wills')
       .select('id')
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .not('status', 'eq', 'draft'); // Only count if not draft
 
     if (error) {
       console.error('Error checking user wills:', error);
