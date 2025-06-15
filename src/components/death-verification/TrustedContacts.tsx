@@ -31,7 +31,11 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   const [contacts, setContacts] = useState<TrustedContact[]>([]);
   const [newContact, setNewContact] = useState({
     name: '',
-    email: ''
+    email: '',
+    phone: '',
+    address: '',
+    verification_code_word: '',
+    is_executor: false
   });
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -69,11 +73,11 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
     }
   };
   
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type, checked } = e.target;
     setNewContact(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
   
@@ -114,6 +118,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
   
   const handleAddContact = async () => {
     try {
+      // Validate all fields
       if (!newContact.name.trim()) {
         toast({
           title: "Missing Information",
@@ -122,7 +127,7 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         });
         return;
       }
-      
+
       if (!newContact.email.trim() || !validateEmail(newContact.email)) {
         toast({
           title: "Invalid Email",
@@ -131,14 +136,43 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         });
         return;
       }
-      
+
+      if (!newContact.phone.trim()) {
+        toast({
+          title: "Missing Information",
+          description: "Please enter a phone number",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!newContact.address.trim()) {
+        toast({
+          title: "Missing Information",
+          description: "Please enter a physical address for this contact",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!newContact.verification_code_word.trim()) {
+        toast({
+          title: "Missing Code Word",
+          description: "Assign a unique code word for this contact. This will be used for later verification.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Strongly encourage use of trusted persons only, at UI level
+
       setSubmitting(true);
-      
-      // Check if email already exists
+
+      // Check for duplicate email
       const existingContact = contacts.find(c => 
         c.email.toLowerCase() === newContact.email.toLowerCase()
       );
-      
+
       if (existingContact) {
         toast({
           title: "Duplicate Contact",
@@ -148,68 +182,64 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
         setSubmitting(false);
         return;
       }
-      
-      const contact = await createTrustedContact({
+
+      // Compose payload for service
+      const contactPayload = {
         name: newContact.name.trim(),
-        email: newContact.email.toLowerCase().trim()
-      });
-      
+        email: newContact.email.toLowerCase().trim(),
+        phone: newContact.phone.trim(),
+        address: newContact.address.trim(),
+        verification_code_word: newContact.verification_code_word.trim(),
+        is_executor: newContact.is_executor
+      };
+
+      const contact = await createTrustedContact(contactPayload);
+
       if (!contact) {
         throw new Error("Failed to create trusted contact");
       }
-      
-      // Clear form and close dialog
-      setNewContact({ name: '', email: '' });
+
+      setNewContact({ name: '', email: '', phone: '', address: '', verification_code_word: '', is_executor: false });
       setFormOpen(false);
-      
-      // Refresh contacts list
+
       fetchTrustedContacts();
       onContactsChange();
-      
-      // Attempt to send verification email with enhanced error handling
+
       try {
         const success = await sendVerificationRequest(contact.id);
-        
+
         if (success) {
-          // Create notification via fallback method
           await createSystemNotificationFallback(
             'success',
             'Trusted Contact Added',
-            `${contact.name} has been added to your trusted contacts list.`
+            `${contact.name} added (${contact.email}).`
           );
-          
           toast({
             title: "Contact Added",
-            description: `${newContact.name} has been added to your trusted contacts list and a verification email has been sent.`
+            description: `${contact.name} was added and notified.`
           });
         } else {
-          // User feedback for email sending failure
           toast({
             title: "Contact Added",
-            description: `${contact.name} has been added, but we couldn't send the verification email. You can resend it later.`,
+            description: `${contact.name} added, but email could not be sent at this time.`,
             variant: "default"
           });
-          
-          // Create warning notification via fallback method
           await createSystemNotificationFallback(
             'warning',
             'Email Delivery Issue',
-            `We couldn't send the verification email to ${contact.name}. You can try resending it later.`
+            `Failed to notify ${contact.name}.`
           );
         }
-      } catch (emailError) {
-        console.error('Error sending verification email:', emailError);
-        
+      } catch (e) {
+        console.error('Error sending verification email:', e);
         toast({
           title: "Contact Added",
-          description: `${contact.name} has been added, but we couldn't send the verification email. You can resend it later.`,
+          description: `${contact.name} added, but verification email not sent.`,
         });
-        
-        // Create warning notification via fallback method
         await createSystemNotificationFallback(
           'warning',
           'Email Delivery Issue',
-          `We couldn't send the verification email to ${contact.name}. You can try resending it later.`
+          `Failed to notify ${contact.name}.`
         );
       }
     } catch (error) {
@@ -441,10 +471,11 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
           <DialogHeader>
             <DialogTitle>Add Trusted Contact</DialogTitle>
             <DialogDescription>
-              Add someone you trust who can verify your status if you miss check-ins.
+              Add someone you trust deeply. You must know this person, as they may help verify your status should anything happen.<br />
+              <span className="text-red-600 font-medium">Do not add anyone you do not personally know and trust!</span>
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="name">Contact Name</Label>
@@ -456,7 +487,6 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                 onChange={handleInputChange}
               />
             </div>
-            
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -468,8 +498,56 @@ export function TrustedContacts({ onContactsChange }: TrustedContactsProps) {
                 onChange={handleInputChange}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                name="phone"
+                placeholder="XXX-XXX-XXXX"
+                value={newContact.phone}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Physical Address</Label>
+              <Input
+                id="address"
+                name="address"
+                placeholder="123 Main St, City, Country"
+                value={newContact.address}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="verification_code_word">Assign a Code Word</Label>
+              <Input
+                id="verification_code_word"
+                name="verification_code_word"
+                placeholder="Unique word only this contact would know"
+                value={newContact.verification_code_word}
+                onChange={handleInputChange}
+              />
+              <p className="text-xs text-gray-500">
+                You must share the code word with your contact. They will need it for verification later, so pick something memorable for them!
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  name="is_executor"
+                  checked={newContact.is_executor}
+                  onChange={handleInputChange}
+                  className="accent-willtank-600"
+                />
+                Is Executor?
+              </label>
+              <p className="text-xs text-gray-400">
+                If checked, this contact will also be an executor (with additional security checks).
+              </p>
+            </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>
               Cancel

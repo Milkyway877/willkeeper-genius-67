@@ -1,4 +1,3 @@
-
 -- Create trusted_contacts table if it doesn't exist
 CREATE TABLE IF NOT EXISTS public.trusted_contacts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -6,6 +5,10 @@ CREATE TABLE IF NOT EXISTS public.trusted_contacts (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT,
+  address TEXT,
+  verification_code_word TEXT NOT NULL DEFAULT '',
+  is_executor BOOLEAN DEFAULT false,
+  executor_2fa_code TEXT,
   relation TEXT,
   invitation_status TEXT DEFAULT 'pending',
   invitation_sent_at TIMESTAMPTZ,

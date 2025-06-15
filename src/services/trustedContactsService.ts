@@ -7,8 +7,11 @@ export interface TrustedContact {
   user_id: string;
   name: string;
   email: string;
-  phone?: string | null;
-  relation?: string | null;
+  phone: string;
+  address: string;
+  verification_code_word: string;
+  is_executor?: boolean;
+  executor_2fa_code?: string | null;
   invitation_status?: string | null;
   invitation_sent_at?: string | null;
   invitation_responded_at?: string | null;
@@ -46,46 +49,54 @@ export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
 export const createTrustedContact = async (contact: {
   name: string;
   email: string;
+  phone: string;
+  address: string;
+  verification_code_word: string;
+  is_executor?: boolean;
 }): Promise<TrustedContact | null> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session?.user) {
       console.error('No authenticated user found');
       return null;
     }
-    
+
     // Get user profile for welcome notification
     const { data: userProfile } = await supabase
       .from('user_profiles')
       .select('first_name, last_name, full_name, email')
       .eq('id', session.user.id)
       .single();
-      
-    const userFullName = userProfile?.full_name || 
-      (userProfile?.first_name && userProfile?.last_name ? 
+
+    const userFullName = userProfile?.full_name ||
+      (userProfile?.first_name && userProfile?.last_name ?
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
-    
-    const newContact = {
+
+    const newContact: any = {
       name: contact.name,
       email: contact.email,
+      phone: contact.phone,
+      address: contact.address,
+      verification_code_word: contact.verification_code_word,
+      is_executor: !!contact.is_executor,
       user_id: session.user.id,
       invitation_status: 'notified',
       invitation_sent_at: new Date().toISOString()
     };
-    
+
     const { data, error } = await supabase
       .from('trusted_contacts')
       .insert(newContact)
       .select()
       .single();
-      
+
     if (error) {
       console.error('Error creating trusted contact:', error);
       return null;
     }
-    
-    // Automatically send welcome notification
+
+    // Automatically send welcome notification as before
     if (data && userProfile) {
       try {
         await sendContactWelcomeNotification({
@@ -99,10 +110,9 @@ export const createTrustedContact = async (contact: {
         console.log('Welcome notification sent to trusted contact automatically');
       } catch (welcomeError) {
         console.error('Error sending automatic welcome notification:', welcomeError);
-        // Don't fail the contact creation if welcome email fails
       }
     }
-    
+
     return data;
   } catch (error) {
     console.error('Error in createTrustedContact:', error);
@@ -118,12 +128,12 @@ export const updateTrustedContact = async (id: string, updates: Partial<TrustedC
       .eq('id', id)
       .select()
       .single();
-      
+
     if (error) {
       console.error('Error updating trusted contact:', error);
       return null;
     }
-    
+
     return data;
   } catch (error) {
     console.error('Error in updateTrustedContact:', error);
@@ -137,12 +147,12 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
       .from('trusted_contacts')
       .delete()
       .eq('id', id);
-      
+
     if (error) {
       console.error('Error deleting trusted contact:', error);
       return false;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error in deleteTrustedContact:', error);
@@ -159,30 +169,30 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       .select('*')
       .eq('id', contactId)
       .single();
-      
+
     if (contactError || !contact) {
       console.error('Error fetching contact:', contactError);
       return false;
     }
-    
+
     // Get auth session for auth token
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       console.error('No authenticated user found');
       return false;
     }
-    
+
     // Get user profile for name
     const { data: userProfile } = await supabase
       .from('user_profiles')
       .select('first_name, last_name, full_name, email')
       .eq('id', session.user.id)
       .single();
-      
-    const userFullName = userProfile?.full_name || 
-      (userProfile?.first_name && userProfile?.last_name ? 
+
+    const userFullName = userProfile?.full_name ||
+      (userProfile?.first_name && userProfile?.last_name ?
         `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
-    
+
     // Update the contact status first
     try {
       await supabase
@@ -196,11 +206,11 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       console.error('Error updating contact status:', updateError);
       // Continue anyway
     }
-    
+
     // Use the auto-contact-notifier function
     try {
       console.log('Sending verification via auto-contact-notifier');
-      
+
       const { data, error: fnError } = await supabase.functions.invoke('auto-contact-notifier', {
         body: {
           action: 'welcome_contact',
@@ -215,12 +225,12 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
           }
         }
       });
-      
+
       if (fnError) {
         console.error('Error from auto-contact-notifier:', fnError);
         return false;
       }
-      
+
       console.log('Verification sent successfully via auto-contact-notifier');
       return true;
     } catch (invokeError) {
@@ -241,12 +251,12 @@ export const checkInvitationStatus = async (contactId: string): Promise<string> 
       .select('invitation_status, invitation_sent_at, invitation_responded_at')
       .eq('id', contactId)
       .single();
-      
+
     if (error || !data) {
       console.error('Error checking invitation status:', error);
       return 'unknown';
     }
-    
+
     return data.invitation_status || 'not_sent';
   } catch (error) {
     console.error('Error in checkInvitationStatus:', error);
@@ -263,12 +273,12 @@ export const resendInvitation = async (contactId: string): Promise<boolean> => {
       .select('name, email')
       .eq('id', contactId)
       .single();
-      
+
     if (contactError || !contact) {
       console.error('Error fetching contact for resend:', contactError);
       return false;
     }
-    
+
     // Reset invitation status
     await supabase
       .from('trusted_contacts')
@@ -277,7 +287,7 @@ export const resendInvitation = async (contactId: string): Promise<boolean> => {
         invitation_sent_at: null
       })
       .eq('id', contactId);
-      
+
     // Use sendVerificationRequest which now uses auto-contact-notifier
     return await sendVerificationRequest(contactId);
   } catch (error) {
@@ -301,12 +311,12 @@ interface StatusCheckResponse {
 export const triggerStatusCheck = async (): Promise<{ success: boolean; error?: string; stats?: any }> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session?.user) {
       console.error('No authenticated user found');
       return { success: false, error: 'Not authenticated' };
     }
-    
+
     // Use the new automated missed checkin notifications function
     try {
       console.log('Triggering automated missed checkin notifications');
@@ -317,12 +327,12 @@ export const triggerStatusCheck = async (): Promise<{ success: boolean; error?: 
           daysOverdue: 1
         }
       });
-      
+
       if (fnError) {
         console.error('Error from functions.invoke:', fnError);
         throw new Error(fnError.message || 'Failed to trigger notifications');
       }
-      
+
       return { 
         success: true, 
         stats: {
