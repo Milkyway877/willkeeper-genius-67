@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -26,20 +25,48 @@ export default function SecurePasswordReset() {
     e.preventDefault();
     setChecking(true);
     try {
-      // Step 1a: Find user in user_profiles by email
+      // Enhanced: Clean/truncate/normalize input email
       const emailQuery = email.trim().toLowerCase();
-      const { data: userList, error: userError } = await supabase
+      console.log("Checking for email (step 1):", email, emailQuery);
+
+      // Step 1a: Attempt exact match first
+      let { data: userList, error: userError } = await supabase
         .from("user_profiles")
         .select("id, email")
-        .eq("email", emailQuery); // Exact match, emails are stored lowercase
+        .eq("email", emailQuery);
 
-      console.log("Querying for user:", emailQuery);
-      console.log("user_profiles result:", userList, userError);
+      console.log("%c[1] .eq() lookup:", "color: #00539F", userList, userError);
 
-      if (userError || !userList || userList.length === 0) {
+      // Fallback 1: If not found, try ilike (case-insensitive, partial match)
+      if ((!userList || userList.length === 0) && !userError) {
+        const { data: userLikeList, error: userLikeError } = await supabase
+          .from("user_profiles")
+          .select("id, email")
+          .ilike("email", `%${emailQuery}%`);
+        console.log("%c[2] .ilike() fallback lookup:", "color: #9F9404", userLikeList, userLikeError);
+        if (userLikeList && userLikeList.length > 0) {
+          userList = userLikeList;
+        }
+      }
+
+      // Fallback 2: Try stripping all spaces just in case
+      if ((!userList || userList.length === 0) && !userError) {
+        const emailNoSpaces = emailQuery.replace(/\s+/g, "");
+        const { data: userNoSpace, error: userNoSpaceError } = await supabase
+          .from("user_profiles")
+          .select("id, email")
+          .eq("email", emailNoSpaces);
+        console.log("%c[3] .eq() with no-spaces fallback:", "color: #A91B0D", userNoSpace, userNoSpaceError);
+        if (userNoSpace && userNoSpace.length > 0) {
+          userList = userNoSpace;
+        }
+      }
+
+      // Final check
+      if (!userList || userList.length === 0) {
         toast({
           title: "User not found",
-          description: "No account exists with that email.",
+          description: `No account exists with that email. Tried: "${emailQuery}"`,
           variant: "destructive",
         });
         setChecking(false);
@@ -179,6 +206,9 @@ export default function SecurePasswordReset() {
               value={email}
               onChange={e => setEmail(e.target.value)}
             />
+            <div className="text-xs text-blue-500 mt-1">
+              Email checked (normalized): <span className="font-mono">{email.trim().toLowerCase()}</span>
+            </div>
           </div>
           <Button className="w-full" type="submit" disabled={!email || checking}>
             {checking ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : "Next"}
@@ -258,4 +288,3 @@ export default function SecurePasswordReset() {
     </div>
   );
 }
-
