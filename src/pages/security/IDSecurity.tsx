@@ -35,8 +35,11 @@ import {
   disable2FA
 } from '@/services/encryptionService';
 
+import { useNavigate } from 'react-router-dom';
+
 export default function IDSecurity() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("2fa");
   const [security, setSecurity] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +53,9 @@ export default function IDSecurity() {
   });
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [setupComplete, setSetupComplete] = useState(false);
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [signOutAllDevicesLoading, setSignOutAllDevicesLoading] = useState(false);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
   useEffect(() => {
     fetchSecurityData();
@@ -185,6 +191,79 @@ export default function IDSecurity() {
       );
     } finally {
       setDisabling2FA(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      setChangePasswordLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        toast({
+          title: 'Error',
+          description: 'No email found for your user. Please sign in again.',
+          variant: 'destructive',
+        });
+        setChangePasswordLoading(false);
+        return;
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Password Reset Email Sent',
+          description: 'Check your email for a link to reset your password.',
+        });
+      }
+    } catch (err) {
+      console.error('Password reset error:', err);
+      toast({
+        title: 'Error',
+        description: 'Unable to send password reset email.',
+        variant: 'destructive',
+      });
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
+  const handleSignOutAllDevices = async () => {
+    setSignOutAllDevicesLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Signed Out',
+          description: 'You have been signed out on all devices.',
+        });
+        // Small delay so toast is visible before redirect
+        setTimeout(() => {
+          navigate('/auth/signin', { replace: true });
+        }, 1200);
+      }
+    } catch (err) {
+      console.error('Sign out all devices error:', err);
+      toast({
+        title: 'Error',
+        description: 'Unable to sign out.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSignOutAllDevicesLoading(false);
+      setShowSignOutDialog(false);
     }
   };
 
@@ -439,12 +518,63 @@ export default function IDSecurity() {
               </CardContent>
               
               <CardFooter className="flex justify-between">
-                <Button variant="outline">
-                  Sign Out All Devices
-                </Button>
-                <Button>
-                  Change Password
-                </Button>
+                {/* Sign Out All Devices button with confirmation */}
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={signOutAllDevicesLoading}
+                    onClick={() => setShowSignOutDialog(true)}
+                  >
+                    {signOutAllDevicesLoading ? (
+                      <>
+                        <Lock className="mr-2 h-4 w-4 animate-spin" />
+                        Signing Out...
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="mr-2 h-4 w-4" />
+                        Sign Out All Devices
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={changePasswordLoading}
+                  >
+                    <Key className="mr-2 h-4 w-4" />
+                    {changePasswordLoading ? 'Sending...' : 'Change Password'}
+                  </Button>
+                  {/* Confirmation Dialog for Sign Out All Devices */}
+                  <Dialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Sign Out All Devices</DialogTitle>
+                        <DialogDescription>
+                          Are you sure you want to sign out on <span className="font-semibold">all devices and browsers</span>? This action will end all sessions, including your current one.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex gap-4 mt-6">
+                        <Button
+                          onClick={handleSignOutAllDevices}
+                          disabled={signOutAllDevicesLoading}
+                          className="flex-1"
+                        >
+                          {signOutAllDevicesLoading
+                            ? 'Signing Out...'
+                            : 'Yes, Sign Out Everywhere'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowSignOutDialog(false)}
+                          disabled={signOutAllDevicesLoading}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
               </CardFooter>
             </Card>
           </TabsContent>
