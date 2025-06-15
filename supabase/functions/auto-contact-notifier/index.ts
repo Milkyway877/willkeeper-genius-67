@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { getResendClient, buildDefaultEmailLayout } from "../_shared/email-helper.ts";
@@ -40,34 +39,34 @@ serve(async (req) => {
   }
 
   try {
-    const requestData = await req.json() as AutoNotificationRequest;
-    
-    console.log('Processing auto-notification request:', requestData.action);
-    
-    switch (requestData.action) {
-      case 'welcome_contact':
-        return await sendWelcomeNotification(requestData.contact);
-      case 'missed_checkin_alert':
-        return await sendMissedCheckinAlert(requestData.contact, requestData.alertDetails);
-      case 'status_check':
-        return await sendStatusCheck(requestData.contact, requestData.alertDetails);
-      default:
-        return new Response(
-          JSON.stringify({ error: "Invalid action specified" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    const requestData = await req.json();
+    if (!requestData.contact.email || !requestData.contact.name) {
+      throw new Error('Contact email and name are required');
     }
+
+    // Only process welcome notifications here!
+    if (requestData.action !== 'welcome_contact') {
+      return new Response(
+        JSON.stringify({ 
+          error: "This function only handles role/welcome notifications.",
+          allowed: ["welcome_contact"]
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return await sendWelcomeNotification(requestData.contact);
 
   } catch (error) {
     console.error("Error in auto-contact-notifier:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
 
-async function sendWelcomeNotification(contact: AutoNotificationRequest['contact']) {
+async function sendWelcomeNotification(contact) {
   console.log(`Sending welcome notification to ${contact.contactType}: ${contact.name}`);
   
   const resend = getResendClient();
@@ -200,90 +199,4 @@ async function sendWelcomeNotification(contact: AutoNotificationRequest['contact
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-}
-
-async function sendMissedCheckinAlert(contact: AutoNotificationRequest['contact'], alertDetails?: AutoNotificationRequest['alertDetails']) {
-  console.log(`Sending missed check-in alert to ${contact.contactType}: ${contact.name}`);
-  
-  const resend = getResendClient();
-  const daysOverdue = alertDetails?.daysOverdue || 1;
-  const urgencyLevel = alertDetails?.urgencyLevel || (daysOverdue <= 3 ? 'mild' : daysOverdue <= 7 ? 'moderate' : 'severe');
-  
-  // Get executor info for emergency contact
-  const { data: executors } = await supabase
-    .from('will_executors')
-    .select('name, email, phone, primary_executor')
-    .eq('user_id', contact.userId)
-    .order('primary_executor', { ascending: false });
-    
-  const primaryExecutor = executors?.[0];
-  
-  const emailContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: ${urgencyLevel === 'severe' ? '#dc2626' : urgencyLevel === 'moderate' ? '#f59e0b' : '#4a6cf7'};">
-        ${urgencyLevel === 'severe' ? '🚨 URGENT' : '⚠️'} Check-in Alert: ${contact.userFullName}
-      </h1>
-      <p>Dear ${contact.name},</p>
-      <p>You are receiving this notification because <strong>${contact.userFullName}</strong> has missed their regular check-in on WillTank for <strong>${daysOverdue} days</strong>.</p>
-      
-      <div style="background-color: ${urgencyLevel === 'severe' ? '#fef2f2' : '#fef3c7'}; border: 1px solid ${urgencyLevel === 'severe' ? '#fecaca' : '#fcd34d'}; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="color: ${urgencyLevel === 'severe' ? '#dc2626' : '#92400e'}; margin-top: 0;">What this means:</h3>
-        <p>WillTank users check in regularly to confirm they are well. When someone misses their check-in, we notify their contacts to help verify their status.</p>
-      </div>
-
-      <h3 style="color: #1f2937;">🔍 What you should do:</h3>
-      <ol style="color: #374151;">
-        <li><strong>Contact ${contact.userFullName} immediately</strong> using your usual methods (phone, text, email, or in person)</li>
-        <li><strong>If you reach them:</strong> Ask them to log into WillTank and complete their check-in</li>
-        <li><strong>If you cannot reach them:</strong> This may indicate a serious situation - contact the executor below</li>
-      </ol>
-
-      ${primaryExecutor ? `
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #1f2937; margin-top: 0;">🔐 Emergency Contact (Executor)</h3>
-          <p>If you cannot reach ${contact.userFullName}, contact the executor:</p>
-          <p><strong>Name:</strong> ${primaryExecutor.name}<br>
-          <strong>Email:</strong> ${primaryExecutor.email}<br>
-          ${primaryExecutor.phone ? `<strong>Phone:</strong> ${primaryExecutor.phone}<br>` : ''}
-          <strong>Role:</strong> ${primaryExecutor.primary_executor ? 'Primary Executor' : 'Executor'}</p>
-        </div>
-      ` : ''}
-
-      <p>Thank you for being part of ${contact.userFullName}'s digital legacy protection plan. Your prompt attention is crucial.</p>
-      <p>Best regards,<br>The WillTank Security Team</p>
-    </div>
-  `;
-
-  try {
-    const emailResponse = await resend.emails.send({
-      from: "WillTank Security <security@willtank.com>",
-      to: [contact.email],
-      subject: `${urgencyLevel === 'severe' ? '🚨 URGENT' : '⚠️'} Check-in Alert: ${contact.userFullName} (${daysOverdue} days overdue)`,
-      html: buildDefaultEmailLayout(emailContent),
-      tags: [
-        { name: 'type', value: 'missed_checkin_alert' },
-        { name: 'urgency', value: urgencyLevel }
-      ]
-    });
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Missed check-in alert sent successfully",
-        emailId: emailResponse.id
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error('Error sending missed check-in alert:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-}
-
-async function sendStatusCheck(contact: AutoNotificationRequest['contact'], alertDetails?: AutoNotificationRequest['alertDetails']) {
-  // Similar implementation to sendMissedCheckinAlert but for general status checks
-  return await sendMissedCheckinAlert(contact, alertDetails);
 }
