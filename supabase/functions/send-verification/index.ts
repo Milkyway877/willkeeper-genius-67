@@ -31,22 +31,20 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Insert the OTP into the password_reset_tokens table if for password-reset
-    if (type === "password-reset") {
-      const { error: insertError } = await supabase
-        .from("password_reset_tokens")
-        .insert([{
-          email: email.toLowerCase().trim(),
-          otp_code: code,
-          expires_at: expiresAt,
-          used: false,
-          // explicitly add created_at for easier debugging if needed
-          created_at: new Date().toISOString(),
-        }]);
-      if (insertError) {
-        console.error("Failed to store OTP code:", insertError);
-        throw new Error("Could not store code");
-      }
+    // Insert the OTP into the email_verification_codes table for all types
+    const { error: insertError } = await supabase
+      .from("email_verification_codes")
+      .insert([{
+        email: email.toLowerCase().trim(),
+        code: code,
+        type: type,
+        expires_at: expiresAt,
+        used: false,
+        created_at: new Date().toISOString(),
+      }]);
+    if (insertError) {
+      console.error("Failed to store verification code:", insertError);
+      throw new Error("Could not store code");
     }
 
     // Compose subject and email content
@@ -95,14 +93,14 @@ serve(async (req) => {
       `,
     });
 
-    console.log("Email and OTP stored successfully:", emailResponse);
+    console.log("Email and code stored successfully:", emailResponse);
 
     return new Response(JSON.stringify({ message: "Verification sent successfully" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error("Error sending verification email or storing OTP:", error);
+    console.error("Error sending verification email or storing code:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
@@ -112,4 +110,3 @@ serve(async (req) => {
     );
   }
 });
-
