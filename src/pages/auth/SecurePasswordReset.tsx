@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { validateTOTP, validateRecoveryCode } from "@/services/encryptionService";
 import { Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 export default function SecurePasswordReset() {
   const navigate = useNavigate();
@@ -146,7 +146,7 @@ export default function SecurePasswordReset() {
       {step === 1 && (
         <form onSubmit={handleCheckUser} className="space-y-6">
           <div>
-            <FormLabel>Email Address</FormLabel>
+            <Label>Email Address</Label>
             <Input
               required
               type="email"
