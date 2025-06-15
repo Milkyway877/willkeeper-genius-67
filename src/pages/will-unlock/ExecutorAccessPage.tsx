@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Shield, ArrowRight, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Logo } from '@/components/ui/logo/Logo';
+import { BackButton } from '@/components/ui/BackButton';
 
 export default function ExecutorAccessPage() {
   const [verificationId, setVerificationId] = useState('');
@@ -29,19 +31,27 @@ export default function ExecutorAccessPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center py-12">
-      <div className="max-w-md w-full mx-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center py-12 px-2">
+      <div className="max-w-md w-full mx-auto">
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <div className="w-full flex items-center justify-between">
+            <BackButton />
+            <div />
+          </div>
+          <Logo size="lg" showSlogan />
+        </div>
         <div className="text-center mb-8">
-          <Shield className="h-16 w-16 text-willtank-600 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900">Executor Access</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-willtank-900 drop-shadow mb-2">
+            Executor Access
+          </h1>
+          <p className="text-gray-700 mt-2 font-medium">
             Enter your verification ID to access the will unlock system
           </p>
         </div>
 
-        <Card>
+        <Card className="border-willtank-200/70 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-lg md:text-xl">
               <Key className="h-5 w-5 mr-2" />
               Access Will
             </CardTitle>
@@ -68,7 +78,7 @@ export default function ExecutorAccessPage() {
             <Button 
               onClick={handleAccessWill}
               disabled={!verificationId.trim() || loading}
-              className="w-full"
+              className="w-full font-semibold shadow-md hover:shadow-lg"
               size="lg"
             >
               {loading ? (
@@ -93,6 +103,9 @@ export default function ExecutorAccessPage() {
             </div>
           </CardContent>
         </Card>
+        <div className="text-center mt-6 text-gray-400 text-xs">
+          &copy; {new Date().getFullYear()} WillTank. All rights reserved.
+        </div>
       </div>
     </div>
   );
