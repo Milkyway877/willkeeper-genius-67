@@ -179,7 +179,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       {/* Global Subscription Modal: show only if user has will or tank message */}
       {showAuthenticatedLayout && (hasWill || hasTankMessage) && (
         <SubscriptionModal
-          isOpen={showSubscriptionModal}
+          open={showSubscriptionModal}
           onClose={closeSubscriptionModal}
           onSuccess={handleSubscriptionSuccess}
           triggerSource={triggerSource}
