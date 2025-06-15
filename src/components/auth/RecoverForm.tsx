@@ -52,14 +52,14 @@ export function RecoverForm() {
       });
       setEmailSent(true);
       toast({
-        title: "Reset link sent",
-        description: "If an account exists with this email, you'll receive password reset instructions.",
+        title: "Verification code sent",
+        description: "If an account exists with this email, you'll receive a verification code to reset your password.",
       });
     } catch (error) {
       setEmailSent(true);
       toast({
-        title: "Reset link sent",
-        description: "If an account exists with this email, you'll receive password reset instructions.",
+        title: "Verification code sent",
+        description: "If an account exists with this email, you'll receive a verification code to reset your password.",
       });
     } finally {
       setIsLoading(false);
@@ -72,8 +72,8 @@ export function RecoverForm() {
         <div className="bg-green-50 border border-green-100 rounded-lg p-4 text-green-800">
           <h3 className="font-medium text-lg">Check your email</h3>
           <p className="mt-1">
-            We've sent password reset instructions to the email address you provided.
-            Please check your inbox and follow the link to reset your password.
+            We've sent a verification code to the email address you provided.
+            Please check your inbox and enter the code to reset your password.
           </p>
         </div>
         
@@ -124,17 +124,17 @@ export function RecoverForm() {
         <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending Reset Link...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending Code...
             </>
           ) : (
             <>
-              Reset Password <ArrowRight className="ml-2 h-4 w-4" />
+              Send Verification Code <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
         </Button>
         
         <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200 mt-4">
-          <p className="font-medium">We'll send you an email with instructions to reset your password.</p>
+          <p className="font-medium">We'll send you a verification code for resetting your password.</p>
         </div>
         
         <div className="text-center text-sm">

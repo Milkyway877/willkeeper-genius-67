@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { getResendClient, buildDefaultEmailLayout, isEmailSendSuccess, formatResendError } from '../_shared/email-helper.ts';
@@ -46,7 +47,7 @@ serve(async (req) => {
 
     if ((recentAttempts?.length ?? 0) >= 3) {
       return new Response(
-        JSON.stringify({ success: true, message: 'Password reset instructions sent if account exists' }),
+        JSON.stringify({ success: true, message: 'Verification code sent if account exists' }),
         {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -66,8 +67,8 @@ serve(async (req) => {
       const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
       expiresAtStr = expiresAt.toISOString();
 
-      // Store in DB
-      await supabaseClient
+      // Try inserting into DB (new columns)
+      const { error: dbInsertError } = await supabaseClient
         .from('password_reset_tokens')
         .insert({
           email: normalizedEmail,
@@ -75,7 +76,19 @@ serve(async (req) => {
           expires_at: expiresAtStr,
           used: false,
           created_at: now.toISOString(),
+          step: 'init', // optional: track current stage
         });
+
+      if (dbInsertError) {
+        console.error('DB INSERT ERROR:', dbInsertError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Could not process reset request' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
     }
 
     // Always send ok response, but only send an email to real users
@@ -88,7 +101,7 @@ serve(async (req) => {
         </div>`;
       const emailContent = `
         ${logoSection}
-        <h2 style="text-align:center;">Your WillTank Password Reset Code</h2>
+        <h2 style="text-align:center;">Your WillTank Verification Code</h2>
         <p style="font-size:16px;">Use the code below to reset your WillTank account password. Do not share this code with anyone.</p>
         <div style="text-align:center; margin:32px 0;">
           <div style="display:inline-block; background:#fff; border:2px solid #4F46E5; color:#222; font-size:32px; letter-spacing:9px; border-radius:8px; padding:12px 24px;"><b>${otpCode}</b></div>
@@ -100,7 +113,7 @@ serve(async (req) => {
       const emailResp = await resend.emails.send({
         from: 'WillTank <support@willtank.com>',
         to: normalizedEmail,
-        subject: 'Your WillTank Password Reset Code',
+        subject: 'Your WillTank Verification Code',
         html,
       });
 
@@ -110,7 +123,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Password reset code sent if account exists' }),
+      JSON.stringify({ success: true, message: 'Verification code sent if account exists' }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -120,9 +133,9 @@ serve(async (req) => {
   } catch (error) {
     console.error('General error:', error);
     return new Response(
-      JSON.stringify({ success: true, message: 'Password reset code sent if account exists' }),
+      JSON.stringify({ success: false, error: 'Could not process request' }),
       {
-        status: 200,
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
