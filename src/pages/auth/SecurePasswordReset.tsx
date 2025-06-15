@@ -25,14 +25,13 @@ export default function SecurePasswordReset() {
     e.preventDefault();
     setChecking(true);
     try {
-      // Try to get 2FA info by email
-      const { data, error } = await supabase
-        .from("user_security")
-        .select("user_id, google_auth_enabled, google_auth_secret")
-        .eq("email", email.trim().toLowerCase())
-        .maybeSingle();
+      // Step 1a: Find user in auth.users by email
+      const { data: userList, error: userError } = await supabase
+        .from("users")
+        .select("id, email")
+        .ilike("email", email.trim().toLowerCase()); // ilike is case-insensitive
 
-      if (error || !data || !data.user_id) {
+      if (userError || !userList || userList.length === 0) {
         toast({
           title: "User not found",
           description: "No account exists with that email.",
@@ -41,7 +40,26 @@ export default function SecurePasswordReset() {
         setChecking(false);
         return;
       }
-      if (!data.google_auth_enabled) {
+      const user = userList[0];
+      const user_id = user.id;
+
+      // Step 1b: Get user_security info for that user id
+      const { data: secData, error: secError } = await supabase
+        .from("user_security")
+        .select("user_id, google_auth_enabled, google_auth_secret")
+        .eq("user_id", user_id)
+        .maybeSingle();
+
+      if (secError || !secData || !secData.user_id) {
+        toast({
+          title: "Security not found",
+          description: "No security settings found for this user.",
+          variant: "destructive",
+        });
+        setChecking(false);
+        return;
+      }
+      if (!secData.google_auth_enabled) {
         toast({
           title: "2FA Not Enabled",
           description: "You must enable two-factor authentication to use this password reset flow.",
@@ -50,8 +68,8 @@ export default function SecurePasswordReset() {
         setChecking(false);
         return;
       }
-      setUserId(data.user_id);
-      setTwoFASecret(data.google_auth_secret || null);
+      setUserId(secData.user_id);
+      setTwoFASecret(secData.google_auth_secret || null);
       setStep(2);
     } catch (err) {
       toast({
