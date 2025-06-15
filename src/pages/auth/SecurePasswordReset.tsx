@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -25,11 +26,11 @@ export default function SecurePasswordReset() {
     e.preventDefault();
     setChecking(true);
     try {
-      // Step 1a: Find user in auth.users by email
+      // Step 1a: Find user in user_profiles by email
       const { data: userList, error: userError } = await supabase
-        .from("users")
+        .from("user_profiles")
         .select("id, email")
-        .ilike("email", email.trim().toLowerCase()); // ilike is case-insensitive
+        .ilike("email", email.trim().toLowerCase());
 
       if (userError || !userList || userList.length === 0) {
         toast({
