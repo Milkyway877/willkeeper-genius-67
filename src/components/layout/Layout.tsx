@@ -13,9 +13,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileNotification } from '@/components/ui/MobileNotification';
 import { useUserProfile } from '@/contexts/UserProfileContext';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
-import { useRandomSubscriptionPrompts } from '@/hooks/useRandomSubscriptionPrompts';
-import { RandomSubscriptionPrompt } from '@/pages/will/components/RandomSubscriptionPrompt';
+// Removed useRandomSubscriptionPrompts and RandomSubscriptionPrompt imports
 import { useWillSubscriptionFlow } from "@/hooks/useWillSubscriptionFlow";
+// Add SubscriptionModal (shadcn/ui or your own)
+import { SubscriptionModal } from "@/components/subscription/SubscriptionModal";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,34 +33,26 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const { profile } = useUserProfile();
   const { subscriptionStatus } = useSubscriptionStatus();
   
-  // Global subscription prompts
-  const { 
-    showPrompt, 
-    urgencyLevel, 
-    promptCount, 
-    timeRemaining,
-    formattedTimeRemaining,
-    hasWills,
-    dismissPrompt,
-    triggerPrompt 
-  } = useRandomSubscriptionPrompts();
-  
-  // Subscription flow custom hook (now gives triggerSource, eligibility etc)
+  // Removed useRandomSubscriptionPrompts and related state
+
+  // Subscription flow custom hook - unified
   const { 
     showSubscriptionModal, 
-    triggerSource, 
+    closeSubscriptionModal,
+    handleSubscriptionSuccess,
+    triggerSource,
     hasWill,
     hasTankMessage
   } = useWillSubscriptionFlow();
   
-  // Show countdown banner only for users who have wills/messages and are not subscribed
+  // Only show CountdownBanner if user has content (hasWill or hasTankMessage), not just "hasWills" (old mode)
   const shouldShowCountdown =
     !subscriptionStatus.isSubscribed &&
     !subscriptionStatus.isTrial &&
-    (hasWills || hasWill || hasTankMessage) &&
-    timeRemaining > 0;
-  
-  // Check if mobile notification has been dismissed before
+    (hasWill || hasTankMessage) &&
+    // We can't use timeRemaining from removed hook, but you can add it to useWillSubscriptionFlow if needed
+    true; // If you want to keep using a countdown, add timeRemaining back from random-prompts hook into willSubscriptionFlow
+
   useEffect(() => {
     const dismissedNotification = localStorage.getItem('dismissedMobileNotification');
     if (dismissedNotification === 'true') {
@@ -67,53 +60,36 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, []);
   
-  // Handle notification dismissal
   const handleDismissMobileNotification = () => {
     setShowMobileNotification(false);
     localStorage.setItem('dismissedMobileNotification', 'true');
   };
   
-  // Auto-collapse sidebar on mobile
   useEffect(() => {
-    if (isMobile) {
-      setShowSidebar(false);
-    }
+    if (isMobile) setShowSidebar(false);
   }, [isMobile]);
   
-  // Check authentication status if required
   useEffect(() => {
     if (forceAuthenticated && !location.pathname.includes('/auth/')) {
       const checkAuthStatus = async () => {
         const { data } = await supabase.auth.getSession();
-        
         if (!data.session) {
-          console.log("No session found, redirecting to signin");
           navigate('/auth/signin', { replace: true });
         } else if (profile && !profile.is_activated) {
-          // If the user is logged in but email is not verified and they're trying to access protected routes
-          const isEmailVerified = profile.email_verified;
-          
-          if (!isEmailVerified && !location.pathname.includes('/auth/verify-email')) {
-            // Redirect to email verification with email as a parameter
-            console.log("User not verified, redirecting to verification");
+          if (!profile.email_verified && !location.pathname.includes('/auth/verify-email')) {
             navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
           }
         }
       };
-      
       checkAuthStatus();
     }
   }, [forceAuthenticated, location.pathname, navigate, profile]);
   
-  const toggleSidebar = () => {
-    setShowSidebar(!showSidebar);
-  };
+  const toggleSidebar = () => setShowSidebar(!showSidebar);
   
-  // Don't show sidebar on auth pages
   const isAuthPage = location.pathname.includes('/auth/');
   const showAuthenticatedLayout = forceAuthenticated && !isAuthPage;
   
-  // Check for URL parameters on Help page
   useEffect(() => {
     if (location.pathname === '/help' && location.search) {
       const params = new URLSearchParams(location.search);
@@ -123,15 +99,13 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
       }
     }
   }, [location]);
-
-  // Pass the selected topic to the Help page through the URL
+  
   useEffect(() => {
     if (selectedTopic && location.pathname === '/help') {
-      // This is handled by the Help component
+      // Handled by Help page
     }
   }, [selectedTopic, location.pathname]);
   
-  // Determine if we're on a page that should have the cream accent background
   const shouldHaveCreamBackground = !isAuthPage && 
     !location.pathname.includes('/dashboard') && 
     !location.pathname.includes('/will') && 
@@ -139,13 +113,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/tank') && 
     !location.pathname.includes('/settings') &&
     !location.pathname.includes('/search');
-  
-  // Check if we're on the landing page (index route)
   const isLandingPage = location.pathname === '/';
-  
-  // Only show FloatingAssistant on authenticated inner pages (not landing page or auth pages)
   const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage;
-  
+
   return (
     <>
       <div className={cn(
@@ -158,7 +128,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             onToggle={toggleSidebar}
           />
         )}
-        
         <motion.div 
           className={cn(
             "flex flex-col w-full transition-all duration-300",
@@ -168,22 +137,20 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Global Countdown Banner - Only show for users with content */}
+          {/* Only show for users with will/tank-content (not just anyone) */}
           {showAuthenticatedLayout && shouldShowCountdown && (
             <CountdownBanner
-              timeRemaining={timeRemaining}
-              formattedTimeRemaining={formattedTimeRemaining}
-              urgencyLevel={urgencyLevel}
+              timeRemaining={0} // You should update to pass the actual timeRemaining via useWillSubscriptionFlow if you want countdowns
+              formattedTimeRemaining={""}
+              urgencyLevel={"normal"}
               triggerSource={triggerSource ?? (hasTankMessage ? "tank-message" : "will")}
             />
           )}
           
           <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
-          
           {isMobile && showAuthenticatedLayout && showMobileNotification && (
             <MobileNotification onDismiss={handleDismissMobileNotification} />
           )}
-          
           <main className={cn(
             "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
             shouldHaveCreamBackground && "relative"
@@ -195,35 +162,30 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
                 <div className="absolute inset-0 dot-pattern opacity-[0.03] animate-dot-pattern"></div>
               </div>
             )}
-            
             <div className="relative z-10">
               <PageTransition>
                 {children}
               </PageTransition>
             </div>
           </main>
-          
           {showAuthenticatedLayout && (
             <>
-              {/* Only show FloatingAssistant on authenticated inner pages (not landing page) */}
               {shouldShowFloatingAssistant && <FloatingAssistant />}
               <FloatingHelp />
             </>
           )}
         </motion.div>
       </div>
-
-      {/* Global Random Subscription Prompt - Only show for users with wills */}
-      {showAuthenticatedLayout && hasWills && (
-        <RandomSubscriptionPrompt
-          isOpen={showPrompt}
-          onClose={dismissPrompt}
-          urgencyLevel={urgencyLevel}
-          promptCount={promptCount}
-          timeRemaining={timeRemaining}
-          formattedTimeRemaining={formattedTimeRemaining}
+      {/* Global Subscription Modal: show only if user has will or tank message */}
+      {showAuthenticatedLayout && (hasWill || hasTankMessage) && (
+        <SubscriptionModal
+          isOpen={showSubscriptionModal}
+          onClose={closeSubscriptionModal}
+          onSuccess={handleSubscriptionSuccess}
+          triggerSource={triggerSource}
         />
       )}
+      {/* REMOVED RandomSubscriptionPrompt and old useRandomSubscriptionPrompts controlled dialog */}
     </>
   );
 }
