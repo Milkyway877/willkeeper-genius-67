@@ -1,155 +1,100 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Shield, ArrowRight, Key } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Shield, Users, FileText, Phone, ArrowRight } from 'lucide-react';
+import { ContactSupportButton } from '@/components/common/ContactSupportButton';
 
 export default function SimpleWillUnlock() {
-  const [executorName, setExecutorName] = useState('');
-  const [executorEmail, setExecutorEmail] = useState('');
-  const [deceasedEmail, setDeceasedEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'input' | 'success'>('input');
-  const { toast } = useToast();
-
-  const handleRequestAccess = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!executorName.trim() || !executorEmail.trim() || !deceasedEmail.trim()) {
-      toast({
-        title: 'All fields required',
-        description: 'Please enter your name, email, and the deceased person\'s email.',
-        variant: 'destructive'
-      });
-      return;
-    }
-    setLoading(true);
-
-    try {
-      const res = await fetch(`${import.meta.env.PUBLIC_SUPABASE_URL || ""}/functions/v1/executor-will-unlock`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'request_access',
-          executorName,
-          executorEmail,
-          deceasedEmail
-        })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setStep('success');
-        toast({
-          title: 'Access code sent!',
-          description: 'Check your email for the OTP code. Continue the verification process as instructed.',
-          variant: 'default' // <-- FIXED: previously was 'success'
-        });
-      } else {
-        toast({
-          title: 'Request failed',
-          description: data.error || 'Could not send access code. Please check your info or try again.',
-          variant: 'destructive'
-        });
-      }
-    } catch (err) {
-      toast({
-        title: 'Network error',
-        description: 'Failed to contact the verification server. Please try again or contact support.',
-        variant: 'destructive'
-      });
-    }
-    setLoading(false);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center py-12">
-      <div className="max-w-md w-full mx-4">
+      <div className="max-w-lg w-full mx-4">
         <div className="text-center mb-8">
           <Shield className="h-16 w-16 text-willtank-600 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900">Executor Access</h1>
-          <p className="text-gray-600 mt-2">
-            Request a code to unlock the will of a deceased person.<br />
-            Please enter all information exactly as you were given it.
+          <h1 className="text-3xl font-bold text-gray-900">Executor Information &amp; Will Access</h1>
+          <p className="text-gray-600 mt-2 max-w-xl mx-auto">
+            WillTank secures every will with human-based advanced verification.
+            <br />
+            <span className="font-semibold text-willtank-700">
+              Executors must follow our simple, secure process to gain access.
+            </span>
           </p>
         </div>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Key className="h-5 w-5 mr-2" />
-              Request Access Code
+              <Users className="h-5 w-5 mr-2" />
+              Executor Verification Process
             </CardTitle>
-            <p className="text-sm text-gray-600">Step 1 of 4: Deceased verification</p>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {step === 'input' ? (
-              <form onSubmit={handleRequestAccess} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Name (Executor)</label>
-                  <Input
-                    value={executorName}
-                    onChange={e => setExecutorName(e.target.value)}
-                    placeholder="e.g. Mary Johnson"
-                    disabled={loading}
-                  />
+          <CardContent>
+            <div className="space-y-7">
+              <div className="flex items-start">
+                <div className="mt-1 mr-3 flex-shrink-0">
+                  <FileText className="h-6 w-6 text-indigo-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Email Address</label>
-                  <Input
-                    value={executorEmail}
-                    onChange={e => setExecutorEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    disabled={loading}
-                    type="email"
-                  />
+                  <strong className="block mb-1">1. Gather Required Documentation:</strong>
+                  <ul className="list-disc ml-6 text-gray-700 text-sm">
+                    <li>Death certificate</li>
+                    <li>Photo ID (executor or solicitor)</li>
+                    <li>Legal document appointing you as executor</li>
+                    <li>Contact details for the deceased</li>
+                  </ul>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Deceased Person's Email</label>
-                  <Input
-                    value={deceasedEmail}
-                    onChange={e => setDeceasedEmail(e.target.value)}
-                    placeholder="their@email.com"
-                    disabled={loading}
-                    type="email"
-                  />
-                </div>
-                <Button type="submit" className="w-full mt-2" disabled={loading}>
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                      Requesting...
-                    </span>
-                  ) : (
-                    <>
-                      Request Access Code
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-                <p className="text-xs text-gray-500 text-center mt-2">
-                  We will send a secure code to your email if the information matches.
-                </p>
-              </form>
-            ) : (
-              <div className="text-center py-10">
-                <h2 className="text-lg font-semibold text-green-600 mb-2">Request Submitted!</h2>
-                <p className="text-gray-700 mb-4">
-                  If a match is found, an access code was sent to your email address.<br />
-                  Please check your inbox (and spam folder).
-                </p>
-                <Button 
-                  variant="outline"
-                  onClick={() => setStep('input')}
-                  className="mt-2"
-                >
-                  Try Another
-                </Button>
               </div>
-            )}
+              <div className="flex items-start">
+                <div className="mt-1 mr-3 flex-shrink-0">
+                  <Users className="h-6 w-6 text-indigo-500" />
+                </div>
+                <div>
+                  <strong className="block mb-1">2. Human Verification:</strong>
+                  <ul className="list-disc ml-6 text-gray-700 text-sm">
+                    <li>
+                      <span className="font-medium">Our Verification Support Team</span> will confirm details with <span className="font-medium">multiple trusted contacts</span> named in the will.
+                    </li>
+                    <li>
+                      <span className="font-medium">No automated unlocks</span> — Every access request is personally reviewed for security and accuracy.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="flex items-start">
+                <div className="mt-1 mr-3 flex-shrink-0">
+                  <Phone className="h-6 w-6 text-indigo-500" />
+                </div>
+                <div>
+                  <strong className="block mb-1">3. Contact Us to Begin:</strong>
+                  <span className="text-gray-700 text-sm">
+                    Start the process using the button below.
+                    You’ll speak directly with a trained WillTank verification team member -- no bots!
+                  </span>
+                </div>
+              </div>
+              <div className="pt-6 flex justify-center">
+                <ContactSupportButton className="w-full max-w-xs text-base py-3 px-5" />
+              </div>
+              <div className="pt-3 pb-2">
+                <p className="text-gray-500 text-xs text-center">
+                  <ArrowRight className="inline-block h-4 w-4 mr-1 align-text-bottom" /> 
+                  Typically <span className="font-semibold text-gray-700">all verifications are completed in 1–3 business days.</span>
+                  <br />
+                  After successful verification, you’ll receive a secure ZIP file with the will and any associated media.
+                </p>
+                <p className="text-gray-400 text-[11px] text-center mt-2">
+                  Access to these documents is strictly managed — WillTank records every step to prevent unauthorized access and ensure privacy.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
+        <div className="text-center mt-8">
+          <div className="inline-flex gap-2 bg-gray-100 rounded px-3 py-2 text-xs text-gray-700 border border-gray-200 items-center">
+            <Shield className="h-4 w-4 text-willtank-600" /> 
+            <span>
+              This human-verified process protects everyone’s legal rights &amp; dignity.
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
