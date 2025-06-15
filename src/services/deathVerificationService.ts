@@ -49,30 +49,80 @@ export const DEFAULT_SETTINGS: DeathVerificationSettings = {
   }
 };
 
-// Test database connection and table structure
+// Enhanced database connection and table structure test
 export const testDatabaseConnection = async (): Promise<boolean> => {
   try {
-    console.log('deathVerificationService: Testing database connection...');
+    console.log('deathVerificationService: Starting comprehensive database test...');
     
     // Test basic connection
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      console.error('deathVerificationService: No authenticated user');
+      console.error('deathVerificationService: No authenticated user found');
       return false;
     }
 
-    // Test table structure by describing the table
-    const { data, error } = await supabase
-      .from('death_verification_settings')
-      .select('*')
-      .limit(0);
-    
-    if (error) {
-      console.error('deathVerificationService: Database connection test failed:', error);
+    console.log('deathVerificationService: User authenticated, testing table structure...');
+
+    // Test each table individually to identify specific issues
+    const tables = [
+      'death_verification_settings',
+      'death_verification_checkins', 
+      'death_verification_logs',
+      'death_verification_requests',
+      'death_verification_pins'
+    ];
+
+    for (const tableName of tables) {
+      try {
+        console.log(`deathVerificationService: Testing table: ${tableName}`);
+        
+        // Test table access with minimal query
+        const { error } = await supabase
+          .from(tableName)
+          .select('id')
+          .limit(0);
+        
+        if (error) {
+          console.error(`deathVerificationService: Error accessing table ${tableName}:`, error);
+          console.error(`deathVerificationService: Error details:`, {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+          });
+          return false;
+        }
+        
+        console.log(`deathVerificationService: Table ${tableName} is accessible`);
+      } catch (tableError) {
+        console.error(`deathVerificationService: Exception testing table ${tableName}:`, tableError);
+        return false;
+      }
+    }
+
+    // Test death_verification_settings table structure specifically
+    try {
+      console.log('deathVerificationService: Testing death_verification_settings table structure...');
+      
+      // Try to select with specific columns to verify they exist
+      const { error: structureError } = await supabase
+        .from('death_verification_settings')
+        .select('id, user_id, check_in_enabled, grace_period, created_at, updated_at')
+        .eq('user_id', session.user.id)
+        .limit(0);
+      
+      if (structureError) {
+        console.error('deathVerificationService: death_verification_settings structure test failed:', structureError);
+        return false;
+      }
+      
+      console.log('deathVerificationService: death_verification_settings structure test passed');
+    } catch (structureError) {
+      console.error('deathVerificationService: Exception testing table structure:', structureError);
       return false;
     }
 
-    console.log('deathVerificationService: Database connection test passed');
+    console.log('deathVerificationService: All database tests passed successfully');
     return true;
   } catch (error) {
     console.error('deathVerificationService: Database connection test exception:', error);
