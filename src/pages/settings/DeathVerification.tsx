@@ -4,14 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, User, Clock, Bell, Save, Loader2, Key } from 'lucide-react';
+import { Shield, User, Clock, Bell, Save, Loader2, Key, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   DeathVerificationSettings, 
   DEFAULT_SETTINGS, 
   getDeathVerificationSettings, 
   saveDeathVerificationSettings,
-  createInitialCheckin
+  createInitialCheckin,
+  testDatabaseConnection
 } from '@/services/deathVerificationService';
 import { ContactsManager } from '@/components/death-verification/ContactsManager';
 
@@ -24,6 +26,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
   
   const [settings, setSettings] = useState<DeathVerificationSettings>(DEFAULT_SETTINGS);
   
@@ -34,7 +37,16 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const fetchSettings = async () => {
     try {
       setLoading(true);
+      setDbError(null);
       console.log('DeathVerification: Fetching settings...');
+      
+      // Test database connection first
+      const connectionOk = await testDatabaseConnection();
+      if (!connectionOk) {
+        setDbError('Database connection failed. Please try refreshing the page.');
+        setSettings(DEFAULT_SETTINGS);
+        return;
+      }
       
       const fetchedSettings = await getDeathVerificationSettings();
       
@@ -47,6 +59,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       }
     } catch (error) {
       console.error('DeathVerification: Error fetching settings:', error);
+      setDbError(`Failed to load settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
       toast({
         title: "Error",
         description: "Failed to load check-in settings. Please try again.",
@@ -61,6 +74,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   const handleSave = async () => {
     try {
       setSaving(true);
+      setDbError(null);
       console.log('DeathVerification: Saving settings:', settings);
       
       const updatedSettings = await saveDeathVerificationSettings(settings);
@@ -82,6 +96,8 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       }
     } catch (error) {
       console.error('DeathVerification: Error saving settings:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setDbError(`Failed to save settings: ${errorMessage}`);
       toast({
         title: "Error",
         description: "There was an error saving your settings. Please try again.",
@@ -104,6 +120,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
     
     try {
       setToggling(true);
+      setDbError(null);
       
       // Prepare the settings to save - DO NOT update local state yet
       const settingsToSave = { 
@@ -153,8 +170,8 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       
     } catch (error) {
       console.error('DeathVerification: Error toggling check-in status:', error);
-      
-      // DO NOT revert state - keep original state since we never changed it optimistically
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setDbError(`Failed to toggle check-ins: ${errorMessage}`);
       
       toast({
         title: "Error",
@@ -204,6 +221,25 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
   
   return (
     <>
+      {/* Database Error Alert */}
+      {dbError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Database Error</AlertTitle>
+          <AlertDescription>
+            {dbError}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchSettings}
+              className="mt-2 ml-2"
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -219,7 +255,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
             {toggling && <Loader2 className="h-4 w-4 animate-spin text-willtank-600" />}
             <Switch 
               checked={settings.check_in_enabled}
-              disabled={toggling} 
+              disabled={toggling || !!dbError} 
               onCheckedChange={toggleCheckInEnabled}
             />
           </div>
@@ -463,7 +499,7 @@ export default function DeathVerification({ onSettingsChange }: DeathVerificatio
       <div className="flex justify-end">
         <Button 
           onClick={handleSave}
-          disabled={saving || toggling}
+          disabled={saving || toggling || !!dbError}
           className="px-6"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}

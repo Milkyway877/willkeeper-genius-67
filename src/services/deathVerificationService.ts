@@ -49,6 +49,37 @@ export const DEFAULT_SETTINGS: DeathVerificationSettings = {
   }
 };
 
+// Test database connection and table structure
+export const testDatabaseConnection = async (): Promise<boolean> => {
+  try {
+    console.log('deathVerificationService: Testing database connection...');
+    
+    // Test basic connection
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.error('deathVerificationService: No authenticated user');
+      return false;
+    }
+
+    // Test table structure by describing the table
+    const { data, error } = await supabase
+      .from('death_verification_settings')
+      .select('*')
+      .limit(0);
+    
+    if (error) {
+      console.error('deathVerificationService: Database connection test failed:', error);
+      return false;
+    }
+
+    console.log('deathVerificationService: Database connection test passed');
+    return true;
+  } catch (error) {
+    console.error('deathVerificationService: Database connection test exception:', error);
+    return false;
+  }
+};
+
 export const getDeathVerificationSettings = async (): Promise<DeathVerificationSettings | null> => {
   try {
     console.log('deathVerificationService: Getting user session...');
@@ -60,6 +91,14 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
     }
     
     console.log('deathVerificationService: Fetching settings for user:', session.user.id);
+    
+    // Test database connection first
+    const connectionOk = await testDatabaseConnection();
+    if (!connectionOk) {
+      console.error('deathVerificationService: Database connection failed');
+      return DEFAULT_SETTINGS;
+    }
+
     const { data, error } = await supabase
       .from('death_verification_settings')
       .select('*')
@@ -72,14 +111,20 @@ export const getDeathVerificationSettings = async (): Promise<DeathVerificationS
         return DEFAULT_SETTINGS;
       }
       console.error('deathVerificationService: Error fetching settings:', error);
-      return null;
+      console.error('deathVerificationService: Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      return DEFAULT_SETTINGS;
     }
     
     console.log('deathVerificationService: Settings fetched successfully:', data);
     return data || DEFAULT_SETTINGS;
   } catch (error) {
     console.error('deathVerificationService: Exception in getDeathVerificationSettings:', error);
-    return null;
+    return DEFAULT_SETTINGS;
   }
 };
 
@@ -90,81 +135,61 @@ export const saveDeathVerificationSettings = async (settings: DeathVerificationS
     
     if (!session?.user) {
       console.error('deathVerificationService: No authenticated user found for save');
-      return null;
+      throw new Error('No authenticated user found');
     }
     
     console.log('deathVerificationService: Saving settings for user:', session.user.id, settings);
     
-    // Check if settings already exist for this user
-    const { data: existingSettings } = await supabase
+    // Test database connection first
+    const connectionOk = await testDatabaseConnection();
+    if (!connectionOk) {
+      throw new Error('Database connection failed');
+    }
+
+    // Prepare the data to save (exclude read-only fields)
+    const dataToSave = {
+      user_id: session.user.id,
+      check_in_enabled: settings.check_in_enabled,
+      check_in_frequency: settings.check_in_frequency,
+      grace_period: settings.grace_period,
+      beneficiary_verification_interval: settings.beneficiary_verification_interval,
+      reminder_frequency: settings.reminder_frequency,
+      pin_system_enabled: settings.pin_system_enabled,
+      executor_override_enabled: settings.executor_override_enabled,
+      trusted_contact_enabled: settings.trusted_contact_enabled,
+      trusted_contact_email: settings.trusted_contact_email,
+      failsafe_enabled: settings.failsafe_enabled,
+      notification_preferences: settings.notification_preferences
+    };
+    
+    console.log('deathVerificationService: Data to save:', dataToSave);
+
+    // Try to upsert (insert or update)
+    const { data, error } = await supabase
       .from('death_verification_settings')
-      .select('id')
-      .eq('user_id', session.user.id)
+      .upsert(dataToSave, {
+        onConflict: 'user_id',
+        ignoreDuplicates: false
+      })
+      .select()
       .single();
     
-    if (existingSettings) {
-      console.log('deathVerificationService: Updating existing settings...');
-      // Update existing settings
-      const { data, error } = await supabase
-        .from('death_verification_settings')
-        .update({
-          check_in_enabled: settings.check_in_enabled,
-          check_in_frequency: settings.check_in_frequency,
-          grace_period: settings.grace_period,
-          beneficiary_verification_interval: settings.beneficiary_verification_interval,
-          reminder_frequency: settings.reminder_frequency,
-          pin_system_enabled: settings.pin_system_enabled,
-          executor_override_enabled: settings.executor_override_enabled,
-          trusted_contact_enabled: settings.trusted_contact_enabled,
-          trusted_contact_email: settings.trusted_contact_email,
-          failsafe_enabled: settings.failsafe_enabled,
-          notification_preferences: settings.notification_preferences,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', session.user.id)
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('deathVerificationService: Error updating settings:', error);
-        return null;
-      }
-      
-      console.log('deathVerificationService: Settings updated successfully:', data);
-      return data;
-    } else {
-      console.log('deathVerificationService: Creating new settings...');
-      // Insert new settings
-      const { data, error } = await supabase
-        .from('death_verification_settings')
-        .insert({
-          user_id: session.user.id,
-          check_in_enabled: settings.check_in_enabled,
-          check_in_frequency: settings.check_in_frequency,
-          grace_period: settings.grace_period,
-          beneficiary_verification_interval: settings.beneficiary_verification_interval,
-          reminder_frequency: settings.reminder_frequency,
-          pin_system_enabled: settings.pin_system_enabled,
-          executor_override_enabled: settings.executor_override_enabled,
-          trusted_contact_enabled: settings.trusted_contact_enabled,
-          trusted_contact_email: settings.trusted_contact_email,
-          failsafe_enabled: settings.failsafe_enabled,
-          notification_preferences: settings.notification_preferences
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('deathVerificationService: Error inserting settings:', error);
-        return null;
-      }
-      
-      console.log('deathVerificationService: Settings created successfully:', data);
-      return data;
+    if (error) {
+      console.error('deathVerificationService: Error saving settings:', error);
+      console.error('deathVerificationService: Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw new Error(`Failed to save settings: ${error.message}`);
     }
+    
+    console.log('deathVerificationService: Settings saved successfully:', data);
+    return data;
   } catch (error) {
     console.error('deathVerificationService: Exception in saveDeathVerificationSettings:', error);
-    return null;
+    throw error;
   }
 };
 
