@@ -9,6 +9,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { TwoFactorInput } from '@/components/ui/TwoFactorInput';
+import { supabase } from '@/integrations/supabase/client';
 
 const schema = z.object({
   otp: z.string().length(6, "Enter the 6-digit code"),
@@ -35,7 +36,6 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
   const [isLoading, setIsLoading] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
   const [twoFAError, set2FAError] = useState<string | null>(null);
-  const [otp, setOtp] = useState('');
   const [twoFACode, setTwoFACode] = useState('');
 
   const form = useForm<RecoverOtpInputs>({
@@ -48,22 +48,38 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
     },
   });
 
-  async function handleVerifyOtpAndSetPassword(values: RecoverOtpInputs) {
+  // Helper: check if there is a user with this email, and if they have 2FA enabled
+  async function getUser2FAStatus(email: string) {
+    // Check user profile by email
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
+    if (!userData?.user) return false;
+    const userId = userData.user.id;
+    const { data: securityRow } = await supabase
+      .from('user_security')
+      .select('google_auth_enabled')
+      .eq('user_id', userId)
+      .maybeSingle();
+    return !!securityRow?.google_auth_enabled;
+  }
+
+  // Helper: handle password reset (after validating OTP and optional 2FA)
+  async function handlePasswordReset(values: RecoverOtpInputs) {
     setIsLoading(true);
     set2FAError(null);
 
-    // First verify OTP (and get if user has 2FA)
-    let userHas2FA = false;
-    let verifyRes: any = null;
-
     try {
-      const verifyOtpResp = await fetch('/functions/v1/verify-reset-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp: values.otp }),
-      });
-      verifyRes = await verifyOtpResp.json();
-      if (!verifyRes?.success) {
+      // 1. Look up unused, unexpired, and not-used code in email_verification_codes
+      const { data: verificationData, error: verificationError } = await supabase
+        .from('email_verification_codes')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .eq('code', values.otp)
+        .eq('type', 'password-reset')
+        .eq('used', false)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (verificationError || !verificationData) {
         toast({
           title: 'Invalid or Expired Code',
           description: 'The code is invalid or expired. Please try again.',
@@ -72,49 +88,77 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
         setIsLoading(false);
         return;
       }
-      userHas2FA = verifyRes.userHas2FA;
 
-      // If user has 2FA and not yet entered, show 2FA input
-      if (userHas2FA && !values.twoFACode) {
-        setShow2FA(true);
+      // 2. Mark code as used
+      await supabase
+        .from('email_verification_codes')
+        .update({ used: true })
+        .eq('id', verificationData.id);
+
+      // 3. Check 2FA
+      let userId: string | undefined = undefined;
+      const { data: userRes } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
+      if (!userRes?.user) {
+        toast({
+          title: "No user found",
+          description: "There is no account associated with this email.",
+          variant: "destructive",
+        });
         setIsLoading(false);
         return;
       }
-    } catch {
-      toast({ title: "Verification failed", description: "Unable to verify code.", variant: "destructive" });
-      setIsLoading(false);
-      return;
-    }
+      userId = userRes.user.id;
 
-    // Call complete-password-reset function
-    try {
-      const resp = await fetch('/functions/v1/complete-password-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          otp: values.otp,
-          newPassword: values.newPassword,
-          twoFACode: values.twoFACode || twoFACode || undefined,
-        }),
-      });
-      const data = await resp.json();
-      if (data.success) {
-        toast({
-          title: "Password updated",
-          description: "Your password has been reset. You can now sign in.",
+      // Only check 2FA if user exists
+      const { data: secRow } = await supabase
+        .from('user_security')
+        .select('google_auth_enabled, google_auth_secret')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (secRow?.google_auth_enabled) {
+        // If user has 2FA and not provided, prompt for 2FA input
+        if (!values.twoFACode && !twoFACode) {
+          setShow2FA(true);
+          setIsLoading(false);
+          return;
+        }
+        // Validate TOTP code using otplib (which matches backend)
+        // We'll make a remote call to an existing edge function or use the same validation logic
+
+        // For simplicity, we'll invoke a universal `two-factor-auth` function
+        const { data: twoFAData, error: twoFAError } = await supabase.functions.invoke('two-factor-auth', {
+          body: {
+            user_id: userId,
+            code: values.twoFACode || twoFACode,
+            email,
+          }
         });
-        onSuccess();
-      } else if (data.reason === '2fa_required' || data.reason === 'invalid_2fa') {
-        setShow2FA(true);
-        set2FAError(data.reason === '2fa_required'
-          ? "2FA code required"
-          : "2FA code is incorrect; please try again."
-        );
-      } else {
-        toast({ title: "Password reset failed", description: "Check your code and try again.", variant: "destructive" });
+        if (twoFAError || !twoFAData?.success) {
+          setShow2FA(true);
+          set2FAError("2FA code is incorrect; please try again.");
+          setIsLoading(false);
+          return;
+        }
       }
-    } catch {
+
+      // 4. Update the password with Supabase admin API
+      const { error: pwErr } = await supabase.auth.admin.updateUserById(userId, {
+        password: values.newPassword,
+      });
+      if (pwErr) {
+        toast({ title: "Password reset failed", description: "Check your code and try again.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+
+      toast({
+        title: "Password updated",
+        description: "Your password has been reset. You can now sign in.",
+      });
+      onSuccess();
+
+    } catch (e) {
       toast({ title: "Reset failed", description: "Server error. Try again.", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -124,15 +168,27 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
   function handle2FASubmit(code: string) {
     setTwoFACode(code);
     form.setValue('twoFACode', code);
-    handleVerifyOtpAndSetPassword({ ...form.getValues(), twoFACode: code });
+    handlePasswordReset({ ...form.getValues(), twoFACode: code });
   }
 
   function handleResendCode() {
-    fetch('/functions/v1/send-password-reset', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+    // Call same logic as the forgot password page
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    supabase.functions.invoke('send-verification', {
+      body: {
+        email,
+        code: verificationCode,
+        type: 'password-reset'
+      }
     }).then(() => {
+      // Store in email_verification_codes table
+      supabase.from('email_verification_codes').insert({
+        email: email.toLowerCase().trim(),
+        code: verificationCode,
+        type: "password-reset",
+        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        used: false,
+      });
       toast({ title: "New code sent", description: "Check your inbox for a new code." });
     });
   }
@@ -147,7 +203,7 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
       </div>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(handleVerifyOtpAndSetPassword)}
+          onSubmit={form.handleSubmit(handlePasswordReset)}
           className="space-y-4"
         >
           {/* OTP Input */}
@@ -246,4 +302,3 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
     </div>
   );
 }
-

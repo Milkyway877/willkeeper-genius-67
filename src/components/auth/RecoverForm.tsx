@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import Captcha from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
 import { RecoverOtpForm } from './RecoverOtpForm';
+import { supabase } from '@/integrations/supabase/client';
 
 const recoverSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -47,17 +48,36 @@ export function RecoverForm() {
 
     setIsLoading(true);
     try {
-      await fetch("/functions/v1/send-password-reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email }),
+      // Use the existing unified verification code function for password resets
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // Send the code by calling the send-verification function
+      const { error: invokeError } = await supabase.functions.invoke("send-verification", {
+        body: {
+          email: data.email,
+          code: verificationCode,
+          type: "password-reset",
+        },
       });
+
+      // Store the verification code in the email_verification_codes table
+      const { error: storeError } = await supabase
+        .from('email_verification_codes')
+        .insert({
+          email: data.email.toLowerCase().trim(),
+          code: verificationCode,
+          type: "password-reset",
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          used: false,
+        });
+
+      // Always continue to OTP stage for privacy
       setEmail(data.email);
       setOtpStage('otp');
       toast({
         title: "Verification code sent",
         description: "If an account exists with this email, you'll receive a verification code to reset your password.",
       });
+
     } catch (error) {
       toast({
         title: "Verification code sent",
