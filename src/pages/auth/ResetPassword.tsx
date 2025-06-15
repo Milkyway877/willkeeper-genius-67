@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -43,44 +42,18 @@ export default function ResetPassword() {
     },
   });
 
-  // Check if we have valid reset tokens from URL
   useEffect(() => {
-    const checkResetSession = async () => {
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
-      
-      if (!accessToken || !refreshToken) {
-        console.log('No reset tokens found in URL');
-        setTokenValid(false);
-        return;
-      }
-
-      try {
-        // Set the session with the tokens from the URL
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (error) {
-          console.error('Invalid reset tokens:', error);
-          setTokenValid(false);
-          return;
-        }
-
-        if (data.session) {
-          console.log('Valid reset session established');
-          setTokenValid(true);
-        } else {
-          setTokenValid(false);
-        }
-      } catch (error) {
-        console.error('Error validating reset tokens:', error);
-        setTokenValid(false);
-      }
-    };
-
-    checkResetSession();
+    // Accept ?token=...
+    const token = searchParams.get('token');
+    if (!token) {
+      setTokenValid(false);
+      return;
+    }
+    // Validate token via edge function
+    fetch(`/functions/v1/validate-reset-token?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((data) => setTokenValid(data.valid))
+      .catch(() => setTokenValid(false));
   }, [searchParams]);
 
   const onSubmit = async (data: ResetPasswordInputs) => {
@@ -92,33 +65,37 @@ export default function ResetPassword() {
       });
       return;
     }
-
+    const token = searchParams.get('token');
+    if (!token) {
+      toast({
+        title: "Invalid reset link",
+        description: "Missing reset link token",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       setIsLoading(true);
-      
-      // Update user's password
-      const { error } = await supabase.auth.updateUser({
-        password: data.password,
+      const resp = await fetch("/functions/v1/validate-reset-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          newPassword: data.password
+        })
       });
-      
-      if (error) {
-        throw new Error(error.message);
+      const respData = await resp.json();
+      if (!resp.ok || !respData.success) {
+        throw new Error(respData.error || "Failed to reset password");
       }
-      
       toast({
         title: "Password updated successfully",
         description: "Your password has been updated. You can now sign in with your new password.",
       });
-      
-      // Sign out the user and redirect to sign in
-      await supabase.auth.signOut();
-      
       setTimeout(() => {
         navigate('/auth/signin?message=password-reset-success');
       }, 2000);
     } catch (error: any) {
-      console.error("Password reset error:", error);
-      
       toast({
         title: "Password reset failed",
         description: error.message || "An unexpected error occurred. Please try again.",

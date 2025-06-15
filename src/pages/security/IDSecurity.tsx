@@ -207,21 +207,16 @@ export default function IDSecurity() {
         setChangePasswordLoading(false);
         return;
       }
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Use edge function to trigger reset email via Resend (not supabase built-in)
+      const resp = await fetch("/functions/v1/send-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
       });
-      if (error) {
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Password Reset Email Sent',
-          description: 'Check your email for a link to reset your password.',
-        });
-      }
+      toast({
+        title: 'Password Reset Email Sent',
+        description: 'Check your email for a link to reset your password.',
+      });
     } catch (err) {
       console.error('Password reset error:', err);
       toast({

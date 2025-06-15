@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -32,7 +31,6 @@ export function RecoverForm() {
   });
 
   const onSubmit = async (data: RecoverFormInputs) => {
-    // Validate captcha
     if (captchaRef.current) {
       const isCaptchaValid = captchaRef.current.validate();
       if (!isCaptchaValid) {
@@ -44,56 +42,25 @@ export function RecoverForm() {
         return;
       }
     }
-    
     setIsLoading(true);
 
     try {
-      // Use our custom edge function for enhanced security
-      const { data: resetData, error: resetError } = await supabase.functions.invoke('send-password-reset', {
-        body: { email: data.email }
+      const resp = await fetch("/functions/v1/send-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email }),
       });
-
-      if (resetError) {
-        console.error('Password reset error:', resetError);
-        // Don't reveal if email exists for security
-        setEmailSent(true);
-        toast({
-          title: "Reset link sent",
-          description: "If an account exists with this email, you'll receive password reset instructions.",
-        });
-      } else {
-        setEmailSent(true);
-        toast({
-          title: "Reset link sent",
-          description: "If an account exists with this email, you'll receive password reset instructions.",
-        });
-      }
+      setEmailSent(true);
+      toast({
+        title: "Reset link sent",
+        description: "If an account exists with this email, you'll receive password reset instructions.",
+      });
     } catch (error) {
-      console.error("Error sending password reset:", error);
-      
-      // Fallback to Supabase built-in reset if edge function fails
-      try {
-        const { error: fallbackError } = await supabase.auth.resetPasswordForEmail(data.email, {
-          redirectTo: `${window.location.origin}/auth/reset-password`,
-        });
-
-        if (fallbackError) {
-          throw fallbackError;
-        }
-
-        setEmailSent(true);
-        toast({
-          title: "Reset link sent",
-          description: "If an account exists with this email, you'll receive password reset instructions.",
-        });
-      } catch (fallbackError) {
-        // Generic message to prevent user enumeration
-        setEmailSent(true);
-        toast({
-          title: "Reset link sent",
-          description: "If an account exists with this email, you'll receive password reset instructions.",
-        });
-      }
+      setEmailSent(true);
+      toast({
+        title: "Reset link sent",
+        description: "If an account exists with this email, you'll receive password reset instructions.",
+      });
     } finally {
       setIsLoading(false);
     }
