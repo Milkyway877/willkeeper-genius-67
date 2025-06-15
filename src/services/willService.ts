@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createSystemNotification } from "./notificationService";
-import { initializeWillMonitoring } from "./godmodeService";
 
 export interface Will {
   id: string;
@@ -201,13 +200,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
     if (isFirstWill && data) {
       await initializeWillCountdown();
     }
-    
-    // Initialize GODMODE monitoring for this will
-    if (data) {
-      console.log('Initializing GODMODE monitoring for will:', data.id);
-      await initializeWillMonitoring(data.id);
-    }
-    
+
     if (will.status === 'active') {
       try {
         await createSystemNotification('will_created', {

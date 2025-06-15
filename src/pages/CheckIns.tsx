@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DeathVerification from './settings/DeathVerification';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 import { TrustedContacts } from '@/components/death-verification/TrustedContacts';
-import { GodModeAutomation } from '@/components/death-verification/GodModeAutomation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
