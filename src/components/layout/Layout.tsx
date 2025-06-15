@@ -182,7 +182,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           open={showSubscriptionModal}
           onClose={closeSubscriptionModal}
           onSubscriptionSuccess={handleSubscriptionSuccess}
-          triggerSource={triggerSource}
         />
       )}
       {/* REMOVED RandomSubscriptionPrompt and old useRandomSubscriptionPrompts controlled dialog */}
