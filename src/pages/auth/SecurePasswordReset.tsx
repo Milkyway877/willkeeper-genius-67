@@ -19,14 +19,13 @@ export default function SecurePasswordReset() {
   const [userId, setUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [twoFASecret, setTwoFASecret] = useState<string | null>(null);
-  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
 
   // Step 1: Enter Email
   const handleCheckUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setChecking(true);
     try {
-      // Try to get user by email
+      // Try to get 2FA info by email
       const { data, error } = await supabase
         .from("user_security")
         .select("user_id, google_auth_enabled, google_auth_secret")
@@ -51,7 +50,6 @@ export default function SecurePasswordReset() {
         setChecking(false);
         return;
       }
-      setTwoFAEnabled(true);
       setUserId(data.user_id);
       setTwoFASecret(data.google_auth_secret || null);
       setStep(2);
@@ -107,7 +105,7 @@ export default function SecurePasswordReset() {
     }
     setSaving(true);
 
-    // Validate recovery code
+    // Validate recovery code (one of user's backup codes)
     const recoveryOk = await validateRecoveryCode(userId, data.recovery.trim());
     if (!recoveryOk) {
       pwForm.setError("recovery", { type: "manual", message: "Invalid or used recovery code." });
@@ -115,7 +113,7 @@ export default function SecurePasswordReset() {
       return;
     }
 
-    // We now update the password via supabase admin function
+    // Update the password via supabase auth
     const { error } = await supabase.auth.updateUser({
       email,
       password: data.password,
