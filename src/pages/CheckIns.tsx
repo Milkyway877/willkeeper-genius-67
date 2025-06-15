@@ -183,7 +183,7 @@ export default function CheckIns() {
                       <User className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                       <h3 className="font-medium mb-1">No executors found</h3>
                       <p className="text-sm">Add executors in the will settings to enable them for check-ins</p>
-                      <Link to="/will">
+                      <Link to="/wills">
                         <Button variant="outline" className="mt-3">
                           Go to Will Settings
                         </Button>
@@ -237,7 +237,7 @@ export default function CheckIns() {
                       <User className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                       <h3 className="font-medium mb-1">No beneficiaries found</h3>
                       <p className="text-sm">Add beneficiaries in the will settings to enable them for check-ins</p>
-                      <Link to="/will">
+                      <Link to="/wills">
                         <Button variant="outline" className="mt-3">
                           Go to Will Settings
                         </Button>
