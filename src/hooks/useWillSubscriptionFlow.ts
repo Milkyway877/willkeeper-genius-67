@@ -2,7 +2,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { checkUserHasWill } from '@/services/willCheckService';
-// We'll need a Tank message checker. Assume it has same structure as will checker.
 import { checkUserHasTankMessage } from '@/services/tankService';
 import { toast } from 'sonner';
 
@@ -12,11 +11,15 @@ type TriggerSource = "will" | "tank-message" | null;
 const useEligibilityCheck = () => {
   const [hasWill, setHasWill] = useState(false);
   const [hasTankMessage, setHasTankMessage] = useState(false);
+  const [eligibilityLoading, setEligibilityLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchEligibility = async () => {
+      setEligibilityLoading(true);
+
       const willStatus = await checkUserHasWill();
-      setHasWill(willStatus.hasWill);
+      if (!cancelled) setHasWill(willStatus.hasWill);
 
       // checkUserHasTankMessage should return { hasTankMessage: boolean }
       let tankStatus = { hasTankMessage: false };
@@ -25,11 +28,15 @@ const useEligibilityCheck = () => {
       } catch (err) {
         tankStatus = { hasTankMessage: false };
       }
-      setHasTankMessage(tankStatus.hasTankMessage);
+      if (!cancelled) setHasTankMessage(tankStatus.hasTankMessage);
+      if (!cancelled) setEligibilityLoading(false);
     };
     fetchEligibility();
+    return () => {
+      cancelled = true;
+    };
   }, []);
-  return [hasWill, hasTankMessage] as const;
+  return [hasWill, hasTankMessage, eligibilityLoading] as const;
 };
 
 export const useWillSubscriptionFlow = () => {
@@ -37,8 +44,7 @@ export const useWillSubscriptionFlow = () => {
   const [willStatus, setWillStatus] = useState({ hasWill: false, willCount: 0 });
   const { subscriptionStatus, refreshSubscriptionStatus } = useSubscriptionStatus();
   const [triggerSource, setTriggerSource] = useState<TriggerSource>(null);
-  // eligibility check
-  const [hasWill, hasTankMessage] = useEligibilityCheck();
+  const [hasWill, hasTankMessage, eligibilityLoading] = useEligibilityCheck();
 
   // Check will status on mount
   useEffect(() => {
@@ -64,7 +70,6 @@ export const useWillSubscriptionFlow = () => {
       ) {
         setShowSubscriptionModal(true);
         setTriggerSource(source);
-
         let msg =
           source === "tank-message"
             ? 'Tank message saved! Upgrade to unlock secure storage and premium messaging features.'
@@ -105,6 +110,7 @@ export const useWillSubscriptionFlow = () => {
     willStatus,
     triggerSource,
     hasWill,
-    hasTankMessage
+    hasTankMessage,
+    eligibilityLoading, // add this to return object
   };
 };

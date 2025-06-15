@@ -42,16 +42,17 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     handleSubscriptionSuccess,
     triggerSource,
     hasWill,
-    hasTankMessage
+    hasTankMessage,
+    eligibilityLoading
   } = useWillSubscriptionFlow();
   
-  // Only show CountdownBanner if user has content (hasWill or hasTankMessage), not just "hasWills" (old mode)
+  // Only show CountdownBanner if user has content (hasWill or hasTankMessage)
+  // and NOT during eligibility loading
   const shouldShowCountdown =
     !subscriptionStatus.isSubscribed &&
     !subscriptionStatus.isTrial &&
     (hasWill || hasTankMessage) &&
-    // We can't use timeRemaining from removed hook, but you can add it to useWillSubscriptionFlow if needed
-    true; // If you want to keep using a countdown, add timeRemaining back from random-prompts hook into willSubscriptionFlow
+    !eligibilityLoading;
 
   useEffect(() => {
     const dismissedNotification = localStorage.getItem('dismissedMobileNotification');
@@ -137,7 +138,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Only show for users with will/tank-content (not just anyone) */}
+          {/* Only show for users with will/tank-content */}
           {showAuthenticatedLayout && shouldShowCountdown && (
             <CountdownBanner
               timeRemaining={0} // You should update to pass the actual timeRemaining via useWillSubscriptionFlow if you want countdowns
