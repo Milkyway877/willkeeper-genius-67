@@ -50,10 +50,14 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
 
   // Helper: check if there is a user with this email, and if they have 2FA enabled
   async function getUser2FAStatus(email: string) {
-    // Check user profile by email
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
-    if (!userData?.user) return false;
-    const userId = userData.user.id;
+    // Supabase: fetch user id from auth.users table by email
+    const { data: users, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase().trim());
+
+    const userId = users && users.length > 0 ? users[0].id : undefined;
+    if (!userId) return false;
     const { data: securityRow } = await supabase
       .from('user_security')
       .select('google_auth_enabled')
@@ -95,10 +99,13 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
         .update({ used: true })
         .eq('id', verificationData.id);
 
-      // 3. Check 2FA
-      let userId: string | undefined = undefined;
-      const { data: userRes } = await supabase.auth.admin.getUserByEmail(email.toLowerCase().trim());
-      if (!userRes?.user) {
+      // 3. Fetch user ID from users table by email
+      const { data: users, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email.toLowerCase().trim());
+
+      if (!users || users.length === 0) {
         toast({
           title: "No user found",
           description: "There is no account associated with this email.",
@@ -107,7 +114,7 @@ export function RecoverOtpForm({ email, onSuccess, onBack }: RecoverOtpFormProps
         setIsLoading(false);
         return;
       }
-      userId = userRes.user.id;
+      const userId = users[0].id;
 
       // Only check 2FA if user exists
       const { data: secRow } = await supabase
