@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { PreviewSafeLayout } from '@/components/layout/PreviewSafeLayout';
 import { UserProfile } from '@clerk/clerk-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 export default function AccountManagement() {
   return (
-    <Layout>
+    <PreviewSafeLayout>
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link to="/dashboard">
@@ -52,6 +52,6 @@ export default function AccountManagement() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+    </PreviewSafeLayout>
   );
 }
