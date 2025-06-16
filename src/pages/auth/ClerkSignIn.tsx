@@ -41,16 +41,20 @@ export default function ClerkSignIn() {
           {/* Clerk SignIn Component */}
           <div className="flex justify-center">
             <SignIn
+              redirectUrl="/dashboard"
               fallbackRedirectUrl="/dashboard"
+              signUpUrl="/auth/signup"
               appearance={{
                 elements: {
                   formButtonPrimary: 'bg-black hover:bg-gray-800 text-white',
-                  card: 'shadow-none border-none',
+                  card: 'shadow-none border-none w-full',
                   headerTitle: 'text-2xl font-bold text-black',
                   headerSubtitle: 'text-gray-600',
                   socialButtonsBlockButton: 'border-2 border-gray-300 hover:border-gray-400',
                   formFieldInput: 'border-2 border-gray-300 rounded-lg',
-                  footerActionLink: 'text-willtank-600 hover:text-willtank-700 font-bold'
+                  footerActionLink: 'text-willtank-600 hover:text-willtank-700 font-bold',
+                  rootBox: 'w-full',
+                  cardBox: 'w-full shadow-none',
                 }
               }}
             />

@@ -9,13 +9,6 @@ interface ClerkSocialLoginProps {
 }
 
 export function ClerkSocialLogin({ mode }: ClerkSocialLoginProps) {
-  // Check if Clerk is available
-  const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-  
-  if (!CLERK_PUBLISHABLE_KEY) {
-    return null; // Don't render social login if Clerk is not configured
-  }
-
   const AuthButton = mode === 'signin' ? SignInButton : SignUpButton;
   const actionText = mode === 'signin' ? 'Sign in' : 'Sign up';
 

@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -25,8 +26,6 @@ import BlogArticle from './pages/BlogArticle';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
-import SecureSignIn from './pages/auth/SecureSignIn';
-import SecureSignUp from './pages/auth/SecureSignUp';
 import ClerkSignIn from './pages/auth/ClerkSignIn';
 import ClerkSignUp from './pages/auth/ClerkSignUp';
 import Dashboard from './pages/Dashboard';
@@ -69,14 +68,14 @@ import UpdatesArchive from './pages/documentation/UpdatesArchive';
 // Create a QueryClient instance
 const queryClient = new QueryClient();
 
-// Get Clerk publishable key from environment
+// Get Clerk publishable key from environment - FORCE CLERK ONLY
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-// Choose auth components based on Clerk availability
-const SignInComponent = CLERK_PUBLISHABLE_KEY ? ClerkSignIn : SecureSignIn;
-const SignUpComponent = CLERK_PUBLISHABLE_KEY ? ClerkSignUp : SecureSignUp;
+if (!CLERK_PUBLISHABLE_KEY) {
+  throw new Error('Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your environment variables.');
+}
 
-// Create router without Clerk Provider first
+// Create router with Clerk-only authentication
 const router = createBrowserRouter([
   {
     path: "/",
@@ -178,45 +177,46 @@ const router = createBrowserRouter([
         path: "/faq",
         element: <FAQ />,
       },
+      // CLERK AUTHENTICATION ROUTES ONLY
       {
         path: "/auth/signin",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/signup",
-        element: <SignUpComponent />,
+        element: <ClerkSignUp />,
       },
       {
         path: "/auth/recover",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/2fa-verification",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/verification",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/forgot-password",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/reset-password",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/activate",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/verify-email",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/auth/callback",
-        element: <SignInComponent />,
+        element: <ClerkSignIn />,
       },
       {
         path: "/dashboard",
@@ -334,18 +334,14 @@ const router = createBrowserRouter([
   },
 ]);
 
-// Render with conditional Clerk Provider
+// Render with Clerk Provider ONLY
 const AppWithProviders = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <NotificationsProvider>
-        {CLERK_PUBLISHABLE_KEY ? (
-          <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-            <RouterProvider router={router} />
-          </ClerkProvider>
-        ) : (
+        <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
           <RouterProvider router={router} />
-        )}
+        </ClerkProvider>
       </NotificationsProvider>
     </QueryClientProvider>
   );
@@ -356,5 +352,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <AppWithProviders />
   </React.StrictMode>,
 )
-
-// IMPORTANT: main.tsx is long and should be refactored for maintainability.
