@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -55,6 +56,7 @@ import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
+import AccountManagement from './pages/account/AccountManagement';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
