@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navbar } from '@/components/layout/Navbar';
+import { PublicNavbar } from '@/components/layout/PublicNavbar';
 import { Hero } from '@/components/home/Hero';
 import { ServicesSection } from '@/components/home/ServicesSection';
 import { SecuritySection } from '@/components/home/SecuritySection';
@@ -14,7 +14,7 @@ import { Footer } from '@/components/layout/Footer';
 export default function Index() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <PublicNavbar />
       
       <main className="flex-1">
         <Hero />
