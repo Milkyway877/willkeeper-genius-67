@@ -25,10 +25,5 @@
   "env": {
     "NODE_ENV": "production",
     "VITE_BUILD_TARGET": "esnext"
-  },
-  "functions": {
-    "app/**": {
-      "includeFiles": "dist/**"
-    }
   }
 }
