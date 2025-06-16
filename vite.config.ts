@@ -9,7 +9,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    // Add this to ensure all routes redirect to index.html for SPA routing
     historyApiFallback: true,
   },
   plugins: [
@@ -22,9 +21,21 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // Add SPA-friendly build options
   build: {
-    // Generate SPA fallback index.html for all routes
     outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-toast']
+        }
+      }
+    }
+  },
+  define: {
+    global: 'globalThis',
   },
 }));

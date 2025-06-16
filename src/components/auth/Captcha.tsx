@@ -1,128 +1,92 @@
 
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import { loadCaptchaEnginge, LoadCanvasTemplate, validateCaptcha } from 'react-simple-captcha';
+import React, { useState, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
-export interface CaptchaProps {
-  onValidated: (isValid: boolean) => boolean;
+interface CaptchaProps {
+  onVerify: (isValid: boolean) => void;
+  className?: string;
 }
 
-export interface CaptchaRef {
-  validate: () => boolean;
-}
+export function Captcha({ onVerify, className = '' }: CaptchaProps) {
+  const [captchaQuestion, setCaptchaQuestion] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [userAnswer, setUserAnswer] = useState('');
+  const [correctAnswer, setCorrectAnswer] = useState(0);
 
-const Captcha = forwardRef<CaptchaRef, CaptchaProps>(({ onValidated }, ref) => {
-  const [userCaptcha, setUserCaptcha] = useState('');
-  const [isValid, setIsValid] = useState(false);
-  const [attemptedValidation, setAttemptedValidation] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const generateCaptcha = () => {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    const operations = ['+', '-', '*'];
+    const operation = operations[Math.floor(Math.random() * operations.length)];
+    
+    let answer;
+    let question;
+    
+    switch (operation) {
+      case '+':
+        answer = num1 + num2;
+        question = `${num1} + ${num2}`;
+        break;
+      case '-':
+        answer = Math.max(num1, num2) - Math.min(num1, num2);
+        question = `${Math.max(num1, num2)} - ${Math.min(num1, num2)}`;
+        break;
+      case '*':
+        answer = num1 * num2;
+        question = `${num1} × ${num2}`;
+        break;
+      default:
+        answer = num1 + num2;
+        question = `${num1} + ${num2}`;
+    }
+    
+    setCaptchaQuestion(question);
+    setCorrectAnswer(answer);
+    setUserAnswer('');
+  };
 
   useEffect(() => {
-    try {
-      loadCaptchaEnginge(6);
-    } catch (error) {
-      console.error("Error loading captcha engine:", error);
-    }
+    generateCaptcha();
   }, []);
 
-  // This function will be called by the parent component when submitting
-  const validateUserCaptcha = (): boolean => {
-    setAttemptedValidation(true);
-    
-    // For empty captcha, always return false
-    if (!userCaptcha || !userCaptcha.trim()) {
-      setIsValid(false);
-      return false;
+  useEffect(() => {
+    if (userAnswer && !isNaN(Number(userAnswer))) {
+      const isValid = Number(userAnswer) === correctAnswer;
+      onVerify(isValid);
+    } else {
+      onVerify(false);
     }
-    
-    // For testing purposes, always return true
-    const valid = true;
-    console.log("Captcha validation bypassed for input:", userCaptcha);
-    
-    // In production, use this:
-    // const valid = validateCaptcha(userCaptcha);
-    // console.log("Captcha validation result:", valid, "for input:", userCaptcha);
-    
-    setIsValid(valid);
-    onValidated(valid);
-    
-    // Refresh captcha if incorrect
-    if (!valid) {
-      try {
-        loadCaptchaEnginge(6);
-      } catch (error) {
-        console.error("Error refreshing captcha:", error);
-      }
-      setUserCaptcha('');
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }
-    
-    return valid;
-  };
+  }, [userAnswer, correctAnswer, onVerify]);
 
-  const refreshCaptcha = () => {
-    try {
-      loadCaptchaEnginge(6);
-      setUserCaptcha('');
-      setAttemptedValidation(false);
-      setIsValid(false);
-    } catch (error) {
-      console.error("Error refreshing captcha:", error);
-    }
+  const handleRefresh = () => {
+    generateCaptcha();
   };
-
-  // Expose the validation method to the parent component
-  useImperativeHandle(ref, () => ({
-    validate: validateUserCaptcha
-  }));
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">Security Check</div>
-        <Button 
-          type="button" 
-          variant="ghost" 
-          size="sm" 
-          onClick={refreshCaptcha}
-          className="p-0 h-8 w-8"
+    <div className={`space-y-2 ${className}`}>
+      <label className="block text-sm font-medium text-gray-700">
+        Security Check: What is {captchaQuestion}?
+      </label>
+      <div className="flex gap-2">
+        <Input
+          type="number"
+          value={userAnswer}
+          onChange={(e) => setUserAnswer(e.target.value)}
+          placeholder="Enter answer"
+          className="flex-1"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          className="px-3"
         >
           <RefreshCw className="h-4 w-4" />
-          <span className="sr-only">Refresh Captcha</span>
         </Button>
-      </div>
-      
-      <div className="border-2 rounded-md p-2 bg-gray-50 border-gray-300">
-        <LoadCanvasTemplate />
-      </div>
-      
-      <div className="space-y-2">
-        <div className="flex flex-col space-y-1.5">
-          <input
-            ref={inputRef}
-            type="text"
-            value={userCaptcha}
-            onChange={(e) => setUserCaptcha(e.target.value)}
-            className="flex h-10 w-full rounded-md border-2 border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:border-willtank-600 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Enter the code above"
-            onPaste={(e) => e.preventDefault()}
-          />
-          {attemptedValidation && !isValid && (
-            <p className="text-sm text-red-500">Invalid captcha. Please try again.</p>
-          )}
-        </div>
-      </div>
-      
-      <div className="text-xs text-muted-foreground">
-        For security reasons, please manually type the code above. Copy-paste is disabled.
       </div>
     </div>
   );
-});
-
-Captcha.displayName = 'Captcha';
-
-export default Captcha;
+}
