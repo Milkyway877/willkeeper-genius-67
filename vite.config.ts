@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    minify: 'esbuild',
+    target: 'esnext',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -38,4 +40,7 @@ export default defineConfig(({ mode }) => ({
   define: {
     global: 'globalThis',
   },
+  esbuild: {
+    logOverride: { 'this-is-undefined-in-esm': 'silent' }
+  }
 }));

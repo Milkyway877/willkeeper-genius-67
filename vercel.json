@@ -1,7 +1,7 @@
 
 {
   "framework": "vite",
-  "buildCommand": "npm run build",
+  "buildCommand": "npm install --legacy-peer-deps && npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install --legacy-peer-deps",
   "devCommand": "npm run dev",
@@ -24,5 +24,10 @@
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "app/**": {
+      "includeFiles": "dist/**"
+    }
   }
 }
