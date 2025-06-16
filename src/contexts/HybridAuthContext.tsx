@@ -17,8 +17,16 @@ interface HybridAuthContextType {
 const HybridAuthContext = createContext<HybridAuthContextType | undefined>(undefined);
 
 export function HybridAuthProvider({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, signOut: clerkSignOut } = useClerkAuth();
-  const { user: clerkUser } = useUser();
+  // Check if Clerk is available
+  const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  
+  // Conditionally use Clerk hooks only if Clerk is available
+  const clerkAuth = CLERK_PUBLISHABLE_KEY ? useClerkAuth() : { isSignedIn: false, signOut: async () => {} };
+  const clerkUserData = CLERK_PUBLISHABLE_KEY ? useUser() : { user: null };
+  
+  const { isSignedIn, signOut: clerkSignOut } = clerkAuth;
+  const { user: clerkUser } = clerkUserData;
+  
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [supabaseProfile, setSupabaseProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +36,7 @@ export function HybridAuthProvider({ children }: { children: React.ReactNode }) 
       setLoading(true);
       
       try {
-        if (isSignedIn && clerkUser) {
+        if (CLERK_PUBLISHABLE_KEY && isSignedIn && clerkUser) {
           // Sync Clerk user to Supabase
           await syncClerkUserToSupabase(clerkUser);
           
@@ -86,13 +94,13 @@ export function HybridAuthProvider({ children }: { children: React.ReactNode }) 
     };
 
     handleAuthSync();
-  }, [isSignedIn, clerkUser]);
+  }, [CLERK_PUBLISHABLE_KEY, isSignedIn, clerkUser]);
 
   // Listen for Supabase auth changes (fallback for non-Clerk users)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!isSignedIn) {
+        if (!CLERK_PUBLISHABLE_KEY || !isSignedIn) {
           setUser(session?.user ?? null);
           if (session?.user) {
             const { data: profile } = await supabase
@@ -110,10 +118,10 @@ export function HybridAuthProvider({ children }: { children: React.ReactNode }) 
     );
 
     return () => subscription.unsubscribe();
-  }, [isSignedIn]);
+  }, [CLERK_PUBLISHABLE_KEY, isSignedIn]);
 
   const signOut = async () => {
-    if (isSignedIn) {
+    if (CLERK_PUBLISHABLE_KEY && isSignedIn) {
       await clerkSignOut();
     } else {
       await supabase.auth.signOut();
@@ -122,7 +130,7 @@ export function HybridAuthProvider({ children }: { children: React.ReactNode }) 
     setSupabaseProfile(null);
   };
 
-  const isAuthenticated = isSignedIn || !!user;
+  const isAuthenticated = (CLERK_PUBLISHABLE_KEY && isSignedIn) || !!user;
 
   return (
     <HybridAuthContext.Provider value={{ 
