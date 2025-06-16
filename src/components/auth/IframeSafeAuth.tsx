@@ -15,8 +15,14 @@ export function IframeSafeAuth({ children, fallbackMessage }: IframeSafeAuthProp
   const { isSignedIn, isLoaded } = useAuth();
   const inPreview = isInLovablePreview();
 
-  // If we're in the Lovable preview and not authenticated, show a safe fallback
-  if (inPreview && isLoaded && !isSignedIn) {
+  // If we're in preview mode, always show the children (preview content)
+  // This allows the auth pages to show their preview forms
+  if (inPreview) {
+    return <>{children}</>;
+  }
+
+  // If we're not in preview and not authenticated, show the fallback
+  if (isLoaded && !isSignedIn) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -39,6 +45,6 @@ export function IframeSafeAuth({ children, fallbackMessage }: IframeSafeAuthProp
     );
   }
 
-  // For non-preview environments or when authenticated, render normally
+  // For authenticated users or loading state, render children normally
   return <>{children}</>;
 }
