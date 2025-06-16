@@ -3,8 +3,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
 
-const SUPABASE_URL = "https://ksiinmxsycosnpchutuw.supabase.co";
-export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzaWlubXhzeWNvc25wY2h1dHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MjM1MDAsImV4cCI6MjA2MTA5OTUwMH0.BupjPSp1HUmzrHPjn2z4fS-Np00EexnFjDTGfeZsuBY";
+// Use environment variables for production deployment
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://ksiinmxsycosnpchutuw.supabase.co";
+export const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzaWlubXhzeWNvc25wY2h1dHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MjM1MDAsImV4cCI6MjA2MTA5OTUwMH0.BupjPSp1HUmzrHPjn2z4fS-Np00EexnFjDTGfeZsuBY";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    // Configure for production
+    flowType: 'pkce'
   }
 });
