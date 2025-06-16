@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -68,8 +67,8 @@ import UpdatesArchive from './pages/documentation/UpdatesArchive';
 // Create a QueryClient instance
 const queryClient = new QueryClient();
 
-// Use the provided Clerk publishable key
-const CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsud2lsbHRhbmsuY29tJA';
+// Use the test Clerk publishable key
+const CLERK_PUBLISHABLE_KEY = 'pk_test_cHJvdWQtc2VhaG9yc2UtMjAuY2xlcmsuYWNjb3VudHMuZGV2JA';
 
 // Create router with Clerk-only authentication
 const router = createBrowserRouter([
