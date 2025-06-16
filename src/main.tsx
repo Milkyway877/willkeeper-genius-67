@@ -329,9 +329,9 @@ const router = createBrowserRouter([
   },
 ]);
 
-// Render with Clerk Provider
-const AppWithProviders = () => {
-  return (
+// Render with single ClerkProvider at the root level
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <NotificationsProvider>
         <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
@@ -339,11 +339,5 @@ const AppWithProviders = () => {
         </ClerkProvider>
       </NotificationsProvider>
     </QueryClientProvider>
-  );
-};
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <AppWithProviders />
   </React.StrictMode>,
 )
