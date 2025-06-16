@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -29,14 +28,18 @@ export function SignInForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { handleCaptchaValidation, validateCaptcha } = useCaptcha();
-  const { isSignedIn } = useClerkAuth();
+  
+  // Check if Clerk is available before using hooks
+  const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  const clerkAuth = CLERK_PUBLISHABLE_KEY ? useClerkAuth() : { isSignedIn: false };
+  const { isSignedIn } = clerkAuth;
   
   // Redirect if already signed in via Clerk
   useEffect(() => {
-    if (isSignedIn) {
+    if (CLERK_PUBLISHABLE_KEY && isSignedIn) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isSignedIn, navigate]);
+  }, [CLERK_PUBLISHABLE_KEY, isSignedIn, navigate]);
 
   useEffect(() => {
     const handleAuthRedirect = async () => {
@@ -59,10 +62,10 @@ export function SignInForm() {
       }
     };
     
-    if (!isSignedIn) {
+    if (!CLERK_PUBLISHABLE_KEY || !isSignedIn) {
       handleAuthRedirect();
     }
-  }, [navigate, location, isSignedIn]);
+  }, [navigate, location, CLERK_PUBLISHABLE_KEY, isSignedIn]);
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
