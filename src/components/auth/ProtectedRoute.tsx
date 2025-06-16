@@ -1,14 +1,14 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useHybridAuth } from '@/contexts/HybridAuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, loading } = useHybridAuth();
 
   if (loading) {
     return (
@@ -18,8 +18,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/sign-in" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/signin" replace />;
   }
 
   return <>{children}</>;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -12,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { check2FAStatus } from '@/services/encryptionService';
 import { Captcha } from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
+import { ClerkSocialLogin } from '@/components/auth/ClerkSocialLogin';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -26,7 +29,15 @@ export function SignInForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { handleCaptchaValidation, validateCaptcha } = useCaptcha();
+  const { isSignedIn } = useClerkAuth();
   
+  // Redirect if already signed in via Clerk
+  useEffect(() => {
+    if (isSignedIn) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isSignedIn, navigate]);
+
   useEffect(() => {
     const handleAuthRedirect = async () => {
       const searchParams = new URLSearchParams(location.search);
@@ -47,8 +58,11 @@ export function SignInForm() {
         navigate('/dashboard', { replace: true });
       }
     };
-    handleAuthRedirect();
-  }, [navigate, location]);
+    
+    if (!isSignedIn) {
+      handleAuthRedirect();
+    }
+  }, [navigate, location, isSignedIn]);
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
@@ -121,94 +135,98 @@ export function SignInForm() {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="john.doe@example.com" className="rounded-lg border-2 border-gray-300" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="font-medium text-gray-700">Password</FormLabel>
-              <div className="relative">
+    <div className="space-y-6">
+      {/* Clerk Social Login Options */}
+      <ClerkSocialLogin mode="signin" />
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="font-medium text-gray-700">Email Address</FormLabel>
                 <FormControl>
-                  <Input 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="Enter your password" 
-                    className="pr-10 rounded-lg border-2 border-gray-300"
-                    {...field} 
-                  />
+                  <Input type="email" placeholder="john.doe@example.com" className="rounded-lg border-2 border-gray-300" {...field} />
                 </FormControl>
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div>
-          <Captcha 
-            onVerify={handleCaptchaValidation} 
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="font-medium text-gray-700">Password</FormLabel>
+                <div className="relative">
+                  <FormControl>
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="Enter your password" 
+                      className="pr-10 rounded-lg border-2 border-gray-300"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-500"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
-            </>
-          ) : (
-            <>
-              Sign In <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
-
-        <div className="space-y-4 mt-4">
-          <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:justify-between">
-            <a
-              href="https://discord.gg/hGPgDqYP"
-              className="text-sm font-medium text-willtank-600 hover:text-willtank-700 flex items-center"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Contact Support on Discord"
-            >
-              <LifeBuoy className="h-4 w-4 mr-2 text-indigo-600" />
-              Contact Support (Discord)
-            </a>
+          <div>
+            <Captcha 
+              onVerify={handleCaptchaValidation} 
+            />
           </div>
-          <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
-            <p className="font-medium">
-              Need to reset your password or ran into issues? 
-              <a 
+
+          <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+              </>
+            ) : (
+              <>
+                Sign In <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </Button>
+
+          <div className="space-y-4 mt-4">
+            <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:justify-between">
+              <a
                 href="https://discord.gg/hGPgDqYP"
-                className="underline ml-1 font-bold text-willtank-700"
+                className="text-sm font-medium text-willtank-600 hover:text-willtank-700 flex items-center"
                 target="_blank"
                 rel="noopener noreferrer"
-              >Contact WillTank Support on Discord</a>
-            </p>
+                aria-label="Contact Support on Discord"
+              >
+                <LifeBuoy className="h-4 w-4 mr-2 text-indigo-600" />
+                Contact Support (Discord)
+              </a>
+            </div>
+            <div className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-md border border-slate-200">
+              <p className="font-medium">
+                Need to reset your password or ran into issues? 
+                <a 
+                  href="https://discord.gg/hGPgDqYP"
+                  className="underline ml-1 font-bold text-willtank-700"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >Contact WillTank Support on Discord</a>
+              </p>
+            </div>
           </div>
-        </div>
-      </form>
-    </Form>
+        </form>
+      </Form>
+    </div>
   );
 }
-// SECURITY NOTE: This form no longer provides password reset links. All issues are now handled via Discord support.

@@ -2,10 +2,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import { ClerkProvider } from '@clerk/clerk-react'
 import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
+
 import CheckIns from './pages/CheckIns.tsx';
 import Settings from './pages/settings/Settings.tsx';
 import TestDeathVerification from './pages/TestDeathVerification.tsx';
@@ -64,6 +66,13 @@ import UpdatesArchive from './pages/documentation/UpdatesArchive';
 
 // Create a QueryClient instance
 const queryClient = new QueryClient();
+
+// Get Clerk publishable key from environment
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_default';
+
+if (!CLERK_PUBLISHABLE_KEY) {
+  console.warn('Missing Clerk Publishable Key. Authentication features may not work properly.');
+}
 
 // Create a unified router configuration
 const router = createBrowserRouter([
@@ -325,11 +334,13 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <NotificationsProvider>
-        <RouterProvider router={router} />
-      </NotificationsProvider>
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <NotificationsProvider>
+          <RouterProvider router={router} />
+        </NotificationsProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
   </React.StrictMode>,
 )
 

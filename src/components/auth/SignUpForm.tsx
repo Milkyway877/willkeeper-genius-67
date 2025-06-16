@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -11,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Captcha } from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
+import { ClerkSocialLogin } from '@/components/auth/ClerkSocialLogin';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 
 const signUpSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -31,6 +34,14 @@ export function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { validateCaptcha } = useCaptcha();
+  const { isSignedIn } = useClerkAuth();
+
+  // Redirect if already signed in via Clerk
+  useEffect(() => {
+    if (isSignedIn) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isSignedIn, navigate]);
 
   const form = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -182,7 +193,10 @@ export function SignUpForm() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+      {/* Clerk Social Login Options */}
+      <ClerkSocialLogin mode="signup" />
+      
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
