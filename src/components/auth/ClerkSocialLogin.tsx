@@ -9,6 +9,13 @@ interface ClerkSocialLoginProps {
 }
 
 export function ClerkSocialLogin({ mode }: ClerkSocialLoginProps) {
+  // Check if Clerk is available
+  const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  
+  if (!CLERK_PUBLISHABLE_KEY) {
+    return null; // Don't render social login if Clerk is not configured
+  }
+
   const AuthButton = mode === 'signin' ? SignInButton : SignUpButton;
   const actionText = mode === 'signin' ? 'Sign in' : 'Sign up';
 
@@ -19,21 +26,21 @@ export function ClerkSocialLogin({ mode }: ClerkSocialLoginProps) {
       </div>
       
       <div className="grid grid-cols-1 gap-3">
-        <AuthButton redirectUrl="/dashboard">
+        <AuthButton fallbackRedirectUrl="/dashboard">
           <Button variant="outline" className="w-full">
             <Chrome className="h-4 w-4 mr-2" />
             {actionText} with Google
           </Button>
         </AuthButton>
         
-        <AuthButton redirectUrl="/dashboard">
+        <AuthButton fallbackRedirectUrl="/dashboard">
           <Button variant="outline" className="w-full">
             <Github className="h-4 w-4 mr-2" />
             {actionText} with GitHub
           </Button>
         </AuthButton>
         
-        <AuthButton redirectUrl="/dashboard">
+        <AuthButton fallbackRedirectUrl="/dashboard">
           <Button variant="outline" className="w-full">
             <Apple className="h-4 w-4 mr-2" />
             {actionText} with Apple

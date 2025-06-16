@@ -68,13 +68,9 @@ import UpdatesArchive from './pages/documentation/UpdatesArchive';
 const queryClient = new QueryClient();
 
 // Get Clerk publishable key from environment
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_default';
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-if (!CLERK_PUBLISHABLE_KEY) {
-  console.warn('Missing Clerk Publishable Key. Authentication features may not work properly.');
-}
-
-// Create a unified router configuration
+// Create router without Clerk Provider first
 const router = createBrowserRouter([
   {
     path: "/",
@@ -332,15 +328,26 @@ const router = createBrowserRouter([
   },
 ]);
 
+// Render with conditional Clerk Provider
+const AppWithProviders = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <NotificationsProvider>
+        {CLERK_PUBLISHABLE_KEY ? (
+          <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+            <RouterProvider router={router} />
+          </ClerkProvider>
+        ) : (
+          <RouterProvider router={router} />
+        )}
+      </NotificationsProvider>
+    </QueryClientProvider>
+  );
+};
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-      <QueryClientProvider client={queryClient}>
-        <NotificationsProvider>
-          <RouterProvider router={router} />
-        </NotificationsProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+    <AppWithProviders />
   </React.StrictMode>,
 )
 
