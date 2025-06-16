@@ -5,8 +5,20 @@ import { Link } from 'react-router-dom';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { Shield, ArrowRight } from 'lucide-react';
+import { isInLovablePreview } from '@/utils/iframeDetection';
+import { IframeSafeAuth } from '@/components/auth/IframeSafeAuth';
 
 export default function ClerkSignIn() {
+  const inPreview = isInLovablePreview();
+
+  if (inPreview) {
+    return (
+      <IframeSafeAuth fallbackMessage="To sign in to your account, please open WillTank in a new tab. This will allow you to securely access your account.">
+        <div />
+      </IframeSafeAuth>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full flex flex-col bg-background">
       {/* Header */}

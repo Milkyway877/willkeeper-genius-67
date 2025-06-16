@@ -174,7 +174,7 @@ const router = createBrowserRouter([
         path: "/faq",
         element: <FAQ />,
       },
-      // CLERK AUTHENTICATION ROUTES
+      // CLERK AUTHENTICATION ROUTES - Updated to use Clerk components only
       {
         path: "/auth/signin",
         element: <ClerkSignIn />,
