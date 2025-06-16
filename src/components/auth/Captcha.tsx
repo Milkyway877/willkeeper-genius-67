@@ -90,3 +90,6 @@ export function Captcha({ onVerify, className = '' }: CaptchaProps) {
     </div>
   );
 }
+
+// Also export as default for compatibility
+export default Captcha;
