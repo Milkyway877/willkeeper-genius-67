@@ -17,7 +17,8 @@ import {
   DollarSign,
   HelpCircle,
   Building,
-  Shield
+  Shield,
+  User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ContactSupportButton } from '@/components/common/ContactSupportButton';
@@ -139,6 +140,12 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
                       <UserDisplay />
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/account" className="w-full cursor-pointer flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        Account Management
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/settings" className="w-full cursor-pointer flex items-center">
                         <Settings className="mr-2 h-4 w-4" />

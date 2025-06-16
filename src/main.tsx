@@ -322,6 +322,10 @@ const router = createBrowserRouter([
         element: <SimpleWillUnlock />,
       },
       {
+        path: "/account",
+        element: <AccountManagement />,
+      },
+      {
         path: "*",
         element: <NotFound />,
       },
