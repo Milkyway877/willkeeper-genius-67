@@ -154,6 +154,25 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       throw new Error('User not authenticated');
     }
     
+    // ISSUE FOUND: Missing proper user name resolution
+    if (!contact.userFullName) {
+      // Fetch user profile to get proper name
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('first_name, last_name, full_name, email')
+        .eq('id', session.user.id)
+        .single();
+
+      contact.userFullName = userProfile?.full_name ||
+        (userProfile?.first_name && userProfile?.last_name ?
+          `${userProfile.first_name} ${userProfile.last_name}` : 
+          session.user.user_metadata?.full_name ||
+          session.user.email?.split('@')[0] ||
+          'A WillTank user');
+
+      console.log('Resolved user name for contact invitation:', contact.userFullName);
+    }
+    
     // Specialized handling based on contact type
     if (contact.contactType === 'trusted') {
       // Use our specialized trusted contact invitation service
