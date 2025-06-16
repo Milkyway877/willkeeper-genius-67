@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -11,7 +10,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { check2FAStatus } from '@/services/encryptionService';
-import Captcha from '@/components/auth/Captcha';
+import { Captcha } from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
 
 const signInSchema = z.object({
@@ -26,7 +25,7 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { captchaRef, handleCaptchaValidation, validateCaptcha } = useCaptcha();
+  const { handleCaptchaValidation, validateCaptcha } = useCaptcha();
   
   useEffect(() => {
     const handleAuthRedirect = async () => {
@@ -167,8 +166,7 @@ export function SignInForm() {
 
         <div>
           <Captcha 
-            ref={captchaRef}
-            onValidated={handleCaptchaValidation} 
+            onVerify={handleCaptchaValidation} 
           />
         </div>
 
@@ -214,4 +212,3 @@ export function SignInForm() {
   );
 }
 // SECURITY NOTE: This form no longer provides password reset links. All issues are now handled via Discord support.
-

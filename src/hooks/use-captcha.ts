@@ -1,9 +1,7 @@
 
-import { useRef, useState } from 'react';
-import { CaptchaRef } from '@/components/auth/Captcha';
+import { useState } from 'react';
 
 export const useCaptcha = () => {
-  const captchaRef = useRef<CaptchaRef>(null);
   const [isCaptchaValid, setIsCaptchaValid] = useState(false);
 
   const handleCaptchaValidation = (isValid: boolean) => {
@@ -12,23 +10,11 @@ export const useCaptcha = () => {
   };
 
   const validateCaptcha = (): boolean => {
-    // For debugging purposes, bypass captcha validation
-    // return true;
-    
-    // In production, we would validate properly
-    if (captchaRef.current) {
-      const isValid = captchaRef.current.validate();
-      setIsCaptchaValid(isValid);
-      return isValid;
-    }
-    
-    // If captchaRef is not available, return true for now to prevent blocking
-    console.warn("Captcha reference not available, bypassing validation");
-    return true;
+    // Return the current captcha validation state
+    return isCaptchaValid;
   };
 
   return {
-    captchaRef,
     isCaptchaValid,
     handleCaptchaValidation,
     validateCaptcha

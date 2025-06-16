@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import Captcha from '@/components/auth/Captcha';
+import { Captcha } from '@/components/auth/Captcha';
 import { useCaptcha } from '@/hooks/use-captcha';
 
 const signUpSchema = z.object({
@@ -30,7 +30,7 @@ export function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { captchaRef, validateCaptcha } = useCaptcha();
+  const { validateCaptcha } = useCaptcha();
 
   const form = useForm<SignUpFormInputs>({
     resolver: zodResolver(signUpSchema),
@@ -291,8 +291,7 @@ export function SignUpForm() {
           
           <div>
             <Captcha 
-              ref={captchaRef}
-              onValidated={(isValid) => {
+              onVerify={(isValid) => {
                 // This function is called when the captcha is completed
                 // No need to do anything here as we'll check validity on form submit
                 return isValid;
