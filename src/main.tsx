@@ -27,6 +27,8 @@ import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
 import SecureSignIn from './pages/auth/SecureSignIn';
 import SecureSignUp from './pages/auth/SecureSignUp';
+import ClerkSignIn from './pages/auth/ClerkSignIn';
+import ClerkSignUp from './pages/auth/ClerkSignUp';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -69,6 +71,10 @@ const queryClient = new QueryClient();
 
 // Get Clerk publishable key from environment
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+// Choose auth components based on Clerk availability
+const SignInComponent = CLERK_PUBLISHABLE_KEY ? ClerkSignIn : SecureSignIn;
+const SignUpComponent = CLERK_PUBLISHABLE_KEY ? ClerkSignUp : SecureSignUp;
 
 // Create router without Clerk Provider first
 const router = createBrowserRouter([
@@ -174,43 +180,43 @@ const router = createBrowserRouter([
       },
       {
         path: "/auth/signin",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/signup",
-        element: <SecureSignUp />,
+        element: <SignUpComponent />,
       },
       {
         path: "/auth/recover",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/2fa-verification",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/verification",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/forgot-password",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/reset-password",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/activate",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/verify-email",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/auth/callback",
-        element: <SecureSignIn />,
+        element: <SignInComponent />,
       },
       {
         path: "/dashboard",
