@@ -4,10 +4,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { SimpleAvatar } from '@/components/user/SimpleAvatar';
 import { UserDisplay } from '@/components/user/UserDisplay';
 import { Logo } from '@/components/ui/logo/Logo';
-import { useUserAuth } from '@/hooks/useUserAuth';
+import { useAuth, useClerk } from '@clerk/clerk-react';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { supabase } from '@/integrations/supabase/client';
 import {
   Search,
   LogOut,
@@ -36,16 +35,17 @@ interface NavbarProps {
   onMenuToggle?: () => void;
 }
 
-export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
+export function Navbar({ onMenuToggle }: NavbarProps) {
   const navigate = useNavigate();
-  const { displayName, displayEmail } = useUserAuth();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const [showSearchInput, setShowSearchInput] = useState(false);
   const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate('/auth/signin');
+      await signOut();
+      navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -75,14 +75,14 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
     <div className="relative z-10">
       <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
         <div className="flex h-16 items-center px-4">
-          {(!isAuthenticated || isMobile) && (
+          {(!isSignedIn || isMobile) && (
             <Link to="/" className="flex items-center">
               <Logo size={isMobile ? 'sm' : 'md'} />
             </Link>
           )}
 
           {/* Desktop Navigation Links */}
-          {!isAuthenticated && !isMobile && (
+          {!isSignedIn && !isMobile && (
             <nav className="ml-8 hidden md:flex items-center space-x-6">
               {navLinks.map((link) => (
                 <Link 
@@ -99,9 +99,8 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
           <div className="flex-grow"></div>
 
           <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
+            {isSignedIn ? (
               <>
-                {/* Add Contact Support button for authenticated users (dashboard, etc) */}
                 <ContactSupportButton className="hidden md:inline-flex" />
 
                 {!showSearchInput ? (

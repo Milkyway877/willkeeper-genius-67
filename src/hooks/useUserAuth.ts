@@ -1,5 +1,5 @@
 
-import { useHybridAuth } from '@/contexts/HybridAuthContext';
+import { useUser } from '@clerk/clerk-react';
 
 interface UserAuth {
   user: any;
@@ -10,20 +10,15 @@ interface UserAuth {
 }
 
 export const useUserAuth = (): UserAuth => {
-  const { user, clerkUser, supabaseProfile, loading } = useHybridAuth();
+  const { user, isLoaded } = useUser();
 
-  // Derive display values from either Clerk or Supabase user
-  const displayName = clerkUser?.fullName || 
-                     clerkUser?.firstName + ' ' + clerkUser?.lastName ||
-                     supabaseProfile?.full_name ||
-                     user?.user_metadata?.full_name || 
-                     user?.email?.split('@')[0] || 
+  // Derive display values from Clerk user
+  const displayName = user?.fullName || 
+                     `${user?.firstName || ''} ${user?.lastName || ''}`.trim() ||
+                     user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 
                      'User';
   
-  const displayEmail = clerkUser?.emailAddresses?.[0]?.emailAddress || 
-                      user?.email || 
-                      supabaseProfile?.email || 
-                      '';
+  const displayEmail = user?.emailAddresses?.[0]?.emailAddress || '';
   
   const getInitials = (name: string): string => {
     if (!name) return 'U';
@@ -36,8 +31,8 @@ export const useUserAuth = (): UserAuth => {
   const initials = getInitials(displayName);
 
   return {
-    user: user || clerkUser,
-    loading,
+    user,
+    loading: !isLoaded,
     displayName,
     displayEmail,
     initials

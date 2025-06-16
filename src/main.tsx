@@ -68,12 +68,8 @@ import UpdatesArchive from './pages/documentation/UpdatesArchive';
 // Create a QueryClient instance
 const queryClient = new QueryClient();
 
-// Get Clerk publishable key from environment - FORCE CLERK ONLY
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (!CLERK_PUBLISHABLE_KEY) {
-  throw new Error('Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your environment variables.');
-}
+// Use the provided Clerk publishable key
+const CLERK_PUBLISHABLE_KEY = 'pk_live_Y2xlcmsud2lsbHRhbmsuY29tJA';
 
 // Create router with Clerk-only authentication
 const router = createBrowserRouter([
@@ -177,7 +173,7 @@ const router = createBrowserRouter([
         path: "/faq",
         element: <FAQ />,
       },
-      // CLERK AUTHENTICATION ROUTES ONLY
+      // CLERK AUTHENTICATION ROUTES
       {
         path: "/auth/signin",
         element: <ClerkSignIn />,
@@ -334,7 +330,7 @@ const router = createBrowserRouter([
   },
 ]);
 
-// Render with Clerk Provider ONLY
+// Render with Clerk Provider
 const AppWithProviders = () => {
   return (
     <QueryClientProvider client={queryClient}>
