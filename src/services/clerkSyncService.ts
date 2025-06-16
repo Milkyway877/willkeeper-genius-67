@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@clerk/clerk-react';
 
 export interface ClerkUser {
   id: string;

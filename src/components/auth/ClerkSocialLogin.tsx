@@ -19,21 +19,21 @@ export function ClerkSocialLogin({ mode }: ClerkSocialLoginProps) {
       </div>
       
       <div className="grid grid-cols-1 gap-3">
-        <AuthButton strategy="oauth_google" fallbackRedirectUrl="/dashboard">
+        <AuthButton redirectUrl="/dashboard">
           <Button variant="outline" className="w-full">
             <Chrome className="h-4 w-4 mr-2" />
             {actionText} with Google
           </Button>
         </AuthButton>
         
-        <AuthButton strategy="oauth_github" fallbackRedirectUrl="/dashboard">
+        <AuthButton redirectUrl="/dashboard">
           <Button variant="outline" className="w-full">
             <Github className="h-4 w-4 mr-2" />
             {actionText} with GitHub
           </Button>
         </AuthButton>
         
-        <AuthButton strategy="oauth_apple" fallbackRedirectUrl="/dashboard">
+        <AuthButton redirectUrl="/dashboard">
           <Button variant="outline" className="w-full">
             <Apple className="h-4 w-4 mr-2" />
             {actionText} with Apple
