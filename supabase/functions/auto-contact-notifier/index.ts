@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 import { getResendClient, buildDefaultEmailLayout } from "../_shared/email-helper.ts";
@@ -71,6 +72,27 @@ async function sendWelcomeNotification(contact) {
   
   const resend = getResendClient();
   
+  // For trusted contacts, fetch the verification code word
+  let verificationCodeWord = null;
+  if (contact.contactType === 'trusted_contact' && contact.contactId) {
+    try {
+      const { data: trustedContact, error: trustedContactError } = await supabase
+        .from('trusted_contacts')
+        .select('verification_code_word')
+        .eq('id', contact.contactId)
+        .single();
+      
+      if (!trustedContactError && trustedContact) {
+        verificationCodeWord = trustedContact.verification_code_word;
+        console.log('Retrieved verification code word for trusted contact');
+      } else {
+        console.error('Error fetching verification code word:', trustedContactError);
+      }
+    } catch (err) {
+      console.error('Exception fetching verification code word:', err);
+    }
+  }
+  
   // Build role-specific content
   let roleDescription = '';
   let responsibilities = '';
@@ -110,6 +132,7 @@ async function sendWelcomeNotification(contact) {
           <li>You may be asked to help verify ${contact.userFullName}'s status and well-being</li>
           <li>Your role is to help ensure ${contact.userFullName}'s digital legacy is properly managed</li>
           <li>You serve as an additional safety net in the verification process</li>
+          ${verificationCodeWord ? '<li><strong>You have been assigned a special verification code word for security purposes</strong></li>' : ''}
         </ul>
       `;
       break;
@@ -122,12 +145,38 @@ async function sendWelcomeNotification(contact) {
       <li>You will receive email notifications if ${contact.userFullName} misses check-ins</li>
       <li>If you receive a notification, try to contact ${contact.userFullName} to remind them to check in</li>
       <li>Keep this email for your records as it contains important contact information</li>
+      ${verificationCodeWord ? '<li><strong>Keep your verification code word safe - you may need it for identity verification</strong></li>' : ''}
     </ol>
   `;
+
+  // Add verification code word section for trusted contacts
+  let codeWordSection = '';
+  if (contact.contactType === 'trusted_contact' && verificationCodeWord) {
+    codeWordSection = `
+      <div style="background-color: #f0fdf4; border: 2px solid #22c55e; padding: 24px; border-radius: 12px; margin: 24px 0; text-align: center;">
+        <h2 style="color: #166534; font-size: 1.3em; margin-bottom: 12px; margin-top: 0;">🔐 Your Personal Verification Code Word</h2>
+        <div style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); border: 3px dashed #16a34a; border-radius: 10px; padding: 20px; margin: 16px 0;">
+          <div style="font-size: 2.5em; font-weight: bold; color: #15803d; letter-spacing: 3px; text-transform: uppercase; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);">
+            ${verificationCodeWord}
+          </div>
+        </div>
+        <p style="color: #166534; margin: 12px 0; font-size: 15px; line-height: 1.5;">
+          <strong>This is your unique verification word assigned by ${contact.userFullName}.</strong><br>
+          Keep this word confidential and secure. You may be asked for this word to verify your identity<br>
+          when helping to confirm ${contact.userFullName}'s status during missed check-ins.
+        </p>
+        <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin-top: 16px;">
+          <p style="color: #92400e; margin: 0; font-size: 14px;">
+            ⚠️ <strong>Important:</strong> Never share this code word with anyone except official WillTank verification processes.
+          </p>
+        </div>
+      </div>
+    `;
+  }
   
   const emailContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #4a6cf7;">Important: You've Been Added to a WillTank Account</h1>
+      <h1 style="color: #4a6cf7;">Important: You've Been Added to ${contact.userFullName}'s WillTank Account</h1>
       <p>Dear ${contact.name},</p>
       <p>${roleDescription}</p>
       
@@ -135,6 +184,8 @@ async function sendWelcomeNotification(contact) {
         <h3 style="color: #1f2937; margin-top: 0;">Your Role & Responsibilities:</h3>
         ${responsibilities}
       </div>
+
+      ${codeWordSection}
 
       ${nextSteps}
 
@@ -170,7 +221,7 @@ async function sendWelcomeNotification(contact) {
       ]
     });
 
-    // Log the notification
+    // Log the notification with verification code word info
     await supabase.from('death_verification_logs').insert({
       user_id: contact.userId,
       action: 'welcome_notification_sent',
@@ -180,6 +231,7 @@ async function sendWelcomeNotification(contact) {
         contact_name: contact.name,
         contact_email: contact.email,
         email_id: emailResponse.id,
+        verification_code_word_included: !!verificationCodeWord,
         timestamp: new Date().toISOString()
       }
     });
@@ -188,7 +240,8 @@ async function sendWelcomeNotification(contact) {
       JSON.stringify({ 
         success: true, 
         message: "Welcome notification sent successfully",
-        emailId: emailResponse.id
+        emailId: emailResponse.id,
+        verificationCodeWordIncluded: !!verificationCodeWord
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
