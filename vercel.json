@@ -1,7 +1,7 @@
 
 {
   "framework": "vite",
-  "installCommand": "npm ci --legacy-peer-deps",
+  "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
@@ -23,6 +23,7 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "VITE_CLERK_PUBLISHABLE_KEY": "@clerk_publishable_key"
   }
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -6,14 +7,10 @@ import { Eye, EyeOff, ArrowRight, Loader2, LifeBuoy } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { check2FAStatus } from '@/services/encryptionService';
-import { Captcha } from '@/components/auth/Captcha';
-import { useCaptcha } from '@/hooks/use-captcha';
 import { ClerkSocialLogin } from '@/components/auth/ClerkSocialLogin';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useSignIn } from '@clerk/clerk-react';
 
 const signInSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -26,46 +23,15 @@ export function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const { handleCaptchaValidation, validateCaptcha } = useCaptcha();
-  
-  // Check if Clerk is available before using hooks
-  const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-  const clerkAuth = CLERK_PUBLISHABLE_KEY ? useClerkAuth() : { isSignedIn: false };
-  const { isSignedIn } = clerkAuth;
+  const { isSignedIn } = useClerkAuth();
+  const { signIn, setActive } = useSignIn();
   
   // Redirect if already signed in via Clerk
   useEffect(() => {
-    if (CLERK_PUBLISHABLE_KEY && isSignedIn) {
+    if (isSignedIn) {
       navigate('/dashboard', { replace: true });
     }
-  }, [CLERK_PUBLISHABLE_KEY, isSignedIn, navigate]);
-
-  useEffect(() => {
-    const handleAuthRedirect = async () => {
-      const searchParams = new URLSearchParams(location.search);
-      const verified = searchParams.get('verified');
-      const { data, error } = await supabase.auth.getSession();
-      if (data?.session && !error) {
-        if (verified === 'true') {
-          toast({
-            title: "Email verified!",
-            description: "Your email has been verified and you are now signed in.",
-          });
-        } else {
-          toast({
-            title: "Welcome back!",
-            description: "You are now signed in.",
-          });
-        }
-        navigate('/dashboard', { replace: true });
-      }
-    };
-    
-    if (!CLERK_PUBLISHABLE_KEY || !isSignedIn) {
-      handleAuthRedirect();
-    }
-  }, [navigate, location, CLERK_PUBLISHABLE_KEY, isSignedIn]);
+  }, [isSignedIn, navigate]);
   
   const form = useForm<SignInFormInputs>({
     resolver: zodResolver(signInSchema),
@@ -76,60 +42,35 @@ export function SignInForm() {
   });
 
   const onSubmit = async (data: SignInFormInputs) => {
+    if (!signIn) return;
+    
     try {
       setIsLoading(true);
-      // Validate captcha first
-      const isCaptchaValid = validateCaptcha();
-      if (!isCaptchaValid) {
-        toast({
-          title: "Security check failed",
-          description: "Please complete the captcha verification correctly before signing in.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      // Sign in the user
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
+      
+      const result = await signIn.create({
+        identifier: data.email,
         password: data.password,
       });
-      if (authError) {
-        toast({
-          title: "Authentication failed",
-          description: authError.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      if (!authData?.user) {
-        toast({
-          title: "Authentication failed",
-          description: "Failed to authenticate user",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      // Check if user has 2FA enabled (user is now authenticated)
-      const has2FA = await check2FAStatus();
-      if (has2FA) {
-        // Store email for 2FA verification page and redirect
-        sessionStorage.setItem('auth_email', data.email);
-        navigate(`/auth/2fa-verification?email=${encodeURIComponent(data.email)}`, { replace: true });
-      } else {
+
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
         toast({
           title: "Login successful",
           description: "You've been signed in successfully.",
         });
         navigate('/dashboard', { replace: true });
+      } else {
+        toast({
+          title: "Authentication incomplete",
+          description: "Please complete the sign-in process.",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error("Sign in error:", error);
       toast({
         title: "Sign in failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        description: error.errors?.[0]?.longMessage || error.message || "Invalid email or password.",
         variant: "destructive",
       });
     } finally {
@@ -184,12 +125,6 @@ export function SignInForm() {
               </FormItem>
             )}
           />
-
-          <div>
-            <Captcha 
-              onVerify={handleCaptchaValidation} 
-            />
-          </div>
 
           <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
             {isLoading ? (
