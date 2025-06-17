@@ -149,7 +149,8 @@ Digitally signed by: [Full Name]
 Date: ${new Date().toLocaleDateString()}
   `);
   
-  const [signature, setSignature] = useState<string | null>(null);
+  // Enhanced signature state with debugging
+  const [signature, setSignature] = useState<string | null>(initialData?.signature || null);
   const [saving, setSaving] = useState<boolean>(false);
   const [isFinalized, setIsFinalized] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -179,8 +180,16 @@ Date: ${new Date().toLocaleDateString()}
   const { toast } = useToast();
   const navigate = useNavigate();
   
+  // Enhanced signature debugging
+  useEffect(() => {
+    console.log('TemplateWillEditor: Signature state changed:', signature ? 'Has signature' : 'No signature');
+    if (signature) {
+      console.log('TemplateWillEditor: Signature data length:', signature.length);
+    }
+  }, [signature]);
+  
   const handleFormChange = (values: WillFormValues) => {
-    console.log("Form values updated:", values);
+    console.log("TemplateWillEditor: Form values updated:", values);
     
     if (!values) return;
     
@@ -220,29 +229,44 @@ Date: ${new Date().toLocaleDateString()}
     };
   };
   
+  // Enhanced signature change handler with debugging and user feedback
   const handleSignatureChange = (signatureData: string | null) => {
-    console.log('TemplateWillEditor: Signature changed:', signatureData ? 'Signature captured' : 'Signature cleared');
+    console.log('TemplateWillEditor: handleSignatureChange called with:', signatureData ? 'signature data' : 'null');
+    
+    if (signatureData) {
+      console.log('TemplateWillEditor: Signature data length:', signatureData.length);
+      console.log('TemplateWillEditor: Signature preview:', signatureData.substring(0, 30) + '...');
+    }
+    
     setSignature(signatureData);
+    
+    // Provide user feedback
+    if (signatureData) {
+      toast({
+        title: "Signature Captured",
+        description: "Your signature has been successfully captured and will be included in your will."
+      });
+    } else {
+      toast({
+        title: "Signature Cleared", 
+        description: "Your signature has been removed from the will."
+      });
+    }
   };
-  
-  // Debug signature state
-  useEffect(() => {
-    console.log('TemplateWillEditor: Current signature state:', signature ? 'Has signature' : 'No signature');
-  }, [signature]);
   
   const handleSaveDraft = async () => {
     try {
       setSaving(true);
       
       const formValues = form.getValues();
-      console.log("Saving draft with values:", formValues);
+      console.log("TemplateWillEditor: Saving draft with signature:", signature ? 'Yes' : 'No');
       
       const finalWillContent = generateWillContent(formValues, willContent);
       
       await saveWillProgress({
         template_id: templateId,
         current_step: 'editing',
-        responses: formValues,
+        responses: { ...formValues, signature },
         content: finalWillContent,
         title: `${formValues.fullName}'s Will`,
         completedSections: ['personal_info']
@@ -250,7 +274,7 @@ Date: ${new Date().toLocaleDateString()}
       
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        content: finalWillContent,
+        content: JSON.stringify({ formValues, signature, textContent: finalWillContent }),
         status: 'draft',
         template_type: templateId,
         ai_generated: false,
@@ -278,6 +302,10 @@ Date: ${new Date().toLocaleDateString()}
   
   const handleFinalize = async () => {
     try {
+      console.log('TemplateWillEditor: Starting finalization process...');
+      console.log('TemplateWillEditor: Form valid:', form.formState.isValid);
+      console.log('TemplateWillEditor: Has signature:', !!signature);
+      
       await form.trigger();
       if (!form.formState.isValid) {
         toast({
@@ -302,11 +330,19 @@ Date: ${new Date().toLocaleDateString()}
       const formValues = form.getValues();
       
       const finalWillContent = generateWillContent(formValues, willContent);
-      const contentWithSignature = finalWillContent + `\n\nDigital Signature: ${signature}\nSigned on: ${new Date().toLocaleString()}`;
+      const contentWithSignature = finalWillContent + `\n\nDigitally signed on: ${new Date().toLocaleString()}`;
+      
+      console.log('TemplateWillEditor: Final content includes signature reference:', 
+        contentWithSignature.includes('Digitally signed'));
       
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        content: contentWithSignature,
+        content: JSON.stringify({ 
+          formValues, 
+          signature, 
+          textContent: contentWithSignature,
+          finalizedAt: new Date().toISOString()
+        }),
         status: 'active',
         template_type: templateId,
         ai_generated: false,
@@ -316,6 +352,7 @@ Date: ${new Date().toLocaleDateString()}
       const savedWill = await createWill(willData);
       
       if (savedWill && savedWill.id) {
+        console.log('TemplateWillEditor: Will finalized successfully with ID:', savedWill.id);
         setFinalizedWill(savedWill);
         setIsFinalized(true);
         setShowSuccessModal(true);
@@ -361,7 +398,28 @@ Date: ${new Date().toLocaleDateString()}
               <ExecutorsSection defaultOpen={false} />
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
-              <DigitalSignature defaultOpen={false} onSignatureChange={handleSignatureChange} />
+              
+              {/* Enhanced Digital Signature Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-blue-800">Digital Signature Status</h3>
+                  <div className="text-sm">
+                    {signature ? (
+                      <span className="text-green-600 font-medium">✅ Captured</span>
+                    ) : (
+                      <span className="text-amber-600 font-medium">⚠️ Required</span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-blue-700">
+                  {signature 
+                    ? "Your signature has been captured and will be included in your finalized will."
+                    : "Please complete the signature section below to finalize your will."
+                  }
+                </p>
+              </div>
+              
+              <DigitalSignature defaultOpen={!signature} onSignatureChange={handleSignatureChange} />
             </div>
             
             <div className="lg:col-span-1">
@@ -391,7 +449,7 @@ Date: ${new Date().toLocaleDateString()}
                     <Button 
                       onClick={handleFinalize} 
                       className="w-full"
-                      disabled={saving || isFinalized || isGenerating}
+                      disabled={saving || isFinalized || isGenerating || !signature}
                       type="button"
                     >
                       {isGenerating ? (
@@ -411,9 +469,16 @@ Date: ${new Date().toLocaleDateString()}
                       Free will creation - 24 hours secure access included
                     </p>
                     
-                    {/* Debug signature info */}
-                    <div className="text-xs text-gray-400 border-t pt-2">
-                      Signature Status: {signature ? '✓ Captured' : '✗ Not captured'}
+                    {/* Enhanced signature status display */}
+                    <div className="text-xs border-t pt-2 space-y-1">
+                      <div className={`${signature ? 'text-green-600' : 'text-amber-600'}`}>
+                        Signature: {signature ? '✓ Captured' : '✗ Required for finalization'}
+                      </div>
+                      {signature && (
+                        <div className="text-green-600">
+                          Ready to finalize will
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
