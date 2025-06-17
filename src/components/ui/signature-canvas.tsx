@@ -23,6 +23,12 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const { toast } = useToast();
 
+  // Debug logging
+  useEffect(() => {
+    console.log('SignatureCanvas: defaultValue changed:', defaultValue);
+    console.log('SignatureCanvas: hasSignature:', hasSignature);
+  }, [defaultValue, hasSignature]);
+
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -61,6 +67,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   // Load default value if provided
   useEffect(() => {
     if (defaultValue && signaturePadRef.current && !hasSignature) {
+      console.log('SignatureCanvas: Loading default signature');
       const img = new Image();
       img.onload = () => {
         const canvas = signaturePadRef.current?.getCanvas();
@@ -69,6 +76,8 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
           if (ctx) {
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             setHasSignature(true);
+            setIsSaved(true);
+            console.log('SignatureCanvas: Default signature loaded');
           }
         }
       };
@@ -77,12 +86,14 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   }, [defaultValue, hasSignature]);
 
   const handleBegin = () => {
+    console.log('SignatureCanvas: User started drawing');
     setIsSaved(false);
     setHasSignature(true);
   };
 
   const clearSignature = () => {
     if (signaturePadRef.current) {
+      console.log('SignatureCanvas: Clearing signature');
       signaturePadRef.current.clear();
       setHasSignature(false);
       setIsSaved(false);
@@ -107,6 +118,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
       }
       
       const signatureData = signaturePadRef.current.toDataURL('image/png');
+      console.log('SignatureCanvas: Saving signature, data length:', signatureData.length);
       onSignatureCapture(signatureData);
       setIsSaved(true);
       
@@ -159,6 +171,12 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
           <Check className="h-4 w-4 mr-1" />
           {isSaved ? "Signature Saved" : "Save Signature"}
         </Button>
+      </div>
+      
+      {/* Debug info */}
+      <div className="text-xs text-gray-500 mt-2">
+        Debug: hasSignature={hasSignature.toString()}, isSaved={isSaved.toString()}
+        {defaultValue && <div>Default signature loaded: {defaultValue.substring(0, 50)}...</div>}
       </div>
     </div>
   );

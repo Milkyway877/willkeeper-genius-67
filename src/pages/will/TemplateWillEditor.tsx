@@ -221,8 +221,14 @@ Date: ${new Date().toLocaleDateString()}
   };
   
   const handleSignatureChange = (signatureData: string | null) => {
+    console.log('TemplateWillEditor: Signature changed:', signatureData ? 'Signature captured' : 'Signature cleared');
     setSignature(signatureData);
   };
+  
+  // Debug signature state
+  useEffect(() => {
+    console.log('TemplateWillEditor: Current signature state:', signature ? 'Has signature' : 'No signature');
+  }, [signature]);
   
   const handleSaveDraft = async () => {
     try {
@@ -344,8 +350,6 @@ Date: ${new Date().toLocaleDateString()}
 
   return (
     <div className="container mx-auto mb-16">
-      {/* Remove Subscription Modal - no barriers during creation */}
-      
       <FormProvider {...form}>
         <form>
           <FormWatcher onChange={handleFormChange} />
@@ -406,6 +410,11 @@ Date: ${new Date().toLocaleDateString()}
                     <p className="text-xs text-gray-500 text-center">
                       Free will creation - 24 hours secure access included
                     </p>
+                    
+                    {/* Debug signature info */}
+                    <div className="text-xs text-gray-400 border-t pt-2">
+                      Signature Status: {signature ? '✓ Captured' : '✗ Not captured'}
+                    </div>
                   </div>
                 </Card>
               </div>
