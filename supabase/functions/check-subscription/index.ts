@@ -52,7 +52,8 @@ serve(async (req) => {
         subscription_end: null,
         is_trial: false,
         trial_end: null,
-        trial_days_remaining: 0
+        trial_days_remaining: 0,
+        has_customer: false
       }), { 
         status: 200, 
         headers: corsHeaders 
@@ -81,7 +82,8 @@ serve(async (req) => {
           subscription_end: null,
           is_trial: false,
           trial_end: null,
-          trial_days_remaining: 0
+          trial_days_remaining: 0,
+          has_customer: true
         }), { 
           status: 200, 
           headers: corsHeaders 
@@ -132,7 +134,8 @@ serve(async (req) => {
       subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
       is_trial: isInTrial,
       trial_end: trialEnd?.toISOString() || null,
-      trial_days_remaining: trialDaysRemaining
+      trial_days_remaining: trialDaysRemaining,
+      has_customer: true
     }), { 
       status: 200, 
       headers: corsHeaders 
