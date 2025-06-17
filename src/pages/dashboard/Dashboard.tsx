@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Bug } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardSummary } from '@/services/dashboardService';
+import { WelcomeOnboardingPopup } from '@/components/onboarding/WelcomeOnboardingPopup';
+import { useOnboardingPopup } from '@/hooks/useOnboardingPopup';
 
 export default function Dashboard() {
   const [showDebug, setShowDebug] = useState(false);
@@ -20,6 +22,15 @@ export default function Dashboard() {
     queryFn: getDashboardSummary,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Add onboarding popup hook
+  const { 
+    showOnboarding, 
+    closeOnboarding, 
+    completeOnboarding, 
+    isCompleting,
+    isLoading: isLoadingOnboarding 
+  } = useOnboardingPopup();
   
   // Always show debug tools in development/testing environments
   const isDev = () => {
@@ -105,6 +116,14 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Add Onboarding Popup */}
+      <WelcomeOnboardingPopup 
+        open={showOnboarding} 
+        onClose={closeOnboarding}
+        onComplete={completeOnboarding}
+        isCompleting={isCompleting}
+      />
     </Layout>
   );
 }
