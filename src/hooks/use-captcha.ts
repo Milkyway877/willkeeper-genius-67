@@ -6,17 +6,20 @@ export const useCaptcha = () => {
 
   const handleCaptchaValidation = (isValid: boolean) => {
     setIsCaptchaValid(isValid);
-    return isValid;
   };
 
   const validateCaptcha = (): boolean => {
-    // Return the current captcha validation state
     return isCaptchaValid;
+  };
+
+  const resetCaptcha = () => {
+    setIsCaptchaValid(false);
   };
 
   return {
     isCaptchaValid,
     handleCaptchaValidation,
-    validateCaptcha
+    validateCaptcha,
+    resetCaptcha
   };
 };
