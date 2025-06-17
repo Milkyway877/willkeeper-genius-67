@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Link } from 'react-router-dom';
@@ -106,7 +107,13 @@ export default function Dashboard() {
     queryFn: getDashboardSummary
   });
 
-  const { showOnboarding, closeOnboarding } = useOnboardingPopup();
+  const { 
+    showOnboarding, 
+    closeOnboarding, 
+    completeOnboarding, 
+    isCompleting,
+    isLoading: isLoadingOnboarding 
+  } = useOnboardingPopup();
   
   return (
     <Layout>
@@ -314,7 +321,9 @@ export default function Dashboard() {
       {/* Onboarding Popup */}
       <WelcomeOnboardingPopup 
         open={showOnboarding} 
-        onClose={closeOnboarding} 
+        onClose={closeOnboarding}
+        onComplete={completeOnboarding}
+        isCompl eting={isCompleting}
       />
     </Layout>
   );

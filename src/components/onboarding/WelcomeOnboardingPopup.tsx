@@ -16,7 +16,8 @@ import {
   Key,
   UserCheck,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Loader
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserProfile } from '@/contexts/UserProfileContext';
@@ -86,10 +87,11 @@ const securityTips = [
 interface WelcomeOnboardingPopupProps {
   open: boolean;
   onClose: () => void;
+  onComplete: () => void;
+  isCompleting?: boolean;
 }
 
-export function WelcomeOnboardingPopup({ open, onClose }: WelcomeOnboardingPopupProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+export function WelcomeOnboardingPopup({ open, onClose, onComplete, isCompleting = false }: WelcomeOnboardingPopupProps) {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   
@@ -100,9 +102,8 @@ export function WelcomeOnboardingPopup({ open, onClose }: WelcomeOnboardingPopup
     navigate(path);
   };
 
-  const handleGotIt = () => {
-    localStorage.setItem('willtank_onboarding_completed', 'true');
-    onClose();
+  const handleGotIt = async () => {
+    await onComplete();
   };
 
   return (
@@ -297,10 +298,20 @@ export function WelcomeOnboardingPopup({ open, onClose }: WelcomeOnboardingPopup
                   </div>
                   <Button
                     onClick={handleGotIt}
+                    disabled={isCompleting}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2 font-semibold"
                   >
-                    Got It, Let's Start!
-                    <Sparkles className="h-4 w-4 ml-2" />
+                    {isCompleting ? (
+                      <>
+                        <Loader className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        Got It, Let's Start!
+                        <Sparkles className="h-4 w-4 ml-2" />
+                      </>
+                    )}
                   </Button>
                 </div>
               </motion.div>
