@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
 
@@ -237,12 +236,12 @@ async function sendWelcomeNotification(contact) {
     `;
   }
 
-  // Add declining role section
+  // Add declining role section - enhanced for all contact types
   const decliningSection = `
     <div style="background-color: #fef3c7; border: 2px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0;">
       <h3 style="color: #92400e; margin-top: 0;">Don't Want This Role?</h3>
       <p style="color: #92400e; margin-bottom: 12px;">
-        If you do not wish to serve as ${contact.contactType.replace('_', ' ')} for ${userFullName}, please contact them directly at:
+        If you do not wish to serve as ${contact.contactType.replace('_', ' ')} for ${userFullName}, please contact them directly to request removal:
       </p>
       <div style="background-color: #fff; border: 1px solid #f59e0b; padding: 12px; border-radius: 4px;">
         <p style="color: #92400e; margin: 0; font-weight: bold;">
@@ -250,14 +249,14 @@ async function sendWelcomeNotification(contact) {
         </p>
       </div>
       <p style="color: #92400e; margin-top: 12px; margin-bottom: 0; font-size: 14px;">
-        ${userFullName} can then manually remove you from their will or contact list. You are not required to accept this role.
+        <strong>Important:</strong> ${userFullName} will need to manually remove you from their will or contact list. You are not required to accept this role, and declining will not affect your relationship with ${userFullName}.
       </p>
     </div>
   `;
   
   const emailContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #4a6cf7;">Important: You've Been Added to ${userFullName}'s WillTank Account</h1>
+      <h1 style="color: #4a6cf7;">You've Been Added to ${userFullName}'s Digital Legacy Plan</h1>
       <p>Dear ${contact.name},</p>
       <p>${roleDescription}</p>
       

@@ -151,7 +151,7 @@ export const createExecutor = async (executor: Omit<Executor, 'id' | 'user_id' |
     const newExecutor = {
       ...executor,
       user_id: session.user.id,
-      invitation_status: 'notified'
+      invitation_status: executor.email ? 'notified' : 'not_sent'
     };
     
     const { data, error } = await supabase
@@ -218,7 +218,7 @@ export const createBeneficiary = async (beneficiary: Omit<Beneficiary, 'id' | 'u
     const newBeneficiary = {
       ...beneficiary,
       user_id: session.user.id,
-      invitation_status: 'notified'
+      invitation_status: beneficiary.email ? 'notified' : 'not_sent'
     };
     
     const { data, error } = await supabase

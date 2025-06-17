@@ -7,7 +7,8 @@ import { TrustedContacts } from '@/components/death-verification/TrustedContacts
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History, Shield, Info } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { User, Calendar, Clock, Check, Calendar as CalendarIcon, History, Shield, Info, Mail, RefreshCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,7 @@ import {
   DeathVerificationCheckin
 } from '@/services/deathVerificationService';
 import { Executor, Beneficiary, getExecutors, getBeneficiaries } from '@/services/executorService';
+import { sendContactInvitation } from '@/services/contactsService';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'react-router-dom';
 
@@ -34,6 +36,7 @@ export default function CheckIns() {
   const [executors, setExecutors] = useState<Executor[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sending, setSending] = useState<Record<string, boolean>>({});
   
   // Get the initial tab from location state or default to 'settings'
   const initialTab = location.state?.activeTab || 'settings';
@@ -107,6 +110,50 @@ export default function CheckIns() {
     setRefreshKey(prev => prev + 1);
   };
 
+  const handleSendNotification = async (id: string, type: 'executor' | 'beneficiary', name: string, email: string, isResend = false) => {
+    try {
+      setSending(prev => ({ ...prev, [`${type}-${id}`]: true }));
+      
+      const success = await sendContactInvitation({
+        contactId: id,
+        contactType: type,
+        name,
+        email,
+        userId: '',
+      });
+      
+      if (success) {
+        toast({
+          title: isResend ? "Notification Resent" : "Notification Sent",
+          description: `${name} has been notified about their ${type} role.`,
+        });
+        await fetchData();
+      } else {
+        throw new Error("Failed to send notification");
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send notification. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSending(prev => ({ ...prev, [`${type}-${id}`]: false }));
+    }
+  };
+
+  const getStatusBadge = (invitation_status?: string) => {
+    if (!invitation_status || invitation_status === 'not_sent') {
+      return <Badge variant="outline" className="bg-gray-100">Not Notified</Badge>;
+    } else if (invitation_status === 'sent' || invitation_status === 'notified') {
+      return <Badge variant="outline" className="bg-green-100 text-green-800">Notified</Badge>;
+    } else if (invitation_status === 'failed') {
+      return <Badge variant="outline" className="bg-red-100 text-red-800">Failed</Badge>;
+    }
+    return <Badge variant="outline">{invitation_status}</Badge>;
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -174,7 +221,7 @@ export default function CheckIns() {
                     Executors
                   </CardTitle>
                   <CardDescription>
-                    Executors will be notified if you miss check-ins and can help verify your status
+                    Executors will be notified of their role and can help with will execution when the time comes
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -195,21 +242,55 @@ export default function CheckIns() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>Notification Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {executors.map(executor => (
                           <TableRow key={executor.id}>
                             <TableCell className="font-medium">{executor.name}</TableCell>
-                            <TableCell>{executor.email}</TableCell>
+                            <TableCell>{executor.email || <span className="text-gray-400">Not set</span>}</TableCell>
                             <TableCell>
-                              {executor.isVerified ? (
-                                <span className="flex items-center text-green-600">
-                                  <Check className="h-4 w-4 mr-1" /> Verified
-                                </span>
+                              {getStatusBadge(executor.invitation_status)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {executor.email ? (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  disabled={sending[`executor-${executor.id}`]}
+                                  onClick={() => handleSendNotification(
+                                    executor.id, 
+                                    'executor', 
+                                    executor.name, 
+                                    executor.email!,
+                                    executor.invitation_status === 'sent' || executor.invitation_status === 'notified'
+                                  )}
+                                >
+                                  {sending[`executor-${executor.id}`] ? (
+                                    <>
+                                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                                      Sending...
+                                    </>
+                                  ) : (
+                                    <>
+                                      {(executor.invitation_status === 'sent' || executor.invitation_status === 'notified') ? (
+                                        <>
+                                          <RefreshCw className="mr-2 h-4 w-4" />
+                                          Resend Notification
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Mail className="mr-2 h-4 w-4" />
+                                          Send Notification
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                </Button>
                               ) : (
-                                <span className="text-amber-600">Pending</span>
+                                <span className="text-gray-400 text-sm">No email</span>
                               )}
                             </TableCell>
                           </TableRow>
@@ -228,7 +309,7 @@ export default function CheckIns() {
                     Beneficiaries
                   </CardTitle>
                   <CardDescription>
-                    Beneficiaries can help verify your status if you miss check-ins
+                    Beneficiaries will be notified of their role and can help verify your status if you miss check-ins
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -249,21 +330,55 @@ export default function CheckIns() {
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>Notification Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {beneficiaries.map(beneficiary => (
                           <TableRow key={beneficiary.id}>
                             <TableCell className="font-medium">{beneficiary.name}</TableCell>
-                            <TableCell>{beneficiary.email}</TableCell>
+                            <TableCell>{beneficiary.email || <span className="text-gray-400">Not set</span>}</TableCell>
                             <TableCell>
-                              {beneficiary.isVerified ? (
-                                <span className="flex items-center text-green-600">
-                                  <Check className="h-4 w-4 mr-1" /> Verified
-                                </span>
+                              {getStatusBadge(beneficiary.invitation_status)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {beneficiary.email ? (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  disabled={sending[`beneficiary-${beneficiary.id}`]}
+                                  onClick={() => handleSendNotification(
+                                    beneficiary.id, 
+                                    'beneficiary', 
+                                    beneficiary.name, 
+                                    beneficiary.email!,
+                                    beneficiary.invitation_status === 'sent' || beneficiary.invitation_status === 'notified'
+                                  )}
+                                >
+                                  {sending[`beneficiary-${beneficiary.id}`] ? (
+                                    <>
+                                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                                      Sending...
+                                    </>
+                                  ) : (
+                                    <>
+                                      {(beneficiary.invitation_status === 'sent' || beneficiary.invitation_status === 'notified') ? (
+                                        <>
+                                          <RefreshCw className="mr-2 h-4 w-4" />
+                                          Resend Notification
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Mail className="mr-2 h-4 w-4" />
+                                          Send Notification
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                </Button>
                               ) : (
-                                <span className="text-amber-600">Pending</span>
+                                <span className="text-gray-400 text-sm">No email</span>
                               )}
                             </TableCell>
                           </TableRow>
@@ -273,6 +388,20 @@ export default function CheckIns() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Important Notice */}
+              <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
+                <h3 className="font-medium mb-2 flex items-center text-blue-800">
+                  <Info className="mr-2 h-4 w-4" />
+                  Important Notice
+                </h3>
+                <p className="text-sm text-blue-700 mb-2">
+                  All contacts listed above will be automatically notified of their roles. They don't need to confirm or accept anything through the system.
+                </p>
+                <p className="text-sm text-blue-700">
+                  If any contact wishes to decline their role, they should contact you directly and you can manually remove them from your will.
+                </p>
+              </div>
             </div>
           </TabsContent>
           
