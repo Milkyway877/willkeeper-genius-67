@@ -34,6 +34,52 @@ export interface ContactVerification {
   response?: string;
 }
 
+// Enhanced user name fetching function
+const getUserFullName = async (userId: string): Promise<string> => {
+  try {
+    // First try to get from auth.users metadata
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData?.user?.id === userId) {
+      const metadata = authData.user.user_metadata;
+      
+      // Try full_name from metadata first
+      if (metadata?.full_name) {
+        return metadata.full_name;
+      }
+      
+      // Try first_name + last_name from metadata
+      if (metadata?.first_name || metadata?.last_name) {
+        return `${metadata.first_name || ''} ${metadata.last_name || ''}`.trim();
+      }
+      
+      // Use email as fallback
+      if (authData.user.email) {
+        return authData.user.email.split('@')[0];
+      }
+    }
+    
+    // Fallback to user_profiles table
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('first_name, last_name, full_name')
+      .eq('id', userId)
+      .single();
+
+    if (userProfile?.full_name) {
+      return userProfile.full_name;
+    } else if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      return userProfile.first_name;
+    }
+    
+    return 'WillTank User';
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+    return 'WillTank User';
+  }
+};
+
 // Get list of trusted contacts for current user
 export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
   try {
@@ -152,26 +198,13 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       throw new Error('User not authenticated');
     }
     
+    // Get the user's full name with enhanced fetching
+    const userFullName = await getUserFullName(session.user.id);
+    
     // For trusted contacts, redirect to the unified auto-contact-notifier system
     if (contact.contactType === 'trusted') {
       console.log('Redirecting trusted contact invitation to auto-contact-notifier system');
-      
-      // Get user profile for proper name handling
-      const { data: userProfile } = await supabase
-        .from('user_profiles')
-        .select('first_name, last_name, full_name, email')
-        .eq('id', session.user.id)
-        .single();
-
-      // Build userFullName with better fallback logic
-      let userFullName = contact.userFullName || 'A WillTank user';
-      if (userProfile?.full_name) {
-        userFullName = userProfile.full_name;
-      } else if (userProfile?.first_name && userProfile?.last_name) {
-        userFullName = `${userProfile.first_name} ${userProfile.last_name}`;
-      } else if (userProfile?.first_name) {
-        userFullName = userProfile.first_name;
-      }
+      console.log('Using enhanced user name:', userFullName);
 
       try {
         const { data, error: fnError } = await supabase.functions.invoke('auto-contact-notifier', {
@@ -184,7 +217,7 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
               email: contact.email,
               userId: session.user.id,
               userFullName: userFullName,
-              userEmail: userProfile?.email || session.user.email || ''
+              userEmail: session.user.email || ''
             }
           }
         });
@@ -224,7 +257,12 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': SUPABASE_PUBLISHABLE_KEY || ''
       },
-      body: JSON.stringify({ contact })
+      body: JSON.stringify({ 
+        contact: {
+          ...contact,
+          userFullName: userFullName
+        }
+      })
     });
     
     if (!response.ok) {

@@ -40,9 +40,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
   const [prevAuthState, setPrevAuthState] = useState<User | null>(null);
   const isRefreshing = useRef(false);
 
-  // Derived values with proper fallbacks
+  // Enhanced derived values with proper metadata fallbacks
   const displayName = profile?.full_name || 
                      user?.user_metadata?.full_name || 
+                     (user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                       ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
+                       : user?.user_metadata?.first_name) ||
                      user?.email?.split('@')[0] || 
                      "User";
   
@@ -65,14 +68,24 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         setProfile(userProfile);
         setInitials(getInitials(userProfile.full_name));
       } else {
-        console.warn("refreshProfile: No profile found, using session fallbacks");
-        // Use user data as fallback
-        setInitials(getInitials(user?.user_metadata?.full_name || user?.email));
+        console.warn("refreshProfile: No profile found, using enhanced session fallbacks");
+        // Use enhanced user metadata as fallback
+        const fallbackName = user?.user_metadata?.full_name || 
+                            (user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                              ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
+                              : user?.user_metadata?.first_name) ||
+                            user?.email;
+        setInitials(getInitials(fallbackName));
       }
     } catch (error) {
       console.error("refreshProfile: Error refreshing profile:", error);
-      // Use user data as fallback on error
-      setInitials(getInitials(user?.user_metadata?.full_name || user?.email));
+      // Use enhanced user metadata as fallback on error
+      const fallbackName = user?.user_metadata?.full_name || 
+                          (user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                            ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
+                            : user?.user_metadata?.first_name) ||
+                          user?.email;
+      setInitials(getInitials(fallbackName));
       toast({
         title: "Profile Error",
         description: "Could not refresh your profile information.",
@@ -177,8 +190,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
           setUser(session.user);
           setPrevAuthState(session.user);
           
-          // Set immediate fallback values from session
-          const fallbackName = session.user.user_metadata?.full_name || session.user.email;
+          // Set enhanced immediate fallback values from session metadata
+          const fallbackName = session.user.user_metadata?.full_name || 
+                              (session.user.user_metadata?.first_name && session.user.user_metadata?.last_name 
+                                ? `${session.user.user_metadata.first_name} ${session.user.user_metadata.last_name}` 
+                                : session.user.user_metadata?.first_name) ||
+                              session.user.email;
           setInitials(getInitials(fallbackName));
           
           // Load the full profile (only once)
@@ -210,8 +227,12 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
           setUser(session.user);
           setPrevAuthState(session.user);
           
-          // Set immediate fallback values
-          const fallbackName = session.user.user_metadata?.full_name || session.user.email;
+          // Set enhanced immediate fallback values
+          const fallbackName = session.user.user_metadata?.full_name || 
+                              (session.user.user_metadata?.first_name && session.user.user_metadata?.last_name 
+                                ? `${session.user.user_metadata.first_name} ${session.user.user_metadata.last_name}` 
+                                : session.user.user_metadata?.first_name) ||
+                              session.user.email;
           setInitials(getInitials(fallbackName));
           
           await logUserActivity('login', { 
@@ -236,7 +257,11 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
         } else if (event === 'USER_UPDATED' && session?.user) {
           console.log("User updated:", session.user.id);
           setUser(session.user);
-          const fallbackName = session.user.user_metadata?.full_name || session.user.email;
+          const fallbackName = session.user.user_metadata?.full_name || 
+                              (session.user.user_metadata?.first_name && session.user.user_metadata?.last_name 
+                                ? `${session.user.user_metadata.first_name} ${session.user.user_metadata.last_name}` 
+                                : session.user.user_metadata?.first_name) ||
+                              session.user.email;
           setInitials(getInitials(fallbackName));
           await refreshProfile();
         }
@@ -257,6 +282,10 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({
       setInitials(getInitials(profile.full_name));
     } else if (user?.user_metadata?.full_name) {
       setInitials(getInitials(user.user_metadata.full_name));
+    } else if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
+      setInitials(getInitials(`${user.user_metadata.first_name} ${user.user_metadata.last_name}`));
+    } else if (user?.user_metadata?.first_name) {
+      setInitials(getInitials(user.user_metadata.first_name));
     } else if (user?.email) {
       setInitials(user.email.substring(0, 1).toUpperCase());
     } else {

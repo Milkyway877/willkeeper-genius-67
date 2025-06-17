@@ -42,8 +42,11 @@ export const useUserAuth = (): UserAuth => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Derive display values directly from user session
+  // Enhanced display values with proper metadata fetching
   const displayName = user?.user_metadata?.full_name || 
+                     (user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                       ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
+                       : user?.user_metadata?.first_name) ||
                      user?.email?.split('@')[0] || 
                      'User';
   

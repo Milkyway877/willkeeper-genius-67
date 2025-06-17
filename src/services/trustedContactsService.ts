@@ -17,6 +17,52 @@ export interface TrustedContact {
   updated_at?: string;
 }
 
+// Enhanced user name fetching function
+const getUserFullName = async (userId: string): Promise<string> => {
+  try {
+    // First try to get from auth.users metadata
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData?.user?.id === userId) {
+      const metadata = authData.user.user_metadata;
+      
+      // Try full_name from metadata first
+      if (metadata?.full_name) {
+        return metadata.full_name;
+      }
+      
+      // Try first_name + last_name from metadata
+      if (metadata?.first_name || metadata?.last_name) {
+        return `${metadata.first_name || ''} ${metadata.last_name || ''}`.trim();
+      }
+      
+      // Use email as fallback
+      if (authData.user.email) {
+        return authData.user.email.split('@')[0];
+      }
+    }
+    
+    // Fallback to user_profiles table
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('first_name, last_name, full_name')
+      .eq('id', userId)
+      .single();
+
+    if (userProfile?.full_name) {
+      return userProfile.full_name;
+    } else if (userProfile?.first_name && userProfile?.last_name) {
+      return `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      return userProfile.first_name;
+    }
+    
+    return 'WillTank User';
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+    return 'WillTank User';
+  }
+};
+
 export const getTrustedContacts = async (): Promise<TrustedContact[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -60,28 +106,9 @@ export const createTrustedContact = async (contact: {
       return null;
     }
 
-    // Get user profile for welcome notification - with better data fetching
-    const { data: userProfile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('first_name, last_name, full_name, email')
-      .eq('id', session.user.id)
-      .single();
-
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError);
-    }
-
-    // Build userFullName with better fallback logic
-    let userFullName = 'A WillTank user';
-    if (userProfile?.full_name) {
-      userFullName = userProfile.full_name;
-    } else if (userProfile?.first_name && userProfile?.last_name) {
-      userFullName = `${userProfile.first_name} ${userProfile.last_name}`;
-    } else if (userProfile?.first_name) {
-      userFullName = userProfile.first_name;
-    }
-
-    console.log('Creating trusted contact with user full name:', userFullName);
+    // Get enhanced user full name
+    const userFullName = await getUserFullName(session.user.id);
+    console.log('Creating trusted contact with enhanced user full name:', userFullName);
 
     const newContact: any = {
       name: contact.name,
@@ -110,9 +137,9 @@ export const createTrustedContact = async (contact: {
     if (data) {
       try {
         console.log('Sending welcome notification via auto-contact-notifier...');
-        console.log('User data being sent:', {
+        console.log('Enhanced user data being sent:', {
           userFullName,
-          userEmail: userProfile?.email || session.user.email
+          userEmail: session.user.email
         });
 
         const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('auto-contact-notifier', {
@@ -125,7 +152,7 @@ export const createTrustedContact = async (contact: {
               email: contact.email,
               userId: session.user.id,
               userFullName: userFullName,
-              userEmail: userProfile?.email || session.user.email || ''
+              userEmail: session.user.email || ''
             }
           }
         });
@@ -224,28 +251,9 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       return false;
     }
 
-    // Get user profile for name - with better data fetching
-    const { data: userProfile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('first_name, last_name, full_name, email')
-      .eq('id', session.user.id)
-      .single();
-
-    if (profileError) {
-      console.error('Error fetching user profile:', profileError);
-    }
-
-    // Build userFullName with better fallback logic
-    let userFullName = 'A WillTank user';
-    if (userProfile?.full_name) {
-      userFullName = userProfile.full_name;
-    } else if (userProfile?.first_name && userProfile?.last_name) {
-      userFullName = `${userProfile.first_name} ${userProfile.last_name}`;
-    } else if (userProfile?.first_name) {
-      userFullName = userProfile.first_name;
-    }
-
-    console.log('Sending verification with user full name:', userFullName);
+    // Get enhanced user full name
+    const userFullName = await getUserFullName(session.user.id);
+    console.log('Sending verification with enhanced user full name:', userFullName);
 
     // Update the contact status first
     try {
@@ -263,7 +271,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
 
     // Use ONLY the auto-contact-notifier function
     try {
-      console.log('Sending verification via auto-contact-notifier');
+      console.log('Sending verification via auto-contact-notifier with enhanced name');
 
       const { data, error: fnError } = await supabase.functions.invoke('auto-contact-notifier', {
         body: {
@@ -275,7 +283,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
             email: contact.email,
             userId: session.user.id,
             userFullName: userFullName,
-            userEmail: userProfile?.email || session.user.email || ''
+            userEmail: session.user.email || ''
           }
         }
       });
@@ -296,7 +304,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         .update({ invitation_status: 'sent' })
         .eq('id', contactId);
 
-      console.log('Verification sent successfully via auto-contact-notifier');
+      console.log('Verification sent successfully via auto-contact-notifier with enhanced name');
       return true;
     } catch (invokeError) {
       console.error('Error with auto-contact-notifier:', invokeError);
