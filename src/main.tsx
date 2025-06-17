@@ -11,15 +11,11 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 // In preview/development mode, we might not have the key - handle gracefully
 const isPreviewMode = window.location.hostname.includes('lovableproject.com') || 
-                     window.location.hostname === 'localhost' ||
-                     !PUBLISHABLE_KEY;
+                     window.location.hostname === 'localhost';
 
 if (!PUBLISHABLE_KEY && !isPreviewMode) {
   throw new Error("Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your environment variables.");
 }
-
-// Use a placeholder key for preview mode
-const clerkKey = PUBLISHABLE_KEY || 'pk_test_placeholder_for_preview_mode';
 
 console.log('Clerk setup:', { 
   hasKey: !!PUBLISHABLE_KEY, 
@@ -27,10 +23,22 @@ console.log('Clerk setup:', {
   hostname: window.location.hostname 
 });
 
+// Conditional wrapper for Clerk
+const AppWrapper = () => {
+  if (PUBLISHABLE_KEY) {
+    return (
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+        <App />
+      </ClerkProvider>
+    );
+  }
+  
+  // In preview mode without a key, render app without Clerk
+  return <App />;
+};
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={clerkKey}>
-      <App />
-    </ClerkProvider>
+    <AppWrapper />
   </React.StrictMode>,
 );
