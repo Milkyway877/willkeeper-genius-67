@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
-import { useClerk } from '@clerk/clerk-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,21 +15,20 @@ import { PrivacySettings } from './components/PrivacySettings';
 export default function Settings() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signOut } = useClerk();
   const [activeTab, setActiveTab] = useState('account');
   
-  // Handle logout with Clerk
+  // Handle logout
   const handleLogout = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
       
       toast({
         title: "Logged Out",
         description: "You have been logged out successfully."
       });
       
-      // Redirect to home page
-      navigate('/');
+      // Redirect to login page
+      window.location.href = '/auth/signin';
     } catch (error) {
       console.error("Error logging out:", error);
       toast({

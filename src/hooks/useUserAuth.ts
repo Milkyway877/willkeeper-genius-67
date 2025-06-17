@@ -1,8 +1,10 @@
 
-import { useUser } from '@clerk/clerk-react';
+import { useState, useEffect } from 'react';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserAuth {
-  user: any;
+  user: User | null;
   loading: boolean;
   displayName: string;
   displayEmail: string;
@@ -10,15 +12,42 @@ interface UserAuth {
 }
 
 export const useUserAuth = (): UserAuth => {
-  const { user, isLoaded } = useUser();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Derive display values from Clerk user
-  const displayName = user?.fullName || 
-                     `${user?.firstName || ''} ${user?.lastName || ''}`.trim() ||
-                     user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 
+  useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user || null);
+      } catch (error) {
+        console.error('Error getting session:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event);
+        setUser(session?.user || null);
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Derive display values directly from user session
+  const displayName = user?.user_metadata?.full_name || 
+                     user?.email?.split('@')[0] || 
                      'User';
   
-  const displayEmail = user?.emailAddresses?.[0]?.emailAddress || '';
+  const displayEmail = user?.email || '';
   
   const getInitials = (name: string): string => {
     if (!name) return 'U';
@@ -32,7 +61,7 @@ export const useUserAuth = (): UserAuth => {
 
   return {
     user,
-    loading: !isLoaded,
+    loading,
     displayName,
     displayEmail,
     initials

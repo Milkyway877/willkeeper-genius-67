@@ -153,11 +153,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             />
           )}
           
-          {/* Only show Navbar for authenticated layouts */}
-          {showAuthenticatedLayout && (
-            <Navbar onMenuToggle={toggleSidebar} />
-          )}
-          
+          <Navbar isAuthenticated={showAuthenticatedLayout} onMenuToggle={toggleSidebar} />
           {isMobile && showAuthenticatedLayout && showMobileNotification && (
             <MobileNotification onDismiss={handleDismissMobileNotification} />
           )}

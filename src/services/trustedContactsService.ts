@@ -62,26 +62,16 @@ export const createTrustedContact = async (contact: {
       return null;
     }
 
-    // ISSUE FOUND: This query is missing full_name field
+    // Get user profile for welcome notification
     const { data: userProfile } = await supabase
       .from('user_profiles')
       .select('first_name, last_name, full_name, email')
       .eq('id', session.user.id)
       .single();
 
-    // ISSUE FOUND: The fallback logic is inadequate
     const userFullName = userProfile?.full_name ||
       (userProfile?.first_name && userProfile?.last_name ?
-        `${userProfile.first_name} ${userProfile.last_name}` : 
-        session.user.user_metadata?.full_name ||
-        session.user.email?.split('@')[0] ||
-        'A WillTank user');
-
-    console.log('User profile data for trusted contact creation:', {
-      userProfile,
-      userFullName,
-      sessionUserMetadata: session.user.user_metadata
-    });
+        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
 
     const newContact: any = {
       name: contact.name,
@@ -106,7 +96,7 @@ export const createTrustedContact = async (contact: {
       return null;
     }
 
-    // Send welcome notification with proper user data
+    // Automatically send welcome notification as before
     if (data && userProfile) {
       try {
         await sendContactWelcomeNotification({
@@ -115,9 +105,9 @@ export const createTrustedContact = async (contact: {
           contactEmail: contact.email,
           contactType: 'trusted_contact',
           userFullName,
-          userEmail: userProfile.email || session.user.email || ''
+          userEmail: userProfile.email
         });
-        console.log('Welcome notification sent to trusted contact with user name:', userFullName);
+        console.log('Welcome notification sent to trusted contact automatically');
       } catch (welcomeError) {
         console.error('Error sending automatic welcome notification:', welcomeError);
       }
@@ -192,27 +182,16 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       return false;
     }
 
-    // ISSUE FOUND: This query is also missing proper fallback handling
+    // Get user profile for name
     const { data: userProfile } = await supabase
       .from('user_profiles')
       .select('first_name, last_name, full_name, email')
       .eq('id', session.user.id)
       .single();
 
-    // IMPROVED: Better fallback logic with more detailed logging
     const userFullName = userProfile?.full_name ||
       (userProfile?.first_name && userProfile?.last_name ?
-        `${userProfile.first_name} ${userProfile.last_name}` : 
-        session.user.user_metadata?.full_name ||
-        session.user.email?.split('@')[0] ||
-        'A WillTank user');
-
-    console.log('User data for verification request:', {
-      userProfile,
-      userFullName,
-      sessionUserMetadata: session.user.user_metadata,
-      sessionEmail: session.user.email
-    });
+        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
 
     // Update the contact status first
     try {
@@ -228,9 +207,9 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       // Continue anyway
     }
 
-    // Use the auto-contact-notifier function with improved data
+    // Use the auto-contact-notifier function
     try {
-      console.log('Sending verification via auto-contact-notifier with user name:', userFullName);
+      console.log('Sending verification via auto-contact-notifier');
 
       const { data, error: fnError } = await supabase.functions.invoke('auto-contact-notifier', {
         body: {
@@ -242,11 +221,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
             email: contact.email,
             userId: session.user.id,
             userFullName,
-            userEmail: userProfile?.email || session.user.email || '',
-            additionalInfo: {
-              relation: contact.relation || 'Trusted Contact',
-              phone: contact.phone
-            }
+            userEmail: userProfile?.email || session.user.email || ''
           }
         }
       });

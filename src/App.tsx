@@ -1,37 +1,15 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Outlet } from 'react-router-dom';
-import { isInLovablePreview } from '@/utils/iframeDetection';
-import { useClerk } from '@clerk/clerk-react';
 
 function App() {
-  const inPreview = isInLovablePreview();
-  const clerk = useClerk();
-
-  useEffect(() => {
-    // Prevent automatic redirects in iframe preview context
-    if (inPreview && clerk) {
-      // Override Clerk's navigate function to prevent redirects in iframe
-      const originalNavigate = clerk.navigate;
-      clerk.navigate = (to: string) => {
-        console.log('Navigation prevented in preview mode:', to);
-        // Don't navigate in iframe preview
-        return Promise.resolve();
-      };
-
-      return () => {
-        // Restore original navigate function
-        clerk.navigate = originalNavigate;
-      };
-    }
-  }, [clerk, inPreview]);
-
   return (
-    <>
+    <QueryClientProvider client={new QueryClient()}>
       <Outlet />
       <Toaster />
-    </>
+    </QueryClientProvider>
   );
 }
 
