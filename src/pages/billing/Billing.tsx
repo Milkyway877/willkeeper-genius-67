@@ -396,48 +396,47 @@ export default function Billing() {
   };
 
   const getManagementButtonContent = () => {
-    if (customerPortalState === 'checking') {
-      return (
-        <>
-          <Loader className="h-4 w-4 animate-spin" />
-          Checking...
-        </>
-      );
+    switch (customerPortalState) {
+      case 'checking':
+        return (
+          <>
+            <Loader className="h-4 w-4 animate-spin" />
+            Checking...
+          </>
+        );
+      case 'opening':
+        return (
+          <>
+            <Loader className="h-4 w-4 animate-spin" />
+            Opening...
+          </>
+        );
+      default:
+        if (subscription) {
+          return (
+            <>
+              <Settings className="h-4 w-4" />
+              Manage Subscription
+            </>
+          );
+        }
+        
+        if (hasStripeCustomer) {
+          return (
+            <>
+              <CreditCard className="h-4 w-4" />
+              Manage Account
+            </>
+          );
+        }
+        
+        return (
+          <>
+            <Settings className="h-4 w-4" />
+            Setup Account Management
+          </>
+        );
     }
-    
-    if (customerPortalState === 'opening') {
-      return (
-        <>
-          <Loader className="h-4 w-4 animate-spin" />
-          Opening...
-        </>
-      );
-    }
-    
-    if (subscription) {
-      return (
-        <>
-          <Settings className="h-4 w-4" />
-          Manage Subscription
-        </>
-      );
-    }
-    
-    if (hasStripeCustomer) {
-      return (
-        <>
-          <CreditCard className="h-4 w-4" />
-          Manage Account
-        </>
-      );
-    }
-    
-    return (
-      <>
-        <Settings className="h-4 w-4" />
-        Setup Account Management
-      </>
-    );
   };
 
   const getManagementButtonAction = () => {
