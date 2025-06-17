@@ -13,7 +13,6 @@ export interface UserProfile {
   email: string | null;
   email_verified: boolean | null;
   gender?: 'male' | 'female' | null;
-  onboarding_completed?: boolean | null;
 }
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
@@ -75,7 +74,6 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       email: session.user.email,
       email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
-      onboarding_completed: data.onboarding_completed || false,
     };
     
     console.log('getUserProfile: Successfully fetched profile:', profile);
@@ -97,7 +95,6 @@ export const createUserProfile = async (user: User): Promise<void> => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       activation_complete: false,
-      onboarding_completed: false,
     };
     
     const { error } = await supabase
@@ -165,7 +162,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     if (updates.full_name !== undefined) dbUpdates.full_name = updates.full_name;
     if (updates.avatar_url !== undefined) dbUpdates.avatar_url = updates.avatar_url;
     if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
-    if (updates.onboarding_completed !== undefined) dbUpdates.onboarding_completed = updates.onboarding_completed;
     if (updates.is_activated !== undefined) dbUpdates.activation_complete = updates.is_activated;
     
     // Always update the timestamp
@@ -205,7 +201,6 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       email: session.user.email,
       email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
-      onboarding_completed: data.onboarding_completed || false,
     };
     
     console.log('updateUserProfile: Successfully updated profile:', updatedProfile);

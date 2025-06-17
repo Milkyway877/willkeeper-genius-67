@@ -149,11 +149,11 @@ export function EmailVerificationForm() {
 
       toast({
         title: "Email verified successfully!",
-        description: "Your account has been activated.",
+        description: "Welcome to WillTank! Your account is now active.",
       });
 
-      // Redirect to onboarding
-      navigate('/onboarding', { replace: true });
+      // Redirect directly to dashboard
+      navigate('/dashboard', { replace: true });
       
     } catch (error: any) {
       console.error('Error verifying code:', error);

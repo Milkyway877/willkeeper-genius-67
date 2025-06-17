@@ -87,19 +87,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             navigate(`/auth/verification?email=${encodeURIComponent(profile.email || '')}&type=signup`, { replace: true });
             return;
           }
-
-          // Check if account is activated - this should be set after email verification
-          if (!profile.is_activated && profile.email_verified && !location.pathname.includes('/onboarding')) {
-            // If email is verified but account not activated, redirect to onboarding
-            navigate('/onboarding', { replace: true });
-            return;
-          }
-
-          // Check if onboarding is completed for activated users
-          if (profile.is_activated && !profile.onboarding_completed && !location.pathname.includes('/onboarding')) {
-            navigate('/onboarding', { replace: true });
-            return;
-          }
         }
       };
       checkAuthStatus();
@@ -127,23 +114,12 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/templates') && 
     !location.pathname.includes('/tank') && 
     !location.pathname.includes('/settings') &&
-    !location.pathname.includes('/search') &&
-    !location.pathname.includes('/onboarding');
+    !location.pathname.includes('/search');
   const isLandingPage = location.pathname === '/';
-  const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage && !location.pathname.includes('/onboarding');
+  const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage;
 
   if (eligibilityLoading || subscriptionLoading) {
     return <WillTankLoader />;
-  }
-
-  const showOnboardingLayout = location.pathname.includes('/onboarding');
-  
-  if (showOnboardingLayout) {
-    return (
-      <div className="w-full">
-        {children}
-      </div>
-    );
   }
 
   return (
