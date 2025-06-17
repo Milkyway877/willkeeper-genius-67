@@ -23,11 +23,14 @@ console.log('Clerk setup:', {
   keySource: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ? 'environment' : 'hardcoded'
 });
 
-// Always render with ClerkProvider since we now have a key
-ReactDOM.createRoot(document.getElementById("root")!).render(
+// Create root element
+const root = ReactDOM.createRoot(document.getElementById("root")!);
+
+// Render app
+root.render(
   <React.StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <Router />
     </ClerkProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
