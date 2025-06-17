@@ -497,7 +497,6 @@ export default function Billing() {
                   </div>
                 </div>
                 
-                {/* ... keep existing code (subscription details grid) */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 mb-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
