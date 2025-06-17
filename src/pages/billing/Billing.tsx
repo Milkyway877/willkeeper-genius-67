@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, Shield, Zap, Building, Star, Users, Loader } from 'lucide-react';
+import { Calendar, CheckCircle, Shield, Zap, Building, Star, Users, Loader, Settings, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { toast } from 'sonner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { BillingPeriod, PlanDetails, SubscriptionPlan } from '../tank/types';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +15,7 @@ import { createCheckoutSession } from '@/api/createCheckoutSession';
 export default function Billing() {
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [isManaging, setIsManaging] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
@@ -268,6 +270,7 @@ export default function Billing() {
 
   const handleManageSubscription = async () => {
     try {
+      setIsManaging(true);
       const { data } = await supabase.functions.invoke('customer-portal', {
         body: {}
       });
@@ -278,6 +281,8 @@ export default function Billing() {
     } catch (error) {
       console.error('Customer portal error:', error);
       toast.error('Error accessing subscription management');
+    } finally {
+      setIsManaging(false);
     }
   };
 
@@ -325,7 +330,7 @@ export default function Billing() {
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 mb-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-500">Status</p>
@@ -351,6 +356,73 @@ export default function Billing() {
                       <span className="text-sm">
                         Your subscription is active
                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subscription Management Section */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="font-medium text-gray-900 mb-4">Subscription Management</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Manage your subscription, update payment methods, change plans, or cancel your subscription through our secure customer portal.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                      onClick={handleManageSubscription}
+                      disabled={isManaging}
+                      className="flex items-center gap-2"
+                    >
+                      {isManaging ? (
+                        <>
+                          <Loader className="h-4 w-4 animate-spin" />
+                          Opening...
+                        </>
+                      ) : (
+                        <>
+                          <Settings className="h-4 w-4" />
+                          Manage Subscription
+                        </>
+                      )}
+                    </Button>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                          <AlertTriangle className="h-4 w-4" />
+                          Cancel Subscription
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will open the customer portal where you can safely cancel your subscription. 
+                            You'll continue to have access to your account until the end of your current billing period ({subscription.end_date ? formatDate(subscription.end_date) : 'N/A'}).
+                            <br /><br />
+                            Your documents and data will remain secure and accessible even after cancellation.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleManageSubscription} className="bg-red-600 hover:bg-red-700">
+                            Continue to Cancel
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start">
+                      <Calendar className="text-blue-600 mr-2 mt-0.5" size={16} />
+                      <div className="text-sm">
+                        <p className="font-medium text-blue-900">Billing Information</p>
+                        <p className="text-blue-700">
+                          Your subscription automatically renews on {subscription.end_date ? formatDate(subscription.end_date) : 'N/A'}. 
+                          You can change or cancel anytime before then.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
