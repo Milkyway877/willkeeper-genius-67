@@ -6,13 +6,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import App from '@/App';
 import Index from '@/pages/Index';
 import SignIn from '@/pages/auth/SignIn';
 import SignUp from '@/pages/auth/SignUp';
-// REMOVE THESE: import Recover from '@/pages/auth/Recover';
-// REMOVE THESE: import ResetPassword from '@/pages/auth/ResetPassword';
-// REMOVE THESE: import SecurePasswordReset from '@/pages/auth/SecurePasswordReset';
-// REMOVE THESE: import TwoFactorVerification from '@/pages/auth/TwoFactorVerification';
 import Dashboard from '@/pages/Dashboard';
 import Wills from '@/pages/wills/Wills';
 import Tank from '@/pages/tank/Tank';
@@ -33,63 +30,59 @@ export function Router() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth/signin" element={<SignIn />} />
-            <Route path="/auth/signup" element={<SignUp />} />
-            {/* REMOVE the following:
-            <Route path="/auth/recover" element={<Recover />} />
-            <Route path="/auth/reset-password" element={<ResetPassword />} />
-            <Route path="/auth/secure-password-reset" element={<SecurePasswordReset />} />
-            <Route path="/auth/2fa-verification" element={<TwoFactorVerification />} />
-            */}
-            <Route path="/trial-success" element={<TrialSuccess />} />
-            <Route path="/pricing" element={<Billing />} />
-            <Route path="/security/IDSecurity" element={
-              <ProtectedRoute>
-                <IDSecurity />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/wills" element={
-              <ProtectedRoute>
-                <Wills />
-              </ProtectedRoute>
-            } />
-            <Route path="/will/:templateId" element={
-              <ProtectedRoute>
-                <WillEditorPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/tank" element={
-              <ProtectedRoute>
-                <Tank />
-              </ProtectedRoute>
-            } />
-            <Route path="/contacts" element={
-              <ProtectedRoute>
-                <ContactsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/death-verification" element={
-              <ProtectedRoute>
-                <DeathVerificationPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/treasury" element={
-              <ProtectedRoute>
-                <TreasuryPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/billing" element={
-              <ProtectedRoute>
-                <Billing />
-              </ProtectedRoute>
-            } />
-            <Route path="/executor-access" element={<EnhancedExecutorLogin />} />
+            <Route path="/" element={<App />}>
+              <Route index element={<Index />} />
+              <Route path="/auth/signin" element={<SignIn />} />
+              <Route path="/auth/signup" element={<SignUp />} />
+              <Route path="/trial-success" element={<TrialSuccess />} />
+              <Route path="/pricing" element={<Billing />} />
+              <Route path="/security/IDSecurity" element={
+                <ProtectedRoute>
+                  <IDSecurity />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/wills" element={
+                <ProtectedRoute>
+                  <Wills />
+                </ProtectedRoute>
+              } />
+              <Route path="/will/:templateId" element={
+                <ProtectedRoute>
+                  <WillEditorPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/tank" element={
+                <ProtectedRoute>
+                  <Tank />
+                </ProtectedRoute>
+              } />
+              <Route path="/contacts" element={
+                <ProtectedRoute>
+                  <ContactsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/death-verification" element={
+                <ProtectedRoute>
+                  <DeathVerificationPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/treasury" element={
+                <ProtectedRoute>
+                  <TreasuryPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/billing" element={
+                <ProtectedRoute>
+                  <Billing />
+                </ProtectedRoute>
+              } />
+              <Route path="/executor-access" element={<EnhancedExecutorLogin />} />
+            </Route>
           </Routes>
           <Toaster />
           <Sonner />
