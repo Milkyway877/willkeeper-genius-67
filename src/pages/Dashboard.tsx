@@ -323,7 +323,7 @@ export default function Dashboard() {
         open={showOnboarding} 
         onClose={closeOnboarding}
         onComplete={completeOnboarding}
-        isCompl eting={isCompleting}
+        isCompleting={isCompleting}
       />
     </Layout>
   );

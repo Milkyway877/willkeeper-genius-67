@@ -40,7 +40,7 @@ const onboardingSteps: OnboardingStep[] = [
     description: "Secure your account with 2FA for maximum protection. Your digital legacy deserves the strongest security available.",
     action: {
       text: "Set up 2FA",
-      path: "/settings"
+      path: "/security/IDSecurity"
     },
     color: "bg-red-500"
   },
@@ -161,7 +161,7 @@ export function WelcomeOnboardingPopup({ open, onClose, onComplete, isCompleting
               </div>
 
               {/* Scrollable Content */}
-              <ScrollArea className="max-h-[500px]">
+              <ScrollArea className="max-h-[60vh]">
                 <div className="p-8 space-y-8">
                   {/* Security Priority Alert */}
                   <motion.div
@@ -278,43 +278,43 @@ export function WelcomeOnboardingPopup({ open, onClose, onComplete, isCompleting
                       <div className="text-xs text-gray-500">Private</div>
                     </div>
                   </motion.div>
+
+                  {/* Footer with Got It Button - Now inside ScrollArea */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.4 }}
+                    className="pt-6 border-t border-gray-200"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Account Active
+                        </Badge>
+                        <span className="text-sm text-gray-600">Your WillTank account is ready to use</span>
+                      </div>
+                      <Button
+                        onClick={handleGotIt}
+                        disabled={isCompleting}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2 font-semibold"
+                      >
+                        {isCompleting ? (
+                          <>
+                            <Loader className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            Got It, Let's Start!
+                            <Sparkles className="h-4 w-4 ml-2" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </motion.div>
                 </div>
               </ScrollArea>
-
-              {/* Footer with Got It Button */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.4 }}
-                className="px-8 py-6 bg-gradient-to-r from-gray-50 to-purple-50 border-t border-gray-200"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Account Active
-                    </Badge>
-                    <span className="text-sm text-gray-600">Your WillTank account is ready to use</span>
-                  </div>
-                  <Button
-                    onClick={handleGotIt}
-                    disabled={isCompleting}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-2 font-semibold"
-                  >
-                    {isCompleting ? (
-                      <>
-                        <Loader className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        Got It, Let's Start!
-                        <Sparkles className="h-4 w-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </motion.div>
             </motion.div>
           </DialogContent>
         </Dialog>
