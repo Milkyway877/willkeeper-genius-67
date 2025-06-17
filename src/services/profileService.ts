@@ -117,24 +117,27 @@ export const createUserProfile = async (user: User): Promise<void> => {
 
 export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<UserProfile | null> => {
   try {
+    console.log('updateUserProfile: Starting update with:', updates);
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
       throw new Error('No user logged in');
     }
     
-    const dbUpdates: any = {...updates};
+    // Create a clean updates object for database
+    const dbUpdates: any = {};
     
-    if (updates.is_activated !== undefined) {
-      dbUpdates.activation_complete = updates.is_activated;
-      delete dbUpdates.is_activated;
-    }
+    // Map frontend fields to database fields
+    if (updates.full_name !== undefined) dbUpdates.full_name = updates.full_name;
+    if (updates.avatar_url !== undefined) dbUpdates.avatar_url = updates.avatar_url;
+    if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
+    if (updates.onboarding_completed !== undefined) dbUpdates.onboarding_completed = updates.onboarding_completed;
+    if (updates.is_activated !== undefined) dbUpdates.activation_complete = updates.is_activated;
     
-    // These fields should not be sent to the database
-    delete dbUpdates.activation_date;
-    delete dbUpdates.subscription_plan;
-    delete dbUpdates.email;
-    delete dbUpdates.email_verified;
+    // Always update the timestamp
+    dbUpdates.updated_at = new Date().toISOString();
+    
+    console.log('updateUserProfile: Database updates:', dbUpdates);
     
     const { data, error } = await supabase
       .from('user_profiles')
@@ -144,17 +147,21 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       .single();
       
     if (error) {
-      console.error('Error updating user profile:', error);
-      throw error;
+      console.error('updateUserProfile: Database error:', error);
+      throw new Error(`Failed to update profile: ${error.message}`);
     }
     
-    return {
+    if (!data) {
+      throw new Error('No data returned from profile update');
+    }
+    
+    const updatedProfile = {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.activation_complete,
+      is_activated: data.activation_complete || false,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date || null,
       email: session.user.email,
@@ -162,8 +169,11 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       gender: data.gender || null,
       onboarding_completed: data.onboarding_completed || false,
     };
+    
+    console.log('updateUserProfile: Successfully updated profile:', updatedProfile);
+    return updatedProfile;
   } catch (error) {
-    console.error('Error in updateUserProfile:', error);
+    console.error('updateUserProfile: Error:', error);
     throw error;
   }
 };

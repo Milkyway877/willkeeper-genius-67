@@ -454,10 +454,10 @@ export default function Billing() {
   };
 
   const getManagementButtonAction = () => {
-    if (hasStripeCustomer || subscription) {
-      return handleManageSubscription;
+    if (customerPortalState === 'no-customer') {
+      return createStripeCustomer;
     }
-    return createStripeCustomer;
+    return handleManageSubscription;
   };
 
   return (
