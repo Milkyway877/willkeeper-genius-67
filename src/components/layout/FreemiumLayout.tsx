@@ -24,29 +24,36 @@ export const FreemiumLayout: React.FC<FreemiumLayoutProps> = ({ children }) => {
   // Check if user has wills - only show subscription prompts if they do
   useEffect(() => {
     const checkWillStatus = async () => {
-      if (!subscriptionStatus.isSubscribed) {
+      // Don't check if user is already subscribed
+      if (!subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial) {
         const status = await checkUserHasWill();
         setWillStatus(status);
       }
     };
 
     checkWillStatus();
-  }, [subscriptionStatus.isSubscribed]);
+  }, [subscriptionStatus.isSubscribed, subscriptionStatus.isTrial]);
 
-  // Only show grace period indicator if user has wills AND has content in grace period
+  // Only show grace period indicator if user has wills AND has content in grace period AND is not subscribed
   const gracePeriodContent = expiredContent.gracePeriodContent;
   const hasGracePeriodContent = gracePeriodContent.length > 0 && willStatus.hasWill;
   const shortestTimeRemaining = hasGracePeriodContent ? Math.min(...gracePeriodContent.map(c => c.expires_in_hours)) : 0;
+  
+  // Don't show banner if user is subscribed or in trial
+  const shouldShowBanner = hasGracePeriodContent && 
+    !subscriptionStatus.isSubscribed && 
+    !subscriptionStatus.isTrial && 
+    shortestTimeRemaining > 0;
 
-  // Don't show any subscription-related UI if user hasn't created a will
-  if (!willStatus.hasWill) {
+  // Don't show any subscription-related UI if user hasn't created a will or is subscribed
+  if (!willStatus.hasWill || subscriptionStatus.isSubscribed || subscriptionStatus.isTrial) {
     return <>{children}</>;
   }
 
   return (
     <>
-      {/* Grace period indicator - only show if user has wills */}
-      {hasGracePeriodContent && !subscriptionStatus.isSubscribed && (
+      {/* Grace period indicator - only show if user has wills and is not subscribed */}
+      {shouldShowBanner && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-4 py-3">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -77,7 +84,7 @@ export const FreemiumLayout: React.FC<FreemiumLayoutProps> = ({ children }) => {
 
       {/* Upgrade modal - only show if user has wills and conditions are met */}
       <FreemiumUpgradeModal
-        open={showUpgradeModal && willStatus.hasWill}
+        open={showUpgradeModal}
         onClose={closeUpgradeModal}
         expiresInHours={hasGracePeriodContent ? shortestTimeRemaining : undefined}
         hasExpiredContent={expiredContent.hasExpiredContent}

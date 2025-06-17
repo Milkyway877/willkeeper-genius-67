@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Timer, Crown, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 
 // Add source to props
 interface CountdownBannerProps {
@@ -20,6 +21,17 @@ export function CountdownBanner({
   triggerSource
 }: CountdownBannerProps) {
   const navigate = useNavigate();
+  const { subscriptionStatus } = useSubscriptionStatus();
+
+  // Don't show banner if user is subscribed or in trial
+  if (subscriptionStatus.isSubscribed || subscriptionStatus.isTrial) {
+    return null;
+  }
+
+  // Don't show banner if time has elapsed (0 or negative)
+  if (timeRemaining <= 0) {
+    return null;
+  }
 
   const getBannerStyle = () => {
     switch (urgencyLevel) {

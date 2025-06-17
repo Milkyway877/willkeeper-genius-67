@@ -38,20 +38,32 @@ export function useSubscriptionStatus() {
       const isNowSubscribed = status.isSubscribed || status.isTrial;
       
       if (wasUnsubscribed && isNowSubscribed) {
-        console.log('User upgraded from free to subscribed - triggering GODMODE cleanup');
+        console.log('User upgraded from free to subscribed - triggering comprehensive cleanup');
         
         // Get current user
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          // Trigger subscription upgrade handler
-          await supabase.functions.invoke('handle-subscription-upgrade', {
-            body: {
-              user_id: session.user.id,
-              user_email: session.user.email
-            }
-          });
+          // Trigger both subscription upgrade handler and freemium cleanup
+          const cleanupPromises = [
+            supabase.functions.invoke('handle-subscription-upgrade', {
+              body: {
+                user_id: session.user.id,
+                user_email: session.user.email
+              }
+            }),
+            supabase.functions.invoke('cleanup-freemium-state', {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`
+              }
+            })
+          ];
           
-          console.log('GODMODE cleanup completed for subscription upgrade');
+          try {
+            await Promise.allSettled(cleanupPromises);
+            console.log('Comprehensive cleanup completed for subscription upgrade');
+          } catch (cleanupError) {
+            console.error('Error during cleanup operations:', cleanupError);
+          }
         }
       }
       
