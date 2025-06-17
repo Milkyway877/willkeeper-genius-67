@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { MessageCategory } from '../types';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useMessageEnhancer = () => {
   const [isEnhancing, setIsEnhancing] = useState(false);
@@ -11,23 +12,18 @@ export const useMessageEnhancer = () => {
   const enhanceContent = async (content: string, category: MessageCategory, style: string) => {
     setIsEnhancing(true);
     try {
-      const response = await fetch('/api/message-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('message-ai', {
+        body: {
           content,
           category,
           style,
-        }),
+        },
       });
 
-      if (!response.ok) {
+      if (error) {
         throw new Error('Enhancement failed');
       }
 
-      const data = await response.json();
       setIsEnhancing(false);
       return data.enhancedContent;
     } catch (error) {
@@ -44,19 +40,17 @@ export const useMessageEnhancer = () => {
 
   const suggestImprovements = async (content: string) => {
     try {
-      const response = await fetch('/api/suggest-improvements', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const { data, error } = await supabase.functions.invoke('message-ai', {
+        body: { 
+          content,
+          action: 'suggest-improvements'
         },
-        body: JSON.stringify({ content }),
       });
 
-      if (!response.ok) {
+      if (error) {
         throw new Error('Failed to get suggestions');
       }
 
-      const data = await response.json();
       return data.suggestions;
     } catch (error) {
       console.error('Error getting suggestions:', error);

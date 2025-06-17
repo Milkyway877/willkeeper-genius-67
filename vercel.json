@@ -38,10 +38,5 @@
         }
       ]
     }
-  ],
-  "ignores": [
-    "supabase/**",
-    "supabase/functions/**",
-    "src/api/**"
   ]
 }
