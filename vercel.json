@@ -42,10 +42,5 @@
   "env": {
     "NODE_ENV": "production",
     "VITE_BUILD_TARGET": "esnext"
-  },
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
   }
 }
