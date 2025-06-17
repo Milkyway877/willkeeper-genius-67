@@ -1,6 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
-import { sendContactWelcomeNotification } from './contactNotificationService';
 
 export interface TrustedContact {
   id: string;
@@ -62,16 +60,28 @@ export const createTrustedContact = async (contact: {
       return null;
     }
 
-    // Get user profile for welcome notification
-    const { data: userProfile } = await supabase
+    // Get user profile for welcome notification - with better data fetching
+    const { data: userProfile, error: profileError } = await supabase
       .from('user_profiles')
       .select('first_name, last_name, full_name, email')
       .eq('id', session.user.id)
       .single();
 
-    const userFullName = userProfile?.full_name ||
-      (userProfile?.first_name && userProfile?.last_name ?
-        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+    }
+
+    // Build userFullName with better fallback logic
+    let userFullName = 'A WillTank user';
+    if (userProfile?.full_name) {
+      userFullName = userProfile.full_name;
+    } else if (userProfile?.first_name && userProfile?.last_name) {
+      userFullName = `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      userFullName = userProfile.first_name;
+    }
+
+    console.log('Creating trusted contact with user full name:', userFullName);
 
     const newContact: any = {
       name: contact.name,
@@ -81,7 +91,7 @@ export const createTrustedContact = async (contact: {
       verification_code_word: contact.verification_code_word,
       is_executor: !!contact.is_executor,
       user_id: session.user.id,
-      invitation_status: 'notified',
+      invitation_status: 'sending',
       invitation_sent_at: new Date().toISOString()
     };
 
@@ -96,20 +106,52 @@ export const createTrustedContact = async (contact: {
       return null;
     }
 
-    // Automatically send welcome notification as before
-    if (data && userProfile) {
+    // ONLY use the auto-contact-notifier edge function - no more conflicts!
+    if (data) {
       try {
-        await sendContactWelcomeNotification({
-          contactId: data.id,
-          contactName: contact.name,
-          contactEmail: contact.email,
-          contactType: 'trusted_contact',
+        console.log('Sending welcome notification via auto-contact-notifier...');
+        console.log('User data being sent:', {
           userFullName,
-          userEmail: userProfile.email
+          userEmail: userProfile?.email || session.user.email
         });
-        console.log('Welcome notification sent to trusted contact automatically');
+
+        const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('auto-contact-notifier', {
+          body: {
+            action: 'welcome_contact',
+            contact: {
+              contactId: data.id,
+              contactType: 'trusted_contact',
+              name: contact.name,
+              email: contact.email,
+              userId: session.user.id,
+              userFullName: userFullName,
+              userEmail: userProfile?.email || session.user.email || ''
+            }
+          }
+        });
+
+        if (notificationError) {
+          console.error('Error sending welcome notification:', notificationError);
+          // Update status to indicate email failed
+          await supabase
+            .from('trusted_contacts')
+            .update({ invitation_status: 'failed' })
+            .eq('id', data.id);
+        } else {
+          console.log('Welcome notification sent successfully:', notificationResult);
+          // Update status to indicate email was sent
+          await supabase
+            .from('trusted_contacts')
+            .update({ invitation_status: 'sent' })
+            .eq('id', data.id);
+        }
       } catch (welcomeError) {
-        console.error('Error sending automatic welcome notification:', welcomeError);
+        console.error('Error with auto-contact-notifier:', welcomeError);
+        // Update status to indicate email failed
+        await supabase
+          .from('trusted_contacts')
+          .update({ invitation_status: 'failed' })
+          .eq('id', data.id);
       }
     }
 
@@ -160,7 +202,7 @@ export const deleteTrustedContact = async (id: string): Promise<boolean> => {
   }
 };
 
-// Enhanced sendVerificationRequest to use the auto-contact-notifier system
+// Enhanced sendVerificationRequest to use ONLY the auto-contact-notifier system
 export const sendVerificationRequest = async (contactId: string): Promise<boolean> => {
   try {
     // Get contact details
@@ -182,16 +224,28 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       return false;
     }
 
-    // Get user profile for name
-    const { data: userProfile } = await supabase
+    // Get user profile for name - with better data fetching
+    const { data: userProfile, error: profileError } = await supabase
       .from('user_profiles')
       .select('first_name, last_name, full_name, email')
       .eq('id', session.user.id)
       .single();
 
-    const userFullName = userProfile?.full_name ||
-      (userProfile?.first_name && userProfile?.last_name ?
-        `${userProfile.first_name} ${userProfile.last_name}` : 'A WillTank user');
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+    }
+
+    // Build userFullName with better fallback logic
+    let userFullName = 'A WillTank user';
+    if (userProfile?.full_name) {
+      userFullName = userProfile.full_name;
+    } else if (userProfile?.first_name && userProfile?.last_name) {
+      userFullName = `${userProfile.first_name} ${userProfile.last_name}`;
+    } else if (userProfile?.first_name) {
+      userFullName = userProfile.first_name;
+    }
+
+    console.log('Sending verification with user full name:', userFullName);
 
     // Update the contact status first
     try {
@@ -199,7 +253,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
         .from('trusted_contacts')
         .update({
           invitation_sent_at: new Date().toISOString(),
-          invitation_status: 'pending'
+          invitation_status: 'sending'
         })
         .eq('id', contactId);
     } catch (updateError) {
@@ -207,7 +261,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
       // Continue anyway
     }
 
-    // Use the auto-contact-notifier function
+    // Use ONLY the auto-contact-notifier function
     try {
       console.log('Sending verification via auto-contact-notifier');
 
@@ -220,7 +274,7 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
             name: contact.name,
             email: contact.email,
             userId: session.user.id,
-            userFullName,
+            userFullName: userFullName,
             userEmail: userProfile?.email || session.user.email || ''
           }
         }
@@ -228,13 +282,29 @@ export const sendVerificationRequest = async (contactId: string): Promise<boolea
 
       if (fnError) {
         console.error('Error from auto-contact-notifier:', fnError);
+        // Update status to failed
+        await supabase
+          .from('trusted_contacts')
+          .update({ invitation_status: 'failed' })
+          .eq('id', contactId);
         return false;
       }
+
+      // Update status to sent
+      await supabase
+        .from('trusted_contacts')
+        .update({ invitation_status: 'sent' })
+        .eq('id', contactId);
 
       console.log('Verification sent successfully via auto-contact-notifier');
       return true;
     } catch (invokeError) {
       console.error('Error with auto-contact-notifier:', invokeError);
+      // Update status to failed
+      await supabase
+        .from('trusted_contacts')
+        .update({ invitation_status: 'failed' })
+        .eq('id', contactId);
       return false;
     }
   } catch (error) {

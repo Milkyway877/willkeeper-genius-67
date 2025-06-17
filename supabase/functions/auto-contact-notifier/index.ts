@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { getResendClient, buildDefaultEmailLayout } from "../_shared/email-helper.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +10,63 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Inline Resend client function to avoid import issues
+function getResendClient() {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) {
+    throw new Error("RESEND_API_KEY is not set");
+  }
+
+  return {
+    emails: {
+      send: async (emailData: any) => {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${resendApiKey}`,
+          },
+          body: JSON.stringify(emailData),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(`Resend API error: ${error}`);
+        }
+
+        return await response.json();
+      },
+    },
+  };
+}
+
+// Inline email layout function to avoid import issues
+function buildDefaultEmailLayout(content: string) {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>WillTank Notification</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background-color: #4a6cf7; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 24px;">WillTank</h1>
+        <p style="margin: 5px 0 0 0; opacity: 0.9;">Secure Digital Legacy Platform</p>
+      </div>
+      <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+        ${content}
+      </div>
+      <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 12px;">
+        <p>© 2024 WillTank. All rights reserved.</p>
+        <p>This is an automated message from WillTank's secure notification system.</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
 
 interface AutoNotificationRequest {
   action: 'welcome_contact' | 'missed_checkin_alert' | 'status_check';
@@ -41,6 +97,8 @@ serve(async (req) => {
 
   try {
     const requestData = await req.json();
+    console.log('Received request data:', JSON.stringify(requestData, null, 2));
+    
     if (!requestData.contact.email || !requestData.contact.name) {
       throw new Error('Contact email and name are required');
     }
@@ -69,6 +127,7 @@ serve(async (req) => {
 
 async function sendWelcomeNotification(contact) {
   console.log(`Sending welcome notification to ${contact.contactType}: ${contact.name}`);
+  console.log('Contact details:', JSON.stringify(contact, null, 2));
   
   const resend = getResendClient();
   
@@ -93,6 +152,10 @@ async function sendWelcomeNotification(contact) {
     }
   }
   
+  // Ensure we have the user's full name - with better fallback logic
+  const userFullName = contact.userFullName || 'A WillTank user';
+  console.log('Using user full name:', userFullName);
+  
   // Build role-specific content
   let roleDescription = '';
   let responsibilities = '';
@@ -100,12 +163,12 @@ async function sendWelcomeNotification(contact) {
   
   switch (contact.contactType) {
     case 'executor':
-      roleDescription = `You have been designated as ${contact.additionalInfo?.isPrimary ? 'the primary executor' : 'an executor'} of ${contact.userFullName}'s will on WillTank.`;
+      roleDescription = `You have been designated as ${contact.additionalInfo?.isPrimary ? 'the primary executor' : 'an executor'} of ${userFullName}'s will on WillTank.`;
       responsibilities = `
         <ul style="color: #374151; margin: 10px 0; padding-left: 20px;">
-          <li>You will be responsible for carrying out ${contact.userFullName}'s final wishes as outlined in their will</li>
-          <li>You will receive notifications if ${contact.userFullName} misses their regular check-ins</li>
-          <li>You may be asked to help verify ${contact.userFullName}'s status in case of missed check-ins</li>
+          <li>You will be responsible for carrying out ${userFullName}'s final wishes as outlined in their will</li>
+          <li>You will receive notifications if ${userFullName} misses their regular check-ins</li>
+          <li>You may be asked to help verify ${userFullName}'s status in case of missed check-ins</li>
           <li>Upon verified death, you will receive access to unlock and execute the will</li>
           ${contact.additionalInfo?.isPrimary ? '<li><strong>As the primary executor, you have additional override capabilities</strong></li>' : ''}
         </ul>
@@ -113,24 +176,24 @@ async function sendWelcomeNotification(contact) {
       break;
       
     case 'beneficiary':
-      roleDescription = `You have been designated as a beneficiary in ${contact.userFullName}'s will on WillTank.`;
+      roleDescription = `You have been designated as a beneficiary in ${userFullName}'s will on WillTank.`;
       responsibilities = `
         <ul style="color: #374151; margin: 10px 0; padding-left: 20px;">
-          <li>You are entitled to receive assets or bequests as specified in ${contact.userFullName}'s will</li>
-          <li>You will receive notifications if ${contact.userFullName} misses their regular check-ins</li>
-          <li>You may be asked to help verify ${contact.userFullName}'s status in case of missed check-ins</li>
+          <li>You are entitled to receive assets or bequests as specified in ${userFullName}'s will</li>
+          <li>You will receive notifications if ${userFullName} misses their regular check-ins</li>
+          <li>You may be asked to help verify ${userFullName}'s status in case of missed check-ins</li>
           <li>Upon verified death, you will be contacted about your inheritance</li>
         </ul>
       `;
       break;
       
     case 'trusted_contact':
-      roleDescription = `You have been designated as a trusted contact for ${contact.userFullName} on WillTank.`;
+      roleDescription = `You have been designated as a trusted contact for ${userFullName} on WillTank.`;
       responsibilities = `
         <ul style="color: #374151; margin: 10px 0; padding-left: 20px;">
-          <li>You will receive notifications if ${contact.userFullName} misses their regular check-ins</li>
-          <li>You may be asked to help verify ${contact.userFullName}'s status and well-being</li>
-          <li>Your role is to help ensure ${contact.userFullName}'s digital legacy is properly managed</li>
+          <li>You will receive notifications if ${userFullName} misses their regular check-ins</li>
+          <li>You may be asked to help verify ${userFullName}'s status and well-being</li>
+          <li>Your role is to help ensure ${userFullName}'s digital legacy is properly managed</li>
           <li>You serve as an additional safety net in the verification process</li>
           ${verificationCodeWord ? '<li><strong>You have been assigned a special verification code word for security purposes</strong></li>' : ''}
         </ul>
@@ -142,8 +205,8 @@ async function sendWelcomeNotification(contact) {
     <h3 style="color: #1f2937;">What happens next:</h3>
     <ol style="color: #374151; margin: 10px 0; padding-left: 20px;">
       <li>No action is required from you at this time</li>
-      <li>You will receive email notifications if ${contact.userFullName} misses check-ins</li>
-      <li>If you receive a notification, try to contact ${contact.userFullName} to remind them to check in</li>
+      <li>You will receive email notifications if ${userFullName} misses check-ins</li>
+      <li>If you receive a notification, try to contact ${userFullName} to remind them to check in</li>
       <li>Keep this email for your records as it contains important contact information</li>
       ${verificationCodeWord ? '<li><strong>Keep your verification code word safe - you may need it for identity verification</strong></li>' : ''}
     </ol>
@@ -161,9 +224,9 @@ async function sendWelcomeNotification(contact) {
           </div>
         </div>
         <p style="color: #166534; margin: 12px 0; font-size: 15px; line-height: 1.5;">
-          <strong>This is your unique verification word assigned by ${contact.userFullName}.</strong><br>
+          <strong>This is your unique verification word assigned by ${userFullName}.</strong><br>
           Keep this word confidential and secure. You may be asked for this word to verify your identity<br>
-          when helping to confirm ${contact.userFullName}'s status during missed check-ins.
+          when helping to confirm ${userFullName}'s status during missed check-ins.
         </p>
         <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin-top: 16px;">
           <p style="color: #92400e; margin: 0; font-size: 14px;">
@@ -176,7 +239,7 @@ async function sendWelcomeNotification(contact) {
   
   const emailContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h1 style="color: #4a6cf7;">Important: You've Been Added to ${contact.userFullName}'s WillTank Account</h1>
+      <h1 style="color: #4a6cf7;">Important: You've Been Added to ${userFullName}'s WillTank Account</h1>
       <p>Dear ${contact.name},</p>
       <p>${roleDescription}</p>
       
@@ -191,7 +254,7 @@ async function sendWelcomeNotification(contact) {
 
       <div style="background-color: #f3f4f6; border: 1px solid #d1d5db; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3 style="color: #374151; margin-top: 0;">Contact Information</h3>
-        <p><strong>Account Holder:</strong> ${contact.userFullName}<br>
+        <p><strong>Account Holder:</strong> ${userFullName}<br>
         <strong>Email:</strong> ${contact.userEmail}<br>
         ${contact.additionalInfo?.relation ? `<strong>Your Relation:</strong> ${contact.additionalInfo.relation}<br>` : ''}
         ${contact.additionalInfo?.phone ? `<strong>Your Phone on File:</strong> ${contact.additionalInfo.phone}<br>` : ''}
@@ -204,7 +267,7 @@ async function sendWelcomeNotification(contact) {
       </div>
 
       <p>If you have any questions about your role or WillTank, please contact our support team at support@willtank.com.</p>
-      <p>Thank you for being part of ${contact.userFullName}'s digital legacy protection plan.</p>
+      <p>Thank you for being part of ${userFullName}'s digital legacy protection plan.</p>
       <p>Best regards,<br>The WillTank Team</p>
     </div>
   `;
@@ -213,7 +276,7 @@ async function sendWelcomeNotification(contact) {
     const emailResponse = await resend.emails.send({
       from: "WillTank <notifications@willtank.com>",
       to: [contact.email],
-      subject: `Important: You've been added as ${contact.contactType.replace('_', ' ')} for ${contact.userFullName}`,
+      subject: `Important: You've been added as ${contact.contactType.replace('_', ' ')} for ${userFullName}`,
       html: buildDefaultEmailLayout(emailContent),
       tags: [
         { name: 'type', value: 'welcome_notification' },
@@ -230,17 +293,22 @@ async function sendWelcomeNotification(contact) {
         contact_type: contact.contactType,
         contact_name: contact.name,
         contact_email: contact.email,
+        user_full_name: userFullName,
         email_id: emailResponse.id,
         verification_code_word_included: !!verificationCodeWord,
         timestamp: new Date().toISOString()
       }
     });
 
+    console.log('Email sent successfully:', emailResponse.id);
+    console.log('User name used in email:', userFullName);
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "Welcome notification sent successfully",
         emailId: emailResponse.id,
+        userFullName: userFullName,
         verificationCodeWordIncluded: !!verificationCodeWord
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

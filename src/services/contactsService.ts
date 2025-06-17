@@ -1,8 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import { createSystemNotification } from "./notificationService";
-import { sendTrustedContactInvitation } from "./emailService";
 
 export interface ContactInvitation {
   contactId: string;
@@ -154,19 +152,70 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       throw new Error('User not authenticated');
     }
     
-    // Specialized handling based on contact type
+    // For trusted contacts, redirect to the unified auto-contact-notifier system
     if (contact.contactType === 'trusted') {
-      // Use our specialized trusted contact invitation service
-      const result = await sendTrustedContactInvitation(
-        contact.contactId,
-        contact.name,
-        contact.email
-      );
+      console.log('Redirecting trusted contact invitation to auto-contact-notifier system');
       
-      return result.success;
+      // Get user profile for proper name handling
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('first_name, last_name, full_name, email')
+        .eq('id', session.user.id)
+        .single();
+
+      // Build userFullName with better fallback logic
+      let userFullName = contact.userFullName || 'A WillTank user';
+      if (userProfile?.full_name) {
+        userFullName = userProfile.full_name;
+      } else if (userProfile?.first_name && userProfile?.last_name) {
+        userFullName = `${userProfile.first_name} ${userProfile.last_name}`;
+      } else if (userProfile?.first_name) {
+        userFullName = userProfile.first_name;
+      }
+
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('auto-contact-notifier', {
+          body: {
+            action: 'welcome_contact',
+            contact: {
+              contactId: contact.contactId,
+              contactType: 'trusted_contact',
+              name: contact.name,
+              email: contact.email,
+              userId: session.user.id,
+              userFullName: userFullName,
+              userEmail: userProfile?.email || session.user.email || ''
+            }
+          }
+        });
+
+        if (fnError) {
+          console.error('Error from auto-contact-notifier:', fnError);
+          throw new Error('Failed to send invitation via auto-contact-notifier');
+        }
+
+        // Update status in trusted_contacts table
+        await supabase
+          .from('trusted_contacts')
+          .update({ 
+            invitation_status: 'sent', 
+            invitation_sent_at: new Date().toISOString() 
+          })
+          .eq('id', contact.contactId);
+
+        await createSystemNotification('info', {
+          title: 'Invitation Sent',
+          description: `Invitation sent to ${contact.name} for role: trusted contact`
+        });
+
+        return true;
+      } catch (error) {
+        console.error('Error with auto-contact-notifier:', error);
+        throw error;
+      }
     }
     
-    // For other contact types, use the general edge function
+    // For other contact types (beneficiary, executor), use the existing system
     // Call the edge function to send the invitation
     const response = await fetch(`${window.location.origin}/functions/v1/send-contact-invitation`, {
       method: 'POST',
@@ -203,14 +252,6 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
     } else if (contact.contactType === 'executor') {
       await supabase
         .from('will_executors')
-        .update({ 
-          invitation_status: 'sent', 
-          invitation_sent_at: new Date().toISOString() 
-        })
-        .eq('id', contact.contactId);
-    } else if (contact.contactType === 'trusted') {
-      await supabase
-        .from('trusted_contacts')
         .update({ 
           invitation_status: 'sent', 
           invitation_sent_at: new Date().toISOString() 
