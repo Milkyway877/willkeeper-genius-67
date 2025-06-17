@@ -97,6 +97,7 @@ export const createUserProfile = async (user: User): Promise<void> => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       activation_complete: false,
+      onboarding_completed: false,
     };
     
     const { error } = await supabase
@@ -123,7 +124,40 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     if (!session?.user) {
       throw new Error('No user logged in');
     }
-    
+
+    // First, check if profile exists and handle duplicates
+    const { data: existingProfiles, error: checkError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', session.user.id);
+
+    if (checkError) {
+      console.error('updateUserProfile: Error checking existing profiles:', checkError);
+      throw new Error(`Failed to check existing profile: ${checkError.message}`);
+    }
+
+    // Handle multiple profiles (cleanup duplicates)
+    if (existingProfiles && existingProfiles.length > 1) {
+      console.warn('updateUserProfile: Multiple profiles found, cleaning up duplicates');
+      // Keep the first one, delete the rest
+      const keepProfile = existingProfiles[0];
+      const duplicateIds = existingProfiles.slice(1).map(p => p.id);
+      
+      if (duplicateIds.length > 0) {
+        await supabase
+          .from('user_profiles')
+          .delete()
+          .in('id', duplicateIds);
+        console.log('updateUserProfile: Cleaned up duplicate profiles');
+      }
+    }
+
+    // If no profile exists, create one first
+    if (!existingProfiles || existingProfiles.length === 0) {
+      console.log('updateUserProfile: No profile found, creating one first');
+      await createUserProfile(session.user);
+    }
+
     // Create a clean updates object for database
     const dbUpdates: any = {};
     
@@ -139,10 +173,14 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
     
     console.log('updateUserProfile: Database updates:', dbUpdates);
     
+    // Use upsert to handle edge cases
     const { data, error } = await supabase
       .from('user_profiles')
-      .update(dbUpdates)
-      .eq('id', session.user.id)
+      .upsert({
+        id: session.user.id,
+        email: session.user.email,
+        ...dbUpdates
+      })
       .select()
       .single();
       

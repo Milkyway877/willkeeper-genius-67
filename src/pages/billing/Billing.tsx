@@ -627,17 +627,8 @@ export default function Billing() {
                             disabled={customerPortalState === 'checking'}
                             className="flex items-center gap-2"
                           >
-                            {customerPortalState === 'checking' ? (
-                              <>
-                                <Loader className="h-3 w-3 animate-spin" />
-                                Setting up...
-                              </>
-                            ) : (
-                              <>
-                                <CreditCard className="h-3 w-3" />
-                                Setup Account Management
-                              </>
-                            )}
+                            <CreditCard className="h-3 w-3" />
+                            Setup Account Management
                           </Button>
                         </div>
                       </div>
