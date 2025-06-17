@@ -6,8 +6,10 @@ import { isInLovablePreview } from '@/utils/iframeDetection';
 import { useClerk } from '@clerk/clerk-react';
 
 function App() {
-  const clerk = useClerk();
   const inPreview = isInLovablePreview();
+  
+  // Only use Clerk hook if we're likely to have ClerkProvider
+  const clerk = inPreview ? null : useClerk();
 
   useEffect(() => {
     // Prevent automatic redirects in iframe preview context
