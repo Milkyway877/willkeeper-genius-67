@@ -1,11 +1,16 @@
-
 import React from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, MapPin, Clock, MessageSquare, Send } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Mail, Phone, MapPin, Clock, MessageSquare, UserPlus, LogIn } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { AuthenticatedContactForm } from '@/components/contact/AuthenticatedContactForm';
+import { Link } from 'react-router-dom';
 
 export default function Contact() {
+  const { user, loading } = useAuth();
+  
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
@@ -38,6 +43,17 @@ export default function Contact() {
     }
   ];
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-willtank-500"></div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -67,62 +83,43 @@ export default function Contact() {
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900">Send Us a Message</h2>
-                <form className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                      <input 
-                        type="text" 
-                        id="firstName" 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" 
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                      <input 
-                        type="text" 
-                        id="lastName" 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" 
-                      />
-                    </div>
+              {user ? (
+                <AuthenticatedContactForm />
+              ) : (
+                <Card className="p-6 md:p-8 text-center">
+                  <div className="mx-auto w-16 h-16 bg-willtank-100 rounded-full flex items-center justify-center mb-6">
+                    <UserPlus className="h-8 w-8 text-willtank-600" />
                   </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input 
-                      type="email" 
-                      id="email" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500" 
-                    />
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Sign In to Contact Support</h2>
+                  <p className="text-gray-600 mb-6">
+                    Please sign in to your WillTank account to send us a message through our secure contact form.
+                  </p>
+                  <div className="space-y-3">
+                    <Button asChild className="w-full bg-willtank-500 hover:bg-willtank-600">
+                      <Link to="/auth/signin">
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Sign In
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link to="/auth/signup">
+                        Create Account
+                      </Link>
+                    </Button>
                   </div>
-                  <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                    <select 
-                      id="subject" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500"
-                    >
-                      <option value="">Select a subject</option>
-                      <option value="general">General Inquiry</option>
-                      <option value="support">Technical Support</option>
-                      <option value="billing">Billing Question</option>
-                      <option value="partnership">Partnership Opportunity</option>
-                      <option value="feedback">Feedback</option>
-                    </select>
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <p className="text-sm text-gray-500 mb-3">
+                      Or contact us directly:
+                    </p>
+                    <Button asChild variant="outline" className="w-full">
+                      <a href="mailto:support@willtank.com?subject=Support Request - WillTank">
+                        <Mail className="mr-2 h-4 w-4" />
+                        support@willtank.com
+                      </a>
+                    </Button>
                   </div>
-                  <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                    <textarea 
-                      id="message" 
-                      rows={5} 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-willtank-500 focus:border-willtank-500"
-                    ></textarea>
-                  </div>
-                  <Button className="w-full bg-willtank-500 hover:bg-willtank-600">
-                    Send Message <Send className="ml-2 h-4 w-4" />
-                  </Button>
-                </form>
-              </div>
+                </Card>
+              )}
             </motion.div>
             
             <motion.div
@@ -182,12 +179,14 @@ export default function Contact() {
                 </div>
                 
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-                  <h3 className="font-semibold mb-3 text-gray-900">Frequently Asked Questions</h3>
+                  <h3 className="font-semibold mb-3 text-gray-900">Join Our Community</h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    Looking for quick answers? Check our comprehensive FAQ section for information on common topics.
+                    Connect with other WillTank users, get tips, and stay updated on new features.
                   </p>
-                  <Button variant="outline" className="w-full border-willtank-500 text-willtank-500 hover:bg-willtank-50">
-                    View FAQ
+                  <Button asChild variant="outline" className="w-full border-willtank-500 text-willtank-500 hover:bg-willtank-50">
+                    <a href="https://discord.gg/hGPgDqYP" target="_blank" rel="noopener noreferrer">
+                      Join Discord Community
+                    </a>
                   </Button>
                 </div>
               </div>
@@ -209,7 +208,6 @@ export default function Contact() {
             </div>
             
             <div className="h-[400px] bg-gray-100 rounded-lg">
-              {/* Map placeholder - would be replaced with actual Google Maps integration */}
               <div className="h-full flex items-center justify-center">
                 <p className="text-gray-500">Interactive map would be displayed here</p>
               </div>

@@ -9,11 +9,10 @@ export function ContactSupportButton({ className }: { className?: string }) {
       asChild
       variant="outline"
       className={`flex items-center gap-2 border-willtank-300 text-willtank-700 hover:text-white hover:bg-indigo-600 ${className || ''}`}
-      aria-label="Contact Support on Discord"
+      aria-label="Contact Support via Email"
     >
       <a
-        href="https://discord.gg/hGPgDqYP"
-        target="_blank"
+        href="mailto:support@willtank.com?subject=Support Request - WillTank"
         rel="noopener noreferrer"
       >
         <LifeBuoy className="h-5 w-5 text-indigo-600" />
