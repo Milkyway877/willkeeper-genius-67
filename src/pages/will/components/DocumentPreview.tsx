@@ -63,7 +63,6 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
     <div className="p-6 bg-white rounded-lg border border-gray-200">
       <WillPreview 
         content={formattedContent} 
-        signature={signature}
         formatted={true}
         useProfessionalFormat={true}
       />
