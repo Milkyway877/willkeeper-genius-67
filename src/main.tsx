@@ -53,6 +53,7 @@ import Documentation from './pages/Documentation';
 import API from './pages/API';
 import FAQ from './pages/FAQ';
 import SimpleWillUnlock from '@/pages/will-unlock/SimpleWillUnlock';
+import Onboarding from './pages/Onboarding';
 
 // Import all documentation sub-pages
 import GettingStarted from './pages/documentation/GettingStarted';
@@ -74,6 +75,10 @@ const router = createBrowserRouter([
       {
         path: "/",
         element: <Home />,
+      },
+      {
+        path: "/onboarding",
+        element: <Onboarding />,
       },
       {
         path: "/about",

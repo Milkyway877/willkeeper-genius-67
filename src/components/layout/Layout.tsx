@@ -82,6 +82,9 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         } else if (profile && !profile.is_activated) {
           if (!profile.email_verified && !location.pathname.includes('/auth/verify-email')) {
             navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
+          } else if (profile && profile.is_activated && profile.onboarding_completed === false && !location.pathname.includes('/onboarding')) {
+            // Redirect new users to onboarding if they haven't completed it
+            navigate('/onboarding', { replace: true });
           }
         }
       };
@@ -112,16 +115,27 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     !location.pathname.includes('/templates') && 
     !location.pathname.includes('/tank') && 
     !location.pathname.includes('/settings') &&
-    !location.pathname.includes('/search');
+    !location.pathname.includes('/search') &&
+    !location.pathname.includes('/onboarding');
   const isLandingPage = location.pathname === '/';
-  const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage;
+  const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage && !location.pathname.includes('/onboarding');
 
   // On loading, optionally show loading skeleton instead of content
   if (eligibilityLoading || subscriptionLoading) {
     // Use branded loader instead of plain Loading text
     return <WillTankLoader />;
   }
-  // Otherwise, proceed as normal
+
+  // Don't show authenticated layout for onboarding
+  const showOnboardingLayout = location.pathname.includes('/onboarding');
+  
+  if (showOnboardingLayout) {
+    return (
+      <div className="w-full">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <>

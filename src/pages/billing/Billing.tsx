@@ -411,6 +411,20 @@ export default function Billing() {
             Opening...
           </>
         );
+      case 'no-customer':
+        return (
+          <>
+            <CreditCard className="h-4 w-4" />
+            Setup Account Management
+          </>
+        );
+      case 'error':
+        return (
+          <>
+            <Settings className="h-4 w-4" />
+            Try Again
+          </>
+        );
       default:
         if (subscription) {
           return (

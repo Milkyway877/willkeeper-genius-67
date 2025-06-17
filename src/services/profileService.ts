@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -14,6 +13,7 @@ export interface UserProfile {
   email: string | null;
   email_verified: boolean | null;
   gender?: 'male' | 'female' | null;
+  onboarding_completed?: boolean | null;
 }
 
 export const getUserProfile = async (): Promise<UserProfile | null> => {
@@ -75,6 +75,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       email: session.user.email,
       email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
+      onboarding_completed: data.onboarding_completed || false,
     };
     
     console.log('getUserProfile: Successfully fetched profile:', profile);
@@ -159,6 +160,7 @@ export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<
       email: session.user.email,
       email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
+      onboarding_completed: data.onboarding_completed || false,
     };
   } catch (error) {
     console.error('Error in updateUserProfile:', error);
