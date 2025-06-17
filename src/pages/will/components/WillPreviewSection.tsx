@@ -12,7 +12,6 @@ interface WillPreviewSectionProps {
   defaultOpen?: boolean;
   content: string;
   structuredData?: any;
-  signature?: string | null;
   title?: string;
   isWillFinalized?: boolean;
   videos?: string[];
@@ -23,7 +22,6 @@ export function WillPreviewSection({
   defaultOpen = true, 
   content,
   structuredData = null,
-  signature = null,
   title = "Will Preview",
   isWillFinalized = false,
   videos = [],
@@ -38,7 +36,7 @@ export function WillPreviewSection({
     try {
       // Use structured data if available, otherwise fallback to parsing content
       const dataToDownload = structuredData || content;
-      downloadProfessionalDocument(dataToDownload, signature, title);
+      downloadProfessionalDocument(dataToDownload, null, title);
     } finally {
       setIsDownloading(false);
     }
@@ -66,10 +64,10 @@ export function WillPreviewSection({
                 <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
                   <WillPreview 
                     content={content} 
-                    signature={signature}
                     formatted={true}
                     videos={videos}
                     documents={documents}
+                    isFinalized={isWillFinalized}
                   />
                 </div>
               </TabsContent>
@@ -78,11 +76,11 @@ export function WillPreviewSection({
                 <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
                   <WillPreview 
                     content={structuredData || content} 
-                    signature={signature}
                     formatted={true}
                     useProfessionalFormat={true}
                     videos={videos}
                     documents={documents}
+                    isFinalized={isWillFinalized}
                   />
                 </div>
               </TabsContent>
@@ -110,7 +108,7 @@ export function WillPreviewSection({
               
               {isWillFinalized && (
                 <div className="text-xs text-green-600 text-center">
-                  ✓ Will has been finalized and saved
+                  ✓ Will has been finalized - Ready for documents & video testament
                 </div>
               )}
             </div>

@@ -1,41 +1,35 @@
 
 import React from 'react';
 import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
+import { Video, Upload, Shield, CheckCircle } from 'lucide-react';
 
 interface WillPreviewProps {
   content: string | any;
-  signature?: string | null;
   formatted?: boolean;
   useProfessionalFormat?: boolean;
   videos?: string[];
   documents?: string[];
+  isFinalized?: boolean;
 }
 
 export function WillPreview({ 
   content, 
-  signature = null, 
   formatted = false, 
   useProfessionalFormat = false,
   videos = [],
-  documents = []
+  documents = [],
+  isFinalized = false
 }: WillPreviewProps) {
   
-  // Enhanced debug logging for signature handling
   React.useEffect(() => {
-    console.log('WillPreview: Render with signature:', signature ? 'Has signature' : 'No signature');
+    console.log('WillPreview: Render with formatted:', formatted);
     console.log('WillPreview: useProfessionalFormat:', useProfessionalFormat);
-    console.log('WillPreview: formatted:', formatted);
-    if (signature) {
-      console.log('WillPreview: Signature data length:', signature.length);
-    }
-  }, [signature, useProfessionalFormat, formatted]);
+    console.log('WillPreview: isFinalized:', isFinalized);
+  }, [formatted, useProfessionalFormat, isFinalized]);
   
   if (useProfessionalFormat) {
     // For professional format, use the structured data directly
-    const professionalHtml = generateProfessionalDocumentPreview(content, signature);
-    
-    console.log('WillPreview: Generated professional HTML includes signature:', 
-      professionalHtml.includes('signature') || professionalHtml.includes('Signature'));
+    const professionalHtml = generateProfessionalDocumentPreview(content, null);
     
     return (
       <div 
@@ -55,47 +49,62 @@ export function WillPreview({
           {textContent}
         </div>
         
-        {/* Enhanced signature display section */}
-        {signature ? (
-          <div className="mt-6 p-4 border-t bg-green-50 rounded">
-            <h4 className="font-medium mb-3 text-green-800">✅ Digital Signature Captured:</h4>
-            <div className="bg-white p-3 border border-green-200 rounded inline-block">
-              <img 
-                src={signature} 
-                alt="Digital signature" 
-                className="max-w-xs max-h-24 border border-gray-300 rounded"
-                onLoad={() => console.log('WillPreview: Signature image loaded successfully')}
-                onError={() => console.error('WillPreview: Failed to load signature image')}
-              />
-            </div>
-            <div className="mt-3 space-y-1">
-              <p className="text-sm text-green-700 font-medium">
-                ✓ Signature captured and ready for will finalization
+        {/* Post-Finalization Next Steps Section */}
+        <div className="mt-6 p-4 border-t bg-gradient-to-r from-blue-50 to-indigo-50 rounded">
+          <h4 className="font-semibold mb-3 text-blue-800 flex items-center">
+            <CheckCircle className="h-5 w-5 mr-2" />
+            Next Steps After Will Finalization
+          </h4>
+          
+          <div className="space-y-3">
+            <div className="bg-white/80 p-3 rounded border border-blue-100">
+              <div className="flex items-center mb-2">
+                <Upload className="h-4 w-4 text-blue-600 mr-2" />
+                <span className="font-medium text-blue-900">Step 1: Upload Supporting Documents</span>
+              </div>
+              <p className="text-sm text-blue-700 ml-6">
+                Upload property deeds, financial statements, insurance policies, and identification documents
               </p>
-              <p className="text-xs text-green-600">
-                Signed on: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+            </div>
+            
+            <div className="bg-white/80 p-3 rounded border border-blue-100">
+              <div className="flex items-center mb-2">
+                <Video className="h-4 w-4 text-blue-600 mr-2" />
+                <span className="font-medium text-blue-900">Step 2: Record Your Video Testament</span>
+              </div>
+              <p className="text-sm text-blue-700 ml-6">
+                Record your personal video testament through our secure platform for maximum authenticity
+              </p>
+            </div>
+            
+            <div className="bg-green-50 border border-green-200 rounded p-3">
+              <div className="flex items-center">
+                <Shield className="h-4 w-4 text-green-600 mr-2" />
+                <p className="text-sm text-green-800 font-medium">
+                  🔒 Platform-based recording ensures security and prevents tampering
+                </p>
+              </div>
+            </div>
+            
+            <div className="text-center pt-2">
+              <p className="text-xs text-blue-600 font-medium">
+                Your video testament serves as your digital signature and personal testimony
               </p>
             </div>
           </div>
-        ) : (
-          <div className="mt-6 p-4 border-t bg-amber-50 rounded">
-            <h4 className="font-medium mb-2 text-amber-800">⚠️ Digital Signature Required:</h4>
-            <p className="text-sm text-amber-700">
-              Please scroll down to the Digital Signature section to sign your will before finalizing.
-            </p>
-            <p className="text-xs text-amber-600 mt-1">
-              Your signature is required to make your will legally valid.
-            </p>
-          </div>
-        )}
+        </div>
         
         {videos && videos.length > 0 && (
           <div className="mt-6 p-4 border-t">
-            <h4 className="font-medium mb-2">Attached Videos:</h4>
+            <h4 className="font-medium mb-2 flex items-center">
+              <Video className="h-4 w-4 mr-2" />
+              Video Testament Status:
+            </h4>
             <div className="space-y-2">
               {videos.map((video, index) => (
-                <div key={index} className="text-sm text-blue-600 underline">
-                  Video {index + 1}
+                <div key={index} className="text-sm text-green-600 flex items-center">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Video Testament {index + 1} - Recorded
                 </div>
               ))}
             </div>
@@ -104,11 +113,15 @@ export function WillPreview({
         
         {documents && documents.length > 0 && (
           <div className="mt-6 p-4 border-t">
-            <h4 className="font-medium mb-2">Attached Documents:</h4>
+            <h4 className="font-medium mb-2 flex items-center">
+              <Upload className="h-4 w-4 mr-2" />
+              Supporting Documents:
+            </h4>
             <div className="space-y-2">
               {documents.map((doc, index) => (
-                <div key={index} className="text-sm text-blue-600 underline">
-                  Document {index + 1}
+                <div key={index} className="text-sm text-blue-600 flex items-center">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Document {index + 1} - Uploaded
                 </div>
               ))}
             </div>
@@ -123,32 +136,13 @@ export function WillPreview({
     <div className="will-preview">
       <pre className="whitespace-pre-wrap text-sm">{textContent}</pre>
       
-      {signature && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
-          <p className="font-medium text-green-800 mb-2">✅ Digital Signature:</p>
-          <div className="bg-white p-2 border border-green-300 rounded inline-block">
-            <img 
-              src={signature} 
-              alt="Digital signature" 
-              className="max-w-xs max-h-24"
-              onLoad={() => console.log('WillPreview: Basic signature image loaded')}
-              onError={() => console.error('WillPreview: Basic signature image failed to load')}
-            />
-          </div>
-          <p className="text-xs text-green-600 mt-2">
-            Captured on: {new Date().toLocaleDateString()}
-          </p>
-        </div>
-      )}
-      
-      {!signature && (
-        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded">
-          <p className="font-medium text-amber-800 mb-1">⚠️ No Signature</p>
-          <p className="text-sm text-amber-700">
-            Please add your digital signature to complete your will.
-          </p>
-        </div>
-      )}
+      {/* Simple next steps for basic preview */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+        <p className="font-medium text-blue-800 mb-1">📋 After Finalization:</p>
+        <p className="text-sm text-blue-700">
+          Upload documents & record your video testament for complete authentication
+        </p>
+      </div>
     </div>
   );
 }

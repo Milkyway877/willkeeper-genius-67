@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -10,18 +11,17 @@ import { BeneficiariesSection } from './components/TemplateSections/Beneficiarie
 import { AssetsSection } from './components/TemplateSections/AssetsSection';
 import { ExecutorsSection } from './components/TemplateSections/ExecutorsSection';
 import { FinalWishesSection } from './components/TemplateSections/FinalWishesSection';
-import { DigitalSignature } from './components/TemplateSections/DigitalSignature';
 import { WillPreviewSection } from './components/WillPreviewSection';
 import { createWill, updateWill } from '@/services/willService';
 import { saveWillProgress } from '@/services/willProgressService';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Save, FileCheck } from 'lucide-react';
+import { Loader2, Save, FileCheck, Video, Upload, Shield } from 'lucide-react';
 import { generateWillContent } from '@/utils/willTemplateUtils';
 import { useWillSubscriptionFlow } from '@/hooks/useWillSubscriptionFlow';
 import { SubscriptionModal } from '@/components/subscription/SubscriptionModal';
 import { WillCreationSuccess } from './components/WillCreationSuccess';
 
-// Simplified form validation schema without videos/documents
+// Simplified form validation schema without signature requirement
 const willSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
@@ -145,12 +145,9 @@ I give all the rest and residue of my estate to [Beneficiary names and distribut
 ARTICLE VI: FINAL ARRANGEMENTS
 [Final arrangements to be added]
 
-Digitally signed by: [Full Name]
 Date: ${new Date().toLocaleDateString()}
   `);
   
-  // Enhanced signature state with debugging
-  const [signature, setSignature] = useState<string | null>(initialData?.signature || null);
   const [saving, setSaving] = useState<boolean>(false);
   const [isFinalized, setIsFinalized] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -179,14 +176,6 @@ Date: ${new Date().toLocaleDateString()}
   
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  // Enhanced signature debugging
-  useEffect(() => {
-    console.log('TemplateWillEditor: Signature state changed:', signature ? 'Has signature' : 'No signature');
-    if (signature) {
-      console.log('TemplateWillEditor: Signature data length:', signature.length);
-    }
-  }, [signature]);
   
   const handleFormChange = (values: WillFormValues) => {
     console.log("TemplateWillEditor: Form values updated:", values);
@@ -229,44 +218,19 @@ Date: ${new Date().toLocaleDateString()}
     };
   };
   
-  // Enhanced signature change handler with debugging and user feedback
-  const handleSignatureChange = (signatureData: string | null) => {
-    console.log('TemplateWillEditor: handleSignatureChange called with:', signatureData ? 'signature data' : 'null');
-    
-    if (signatureData) {
-      console.log('TemplateWillEditor: Signature data length:', signatureData.length);
-      console.log('TemplateWillEditor: Signature preview:', signatureData.substring(0, 30) + '...');
-    }
-    
-    setSignature(signatureData);
-    
-    // Provide user feedback
-    if (signatureData) {
-      toast({
-        title: "Signature Captured",
-        description: "Your signature has been successfully captured and will be included in your will."
-      });
-    } else {
-      toast({
-        title: "Signature Cleared", 
-        description: "Your signature has been removed from the will."
-      });
-    }
-  };
-  
   const handleSaveDraft = async () => {
     try {
       setSaving(true);
       
       const formValues = form.getValues();
-      console.log("TemplateWillEditor: Saving draft with signature:", signature ? 'Yes' : 'No');
+      console.log("TemplateWillEditor: Saving draft");
       
       const finalWillContent = generateWillContent(formValues, willContent);
       
       await saveWillProgress({
         template_id: templateId,
         current_step: 'editing',
-        responses: { ...formValues, signature },
+        responses: formValues,
         content: finalWillContent,
         title: `${formValues.fullName}'s Will`,
         completedSections: ['personal_info']
@@ -274,7 +238,7 @@ Date: ${new Date().toLocaleDateString()}
       
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        content: JSON.stringify({ formValues, signature, textContent: finalWillContent }),
+        content: JSON.stringify({ formValues, textContent: finalWillContent }),
         status: 'draft',
         template_type: templateId,
         ai_generated: false,
@@ -304,7 +268,6 @@ Date: ${new Date().toLocaleDateString()}
     try {
       console.log('TemplateWillEditor: Starting finalization process...');
       console.log('TemplateWillEditor: Form valid:', form.formState.isValid);
-      console.log('TemplateWillEditor: Has signature:', !!signature);
       
       await form.trigger();
       if (!form.formState.isValid) {
@@ -316,31 +279,18 @@ Date: ${new Date().toLocaleDateString()}
         return;
       }
       
-      if (!signature) {
-        toast({
-          title: "Signature Required",
-          description: "Please add your signature before finalizing your will.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
       setIsGenerating(true);
       
       const formValues = form.getValues();
       
       const finalWillContent = generateWillContent(formValues, willContent);
-      const contentWithSignature = finalWillContent + `\n\nDigitally signed on: ${new Date().toLocaleString()}`;
-      
-      console.log('TemplateWillEditor: Final content includes signature reference:', 
-        contentWithSignature.includes('Digitally signed'));
+      const contentWithTimestamp = finalWillContent + `\n\nFinalized on: ${new Date().toLocaleString()}`;
       
       const willData = {
         title: `${formValues.fullName}'s Will`,
         content: JSON.stringify({ 
           formValues, 
-          signature, 
-          textContent: contentWithSignature,
+          textContent: contentWithTimestamp,
           finalizedAt: new Date().toISOString()
         }),
         status: 'active',
@@ -359,7 +309,7 @@ Date: ${new Date().toLocaleDateString()}
         
         toast({
           title: "Will Finalized Successfully!",
-          description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
+          description: "Your will has been created. Next: upload documents and record your video testament.",
         });
       }
       
@@ -399,27 +349,54 @@ Date: ${new Date().toLocaleDateString()}
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
               
-              {/* Enhanced Digital Signature Section */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium text-blue-800">Digital Signature Status</h3>
-                  <div className="text-sm">
-                    {signature ? (
-                      <span className="text-green-600 font-medium">✅ Captured</span>
-                    ) : (
-                      <span className="text-amber-600 font-medium">⚠️ Required</span>
-                    )}
+              {/* Next Steps Information Panel */}
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <div className="p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                      <FileCheck className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-blue-900">After Will Finalization</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <p className="text-blue-800 font-medium">
+                      Once your will is finalized, you'll complete these important steps:
+                    </p>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="bg-white/80 p-4 rounded-lg border border-blue-100">
+                        <div className="flex items-center mb-2">
+                          <Upload className="h-5 w-5 text-blue-600 mr-2" />
+                          <h4 className="font-medium text-blue-900">1. Upload Documents</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          Upload supporting documents like property deeds, financial statements, and identification.
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white/80 p-4 rounded-lg border border-blue-100">
+                        <div className="flex items-center mb-2">
+                          <Video className="h-5 w-5 text-blue-600 mr-2" />
+                          <h4 className="font-medium text-blue-900">2. Record Video Testament</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          Record your personal video testament through our secure platform for authenticity.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center">
+                        <Shield className="h-4 w-4 text-green-600 mr-2" />
+                        <p className="text-sm text-green-800 font-medium">
+                          Platform-based recording ensures security and prevents tampering
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <p className="text-sm text-blue-700">
-                  {signature 
-                    ? "Your signature has been captured and will be included in your finalized will."
-                    : "Please complete the signature section below to finalize your will."
-                  }
-                </p>
-              </div>
-              
-              <DigitalSignature defaultOpen={!signature} onSignatureChange={handleSignatureChange} />
+              </Card>
             </div>
             
             <div className="lg:col-span-1">
@@ -428,7 +405,6 @@ Date: ${new Date().toLocaleDateString()}
                   defaultOpen={true} 
                   content={willContent}
                   structuredData={getStructuredData()}
-                  signature={signature}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                   isWillFinalized={isFinalized}
                 />
@@ -449,7 +425,7 @@ Date: ${new Date().toLocaleDateString()}
                     <Button 
                       onClick={handleFinalize} 
                       className="w-full"
-                      disabled={saving || isFinalized || isGenerating || !signature}
+                      disabled={saving || isFinalized || isGenerating}
                       type="button"
                     >
                       {isGenerating ? (
@@ -466,20 +442,8 @@ Date: ${new Date().toLocaleDateString()}
                     </Button>
                     
                     <p className="text-xs text-gray-500 text-center">
-                      Free will creation - 24 hours secure access included
+                      Free will creation - Complete with documents & video next
                     </p>
-                    
-                    {/* Enhanced signature status display */}
-                    <div className="text-xs border-t pt-2 space-y-1">
-                      <div className={`${signature ? 'text-green-600' : 'text-amber-600'}`}>
-                        Signature: {signature ? '✓ Captured' : '✗ Required for finalization'}
-                      </div>
-                      {signature && (
-                        <div className="text-green-600">
-                          Ready to finalize will
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </Card>
               </div>
