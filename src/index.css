@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap');
 
 @tailwind base;
@@ -94,26 +95,69 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Improve mobile text rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevent horizontal scrolling on mobile */
+    overflow-x: hidden;
+  }
+
+  /* Safe area handling for mobile devices with notches */
+  .safe-area-insets {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply tracking-tight font-semibold;
+    /* Responsive text scaling */
+    line-height: 1.2;
   }
 
   h1 {
-    @apply text-4xl sm:text-5xl md:text-6xl;
+    @apply text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl;
   }
 
   h2 {
-    @apply text-3xl sm:text-4xl;
+    @apply text-xl xs:text-2xl sm:text-3xl md:text-4xl;
   }
 
   h3 {
-    @apply text-2xl sm:text-3xl;
+    @apply text-lg xs:text-xl sm:text-2xl md:text-3xl;
   }
 
   p {
     @apply leading-relaxed;
+    /* Better mobile line height */
+    line-height: 1.6;
+  }
+
+  /* Improve button accessibility on touch devices */
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve form elements on mobile */
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    @apply text-base;
+  }
+
+  /* Prevent zoom on focus for iOS */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 }
 
@@ -191,6 +235,57 @@
   
   .button-glitch:hover::before {
     left: 100%;
+  }
+
+  /* Mobile-specific utilities */
+  .mobile-container {
+    @apply px-4 xs:px-6;
+  }
+
+  .mobile-safe-padding {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .prevent-zoom {
+    font-size: 16px !important;
+  }
+
+  /* Responsive text utilities */
+  .text-responsive-sm {
+    @apply text-sm xs:text-base;
+  }
+
+  .text-responsive-base {
+    @apply text-base xs:text-lg;
+  }
+
+  .text-responsive-lg {
+    @apply text-lg xs:text-xl sm:text-2xl;
+  }
+
+  .text-responsive-xl {
+    @apply text-xl xs:text-2xl sm:text-3xl;
+  }
+
+  /* Responsive spacing utilities */
+  .spacing-responsive {
+    @apply space-y-4 xs:space-y-6 sm:space-y-8;
+  }
+
+  .padding-responsive {
+    @apply p-4 xs:p-6 sm:p-8;
+  }
+
+  .margin-responsive {
+    @apply m-4 xs:m-6 sm:m-8;
   }
 }
 
@@ -329,4 +424,40 @@ html {
 
 .rotate-y-180 {
   transform: rotateY(180deg);
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  /* Improve scroll performance on mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Optimize tap highlighting */
+  * {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Improve mobile viewport handling */
+  body {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+  
+  /* Optimize mobile forms */
+  input, textarea, select {
+    -webkit-appearance: none;
+    border-radius: 0;
+  }
+}
+
+/* High-DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .precise-shadow {
+    box-shadow: 
+      0 0.5px 1px rgba(0, 0, 0, 0.04),
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      0 2px 4px rgba(0, 0, 0, 0.04),
+      0 4px 8px rgba(0, 0, 0, 0.04);
+  }
 }

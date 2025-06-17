@@ -126,6 +126,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     <>
       <div className={cn(
         "flex h-screen w-full",
+        "safe-area-insets", // Handle notch areas
         shouldHaveCreamBackground ? "bg-[#FFF5E6] dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-900"
       )}>
         {showAuthenticatedLayout && (
@@ -137,6 +138,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
         <motion.div 
           className={cn(
             "flex flex-col w-full transition-all duration-300",
+            "min-h-screen-safe", // Use safe area height
             showSidebar && showAuthenticatedLayout ? "lg:ml-64" : showAuthenticatedLayout ? "lg:ml-16" : ""
           )}
           initial={{ opacity: 0 }}
@@ -157,7 +159,11 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
             <MobileNotification onDismiss={handleDismissMobileNotification} />
           )}
           <main className={cn(
-            "flex-1 overflow-y-auto py-6 px-4 md:px-6 lg:px-8",
+            "flex-1 overflow-y-auto",
+            // Mobile-first responsive padding
+            "px-3 py-4 xs:px-4 xs:py-5 sm:px-6 sm:py-6 md:px-6 md:py-6 lg:px-8 lg:py-6",
+            // Add safe area padding for devices with notches
+            "pt-safe-top pb-safe-bottom pl-safe-left pr-safe-right",
             shouldHaveCreamBackground && "relative"
           )}>
             {shouldHaveCreamBackground && (
@@ -167,7 +173,7 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
                 <div className="absolute inset-0 dot-pattern opacity-[0.03] animate-dot-pattern"></div>
               </div>
             )}
-            <div className="relative z-10">
+            <div className="relative z-10 w-full max-w-none">
               <PageTransition>
                 {children}
               </PageTransition>
