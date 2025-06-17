@@ -1,9 +1,9 @@
 
 {
   "framework": "vite",
-  "buildCommand": "npm ci --legacy-peer-deps && npm run build",
-  "outputDirectory": "dist",
   "installCommand": "npm ci --legacy-peer-deps",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "devCommand": "npm run dev",
   "rewrites": [
     {
@@ -23,7 +23,6 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production",
-    "VITE_BUILD_TARGET": "esnext"
+    "NODE_ENV": "production"
   }
 }

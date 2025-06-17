@@ -32,6 +32,7 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
+          clerk: ['@clerk/clerk-react'],
           supabase: ['@supabase/supabase-js'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-toast']
         }
@@ -45,6 +46,6 @@ export default defineConfig(({ mode }) => ({
     logOverride: { 'this-is-undefined-in-esm': 'silent' }
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom']
+    include: ['react', 'react-dom', 'react-router-dom', '@clerk/clerk-react']
   }
 }));
