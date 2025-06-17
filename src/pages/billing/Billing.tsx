@@ -19,6 +19,7 @@ export default function Billing() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const { toast: uiToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -28,19 +29,24 @@ export default function Billing() {
   const canceled = queryParams.get('canceled');
   const sessionId = queryParams.get('session_id');
 
-  // Fetch subscription data on component mount
+  // Enhanced subscription fetching with better error handling
   useEffect(() => {
     async function fetchSubscription() {
       try {
         setIsLoadingSubscription(true);
+        setSubscriptionError(null);
         
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
+          console.log('[BILLING] No user session found');
           return;
         }
+
+        console.log('[BILLING] Fetching subscription for user:', session.user.email);
         
-        const { data, error } = await supabase
+        // First try to get from database
+        const { data: dbData, error: dbError } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', session.user.id)
@@ -49,11 +55,38 @@ export default function Billing() {
           .limit(1)
           .single();
           
-        if (!error && data) {
-          setSubscription(data);
+        if (dbData && !dbError) {
+          console.log('[BILLING] Found subscription in database:', dbData);
+          setSubscription(dbData);
+        } else {
+          console.log('[BILLING] No active subscription in database, checking Stripe...');
+          
+          // Fallback: Check with Stripe directly
+          try {
+            const { data: stripeData, error: stripeError } = await supabase.functions.invoke('check-subscription', {
+              body: {}
+            });
+
+            if (!stripeError && stripeData) {
+              console.log('[BILLING] Stripe check response:', stripeData);
+              if (stripeData.subscribed) {
+                setSubscription({
+                  status: 'active',
+                  stripe_price_id: stripeData.subscription_tier?.toLowerCase() + '_monthly',
+                  start_date: null,
+                  end_date: stripeData.subscription_end,
+                  plan: stripeData.subscription_tier?.toLowerCase()
+                });
+              }
+            }
+          } catch (stripeError) {
+            console.error('[BILLING] Error checking Stripe:', stripeError);
+            setSubscriptionError('Unable to verify subscription status');
+          }
         }
       } catch (error) {
-        console.error('Error fetching subscription:', error);
+        console.error('[BILLING] Error fetching subscription:', error);
+        setSubscriptionError('Error loading subscription data');
       } finally {
         setIsLoadingSubscription(false);
       }
@@ -271,16 +304,28 @@ export default function Billing() {
   const handleManageSubscription = async () => {
     try {
       setIsManaging(true);
-      const { data } = await supabase.functions.invoke('customer-portal', {
+      console.log('[BILLING] Opening customer portal...');
+      
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
         body: {}
       });
 
+      if (error) {
+        console.error('[BILLING] Customer portal error:', error);
+        throw error;
+      }
+
       if (data?.url) {
+        console.log('[BILLING] Redirecting to customer portal:', data.url);
         window.location.href = data.url;
+      } else {
+        throw new Error('No portal URL received');
       }
     } catch (error) {
-      console.error('Customer portal error:', error);
-      toast.error('Error accessing subscription management');
+      console.error('[BILLING] Customer portal error:', error);
+      toast.error('Error accessing subscription management', {
+        description: 'Please try again or contact support if the issue persists.'
+      });
     } finally {
       setIsManaging(false);
     }
@@ -428,16 +473,61 @@ export default function Billing() {
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    FREE PLAN
-                  </span>
-                  <h2 className="text-2xl font-bold mt-2">
-                    $0 <span className="text-sm font-normal text-gray-500">/month</span>
-                  </h2>
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      FREE PLAN
+                    </span>
+                    <h2 className="text-2xl font-bold mt-2">
+                      $0 <span className="text-sm font-normal text-gray-500">/month</span>
+                    </h2>
+                  </div>
                 </div>
-              </div>
+                
+                {/* Always show management options for authenticated users */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="font-medium text-gray-900 mb-4">Account Management</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Access your account settings and subscription management through our secure customer portal.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                      onClick={handleManageSubscription}
+                      disabled={isManaging}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      {isManaging ? (
+                        <>
+                          <Loader className="h-4 w-4 animate-spin" />
+                          Opening...
+                        </>
+                      ) : (
+                        <>
+                          <Settings className="h-4 w-4" />
+                          Manage Account
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {subscriptionError && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start">
+                        <AlertTriangle className="text-yellow-600 mr-2 mt-0.5" size={16} />
+                        <div className="text-sm">
+                          <p className="font-medium text-yellow-900">Subscription Status Unclear</p>
+                          <p className="text-yellow-700">
+                            {subscriptionError}. Use the "Manage Account" button above to verify your subscription status.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
             
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 mt-4">
