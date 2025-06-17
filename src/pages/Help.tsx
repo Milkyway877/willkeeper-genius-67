@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Link } from 'react-router-dom';
@@ -7,6 +6,7 @@ import { Search, HelpCircle, Book, MessageSquare, FileText, Mail, ChevronRight, 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ContactSupportButton } from '@/components/common/ContactSupportButton';
 
 export default function Help() {
   const { toast } = useToast();
@@ -95,6 +95,10 @@ export default function Help() {
       title: "Help Topic Selected",
       description: `Viewing guide: ${topic?.title}`,
     });
+  };
+
+  const handleJoinCommunity = () => {
+    window.open('https://discord.gg/hGPgDqYP', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -230,25 +234,10 @@ export default function Help() {
               </p>
             </div>
             <div className="flex flex-wrap gap-4">
-              <Button 
-                variant="default" 
-                onClick={() => {
-                  toast({
-                    title: "Contact Support",
-                    description: "Opening support contact form",
-                  });
-                }}
-              >
-                Contact Support
-              </Button>
+              <ContactSupportButton />
               <Button 
                 variant="outline"
-                onClick={() => {
-                  toast({
-                    title: "Community",
-                    description: "Joining the WillTank community forum",
-                  });
-                }}
+                onClick={handleJoinCommunity}
               >
                 Join Community
               </Button>
