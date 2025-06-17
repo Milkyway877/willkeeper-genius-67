@@ -69,13 +69,15 @@ export const useOnboardingPopup = () => {
     },
   });
 
-  // Show onboarding popup if not completed
+  // Show onboarding popup after 5 seconds if not completed
   useEffect(() => {
     if (!isLoading && onboardingStatus && !onboardingStatus.onboarding_completed) {
-      // Small delay to ensure dashboard is loaded
+      console.log('Onboarding not completed, showing popup in 5 seconds...');
+      // 5-second delay to ensure dashboard is loaded
       const timer = setTimeout(() => {
+        console.log('Showing onboarding popup now');
         setShowOnboarding(true);
-      }, 1000);
+      }, 5000);
       
       return () => clearTimeout(timer);
     }
