@@ -549,7 +549,7 @@ export default function Billing() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button 
                       onClick={getManagementButtonAction()}
-                      disabled={customerPortalState === 'checking' || customerPortalState === 'opening'}
+                      disabled={customerPortalState === 'checking' || customerPortalState === 'opening' || isProcessing !== null}
                       className="flex items-center gap-2"
                     >
                       {getManagementButtonContent()}
@@ -645,7 +645,7 @@ export default function Billing() {
                       <div className="flex flex-col sm:flex-row gap-3 mb-4">
                         <Button 
                           onClick={getManagementButtonAction()}
-                          disabled={customerPortalState === 'checking' || customerPortalState === 'opening'}
+                          disabled={customerPortalState === 'checking' || customerPortalState === 'opening' || isProcessing !== null}
                           variant={hasStripeCustomer ? "default" : "outline"}
                           className="flex items-center gap-2"
                         >

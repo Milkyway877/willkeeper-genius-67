@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Link } from 'react-router-dom';
@@ -23,6 +22,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getDashboardSummary } from '@/services/dashboardService';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { WelcomeOnboardingPopup } from '@/components/onboarding/WelcomeOnboardingPopup';
+import { useOnboardingPopup } from '@/hooks/useOnboardingPopup';
 
 // Mock data for charts - in real app, this would come from your services
 const activityData = [
@@ -104,6 +105,8 @@ export default function Dashboard() {
     queryKey: ['dashboardSummary'],
     queryFn: getDashboardSummary
   });
+
+  const { showOnboarding, closeOnboarding } = useOnboardingPopup();
   
   return (
     <Layout>
@@ -307,6 +310,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      
+      {/* Onboarding Popup */}
+      <WelcomeOnboardingPopup 
+        open={showOnboarding} 
+        onClose={closeOnboarding} 
+      />
     </Layout>
   );
 }
