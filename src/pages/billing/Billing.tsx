@@ -540,7 +540,6 @@ export default function Billing() {
                   </div>
                 </div>
 
-                {/* Enhanced Subscription Management Section */}
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="font-medium text-gray-900 mb-4">Subscription Management</h4>
                   <p className="text-sm text-gray-600 mb-4">
@@ -610,7 +609,6 @@ export default function Billing() {
                   </div>
                 </div>
                 
-                {/* Enhanced Management for Non-Subscribers */}
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="font-medium text-gray-900 mb-4">Account Management</h4>
                   

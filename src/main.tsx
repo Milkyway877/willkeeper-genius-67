@@ -25,6 +25,7 @@ import Terms from './pages/Terms';
 import Cookies from './pages/Cookies';
 import SecureSignIn from './pages/auth/SecureSignIn';
 import SecureSignUp from './pages/auth/SecureSignUp';
+import EmailVerificationPage from './pages/auth/EmailVerificationPage';
 import Dashboard from './pages/Dashboard';
 import Help from './pages/Help';
 import Search from './pages/search/Search';
@@ -181,15 +182,15 @@ const router = createBrowserRouter([
         element: <SecureSignUp />,
       },
       {
+        path: "/auth/verification",
+        element: <EmailVerificationPage />,
+      },
+      {
         path: "/auth/recover",
         element: <SecureSignIn />,
       },
       {
         path: "/auth/2fa-verification",
-        element: <SecureSignIn />,
-      },
-      {
-        path: "/auth/verification",
         element: <SecureSignIn />,
       },
       {

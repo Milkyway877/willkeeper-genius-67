@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
 import { WillTankSidebar } from './WillTankSidebar';
@@ -32,7 +33,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const { profile } = useUserProfile();
   const { subscriptionStatus, loading: subscriptionLoading } = useSubscriptionStatus();
 
-  // Unified, unconditionally called:
   const {
     showSubscriptionModal,
     closeSubscriptionModal,
@@ -43,14 +43,12 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     eligibilityLoading,
   } = useWillSubscriptionFlow();
 
-  // Always define shouldShowCountdown after hooks above
   const shouldShowCountdown =
     !subscriptionStatus.isSubscribed &&
     !subscriptionStatus.isTrial &&
     (hasWill || hasTankMessage) &&
     !eligibilityLoading;
 
-  // All the effect hooks now do not return early before hooks, only guard inside
   useEffect(() => {
     const dismissedNotification = localStorage.getItem('dismissedMobileNotification');
     if (dismissedNotification === 'true') {
@@ -68,7 +66,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   }, [isMobile]);
 
   useEffect(() => {
-    // Guard: Only navigate if profile and subscription have loaded
     if (
       forceAuthenticated &&
       !location.pathname.includes('/auth/') &&
@@ -77,14 +74,31 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     ) {
       const checkAuthStatus = async () => {
         const { data } = await supabase.auth.getSession();
+        
         if (!data.session) {
           navigate('/auth/signin', { replace: true });
-        } else if (profile && !profile.is_activated) {
-          if (!profile.email_verified && !location.pathname.includes('/auth/verify-email')) {
-            navigate(`/auth/verify-email?email=${encodeURIComponent(profile.email || '')}`, { replace: true });
-          } else if (profile && profile.is_activated && profile.onboarding_completed === false && !location.pathname.includes('/onboarding')) {
-            // Redirect new users to onboarding if they haven't completed it
+          return;
+        }
+
+        // If user is authenticated, check their profile status
+        if (profile) {
+          // Check if email is verified - redirect to verification if not
+          if (!profile.email_verified && !location.pathname.includes('/auth/verification')) {
+            navigate(`/auth/verification?email=${encodeURIComponent(profile.email || '')}&type=signup`, { replace: true });
+            return;
+          }
+
+          // Check if account is activated - this should be set after email verification
+          if (!profile.is_activated && profile.email_verified && !location.pathname.includes('/onboarding')) {
+            // If email is verified but account not activated, redirect to onboarding
             navigate('/onboarding', { replace: true });
+            return;
+          }
+
+          // Check if onboarding is completed for activated users
+          if (profile.is_activated && !profile.onboarding_completed && !location.pathname.includes('/onboarding')) {
+            navigate('/onboarding', { replace: true });
+            return;
           }
         }
       };
@@ -107,8 +121,6 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
     }
   }, [location]);
 
-  // No conditional returns
-
   const shouldHaveCreamBackground = !isAuthPage && 
     !location.pathname.includes('/dashboard') && 
     !location.pathname.includes('/will') && 
@@ -120,13 +132,10 @@ export function Layout({ children, forceAuthenticated = true }: LayoutProps) {
   const isLandingPage = location.pathname === '/';
   const shouldShowFloatingAssistant = showAuthenticatedLayout && !isLandingPage && !location.pathname.includes('/onboarding');
 
-  // On loading, optionally show loading skeleton instead of content
   if (eligibilityLoading || subscriptionLoading) {
-    // Use branded loader instead of plain Loading text
     return <WillTankLoader />;
   }
 
-  // Don't show authenticated layout for onboarding
   const showOnboardingLayout = location.pathname.includes('/onboarding');
   
   if (showOnboardingLayout) {
