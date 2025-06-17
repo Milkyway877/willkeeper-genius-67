@@ -6,6 +6,7 @@ export async function createCheckoutSession(plan: string, billingPeriod: string,
   try {
     console.log('Creating checkout session for:', { plan, billingPeriod, returnUrl });
     
+    // Use Supabase edge function instead of relative API path
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: { 
         plan, 
