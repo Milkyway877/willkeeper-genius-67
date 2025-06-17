@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: {
+      // Ensure WebSocket connections are properly handled
+      clientPort: 443,
+      protocol: 'wss'
+    }
   },
   plugins: [
     react(),
@@ -33,6 +38,8 @@ export default defineConfig(({ mode }) => ({
     }
   },
   define: {
+    // Add a fallback for the WebSocket token if it's not defined
+    __WS_TOKEN__: JSON.stringify(process.env.WS_TOKEN || 'dev-ws-token'),
     global: 'globalThis',
   },
   optimizeDeps: {
