@@ -40,8 +40,7 @@ export default defineConfig(({ mode }) => ({
     }
   },
   define: {
-    // Add a fallback for the WebSocket token if it's not defined
-    __WS_TOKEN__: JSON.stringify(process.env.WS_TOKEN || 'dev-ws-token'),
+    // Properly define global variables with safe fallbacks
     global: 'globalThis',
   },
   optimizeDeps: {
