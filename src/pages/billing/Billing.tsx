@@ -12,12 +12,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { createCheckoutSession } from '@/api/createCheckoutSession';
 
-type CustomerPortalState = 'idle' | 'checking' | 'opening' | 'no-customer' | 'error';
-
 export default function Billing() {
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [customerPortalState, setCustomerPortalState] = useState<CustomerPortalState>('idle');
+  const [isManaging, setIsManaging] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
@@ -285,9 +283,38 @@ export default function Billing() {
     }
   };
 
+  const handleCustomerPortal = async () => {
+    try {
+      setIsManaging(true);
+      console.log('[BILLING] Opening customer portal...');
+      
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        body: {}
+      });
+
+      if (error) {
+        console.error('[BILLING] Customer portal error:', error);
+        throw error;
+      }
+
+      if (data?.url) {
+        console.log('[BILLING] Redirecting to customer portal:', data.url);
+        window.location.href = data.url;
+      } else {
+        throw new Error('No portal URL received');
+      }
+    } catch (error) {
+      console.error('[BILLING] Customer portal error:', error);
+      setIsManaging(false);
+      toast.error('Error accessing subscription management', {
+        description: 'Please try again or contact support if the issue persists.'
+      });
+    }
+  };
+
   const createStripeCustomer = async () => {
     try {
-      setCustomerPortalState('checking');
+      setIsManaging(true);
       
       const { data, error } = await supabase.functions.invoke('create-stripe-customer', {
         body: {}
@@ -300,55 +327,15 @@ export default function Billing() {
         toast.success('Account setup complete', {
           description: 'You can now access account management features.'
         });
-        setCustomerPortalState('idle');
+        setIsManaging(false);
       } else {
         throw new Error('Failed to create customer account');
       }
     } catch (error) {
       console.error('Error creating Stripe customer:', error);
-      setCustomerPortalState('error');
+      setIsManaging(false);
       toast.error('Setup failed', {
         description: 'Unable to set up account management. Please try again.'
-      });
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    try {
-      setCustomerPortalState('checking');
-      console.log('[BILLING] Opening customer portal...');
-      
-      const { data, error } = await supabase.functions.invoke('customer-portal', {
-        body: {}
-      });
-
-      if (error) {
-        console.error('[BILLING] Customer portal error:', error);
-        
-        // Enhanced error handling based on error type
-        if (error.message?.includes('No Stripe customer found')) {
-          setCustomerPortalState('no-customer');
-          toast.error('Account setup required', {
-            description: 'You need to set up billing account access first.'
-          });
-          return;
-        }
-        
-        throw error;
-      }
-
-      if (data?.url) {
-        console.log('[BILLING] Redirecting to customer portal:', data.url);
-        setCustomerPortalState('opening');
-        window.location.href = data.url;
-      } else {
-        throw new Error('No portal URL received');
-      }
-    } catch (error) {
-      console.error('[BILLING] Customer portal error:', error);
-      setCustomerPortalState('error');
-      toast.error('Error accessing subscription management', {
-        description: 'Please try again or contact support if the issue persists.'
       });
     }
   };
@@ -393,71 +380,6 @@ export default function Billing() {
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const getManagementButtonContent = () => {
-    switch (customerPortalState) {
-      case 'checking':
-        return (
-          <>
-            <Loader className="h-4 w-4 animate-spin" />
-            Checking...
-          </>
-        );
-      case 'opening':
-        return (
-          <>
-            <Loader className="h-4 w-4 animate-spin" />
-            Opening...
-          </>
-        );
-      case 'no-customer':
-        return (
-          <>
-            <CreditCard className="h-4 w-4" />
-            Setup Account Management
-          </>
-        );
-      case 'error':
-        return (
-          <>
-            <Settings className="h-4 w-4" />
-            Try Again
-          </>
-        );
-      default:
-        if (subscription) {
-          return (
-            <>
-              <Settings className="h-4 w-4" />
-              Manage Subscription
-            </>
-          );
-        }
-        
-        if (hasStripeCustomer) {
-          return (
-            <>
-              <CreditCard className="h-4 w-4" />
-              Manage Account
-            </>
-          );
-        }
-        
-        return (
-          <>
-            <Settings className="h-4 w-4" />
-            Setup Account Management
-          </>
-        );
-    }
-  };
-
-  const getManagementButtonAction = () => {
-    if (customerPortalState === 'no-customer' || !hasStripeCustomer) {
-      return createStripeCustomer;
-    }
-    return handleManageSubscription;
   };
 
   return (
@@ -548,11 +470,21 @@ export default function Billing() {
                   
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button 
-                      onClick={getManagementButtonAction()}
-                      disabled={['checking', 'opening'].includes(customerPortalState) || isProcessing !== null}
+                      onClick={handleCustomerPortal}
+                      disabled={isManaging || isProcessing !== null}
                       className="flex items-center gap-2"
                     >
-                      {getManagementButtonContent()}
+                      {isManaging ? (
+                        <>
+                          <Loader className="h-4 w-4 animate-spin" />
+                          Opening...
+                        </>
+                      ) : (
+                        <>
+                          <Settings className="h-4 w-4" />
+                          Manage Subscription
+                        </>
+                      )}
                     </Button>
                     
                     <AlertDialog>
@@ -574,7 +506,7 @@ export default function Billing() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleManageSubscription} className="bg-red-600 hover:bg-red-700">
+                          <AlertDialogAction onClick={handleCustomerPortal} className="bg-red-600 hover:bg-red-700">
                             Continue to Cancel
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -612,61 +544,46 @@ export default function Billing() {
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="font-medium text-gray-900 mb-4">Account Management</h4>
                   
-                  {customerPortalState === 'no-customer' ? (
-                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-4">
+                    {hasStripeCustomer 
+                      ? "Access your account settings and billing management through our secure customer portal."
+                      : "Set up account management to access billing history and payment methods, even without an active subscription."
+                    }
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                    <Button 
+                      onClick={hasStripeCustomer ? handleCustomerPortal : createStripeCustomer}
+                      disabled={isManaging || isProcessing !== null}
+                      variant={hasStripeCustomer ? "default" : "outline"}
+                      className="flex items-center gap-2"
+                    >
+                      {isManaging ? (
+                        <>
+                          <Loader className="h-4 w-4 animate-spin" />
+                          {hasStripeCustomer ? 'Opening...' : 'Setting up...'}
+                        </>
+                      ) : (
+                        <>
+                          {hasStripeCustomer ? <Settings className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                          {hasStripeCustomer ? 'Manage Account' : 'Setup Account Management'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {!hasStripeCustomer && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-start">
-                        <CreditCard className="text-blue-600 mr-2 mt-0.5" size={16} />
+                        <AlertTriangle className="text-yellow-600 mr-2 mt-0.5" size={16} />
                         <div className="text-sm">
-                          <p className="font-medium text-blue-900">Setup Required</p>
-                          <p className="text-blue-700 mb-3">
-                            To access account management features like payment methods and billing history, you need to set up your billing account first.
+                          <p className="font-medium text-yellow-900">Account Setup Benefits</p>
+                          <p className="text-yellow-700">
+                            Setting up account management allows you to save payment methods, view billing history, and quickly upgrade to paid plans.
                           </p>
-                          <Button 
-                            size="sm"
-                            onClick={createStripeCustomer}
-                            disabled={customerPortalState === 'checking'}
-                            className="flex items-center gap-2"
-                          >
-                            <CreditCard className="h-3 w-3" />
-                            Setup Account Management
-                          </Button>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <>
-                      <p className="text-sm text-gray-600 mb-4">
-                        {hasStripeCustomer 
-                          ? "Access your account settings and billing management through our secure customer portal."
-                          : "Set up account management to access billing history and payment methods, even without an active subscription."
-                        }
-                      </p>
-                      
-                      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                        <Button 
-                          onClick={getManagementButtonAction()}
-                          disabled={['checking', 'opening'].includes(customerPortalState) || isProcessing !== null}
-                          variant={hasStripeCustomer ? "default" : "outline"}
-                          className="flex items-center gap-2"
-                        >
-                          {getManagementButtonContent()}
-                        </Button>
-                      </div>
-
-                      {!hasStripeCustomer && (
-                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <div className="flex items-start">
-                            <AlertTriangle className="text-yellow-600 mr-2 mt-0.5" size={16} />
-                            <div className="text-sm">
-                              <p className="font-medium text-yellow-900">Account Setup Benefits</p>
-                              <p className="text-yellow-700">
-                                Setting up account management allows you to save payment methods, view billing history, and quickly upgrade to paid plans.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
                   )}
                   
                   {subscriptionError && (
