@@ -22,72 +22,86 @@ import IDSecurity from '@/pages/security/IDSecurity';
 import { TrialSuccess } from '@/pages/TrialSuccess';
 import EnhancedExecutorLogin from '@/pages/will-unlock/EnhancedExecutorLogin';
 
-const queryClient = new QueryClient();
+// Create QueryClient outside of component to avoid recreation
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function RouterContent() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<App />}>
+            <Route index element={<Index />} />
+            <Route path="/auth/signin" element={<SignIn />} />
+            <Route path="/auth/signup" element={<SignUp />} />
+            <Route path="/trial-success" element={<TrialSuccess />} />
+            <Route path="/pricing" element={<Billing />} />
+            <Route path="/security/IDSecurity" element={
+              <ProtectedRoute>
+                <IDSecurity />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/wills" element={
+              <ProtectedRoute>
+                <Wills />
+              </ProtectedRoute>
+            } />
+            <Route path="/will/:templateId" element={
+              <ProtectedRoute>
+                <WillEditorPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/tank" element={
+              <ProtectedRoute>
+                <Tank />
+              </ProtectedRoute>
+            } />
+            <Route path="/contacts" element={
+              <ProtectedRoute>
+                <ContactsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/death-verification" element={
+              <ProtectedRoute>
+                <DeathVerificationPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/treasury" element={
+              <ProtectedRoute>
+                <TreasuryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/billing" element={
+              <ProtectedRoute>
+                <Billing />
+              </ProtectedRoute>
+            } />
+            <Route path="/executor-access" element={<EnhancedExecutorLogin />} />
+          </Route>
+        </Routes>
+        <Toaster />
+        <Sonner />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
 
 export function Router() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<App />}>
-              <Route index element={<Index />} />
-              <Route path="/auth/signin" element={<SignIn />} />
-              <Route path="/auth/signup" element={<SignUp />} />
-              <Route path="/trial-success" element={<TrialSuccess />} />
-              <Route path="/pricing" element={<Billing />} />
-              <Route path="/security/IDSecurity" element={
-                <ProtectedRoute>
-                  <IDSecurity />
-                </ProtectedRoute>
-              } />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/wills" element={
-                <ProtectedRoute>
-                  <Wills />
-                </ProtectedRoute>
-              } />
-              <Route path="/will/:templateId" element={
-                <ProtectedRoute>
-                  <WillEditorPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/tank" element={
-                <ProtectedRoute>
-                  <Tank />
-                </ProtectedRoute>
-              } />
-              <Route path="/contacts" element={
-                <ProtectedRoute>
-                  <ContactsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/death-verification" element={
-                <ProtectedRoute>
-                  <DeathVerificationPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/treasury" element={
-                <ProtectedRoute>
-                  <TreasuryPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/billing" element={
-                <ProtectedRoute>
-                  <Billing />
-                </ProtectedRoute>
-              } />
-              <Route path="/executor-access" element={<EnhancedExecutorLogin />} />
-            </Route>
-          </Routes>
-          <Toaster />
-          <Sonner />
-        </AuthProvider>
-      </BrowserRouter>
+      <RouterContent />
     </QueryClientProvider>
   );
 }
