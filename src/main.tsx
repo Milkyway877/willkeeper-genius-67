@@ -5,40 +5,32 @@ import App from "./App.tsx";
 import "./index.css";
 import "./MobileStyles.css";
 import { ClerkProvider } from '@clerk/clerk-react';
+import { BrowserRouter } from 'react-router-dom';
 
-// Get the Clerk publishable key from environment variables
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+// Your provided Clerk key for preview mode
+const PREVIEW_CLERK_KEY = "pk_live_Y2xlcmsud2lsbHRhbmsuY29tJA";
 
-// In preview/development mode, we might not have the key - handle gracefully
+// Get the Clerk publishable key from environment variables or use preview key
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || PREVIEW_CLERK_KEY;
+
+// Check if we're in preview/development mode
 const isPreviewMode = window.location.hostname.includes('lovableproject.com') || 
                      window.location.hostname === 'localhost';
-
-if (!PUBLISHABLE_KEY && !isPreviewMode) {
-  throw new Error("Missing Clerk Publishable Key. Please add VITE_CLERK_PUBLISHABLE_KEY to your environment variables.");
-}
 
 console.log('Clerk setup:', { 
   hasKey: !!PUBLISHABLE_KEY, 
   isPreviewMode, 
-  hostname: window.location.hostname 
+  hostname: window.location.hostname,
+  keySource: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ? 'environment' : 'hardcoded'
 });
 
-// Conditional wrapper for Clerk
-const AppWrapper = () => {
-  if (PUBLISHABLE_KEY) {
-    return (
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-        <App />
-      </ClerkProvider>
-    );
-  }
-  
-  // In preview mode without a key, render app without Clerk
-  return <App />;
-};
-
+// Always render with ClerkProvider since we now have a key
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AppWrapper />
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ClerkProvider>
   </React.StrictMode>,
 );
