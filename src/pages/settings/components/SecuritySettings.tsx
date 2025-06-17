@@ -88,12 +88,12 @@ export function SecuritySettings() {
         console.log("Opening dialog to disable 2FA");
         setShowDisableDialog(true);
       } else {
-        // Redirect to ID & Security page to enable 2FA
+        // Redirect to ID & Security page to enable 2FA - FIXED ROUTE
         toast({
           title: "2FA Settings",
           description: "Please visit the ID & Security page to enable two-factor authentication.",
         });
-        window.location.href = '/security/IDSecurity';
+        window.location.href = '/pages/security/IDSecurity';
       }
       return;
     }
@@ -279,7 +279,7 @@ export function SecuritySettings() {
                 <Button 
                   variant="outline" 
                   className="text-sm w-full sm:w-auto"
-                  onClick={() => window.location.href = '/security/IDSecurity'}
+                  onClick={() => window.location.href = '/pages/security/IDSecurity'}
                 >
                   <Link className="h-4 w-4 mr-2" /> Manage 2FA Settings
                 </Button>
