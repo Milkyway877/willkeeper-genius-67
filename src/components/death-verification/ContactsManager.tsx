@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -40,7 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { User, Users, UserPlus, Mail, Phone, Check, X, AlertTriangle, Clock } from 'lucide-react';
+import { User, Users, UserPlus, Mail, Phone, Check, X, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { 
   sendContactInvitation, 
   getTrustedContacts, 
@@ -186,7 +187,7 @@ export function ContactsManager({
     }
   };
   
-  const handleSendInvitation = async (id: string, type: 'beneficiary' | 'executor' | 'trusted', name: string, email: string) => {
+  const handleSendInvitation = async (id: string, type: 'beneficiary' | 'executor' | 'trusted', name: string, email: string, isResend = false) => {
     try {
       // Set sending state for this contact
       setSending(prev => ({ ...prev, [`${type}-${id}`]: true }));
@@ -201,18 +202,18 @@ export function ContactsManager({
       
       if (success) {
         toast({
-          title: "Invitation Sent",
-          description: `An invitation has been sent to ${name} for the ${type} role.`,
+          title: isResend ? "Notification Resent" : "Notification Sent",
+          description: `${name} has been notified about their ${type} role.`,
         });
         await fetchContacts();
       } else {
-        throw new Error("Failed to send invitation");
+        throw new Error("Failed to send notification");
       }
     } catch (error) {
-      console.error('Error sending invitation:', error);
+      console.error('Error sending notification:', error);
       toast({
         title: "Error",
-        description: "Failed to send invitation. Please try again.",
+        description: "Failed to send notification. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -222,13 +223,11 @@ export function ContactsManager({
   
   const getStatusBadge = (status?: string) => {
     if (!status || status === 'not_sent') {
-      return <Badge variant="outline" className="bg-gray-100">Not Sent</Badge>;
-    } else if (status === 'sent') {
-      return <Badge variant="outline" className="bg-amber-100 text-amber-800">Pending Response</Badge>;
-    } else if (status === 'accepted') {
-      return <Badge variant="outline" className="bg-green-100 text-green-800">Accepted</Badge>;
-    } else if (status === 'declined') {
-      return <Badge variant="outline" className="bg-red-100 text-red-800">Declined</Badge>;
+      return <Badge variant="outline" className="bg-gray-100">Not Notified</Badge>;
+    } else if (status === 'sent' || status === 'notified') {
+      return <Badge variant="outline" className="bg-green-100 text-green-800">Notified</Badge>;
+    } else if (status === 'failed') {
+      return <Badge variant="outline" className="bg-red-100 text-red-800">Failed</Badge>;
     }
     return <Badge variant="outline">{status}</Badge>;
   };
@@ -246,7 +245,8 @@ export function ContactsManager({
             Contact Management
           </CardTitle>
           <CardDescription>
-            Manage contacts who will participate in the death verification process
+            Manage contacts who will be notified about their roles in your digital legacy plan. 
+            If any contact wishes to decline their role, they should contact you directly for removal.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -263,7 +263,7 @@ export function ContactsManager({
                   Beneficiaries {pinSystemEnabled && <span className="ml-2 text-xs bg-blue-100 text-blue-800 py-1 px-2 rounded-full">PIN System Enabled</span>}
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  These contacts will be notified and asked to provide their PIN to access your will.
+                  These contacts will be notified of their beneficiary role and may need to provide their PIN to access your will when the time comes.
                 </p>
                 
                 {beneficiaries.length > 0 ? (
@@ -274,7 +274,7 @@ export function ContactsManager({
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Phone</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>Notification Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -340,7 +340,7 @@ export function ContactsManager({
                                     >
                                       Add Email
                                     </Button>
-                                  ) : beneficiary.invitation_status === 'not_sent' ? (
+                                  ) : (
                                     <Button 
                                       size="sm" 
                                       variant="outline"
@@ -349,7 +349,8 @@ export function ContactsManager({
                                         beneficiary.id, 
                                         'beneficiary', 
                                         beneficiary.name, 
-                                        beneficiary.email || ''
+                                        beneficiary.email || '',
+                                        beneficiary.invitation_status === 'sent' || beneficiary.invitation_status === 'notified'
                                       )}
                                     >
                                       {sending[`beneficiary-${beneficiary.id}`] ? (
@@ -359,23 +360,19 @@ export function ContactsManager({
                                         </>
                                       ) : (
                                         <>
-                                          <Mail className="mr-2 h-4 w-4" />
-                                          Send Invitation
+                                          {(beneficiary.invitation_status === 'sent' || beneficiary.invitation_status === 'notified') ? (
+                                            <>
+                                              <RefreshCw className="mr-2 h-4 w-4" />
+                                              Resend Notification
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Mail className="mr-2 h-4 w-4" />
+                                              Send Notification
+                                            </>
+                                          )}
                                         </>
                                       )}
-                                    </Button>
-                                  ) : (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => setEditingContact({ 
-                                        id: beneficiary.id, 
-                                        type: 'beneficiary', 
-                                        email: beneficiary.email || '', 
-                                        phone: beneficiary.phone 
-                                      })}
-                                    >
-                                      <Mail className="h-4 w-4" />
                                     </Button>
                                   )}
                                 </div>
@@ -401,7 +398,7 @@ export function ContactsManager({
                     Executors {executorOverrideEnabled && <span className="ml-2 text-xs bg-green-100 text-green-800 py-1 px-2 rounded-full">Override Enabled</span>}
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    These contacts can override the PIN system if necessary.
+                    These contacts will be notified of their executor role and can help with will execution when the time comes.
                   </p>
                   
                   {executors.length > 0 ? (
@@ -411,7 +408,7 @@ export function ContactsManager({
                           <TableRow>
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Notification Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -465,7 +462,7 @@ export function ContactsManager({
                                       >
                                         Add Email
                                       </Button>
-                                    ) : executor.invitation_status === 'not_sent' ? (
+                                    ) : (
                                       <Button 
                                         size="sm" 
                                         variant="outline"
@@ -474,7 +471,8 @@ export function ContactsManager({
                                           executor.id, 
                                           'executor', 
                                           executor.name, 
-                                          executor.email || ''
+                                          executor.email || '',
+                                          executor.invitation_status === 'sent' || executor.invitation_status === 'notified'
                                         )}
                                       >
                                         {sending[`executor-${executor.id}`] ? (
@@ -484,22 +482,19 @@ export function ContactsManager({
                                           </>
                                         ) : (
                                           <>
-                                            <Mail className="mr-2 h-4 w-4" />
-                                            Send Invitation
+                                            {(executor.invitation_status === 'sent' || executor.invitation_status === 'notified') ? (
+                                              <>
+                                                <RefreshCw className="mr-2 h-4 w-4" />
+                                                Resend Notification
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Mail className="mr-2 h-4 w-4" />
+                                                Send Notification
+                                              </>
+                                            )}
                                           </>
                                         )}
-                                      </Button>
-                                    ) : (
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => setEditingContact({ 
-                                          id: executor.id, 
-                                          type: 'executor', 
-                                          email: executor.email || '' 
-                                        })}
-                                      >
-                                        <Mail className="h-4 w-4" />
                                       </Button>
                                     )}
                                   </div>
@@ -526,7 +521,7 @@ export function ContactsManager({
                     Trusted Contacts
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Trusted contacts can help verify your status and access your will in emergencies.
+                    Trusted contacts will be notified of their role and can help verify your status during check-ins.
                   </p>
                   
                   {trustedContacts.length > 0 ? (
@@ -537,7 +532,7 @@ export function ContactsManager({
                             <TableHead>Name</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Phone</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Notification Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -551,31 +546,39 @@ export function ContactsManager({
                                 {getStatusBadge(contact.invitation_status)}
                               </TableCell>
                               <TableCell className="text-right">
-                                {contact.invitation_status === 'not_sent' && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    disabled={sending[`trusted-${contact.id}`]}
-                                    onClick={() => handleSendInvitation(
-                                      contact.id!, 
-                                      'trusted', 
-                                      contact.name, 
-                                      contact.email
-                                    )}
-                                  >
-                                    {sending[`trusted-${contact.id}`] ? (
-                                      <>
-                                        <div className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
-                                        Sending...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Mail className="mr-2 h-4 w-4" />
-                                        Send Invitation
-                                      </>
-                                    )}
-                                  </Button>
-                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  disabled={sending[`trusted-${contact.id}`]}
+                                  onClick={() => handleSendInvitation(
+                                    contact.id!, 
+                                    'trusted', 
+                                    contact.name, 
+                                    contact.email,
+                                    contact.invitation_status === 'sent' || contact.invitation_status === 'notified'
+                                  )}
+                                >
+                                  {sending[`trusted-${contact.id}`] ? (
+                                    <>
+                                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                                      Sending...
+                                    </>
+                                  ) : (
+                                    <>
+                                      {(contact.invitation_status === 'sent' || contact.invitation_status === 'notified') ? (
+                                        <>
+                                          <RefreshCw className="mr-2 h-4 w-4" />
+                                          Resend Notification
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Mail className="mr-2 h-4 w-4" />
+                                          Send Notification
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -673,36 +676,25 @@ export function ContactsManager({
                 </div>
               )}
               
-              {/* Contact Verification Status */}
+              {/* Important Notice */}
               <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
                 <h3 className="font-medium mb-2 flex items-center text-blue-800">
-                  <Clock className="mr-2 h-4 w-4" />
-                  Status Check System
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Important Notice
                 </h3>
-                <p className="text-sm text-blue-700 mb-4">
-                  Your contacts will be sent periodic emails to confirm you are still alive. 
-                  This helps ensure your will is only accessible at the appropriate time.
+                <p className="text-sm text-blue-700 mb-2">
+                  All contacts listed above will be automatically notified of their roles. They don't need to confirm or accept anything through the system.
                 </p>
-                <Button 
-                  variant="outline" 
-                  className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                  onClick={() => {
-                    toast({
-                      title: "Status Check",
-                      description: "Manual status check has been triggered. Your contacts will receive emails shortly."
-                    });
-                  }}
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send Manual Status Check
-                </Button>
+                <p className="text-sm text-blue-700">
+                  If any contact wishes to decline their role, they should contact you directly and you can manually remove them from your will or trusted contacts list.
+                </p>
               </div>
             </div>
           )}
         </CardContent>
         <CardFooter className="flex justify-between">
           <p className="text-sm text-gray-500">
-            Make sure to keep your contact information up to date.
+            Keep your contact information up to date for the best experience.
           </p>
         </CardFooter>
       </Card>

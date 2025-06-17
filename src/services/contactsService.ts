@@ -227,18 +227,18 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
           throw new Error('Failed to send invitation via auto-contact-notifier');
         }
 
-        // Update status in trusted_contacts table
+        // Update status in trusted_contacts table to 'notified'
         await supabase
           .from('trusted_contacts')
           .update({ 
-            invitation_status: 'sent', 
+            invitation_status: 'notified', 
             invitation_sent_at: new Date().toISOString() 
           })
           .eq('id', contact.contactId);
 
         await createSystemNotification('info', {
-          title: 'Invitation Sent',
-          description: `Invitation sent to ${contact.name} for role: trusted contact`
+          title: 'Notification Sent',
+          description: `${contact.name} has been notified of their trusted contact role`
         });
 
         return true;
@@ -271,19 +271,19 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       
       // Create notification about failure
       await createSystemNotification('warning', {
-        title: 'Invitation Not Sent',
-        description: `We couldn't send an invitation to ${contact.name}. Please try again later.`
+        title: 'Notification Not Sent',
+        description: `We couldn't send a notification to ${contact.name}. Please try again later.`
       });
       
       return false;
     }
     
-    // Update status in the appropriate table
+    // Update status in the appropriate table to 'notified'
     if (contact.contactType === 'beneficiary') {
       await supabase
         .from('will_beneficiaries')
         .update({ 
-          invitation_status: 'sent', 
+          invitation_status: 'notified', 
           invitation_sent_at: new Date().toISOString() 
         })
         .eq('id', contact.contactId);
@@ -291,7 +291,7 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
       await supabase
         .from('will_executors')
         .update({ 
-          invitation_status: 'sent', 
+          invitation_status: 'notified', 
           invitation_sent_at: new Date().toISOString() 
         })
         .eq('id', contact.contactId);
@@ -299,8 +299,8 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
 
     // Create notification about success
     await createSystemNotification('info', {
-      title: 'Invitation Sent',
-      description: `Invitation sent to ${contact.name} for role: ${contact.contactType}`
+      title: 'Notification Sent',
+      description: `${contact.name} has been notified of their ${contact.contactType} role`
     });
     
     const responseData = await response.json();
@@ -310,8 +310,8 @@ export const sendContactInvitation = async (contact: ContactInvitation): Promise
     
     // Create notification about error
     await createSystemNotification('warning', {
-      title: 'Invitation Failed',
-      description: `There was an error sending an invitation to ${contact.name}`
+      title: 'Notification Failed',
+      description: `There was an error sending a notification to ${contact.name}`
     });
     
     return false;
