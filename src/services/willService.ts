@@ -11,7 +11,8 @@ export interface Will {
   template_type?: string;
   ai_generated?: boolean;
   content?: string;
-  signature?: string; // Added signature property
+  signature?: string;
+  user_id?: string;
 }
 
 export interface WillExecutor {
@@ -125,46 +126,6 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       throw new Error('You must be logged in to create a will');
     }
     
-    // Check if we're already processing a draft creation request
-    // Include a time-based check to avoid long-term lockouts
-    const now = Date.now();
-    const THROTTLE_TIME = 3000; // 3 seconds
-    
-    if (will.status === 'draft') {
-      if (inProgressOperations.creatingDraft && 
-         (now - inProgressOperations.lastDraftTime < THROTTLE_TIME)) {
-        console.log('Draft creation in progress, skipping duplicate request');
-        return null;
-      }
-      
-      // Set flag to prevent duplicate operations
-      inProgressOperations.creatingDraft = true;
-      inProgressOperations.lastDraftTime = now;
-      
-      // Check if there's an existing draft we can use
-      const { data: existingDrafts } = await supabase
-        .from('wills')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('status', 'draft')
-        .eq('template_type', will.template_type || '')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      // Update existing draft of the same template type if it exists
-      if (existingDrafts && existingDrafts.length > 0) {
-        const latestDraft = existingDrafts[0];
-        const updatedWill = await updateWill(latestDraft.id, {
-          ...will,
-          status: 'draft',
-          updated_at: new Date().toISOString()
-        });
-        
-        inProgressOperations.creatingDraft = false;
-        return updatedWill;
-      }
-    }
-
     // Check if this is the user's first will
     const { data: existingWills } = await supabase
       .from('wills')
@@ -179,7 +140,9 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       user_id: session.user.id,
       document_url: will.document_url || '',
       status: will.status || 'draft',
-      subscription_required_after: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+      template_type: will.template_type || 'custom',
+      ai_generated: will.ai_generated || false,
+      subscription_required_after: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
     
     console.log('Creating will with data:', willToCreate);
@@ -192,8 +155,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       
     if (error) {
       console.error('Error creating will:', error);
-      inProgressOperations.creatingDraft = false;
-      return null;
+      throw new Error(`Failed to create will: ${error.message}`);
     }
     
     // Initialize countdown if this is the first will
@@ -212,16 +174,10 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       }
     }
     
-    // Reset the in-progress flag after operation completes
-    if (will.status === 'draft') {
-      inProgressOperations.creatingDraft = false;
-    }
-    
     return data;
   } catch (error) {
     console.error('Error in createWill:', error);
-    inProgressOperations.creatingDraft = false;
-    return null;
+    throw error;
   }
 };
 
@@ -231,7 +187,7 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
     
     if (!session?.user) {
       console.error('User is not authenticated');
-      return null;
+      throw new Error('You must be logged in to update a will');
     }
 
     const updatedWill = {
@@ -249,18 +205,22 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
       
     if (error) {
       console.error('Error updating will:', error);
-      return null;
+      throw new Error(`Failed to update will: ${error.message}`);
     }
     
-    await createSystemNotification('will_updated', {
-      title: 'Will Updated',
-      description: `Your will "${data.title}" has been updated successfully.`
-    });
+    try {
+      await createSystemNotification('will_updated', {
+        title: 'Will Updated',
+        description: `Your will "${data.title}" has been updated successfully.`
+      });
+    } catch (notifError) {
+      console.error('Error creating notification:', notifError);
+    }
     
     return data;
   } catch (error) {
     console.error('Error in updateWill:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -662,3 +622,5 @@ export const getDocumentUrl = async (document: WillDocument): Promise<string | n
     return null;
   }
 };
+
+// Helper function to initialize countdown for first will

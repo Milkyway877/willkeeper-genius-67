@@ -432,8 +432,6 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
         });
         return;
       }
-      
-      // REMOVED: Signature requirement check
 
       setIsGenerating(true);
       
@@ -445,36 +443,59 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
       
       let finalWill: Will | null = null;
       
-      if (willId) {
-        finalWill = await updateWill(willId, {
-          status: 'active',
-          content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
-          title: title
-        });
-      } else if (onSave) {
-        const documentData = {
-          title: title,
-          content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
-          status: 'active',
-          template_type: templateId,
-          document_url: '',
-        };
-        
-        finalWill = await createWill(documentData);
-        if (finalWill && onSave) {
-          onSave({ ...willContent, signature, id: finalWill.id });
+      try {
+        if (willId) {
+          finalWill = await updateWill(willId, {
+            status: 'active',
+            content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
+            title: title
+          });
+        } else if (onSave) {
+          const documentData = {
+            title: title,
+            content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
+            status: 'active',
+            template_type: templateId,
+            document_url: '',
+            ai_generated: false
+          };
+          
+          finalWill = await createWill(documentData);
+          if (finalWill && onSave) {
+            onSave({ ...willContent, signature, id: finalWill.id });
+          }
         }
-      }
-      
-      if (finalWill) {
-        console.log('DocumentWillEditor: Will finalized successfully with ID:', finalWill.id);
-        setGeneratedWill(finalWill);
-        setFinalizedWillId(finalWill.id);
-        setShowSuccessScreen(true);
+        
+        if (finalWill) {
+          console.log('DocumentWillEditor: Will finalized successfully with ID:', finalWill.id);
+          setGeneratedWill(finalWill);
+          setFinalizedWillId(finalWill.id);
+          setShowSuccessScreen(true);
+          
+          toast({
+            title: "Will Finalized Successfully!",
+            description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
+          });
+        } else {
+          throw new Error('Failed to create or update will - no data returned');
+        }
+      } catch (dbError: any) {
+        console.error('Database error during will finalization:', dbError);
+        
+        let errorMessage = "There was an error finalizing your will. Please try again.";
+        
+        if (dbError.message?.includes('permission denied') || dbError.message?.includes('403')) {
+          errorMessage = "Permission denied. Please ensure you're logged in and try again.";
+        } else if (dbError.message?.includes('network')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (dbError.message) {
+          errorMessage = `Error: ${dbError.message}`;
+        }
         
         toast({
-          title: "Will Finalized Successfully!",
-          description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
+          title: "Finalization Error",
+          description: errorMessage,
+          variant: "destructive"
         });
       }
       
@@ -482,7 +503,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
       console.error("Error generating official will:", error);
       toast({
         title: "Finalization Error",
-        description: "There was an error finalizing your will. Please try again.",
+        description: "There was an unexpected error finalizing your will. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -707,7 +728,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                       value={residualEstate} 
                       label="residualEstate" 
                       onEdit={(value) => setResidualEstate(value)}
-                      onAiHelp={() => handleShowAIHelper('residualEestate')}
+                      onAiHelp={() => handleShowAIHelper('residualEstate')}
                     />
                     .
                   </p>
