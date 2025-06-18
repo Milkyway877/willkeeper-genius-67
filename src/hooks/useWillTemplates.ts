@@ -6,7 +6,6 @@ export interface WillTemplate {
   id: string;
   title: string;
   description: string;
-  content?: string;
 }
 
 export function useWillTemplates() {
@@ -18,8 +17,7 @@ export function useWillTemplates() {
     const convertedTemplates: WillTemplate[] = templates.map(template => ({
       id: template.id,
       title: template.title,
-      description: template.description,
-      content: template.content || ''
+      description: template.description
     }));
     
     setWillTemplates(convertedTemplates);

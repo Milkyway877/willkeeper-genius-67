@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -130,12 +129,7 @@ export default function TemplateWillCreationPage() {
           </div>
         ) : (
           <div className="flex-1">
-            <DocumentWillEditor 
-              templateId={templateId || ''} 
-              initialData={progress?.responses} 
-              willId={progress?.will_id}
-              onSave={handleSave}
-            />
+            <DocumentWillEditor />
           </div>
         )}
       </div>
