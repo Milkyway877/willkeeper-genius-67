@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -6,7 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { templates } from './config/wizardSteps';
 import { getWillProgress, WillProgress, saveWillProgress } from '@/services/willProgressService';
-import DocumentWillEditor from './components/DocumentWillEditor';
+import { DocumentWillEditor } from './components/DocumentWillEditor';
 import { createWill, updateWill } from '@/services/willService';
 
 export default function TemplateWillCreationPage() {
@@ -129,7 +130,12 @@ export default function TemplateWillCreationPage() {
           </div>
         ) : (
           <div className="flex-1">
-            <DocumentWillEditor />
+            <DocumentWillEditor 
+              templateId={templateId || ''} 
+              initialData={progress?.responses} 
+              willId={progress?.will_id}
+              onSave={handleSave}
+            />
           </div>
         )}
       </div>
