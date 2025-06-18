@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { templates } from './config/wizardSteps';
 import { getWillProgress, WillProgress, saveWillProgress } from '@/services/willProgressService';
-import { DocumentWillEditor } from './components/DocumentWillEditor';
+import DocumentWillEditor from './components/DocumentWillEditor';
 import { createWill, updateWill } from '@/services/willService';
 
 export default function TemplateWillCreationPage() {

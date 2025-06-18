@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -35,14 +36,42 @@ import { generateWillContent } from '@/utils/willTemplateUtils';
 import { createWill } from '@/services/willService';
 import { useWillTemplates } from '@/hooks/useWillTemplates';
 
+interface WillResponses {
+  fullName?: string;
+  dateOfBirth?: string;
+  homeAddress?: string;
+  email?: string;
+  phoneNumber?: string;
+  beneficiaries?: Array<{
+    name: string;
+    relationship: string;
+    percentage: number;
+  }>;
+  executors?: Array<{
+    name: string;
+    relationship: string;
+    isPrimary?: boolean;
+  }>;
+  assets?: string;
+  funeralPreferences?: string;
+  memorialService?: string;
+  charitableDonations?: string;
+  specialInstructions?: string;
+  personal_info_completed?: boolean;
+  beneficiaries_completed?: boolean;
+  executors_completed?: boolean;
+  assets_completed?: boolean;
+  final_wishes_completed?: boolean;
+}
+
 export default function DocumentWillEditor() {
   const { templateId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { templates } = useWillTemplates();
 
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [responses, setResponses] = useState({});
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [responses, setResponses] = useState<WillResponses>({});
   const [isComplete, setIsComplete] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -71,7 +100,7 @@ export default function DocumentWillEditor() {
     checkCompletion();
   }, [responses]);
 
-  const handleResponseChange = (section, data) => {
+  const handleResponseChange = (section: string, data: any) => {
     setResponses(prev => ({
       ...prev,
       [section]: data,
@@ -83,7 +112,7 @@ export default function DocumentWillEditor() {
     setEditableContent(newContent);
   };
 
-  const handleContentChange = (e) => {
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditableContent(e.target.value);
   };
 
@@ -224,24 +253,15 @@ export default function DocumentWillEditor() {
           <div className="lg:col-span-3 space-y-6">
             <PersonalInfoSection 
               defaultOpen={true}
-              onDataChange={(data) => handleResponseChange('personal_info', data)}
             />
             
-            <BeneficiariesSection 
-              onDataChange={(data) => handleResponseChange('beneficiaries', data)}
-            />
+            <BeneficiariesSection />
             
-            <ExecutorsSection 
-              onDataChange={(data) => handleResponseChange('executors', data)}
-            />
+            <ExecutorsSection />
             
-            <AssetsSection 
-              onDataChange={(data) => handleResponseChange('assets', data)}
-            />
+            <AssetsSection />
             
-            <FinalWishesSection 
-              onDataChange={(data) => handleResponseChange('final_wishes', data)}
-            />
+            <FinalWishesSection />
 
             <VideoTestamentInfo defaultOpen={false} />
 
