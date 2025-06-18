@@ -1,243 +1,129 @@
 
-import { z } from 'zod';
+export const generateWillContent = (formData: any, baseContent: string = '') => {
+  if (!formData) return baseContent;
 
-// Type for will form values (imported from your schema)
-type WillFormValues = {
-  fullName?: string;
-  dateOfBirth?: string;
-  homeAddress?: string;
-  email?: string;
-  phoneNumber?: string;
-  executors?: Array<{
-    name?: string;
-    relationship?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    isPrimary?: boolean;
-  }>;
-  beneficiaries?: Array<{
-    name?: string;
-    relationship?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    percentage?: number | string;
-  }>;
-  funeralPreferences?: string;
-  memorialService?: string;
-  obituary?: string;
-  charitableDonations?: string;
-  specialInstructions?: string;
-};
+  let content = `LAST WILL AND TESTAMENT
 
-/**
- * Check if form values contain meaningful user data beyond default empty values
- */
-const hasValidUserData = (formValues: WillFormValues): boolean => {
-  // If no form values at all, there's definitely no valid data
-  if (!formValues) return false;
-  
-  // Check if user has entered basic personal details
-  const hasPersonalInfo = formValues.fullName && formValues.fullName.trim().length > 0;
-  
-  // Check if executors have been defined with names
-  const hasExecutorInfo = formValues.executors && 
-    Array.isArray(formValues.executors) && 
-    formValues.executors.some(e => e?.name && e.name.trim().length > 0);
-  
-  // Check if beneficiaries have been defined with names
-  const hasBeneficiaryInfo = formValues.beneficiaries && 
-    Array.isArray(formValues.beneficiaries) && 
-    formValues.beneficiaries.some(b => b?.name && b.name.trim().length > 0);
-  
-  return hasPersonalInfo || hasExecutorInfo || hasBeneficiaryInfo;
-};
+I, ${formData.fullName || '[Your Full Name]'}, residing at ${formData.homeAddress || '[Your Address]'}, being of sound mind and disposing memory, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
 
-/**
- * Generate will content based on form values and template
- * 
- * @param formValues Form values from user input
- * @param templateContent Base template content
- * @returns Updated will content
- */
-export const generateWillContent = (formValues: WillFormValues, templateContent: string): string => {
-  console.log("Generating will content from form values:", formValues);
-  
-  // If no meaningful inputs yet, return the original template or placeholder
-  if (!hasValidUserData(formValues)) {
-    console.log("No valid user data found, returning original template");
-    return templateContent;
-  }
-  
-  let newContent = templateContent;
-  
-  // Replace personal information
-  if (formValues.fullName) {
-    newContent = newContent.replace(/\[Full Name\]/g, formValues.fullName);
-  }
-  
-  if (formValues.dateOfBirth) {
-    newContent = newContent.replace(/\[Date of Birth\]/g, formValues.dateOfBirth);
-  }
-  
-  if (formValues.homeAddress) {
-    newContent = newContent.replace(/\[Address\]/g, formValues.homeAddress);
-  }
-  
-  // Replace executor information
-  const executors = formValues.executors || [];
-  const primaryExecutor = executors.find(e => e?.isPrimary) || executors[0];
-  const alternateExecutor = executors.find(e => !e?.isPrimary && e?.name) || executors[1];
-  
-  if (primaryExecutor?.name) {
-    newContent = newContent.replace(/\[Executor Name\]/g, primaryExecutor.name);
-  }
-  
-  if (alternateExecutor?.name) {
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, alternateExecutor.name);
-  } else if (executors.length > 1 && executors[1]?.name) {
-    // Try to use the second executor as alternate if not explicitly marked
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, executors[1].name);
-  }
-  
-  // Replace beneficiary information
-  const beneficiaries = formValues.beneficiaries || [];
-  
-  if (beneficiaries.length > 0) {
-    let beneficiaryText = "";
-    let beneficiaryDistribution = "";
+ARTICLE I: PERSONAL INFORMATION
+I was born on ${formData.dateOfBirth || '[Date of Birth]'}. This will is made to ensure my wishes are clearly documented and legally executed upon my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR(S)`;
+
+  // Add executors
+  if (formData.executors && Array.isArray(formData.executors) && formData.executors.length > 0) {
+    const primaryExecutor = formData.executors.find(e => e.isPrimary) || formData.executors[0];
+    content += `
+I hereby appoint ${primaryExecutor.name || '[Executor Name]'} as the Executor of my estate. If ${primaryExecutor.name || '[Executor Name]'} is unable or unwilling to serve, I appoint the following as alternate Executor(s):`;
     
-    // Filter out empty beneficiaries
-    const validBeneficiaries = beneficiaries.filter(b => b?.name);
+    formData.executors.forEach((executor, index) => {
+      if (!executor.isPrimary && executor.name) {
+        content += `
+${index}. ${executor.name} (${executor.relationship || 'Relationship not specified'})`;
+      }
+    });
+  } else {
+    content += `
+I hereby appoint [Executor Name] as the Executor of my estate.`;
+  }
+
+  content += `
+
+ARTICLE III: BENEFICIARIES AND DISTRIBUTION OF ASSETS`;
+
+  // Add beneficiaries
+  if (formData.beneficiaries && Array.isArray(formData.beneficiaries) && formData.beneficiaries.length > 0) {
+    content += `
+I give, devise, and bequeath my estate to the following beneficiaries:`;
     
-    if (validBeneficiaries.length > 0) {
-      // Create detailed beneficiary listing
-      beneficiaryText = validBeneficiaries
-        .map(b => {
-          const percentage = typeof b.percentage === 'number' 
-            ? b.percentage 
-            : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
-          
-          return `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${percentage || 0}% of the estate`;
-        })
-        .join('\n');
-      
-      // Create distribution summary
-      beneficiaryDistribution = validBeneficiaries
-        .map(b => {
-          const percentage = typeof b.percentage === 'number' 
-            ? b.percentage 
-            : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
-          
-          return `${b.name} (${percentage || 0}%)`;
-        })
-        .join(', ');
-      
-      // Replace placeholders
-      if (beneficiaryText) {
-        newContent = newContent.replace(/\[Beneficiary details to be added\]/g, beneficiaryText);
+    formData.beneficiaries.forEach((beneficiary, index) => {
+      if (beneficiary.name) {
+        content += `
+${index + 1}. ${beneficiary.name} (${beneficiary.relationship || 'Relationship not specified'}) - ${beneficiary.percentage || '0'}% of my estate`;
       }
-      
-      if (beneficiaryDistribution) {
-        newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, beneficiaryDistribution);
-      }
+    });
+  } else {
+    content += `
+[Beneficiary information to be specified]`;
+  }
+
+  // Add assets if specified
+  if (formData.assets) {
+    content += `
+
+ARTICLE IV: SPECIFIC BEQUESTS
+${formData.assets}`;
+  }
+
+  // Add final wishes
+  if (formData.funeralPreferences || formData.memorialService || formData.charitableDonations || formData.specialInstructions) {
+    content += `
+
+ARTICLE V: FINAL ARRANGEMENTS AND WISHES`;
+
+    if (formData.funeralPreferences) {
+      content += `
+Funeral Preferences: ${formData.funeralPreferences}`;
+    }
+
+    if (formData.memorialService) {
+      content += `
+Memorial Service: ${formData.memorialService}`;
+    }
+
+    if (formData.charitableDonations) {
+      content += `
+Charitable Donations: ${formData.charitableDonations}`;
+    }
+
+    if (formData.specialInstructions) {
+      content += `
+Special Instructions: ${formData.specialInstructions}`;
     }
   }
-  
-  // Replace final arrangements
-  let finalArrangements = "";
-  
-  if (formValues.funeralPreferences) {
-    finalArrangements += `Funeral Preferences: ${formValues.funeralPreferences}\n\n`;
-  }
-  
-  if (formValues.memorialService) {
-    finalArrangements += `Memorial Service: ${formValues.memorialService}\n\n`;
-  }
-  
-  if (formValues.obituary) {
-    finalArrangements += `Obituary: ${formValues.obituary}\n\n`;
-  }
-  
-  if (formValues.charitableDonations) {
-    finalArrangements += `Charitable Donations: ${formValues.charitableDonations}\n\n`;
-  }
-  
-  if (formValues.specialInstructions) {
-    finalArrangements += `Special Instructions: ${formValues.specialInstructions}`;
-  }
-  
-  if (finalArrangements) {
-    newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements);
-  }
-  
-  // Only replace generic placeholders if we have meaningful data and the user has started filling out sections
-  // This prevents showing incomplete/error warnings prematurely
-  if (hasValidUserData(formValues) && Object.keys(formValues).length > 2) {
-    // If there are no specific instructions for some sections, replace with generic text
-    newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
-    newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
-    newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
-    newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
-    newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
-    newContent = newContent.replace(/\[Address\]/g, "my current legal address");
-    newContent = newContent.replace(/\[Full Name\]/g, "the testator");
-    newContent = newContent.replace(/\[Date of Birth\]/g, "the testator's date of birth");
-  }
-  
-  console.log("Generated will content:", newContent);
-  return newContent;
+
+  content += `
+
+ARTICLE VI: GENERAL PROVISIONS
+1. If any beneficiary predeceases me, their share shall be distributed equally among the remaining beneficiaries.
+2. This will shall be governed by the laws of the jurisdiction in which I reside at the time of my death.
+3. My video testament, recorded through the WillTank platform, serves as additional authentication of this will and my wishes.
+
+ARTICLE VII: EXECUTION
+This will has been created through the WillTank platform and is authenticated by my video testament recording, which serves as my digital signature and confirmation of these wishes.
+
+Created on: ${new Date().toLocaleDateString()}
+Through: WillTank Digital Will Platform
+
+---
+This document was generated using WillTank's secure will creation platform.
+Video testament authentication provides legal validity and prevents tampering.`;
+
+  return content;
 };
 
-/**
- * Check if will content is complete with all required information
- */
 export const validateWillContent = (content: string): boolean => {
-  // If no real content yet, don't show it as invalid
-  if (!content || 
-      content.includes('Start chatting') || 
-      content.includes('Your will document will appear here')) {
-    return true;
-  }
+  if (!content || content.trim().length === 0) return false;
   
-  const placeholders = [
-    "[Full Name]",
-    "[Address]",
-    "[Date of Birth]",
-    "[Executor Name]",
-    "[Alternate Executor Name]",
-    "[Beneficiary details to be added]",
-    "[Specific bequests to be added]",
-    "[Beneficiary names and distribution details]",
-    "[Final arrangements to be added]"
+  const requiredSections = [
+    'LAST WILL AND TESTAMENT',
+    'ARTICLE I',
+    'ARTICLE II',
+    'ARTICLE III'
   ];
   
-  return !placeholders.some(placeholder => content.includes(placeholder));
+  return requiredSections.every(section => content.includes(section));
 };
 
-/**
- * Detect which sections of a will are complete
- */
-export const detectCompletedSections = (content: string): string[] => {
-  const completedSections: string[] = [];
+export const extractPersonalInfo = (content: string) => {
+  const nameMatch = content.match(/I,\s+([^,]+),/);
+  const addressMatch = content.match(/residing at\s+([^,]+),/);
+  const dobMatch = content.match(/born on\s+([^.]+)/);
   
-  if (!content.includes("[Full Name]") && !content.includes("[Date of Birth]")) {
-    completedSections.push('personal_info');
-  }
-  
-  if (!content.includes("[Beneficiary details to be added]") && !content.includes("[Beneficiary names and distribution details]")) {
-    completedSections.push('beneficiaries');
-  }
-  
-  if (!content.includes("[Executor Name]")) {
-    completedSections.push('executor');
-  }
-  
-  if (!content.includes("[Final arrangements to be added]")) {
-    completedSections.push('final_wishes');
-  }
-  
-  return completedSections;
+  return {
+    fullName: nameMatch ? nameMatch[1].trim() : '',
+    address: addressMatch ? addressMatch[1].trim() : '',
+    dateOfBirth: dobMatch ? dobMatch[1].trim() : ''
+  };
 };
