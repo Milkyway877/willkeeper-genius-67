@@ -258,7 +258,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
     enabled: true
   });
 
-  // Check if the document is complete - Enhanced with signature requirement
+  // Check if the document is complete - REMOVED signature requirement
   useEffect(() => {
     const checkCompleteness = () => {
       // Basic completeness check
@@ -283,18 +283,15 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
         return false;
       }
       
-      // Signature is required for completeness
-      if (!signature) {
-        return false;
-      }
+      // REMOVED: Signature requirement check
       
       return true;
     };
     
     const complete = checkCompleteness();
-    console.log('DocumentWillEditor: Document completeness check:', complete, 'Has signature:', !!signature);
+    console.log('DocumentWillEditor: Document completeness check:', complete);
     setIsComplete(complete);
-  }, [personalInfo, executors, beneficiaries, signature]);
+  }, [personalInfo, executors, beneficiaries]);
 
   // Handle AI Assistant for a field
   const handleShowAIHelper = (field: string, position?: { x: number, y: number }) => {
@@ -421,12 +418,11 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
     });
   };
 
-  // Enhanced will finalization with signature validation
+  // Enhanced will finalization - REMOVED signature validation
   const handleGenerateOfficialWill = async () => {
     try {
       console.log('DocumentWillEditor: Starting will finalization...');
       console.log('DocumentWillEditor: Is complete:', isComplete);
-      console.log('DocumentWillEditor: Has signature:', !!signature);
       
       if (!isComplete) {
         toast({
@@ -437,20 +433,13 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
         return;
       }
       
-      if (!signature) {
-        toast({
-          title: "Signature Required",
-          description: "Please add your digital signature before finalizing your will.",
-          variant: "destructive"
-        });
-        return;
-      }
+      // REMOVED: Signature requirement check
 
       setIsGenerating(true);
       
       const title = `${personalInfo.fullName}'s Will`;
       const documentText = generateDocumentText();
-      const contentWithSignature = documentText + `\n\nDigitally signed on: ${new Date().toLocaleDateString()}`;
+      const contentWithSignature = documentText + (signature ? `\n\nDigitally signed on: ${new Date().toLocaleDateString()}` : '');
       
       console.log('DocumentWillEditor: Final content includes signature text:', contentWithSignature.includes('Digitally signed'));
       
@@ -770,7 +759,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <p className="text-sm text-blue-800 mb-2">
-                      <strong>Important:</strong> Your digital signature is required to finalize your will.
+                      <strong>Optional:</strong> Your digital signature can be added to enhance your will.
                     </p>
                     <div className="text-xs text-blue-600">
                       Current status: {signature ? '✅ Signature captured' : '❌ No signature'}
@@ -797,7 +786,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   {!signature && (
                     <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                       <p className="text-sm text-amber-800">
-                        ⚠️ Please sign above to complete your will. Your signature is required for legal validity.
+                        ℹ️ You can add your signature above if desired. This is optional for will finalization.
                       </p>
                     </div>
                   )}
@@ -943,9 +932,9 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   </ul>
                 </div>
                 
-                {/* Enhanced Signature Section with Visual Status */}
+                {/* Updated Signature Section - now optional */}
                 <div className="space-y-1">
-                  <h4 className="font-medium">Digital Signature</h4>
+                  <h4 className="font-medium">Digital Signature (Optional)</h4>
                   <div className="ml-2">
                     {signature ? (
                       <div className="space-y-2">
@@ -955,18 +944,18 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                         </div>
                         <div className="bg-green-50 border border-green-200 rounded p-2">
                           <div className="text-xs text-green-700 font-medium">✅ Signature captured</div>
-                          <div className="text-xs text-green-600 mt-1">Ready for will finalization</div>
+                          <div className="text-xs text-green-600 mt-1">Will be included in final document</div>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span>Signature Status</span>
-                          <AlertCircle className="h-4 w-4 text-amber-500" />
+                          <span className="text-xs text-gray-500">Optional</span>
                         </div>
-                        <div className="bg-amber-50 border border-amber-200 rounded p-2">
-                          <div className="text-xs text-amber-700 font-medium">❌ No signature</div>
-                          <div className="text-xs text-amber-600 mt-1">Required to finalize will</div>
+                        <div className="bg-gray-50 border border-gray-200 rounded p-2">
+                          <div className="text-xs text-gray-700 font-medium">No signature</div>
+                          <div className="text-xs text-gray-600 mt-1">Can be added if desired</div>
                         </div>
                       </div>
                     )}
@@ -987,7 +976,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                 <Button 
                   onClick={handleGenerateOfficialWill} 
                   className="w-full"
-                  disabled={!isComplete || !signature || isGenerating}
+                  disabled={!isComplete || isGenerating}
                 >
                   {isGenerating ? (
                     <>
@@ -1006,11 +995,11 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   Free will creation - 24 hours secure access included
                 </div>
                 
-                {/* Enhanced Debug Information */}
+                {/* Updated Debug Information */}
                 <div className="text-xs text-gray-400 border-t pt-2 space-y-1">
-                  <div>Signature: {signature ? '✓ Captured' : '✗ Missing'}</div>
+                  <div>Signature: {signature ? '✓ Optional - Captured' : '✗ Optional - Not added'}</div>
                   <div>Document Complete: {isComplete ? '✓ Yes' : '✗ No'}</div>
-                  <div>Can Finalize: {isComplete && signature ? '✓ Yes' : '✗ No'}</div>
+                  <div>Can Finalize: {isComplete ? '✓ Yes' : '✗ No'}</div>
                 </div>
               </div>
             </Card>
