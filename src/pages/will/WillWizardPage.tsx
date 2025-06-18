@@ -17,9 +17,6 @@ export default function WillWizardPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [currentStep, setCurrentStep] = useState(0);
-  const [willData, setWillData] = useState<any>({});
-  const [isLoading, setIsLoading] = useState(false);
   const [createdWill, setCreatedWill] = useState<Will | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -36,115 +33,31 @@ export default function WillWizardPage() {
     }
   }, [template, navigate, toast]);
 
-  const handleStepComplete = (stepData: any) => {
-    setWillData(prev => ({ ...prev, ...stepData }));
-    if (currentStep < (template?.steps.length || 0) - 1) {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  const handleStepBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
-  const handleFinalizeWill = async (finalData: any) => {
-    if (!template) return;
-    
-    setIsLoading(true);
-    
+  const handleWillCreated = async (newWill: Will) => {
     try {
-      const combinedData = { ...willData, ...finalData };
+      // Clear any saved progress
+      await clearWillProgress(newWill.id);
       
-      // Generate will content based on template and data
-      const willContent = generateWillContent(template, combinedData);
+      // Store the newly created will ID for highlighting in dashboard
+      sessionStorage.setItem('newlyCreatedWill', newWill.id);
       
-      const will = {
-        title: combinedData.personalInfo?.fullName ? 
-          `Will of ${combinedData.personalInfo.fullName}` : 
-          `${template.title} Will`,
-        status: 'active' as const,
-        document_url: '',
-        template_type: template.id,
-        ai_generated: false,
-        content: willContent
-      };
+      // Show success modal
+      setCreatedWill(newWill);
+      setShowSuccess(true);
       
-      const newWill = await createWill(will);
-      
-      if (newWill) {
-        // Clear any saved progress
-        await clearWillProgress(newWill.id);
-        
-        // Show success modal instead of immediate redirect
-        setCreatedWill(newWill);
-        setShowSuccess(true);
-        
-        toast({
-          title: "Will Created Successfully!",
-          description: "Your will has been created and saved.",
-        });
-      }
+      toast({
+        title: "Will Created Successfully!",
+        description: "Your will has been created and saved.",
+      });
       
     } catch (error) {
-      console.error('Error creating will:', error);
+      console.error('Error handling will creation:', error);
       toast({
-        title: "Error Creating Will",
-        description: "There was a problem creating your will. Please try again.",
+        title: "Error",
+        description: "There was a problem processing your will creation.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  const generateWillContent = (template: any, data: any): string => {
-    // This is a simplified content generation - in a real app, you'd have more sophisticated templating
-    const { personalInfo, executors, beneficiaries, assets, finalWishes } = data;
-    
-    let content = `LAST WILL AND TESTAMENT\n\n`;
-    content += `I, ${personalInfo?.fullName || '[Name]'}, `;
-    content += `of ${personalInfo?.address || '[Address]'}, `;
-    content += `being of sound mind and disposing memory, do hereby make, publish and declare this to be my Last Will and Testament.\n\n`;
-    
-    if (executors && executors.length > 0) {
-      content += `EXECUTORS\n`;
-      content += `I hereby nominate and appoint the following person(s) as executor(s) of this Will:\n`;
-      executors.forEach((executor: any, index: number) => {
-        content += `${index + 1}. ${executor.name} of ${executor.address || '[Address]'}\n`;
-      });
-      content += `\n`;
-    }
-    
-    if (beneficiaries && beneficiaries.length > 0) {
-      content += `BENEFICIARIES\n`;
-      content += `I give, devise and bequeath my estate as follows:\n`;
-      beneficiaries.forEach((beneficiary: any, index: number) => {
-        content += `${index + 1}. To ${beneficiary.name} (${beneficiary.relationship}): ${beneficiary.bequest || 'As specified'}\n`;
-      });
-      content += `\n`;
-    }
-    
-    if (assets && assets.length > 0) {
-      content += `ASSETS\n`;
-      assets.forEach((asset: any, index: number) => {
-        content += `${index + 1}. ${asset.type}: ${asset.description} - Value: ${asset.value || 'As assessed'}\n`;
-      });
-      content += `\n`;
-    }
-    
-    if (finalWishes) {
-      content += `FINAL WISHES\n`;
-      content += `${finalWishes}\n\n`;
-    }
-    
-    content += `IN WITNESS WHEREOF, I have hereunto set my hand this day.\n\n`;
-    content += `Signature: _________________________\n`;
-    content += `${personalInfo?.fullName || '[Name]'}\n`;
-    content += `Date: ${new Date().toLocaleDateString()}\n`;
-    
-    return content;
   };
 
   const handleSuccessClose = () => {
@@ -181,18 +94,10 @@ export default function WillWizardPage() {
           
           <Card>
             <CardHeader>
-              <CardTitle>{template.title} Creation Wizard</CardTitle>
+              <CardTitle>Create Your Will</CardTitle>
             </CardHeader>
             <CardContent>
-              <WillWizard
-                template={template}
-                currentStep={currentStep}
-                willData={willData}
-                onStepComplete={handleStepComplete}
-                onStepBack={handleStepBack}
-                onFinalize={handleFinalizeWill}
-                isLoading={isLoading}
-              />
+              <WillWizard />
             </CardContent>
           </Card>
         </div>
