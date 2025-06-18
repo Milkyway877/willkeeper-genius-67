@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -83,7 +82,7 @@ export default function DocumentWillEditor() {
       const template = templates.find(t => t.id === templateId);
       if (template) {
         setSelectedTemplate(template);
-        setEditableContent(template.content || '');
+        setEditableContent(''); // Initialize with empty content since templates don't have content property
       }
     }
   }, [templateId, templates]);
