@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -122,7 +121,7 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
                       className="mt-2 bg-amber-600 hover:bg-amber-700"
                     >
                       <Crown className="h-4 w-4 mr-2" />
-                      Upgrade to WillTank - $9.99/month
+                      Upgrade to WillTank
                     </Button>
                   </div>
                 </AlertDescription>
