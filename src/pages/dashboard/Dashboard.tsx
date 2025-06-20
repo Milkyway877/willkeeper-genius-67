@@ -10,13 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Bug } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardSummary } from '@/services/dashboardService';
-import { WelcomeOnboardingPopup } from '@/components/onboarding/WelcomeOnboardingPopup';
-import { useOnboardingPopup } from '@/hooks/useOnboardingPopup';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function Dashboard() {
   const [showDebug, setShowDebug] = useState(false);
-  const isMobile = useIsMobile();
   
   // Fetch dashboard data
   const { data: dashboardData, isLoading, error } = useQuery({
@@ -24,15 +20,6 @@ export default function Dashboard() {
     queryFn: getDashboardSummary,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
-
-  // Add onboarding popup hook
-  const { 
-    showOnboarding, 
-    closeOnboarding, 
-    completeOnboarding, 
-    isCompleting,
-    isLoading: isLoadingOnboarding 
-  } = useOnboardingPopup();
   
   // Always show debug tools in development/testing environments
   const isDev = () => {
@@ -77,15 +64,15 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex flex-col lg:flex-row justify-between items-start mb-4 xs:mb-6 gap-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-start mb-6">
           <DashboardHeader />
           {(showDebugTools || forceShowDebug) && (
             <Button 
               variant="outline" 
-              size={isMobile ? "sm" : "sm"}
+              size="sm"
               onClick={() => setShowDebug(!showDebug)}
-              className="w-full lg:w-auto min-h-touch"
+              className="ml-4"
             >
               <Bug className="h-4 w-4 mr-1" />
               Debug Tools
@@ -94,13 +81,13 @@ export default function Dashboard() {
         </div>
         
         {showDebug && (showDebugTools || forceShowDebug) && (
-          <div className="mb-4 xs:mb-6">
+          <div className="mb-6">
             <NotificationTester />
           </div>
         )}
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 xs:gap-6 mb-6 xs:mb-8">
-          <div className="lg:col-span-2 space-y-4 xs:space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2 space-y-6">
             <DashboardStats 
               activeWills={dashboardData?.activeWills}
               messagesInTank={dashboardData?.messagesInTank}
@@ -110,7 +97,7 @@ export default function Dashboard() {
             />
             <DashboardActions />
           </div>
-          <div className="w-full">
+          <div>
             <DashboardRecentActivity 
               activities={dashboardData?.recentActivity}
               isLoading={isLoading}
@@ -118,14 +105,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Add Onboarding Popup */}
-      <WelcomeOnboardingPopup 
-        open={showOnboarding} 
-        onClose={closeOnboarding}
-        onComplete={completeOnboarding}
-        isCompleting={isCompleting}
-      />
     </Layout>
   );
 }

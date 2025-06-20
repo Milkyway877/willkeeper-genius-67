@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, Shield, Zap, Building, Star, Users, Loader, Settings, AlertTriangle, RefreshCw, CreditCard } from 'lucide-react';
+import { Calendar, CheckCircle, Shield, Zap, Building, Star, Users, Loader, Settings, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { toast } from 'sonner';
@@ -19,8 +19,6 @@ export default function Billing() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [subscription, setSubscription] = useState<any>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
-  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
-  const [hasStripeCustomer, setHasStripeCustomer] = useState<boolean | null>(null);
   const { toast: uiToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -28,25 +26,21 @@ export default function Billing() {
   const queryParams = new URLSearchParams(location.search);
   const success = queryParams.get('success');
   const canceled = queryParams.get('canceled');
+  const sessionId = queryParams.get('session_id');
 
-  // Enhanced subscription fetching with better error handling
+  // Fetch subscription data on component mount
   useEffect(() => {
     async function fetchSubscription() {
       try {
         setIsLoadingSubscription(true);
-        setSubscriptionError(null);
         
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          console.log('[BILLING] No user session found');
           return;
         }
-
-        console.log('[BILLING] Fetching subscription for user:', session.user.email);
         
-        // First try to get from database
-        const { data: dbData, error: dbError } = await supabase
+        const { data, error } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', session.user.id)
@@ -55,43 +49,11 @@ export default function Billing() {
           .limit(1)
           .single();
           
-        if (dbData && !dbError) {
-          console.log('[BILLING] Found subscription in database:', dbData);
-          setSubscription(dbData);
-          setHasStripeCustomer(true);
-        } else {
-          console.log('[BILLING] No active subscription in database, checking Stripe...');
-          
-          // Check with Stripe directly
-          try {
-            const { data: stripeData, error: stripeError } = await supabase.functions.invoke('check-subscription', {
-              body: {}
-            });
-
-            if (!stripeError && stripeData) {
-              console.log('[BILLING] Stripe check response:', stripeData);
-              if (stripeData.subscribed) {
-                setSubscription({
-                  status: 'active',
-                  stripe_price_id: stripeData.subscription_tier?.toLowerCase() + '_monthly',
-                  start_date: null,
-                  end_date: stripeData.subscription_end,
-                  plan: stripeData.subscription_tier?.toLowerCase()
-                });
-                setHasStripeCustomer(true);
-              } else {
-                // Check if user exists as Stripe customer even without subscription
-                setHasStripeCustomer(stripeData.has_customer !== false);
-              }
-            }
-          } catch (stripeError) {
-            console.error('[BILLING] Error checking Stripe:', stripeError);
-            setSubscriptionError('Unable to verify subscription status');
-          }
+        if (!error && data) {
+          setSubscription(data);
         }
       } catch (error) {
-        console.error('[BILLING] Error fetching subscription:', error);
-        setSubscriptionError('Error loading subscription data');
+        console.error('Error fetching subscription:', error);
       } finally {
         setIsLoadingSubscription(false);
       }
@@ -130,14 +92,13 @@ export default function Billing() {
             
           if (!error && data) {
             setSubscription(data);
-            setHasStripeCustomer(true);
           }
         } catch (error) {
           console.error('Error refreshing subscription data:', error);
         } finally {
           setIsLoadingSubscription(false);
         }
-      }, 2000);
+      }, 2000); // Delay to allow webhook processing
     } else if (canceled === 'true') {
       toast.error("Payment canceled", {
         description: "You have canceled the payment process.",
@@ -229,6 +190,7 @@ export default function Billing() {
       const result = await createCheckoutSession(plan, billingPeriod);
       
       if (result.status === 'success' && result.url) {
+        // Redirect to Stripe Checkout
         window.location.href = result.url;
       } else {
         toast.error('Payment processing error', {
@@ -241,101 +203,6 @@ export default function Billing() {
       setIsProcessing(null);
       toast.error('Payment processing error', {
         description: 'There was an error processing your request. Please try again later.',
-      });
-    }
-  };
-
-  const refreshSubscriptionStatus = async () => {
-    try {
-      setIsLoadingSubscription(true);
-      setSubscriptionError(null);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        body: {}
-      });
-
-      if (!error && data) {
-        if (data.subscribed) {
-          setSubscription({
-            status: 'active',
-            stripe_price_id: data.subscription_tier?.toLowerCase() + '_monthly',
-            start_date: null,
-            end_date: data.subscription_end,
-            plan: data.subscription_tier?.toLowerCase()
-          });
-        } else {
-          setSubscription(null);
-        }
-        setHasStripeCustomer(data.has_customer !== false);
-        
-        toast.success('Subscription status updated', {
-          description: 'Your subscription information has been refreshed.'
-        });
-      }
-    } catch (error) {
-      console.error('Error refreshing subscription:', error);
-      setSubscriptionError('Failed to refresh subscription status');
-    } finally {
-      setIsLoadingSubscription(false);
-    }
-  };
-
-  const handleCustomerPortal = async () => {
-    try {
-      setIsManaging(true);
-      console.log('[BILLING] Opening customer portal...');
-      
-      const { data, error } = await supabase.functions.invoke('customer-portal', {
-        body: {}
-      });
-
-      if (error) {
-        console.error('[BILLING] Customer portal error:', error);
-        throw error;
-      }
-
-      if (data?.url) {
-        console.log('[BILLING] Redirecting to customer portal:', data.url);
-        window.location.href = data.url;
-      } else {
-        throw new Error('No portal URL received');
-      }
-    } catch (error) {
-      console.error('[BILLING] Customer portal error:', error);
-      setIsManaging(false);
-      toast.error('Error accessing subscription management', {
-        description: 'Please try again or contact support if the issue persists.'
-      });
-    }
-  };
-
-  const createStripeCustomer = async () => {
-    try {
-      setIsManaging(true);
-      
-      const { data, error } = await supabase.functions.invoke('create-stripe-customer', {
-        body: {}
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        setHasStripeCustomer(true);
-        toast.success('Account setup complete', {
-          description: 'You can now access account management features.'
-        });
-        setIsManaging(false);
-      } else {
-        throw new Error('Failed to create customer account');
-      }
-    } catch (error) {
-      console.error('Error creating Stripe customer:', error);
-      setIsManaging(false);
-      toast.error('Setup failed', {
-        description: 'Unable to set up account management. Please try again.'
       });
     }
   };
@@ -382,6 +249,47 @@ export default function Billing() {
     });
   };
 
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      if (data.subscribed) {
+        setSubscription(data);
+      }
+    } catch (error) {
+      console.error('Subscription status error:', error);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      setIsManaging(true);
+      const { data } = await supabase.functions.invoke('customer-portal', {
+        body: {}
+      });
+
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Customer portal error:', error);
+      toast.error('Error accessing subscription management');
+    } finally {
+      setIsManaging(false);
+    }
+  };
+
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, []);
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -390,16 +298,6 @@ export default function Billing() {
             <h1 className="text-3xl font-bold mb-2">Subscriptions & Billing</h1>
             <p className="text-gray-600">Manage your subscription plan and payment methods.</p>
           </div>
-          
-          <Button
-            variant="outline"
-            onClick={refreshSubscriptionStatus}
-            disabled={isLoadingSubscription}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoadingSubscription ? 'animate-spin' : ''}`} />
-            Refresh Status
-          </Button>
         </div>
         
         <motion.div 
@@ -462,6 +360,7 @@ export default function Billing() {
                   </div>
                 </div>
 
+                {/* Subscription Management Section */}
                 <div className="border-t border-gray-100 pt-6">
                   <h4 className="font-medium text-gray-900 mb-4">Subscription Management</h4>
                   <p className="text-sm text-gray-600 mb-4">
@@ -470,8 +369,8 @@ export default function Billing() {
                   
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button 
-                      onClick={handleCustomerPortal}
-                      disabled={isManaging || isProcessing !== null}
+                      onClick={handleManageSubscription}
+                      disabled={isManaging}
                       className="flex items-center gap-2"
                     >
                       {isManaging ? (
@@ -506,7 +405,7 @@ export default function Billing() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleCustomerPortal} className="bg-red-600 hover:bg-red-700">
+                          <AlertDialogAction onClick={handleManageSubscription} className="bg-red-600 hover:bg-red-700">
                             Continue to Cancel
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -529,85 +428,23 @@ export default function Billing() {
                 </div>
               </>
             ) : (
-              <>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      FREE PLAN
-                    </span>
-                    <h2 className="text-2xl font-bold mt-2">
-                      $0 <span className="text-sm font-normal text-gray-500">/month</span>
-                    </h2>
-                  </div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <span className="bg-willtank-100 text-willtank-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    FREE PLAN
+                  </span>
+                  <h2 className="text-2xl font-bold mt-2">
+                    $0 <span className="text-sm font-normal text-gray-500">/month</span>
+                  </h2>
                 </div>
-                
-                <div className="border-t border-gray-100 pt-6">
-                  <h4 className="font-medium text-gray-900 mb-4">Account Management</h4>
-                  
-                  <p className="text-sm text-gray-600 mb-4">
-                    {hasStripeCustomer 
-                      ? "Access your account settings and billing management through our secure customer portal."
-                      : "Set up account management to access billing history and payment methods, even without an active subscription."
-                    }
-                  </p>
-                  
-                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                    <Button 
-                      onClick={hasStripeCustomer ? handleCustomerPortal : createStripeCustomer}
-                      disabled={isManaging || isProcessing !== null}
-                      variant={hasStripeCustomer ? "default" : "outline"}
-                      className="flex items-center gap-2"
-                    >
-                      {isManaging ? (
-                        <>
-                          <Loader className="h-4 w-4 animate-spin" />
-                          {hasStripeCustomer ? 'Opening...' : 'Setting up...'}
-                        </>
-                      ) : (
-                        <>
-                          {hasStripeCustomer ? <Settings className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
-                          {hasStripeCustomer ? 'Manage Account' : 'Setup Account Management'}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {!hasStripeCustomer && (
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-start">
-                        <AlertTriangle className="text-yellow-600 mr-2 mt-0.5" size={16} />
-                        <div className="text-sm">
-                          <p className="font-medium text-yellow-900">Account Setup Benefits</p>
-                          <p className="text-yellow-700">
-                            Setting up account management allows you to save payment methods, view billing history, and quickly upgrade to paid plans.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {subscriptionError && (
-                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-start">
-                        <AlertTriangle className="text-yellow-600 mr-2 mt-0.5" size={16} />
-                        <div className="text-sm">
-                          <p className="font-medium text-yellow-900">Subscription Status Unclear</p>
-                          <p className="text-yellow-700">
-                            {subscriptionError}. Use the "Refresh Status" button above to verify your subscription status.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
+              </div>
             )}
             
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 mt-4">
               <div className="flex items-center">
                 <Calendar className="text-gray-500 mr-2" size={18} />
                 <span className="text-sm">
-                  {subscription ? 'Your subscription renews automatically' : 'Ready to upgrade? Choose a plan below'}
+                  {subscription ? 'Your subscription renews automatically' : 'No active subscription'}
                 </span>
               </div>
             </div>

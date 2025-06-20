@@ -43,7 +43,7 @@ export function RandomSubscriptionPrompt({
         return {
           title: "⚠️ Will Expiring Soon!",
           description: `Only ${formattedTimeRemaining} left! Don't risk losing your important will document. Upgrade to WillTank to ensure permanent protection.`,
-          buttonText: "Upgrade to WillTank",
+          buttonText: "Upgrade to WillTank - Save My Will",
           alertVariant: "destructive" as const,
           icon: <Clock className="h-5 w-5" />,
           bgColor: "bg-orange-50 border-orange-200",

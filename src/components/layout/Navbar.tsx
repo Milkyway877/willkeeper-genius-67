@@ -18,10 +18,10 @@ import {
   DollarSign,
   HelpCircle,
   Building,
-  Shield,
-  X
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ContactSupportButton } from '@/components/common/ContactSupportButton';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -74,22 +74,9 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
   return (
     <div className="relative z-10">
       <div className="border-b border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
-        <div className="flex h-14 xs:h-16 items-center px-3 xs:px-4 sm:px-6">
-          {/* Mobile menu button for authenticated users */}
-          {isAuthenticated && isMobile && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={onMenuToggle}
-              className="mr-2 min-h-touch min-w-[44px] p-2"
-              aria-label="Toggle menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
-
+        <div className="flex h-16 items-center px-4">
           {(!isAuthenticated || isMobile) && (
-            <Link to="/" className="flex items-center flex-shrink-0">
+            <Link to="/" className="flex items-center">
               <Logo size={isMobile ? 'sm' : 'md'} />
             </Link>
           )}
@@ -101,7 +88,7 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 <Link 
                   key={link.path} 
                   to={link.path}
-                  className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors font-medium text-sm whitespace-nowrap"
+                  className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors font-medium text-sm"
                 >
                   {link.name}
                 </Link>
@@ -111,65 +98,56 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
 
           <div className="flex-grow"></div>
 
-          <div className="flex items-center space-x-2 xs:space-x-3 sm:space-x-4">
+          <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                {/* Search functionality */}
+                {/* Add Contact Support button for authenticated users (dashboard, etc) */}
+                <ContactSupportButton className="hidden md:inline-flex" />
+
                 {!showSearchInput ? (
                   <Button 
                     variant="ghost" 
-                    size="sm"
+                    size="icon" 
                     onClick={() => setShowSearchInput(true)}
-                    className="hidden xs:flex min-h-touch min-w-[44px] p-2"
+                    className={isMobile ? "hidden sm:flex" : ""}
                     aria-label="Search"
                   >
-                    <Search className="h-4 w-4 xs:h-5 xs:w-5" />
+                    <Search className="h-5 w-5" />
                   </Button>
                 ) : (
-                  <div className="flex items-center relative">
-                    <form onSubmit={handleSearch} className="flex items-center">
-                      <input
-                        type="text"
-                        name="search"
-                        placeholder="Search..."
-                        className="w-32 xs:w-40 sm:w-48 border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-willtank-500 dark:bg-gray-800 dark:border-gray-700"
-                        autoFocus
-                        onBlur={() => setShowSearchInput(false)}
-                      />
-                    </form>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowSearchInput(false)}
-                      className="ml-1 min-h-touch min-w-[44px] p-2"
-                      aria-label="Close search"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <form onSubmit={handleSearch} className="flex items-center">
+                    <input
+                      type="text"
+                      name="search"
+                      placeholder="Search..."
+                      className="w-full border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-willtank-500 dark:bg-gray-800 dark:border-gray-700"
+                      autoFocus
+                      onBlur={() => setShowSearchInput(false)}
+                    />
+                  </form>
                 )}
 
                 <NotificationDropdown />
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 xs:h-10 xs:w-10 rounded-full min-h-touch min-w-[44px]">
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <SimpleAvatar />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 z-50 bg-white dark:bg-gray-800">
+                  <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="flex flex-col">
                       <UserDisplay />
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/settings" className="w-full cursor-pointer flex items-center min-h-touch">
+                      <Link to="/settings" className="w-full cursor-pointer flex items-center">
                         <Settings className="mr-2 h-4 w-4" />
                         Settings
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer flex items-center min-h-touch">
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer flex items-center">
                       <LogOut className="mr-2 h-4 w-4" />
                       Log out
                     </DropdownMenuItem>
@@ -181,14 +159,14 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                 {isMobile ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="min-h-touch min-w-[44px] p-2">
+                      <Button variant="ghost" size="icon">
                         <Menu className="h-5 w-5" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="z-50 bg-white dark:bg-gray-800">
+                    <DropdownMenuContent align="end">
                       {navLinks.map((link) => (
                         <DropdownMenuItem key={link.path} asChild>
-                          <Link to={link.path} className="w-full flex items-center min-h-touch">
+                          <Link to={link.path} className="w-full flex items-center">
                             {link.icon}
                             {link.name}
                           </Link>
@@ -196,20 +174,20 @@ export function Navbar({ isAuthenticated = false, onMenuToggle }: NavbarProps) {
                       ))}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link to="/auth/signin" className="w-full min-h-touch flex items-center">Sign in</Link>
+                        <Link to="/auth/signin" className="w-full">Sign in</Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/auth/signup" className="w-full min-h-touch flex items-center">Sign up</Link>
+                        <Link to="/auth/signup" className="w-full">Sign up</Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : (
                   <>
                     <Link to="/auth/signin" className="ml-4">
-                      <Button variant="ghost" className="min-h-touch">Sign in</Button>
+                      <Button variant="ghost">Sign in</Button>
                     </Link>
                     <Link to="/auth/signup">
-                      <Button className="min-h-touch">Sign up</Button>
+                      <Button>Sign up</Button>
                     </Link>
                   </>
                 )}

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -115,98 +116,52 @@ export const createUserProfile = async (user: User): Promise<void> => {
 
 export const updateUserProfile = async (updates: Partial<UserProfile>): Promise<UserProfile | null> => {
   try {
-    console.log('updateUserProfile: Starting update with:', updates);
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
       throw new Error('No user logged in');
     }
-
-    // First, check if profile exists and handle duplicates
-    const { data: existingProfiles, error: checkError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', session.user.id);
-
-    if (checkError) {
-      console.error('updateUserProfile: Error checking existing profiles:', checkError);
-      throw new Error(`Failed to check existing profile: ${checkError.message}`);
+    
+    const dbUpdates: any = {...updates};
+    
+    if (updates.is_activated !== undefined) {
+      dbUpdates.activation_complete = updates.is_activated;
+      delete dbUpdates.is_activated;
     }
-
-    // Handle multiple profiles (cleanup duplicates)
-    if (existingProfiles && existingProfiles.length > 1) {
-      console.warn('updateUserProfile: Multiple profiles found, cleaning up duplicates');
-      // Keep the first one, delete the rest
-      const keepProfile = existingProfiles[0];
-      const duplicateIds = existingProfiles.slice(1).map(p => p.id);
-      
-      if (duplicateIds.length > 0) {
-        await supabase
-          .from('user_profiles')
-          .delete()
-          .in('id', duplicateIds);
-        console.log('updateUserProfile: Cleaned up duplicate profiles');
-      }
-    }
-
-    // If no profile exists, create one first
-    if (!existingProfiles || existingProfiles.length === 0) {
-      console.log('updateUserProfile: No profile found, creating one first');
-      await createUserProfile(session.user);
-    }
-
-    // Create a clean updates object for database
-    const dbUpdates: any = {};
     
-    // Map frontend fields to database fields
-    if (updates.full_name !== undefined) dbUpdates.full_name = updates.full_name;
-    if (updates.avatar_url !== undefined) dbUpdates.avatar_url = updates.avatar_url;
-    if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
-    if (updates.is_activated !== undefined) dbUpdates.activation_complete = updates.is_activated;
+    // These fields should not be sent to the database
+    delete dbUpdates.activation_date;
+    delete dbUpdates.subscription_plan;
+    delete dbUpdates.email;
+    delete dbUpdates.email_verified;
     
-    // Always update the timestamp
-    dbUpdates.updated_at = new Date().toISOString();
-    
-    console.log('updateUserProfile: Database updates:', dbUpdates);
-    
-    // Use upsert to handle edge cases
     const { data, error } = await supabase
       .from('user_profiles')
-      .upsert({
-        id: session.user.id,
-        email: session.user.email,
-        ...dbUpdates
-      })
+      .update(dbUpdates)
+      .eq('id', session.user.id)
       .select()
       .single();
       
     if (error) {
-      console.error('updateUserProfile: Database error:', error);
-      throw new Error(`Failed to update profile: ${error.message}`);
+      console.error('Error updating user profile:', error);
+      throw error;
     }
     
-    if (!data) {
-      throw new Error('No data returned from profile update');
-    }
-    
-    const updatedProfile = {
+    return {
       id: data.id,
       full_name: data.full_name,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       updated_at: data.updated_at,
-      is_activated: data.activation_complete || false,
+      is_activated: data.activation_complete,
       subscription_plan: data.subscription_plan || 'Free Plan',
       activation_date: data.activation_date || null,
       email: session.user.email,
       email_verified: session.user.email_confirmed_at !== null,
       gender: data.gender || null,
     };
-    
-    console.log('updateUserProfile: Successfully updated profile:', updatedProfile);
-    return updatedProfile;
   } catch (error) {
-    console.error('updateUserProfile: Error:', error);
+    console.error('Error in updateUserProfile:', error);
     throw error;
   }
 };

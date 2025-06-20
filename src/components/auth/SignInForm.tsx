@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -26,7 +25,7 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { handleCaptchaValidation, validateCaptcha, resetCaptcha } = useCaptcha();
+  const { handleCaptchaValidation, validateCaptcha } = useCaptcha();
   
   useEffect(() => {
     const handleAuthRedirect = async () => {
@@ -66,7 +65,7 @@ export function SignInForm() {
       const isCaptchaValid = validateCaptcha();
       if (!isCaptchaValid) {
         toast({
-          title: "Security verification required",
+          title: "Security check failed",
           description: "Please complete the captcha verification correctly before signing in.",
           variant: "destructive",
         });
@@ -118,7 +117,6 @@ export function SignInForm() {
       });
     } finally {
       setIsLoading(false);
-      resetCaptcha();
     }
   };
 
@@ -167,7 +165,9 @@ export function SignInForm() {
         />
 
         <div>
-          <Captcha onVerify={handleCaptchaValidation} />
+          <Captcha 
+            onVerify={handleCaptchaValidation} 
+          />
         </div>
 
         <Button type="submit" className="w-full bg-black text-white hover:bg-gray-800 rounded-xl transition-all duration-200 font-medium" disabled={isLoading}>
@@ -211,3 +211,4 @@ export function SignInForm() {
     </Form>
   );
 }
+// SECURITY NOTE: This form no longer provides password reset links. All issues are now handled via Discord support.

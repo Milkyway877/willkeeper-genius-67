@@ -18,68 +18,92 @@ serve(async (req) => {
       headers: corsHeaders
     });
   }
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
-  const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2023-10-16" });
-
+  
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-        status: 401, 
-        headers: corsHeaders 
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    // Parse request body
+    const { user_id, email } = await req.json();
     
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Authentication failed' }), { 
-        status: 401, 
-        headers: corsHeaders 
-      });
+    if (!user_id || !email) {
+      return new Response(
+        JSON.stringify({ error: "Missing required parameters: user_id and email" }),
+        { status: 400, headers: corsHeaders }
+      );
     }
-
-    // Check if customer already exists
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
-    if (customers.data.length > 0) {
-      return new Response(JSON.stringify({ 
-        success: true, 
-        customer_id: customers.data[0].id,
-        message: 'Customer already exists'
-      }), { 
-        status: 200, 
-        headers: corsHeaders 
-      });
+    console.log(`Creating Stripe customer for user: ${email}`);
+    
+    // Initialize Stripe with secret key
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeSecretKey) {
+      return new Response(
+        JSON.stringify({ error: "Stripe secret key not configured" }),
+        { status: 500, headers: corsHeaders }
+      );
     }
-
-    // Create new Stripe customer
+    
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2023-10-16",
+    });
+    
+    // Create a new Stripe customer
     const customer = await stripe.customers.create({
-      email: user.email,
-      name: user.user_metadata?.full_name || user.email,
+      email: email,
       metadata: {
-        supabase_user_id: user.id
+        user_id: user_id
       }
     });
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      customer_id: customer.id,
-      message: 'Customer created successfully'
-    }), { 
-      status: 200, 
-      headers: corsHeaders 
-    });
+    
+    console.log(`Successfully created Stripe customer: ${customer.id}`);
+    
+    // Initialize Supabase client to update the user profile
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    console.log(`Updating user ${user_id} with Stripe customer ID ${customer.id}`);
+    
+    // Update the user_profiles table with the Stripe customer ID
+    try {
+      console.log("Adding stripe_customer_id column to user_profiles table");
+      // This ensures the column exists if it doesn't already
+      await supabase.rpc('add_column_if_not_exists', { 
+        p_table_name: 'user_profiles', 
+        p_column_name: 'stripe_customer_id', 
+        p_column_type: 'text' 
+      });
+    
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ stripe_customer_id: customer.id })
+        .eq('id', user_id);
+      
+      if (error) {
+        console.error("Error updating user with Stripe customer ID:", error);
+        throw new Error(`Failed to update user with Stripe customer ID: ${error.message}`);
+      }
+    } catch (error) {
+      console.error("Error updating user with Stripe customer ID:", error);
+      throw new Error(`Failed to update user with Stripe customer ID: ${error.message}`);
+    }
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        customer_id: customer.id
+      }),
+      { 
+        status: 200, 
+        headers: corsHeaders
+      }
+    );
   } catch (error) {
-    console.error('Create customer error:', error);
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500, 
-      headers: corsHeaders 
-    });
+    console.error("Error creating Stripe customer:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 400, 
+        headers: corsHeaders
+      }
+    );
   }
 });

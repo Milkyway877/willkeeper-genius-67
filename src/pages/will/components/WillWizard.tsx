@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -119,11 +120,7 @@ IN WITNESS WHEREOF, I sign this Will on [DATE].
   }
 ];
 
-interface WillWizardProps {
-  onWillCreated?: (will: any) => void;
-}
-
-export function WillWizard({ onWillCreated }: WillWizardProps = {}) {
+export function WillWizard() {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('My Last Will and Testament');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('basic');
@@ -168,18 +165,13 @@ export function WillWizard({ onWillCreated }: WillWizardProps = {}) {
       });
       
       if (newWill) {
-        // If parent provided callback, use it; otherwise navigate directly
-        if (onWillCreated) {
-          onWillCreated(newWill);
-        } else {
-          toast({
-            title: "Will created successfully",
-            description: "Your new will has been created. You can now edit it.",
-          });
-          
-          // Navigate to the will editor
-          navigate(`/will/edit/${newWill.id}`);
-        }
+        toast({
+          title: "Will created successfully",
+          description: "Your new will has been created. You can now edit it.",
+        });
+        
+        // Navigate to the will editor
+        navigate(`/will/edit/${newWill.id}`);
       } else {
         throw new Error('Failed to create will');
       }
