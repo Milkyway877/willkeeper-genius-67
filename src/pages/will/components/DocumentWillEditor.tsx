@@ -146,7 +146,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const generateDocumentText = (): string => {
     console.log('DocumentWillEditor: Generating document text with signature:', signature ? 'Yes' : 'No');
     
-    // Prepare comprehensive will content structure with string conversion for approximateValue
+    // Prepare comprehensive will content structure with proper type conversion
     const comprehensiveWillContent = {
       personalInfo,
       executors,
@@ -155,19 +155,19 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       assets: {
         properties: properties.map(p => ({
           ...p,
-          approximateValue: p.approximateValue?.toString() || ''
+          approximateValue: p.approximateValue?.toString() || '0'
         })),
         vehicles: vehicles.map(v => ({
           ...v,
-          approximateValue: v.approximateValue?.toString() || ''
+          approximateValue: v.approximateValue?.toString() || '0'
         })),
         financialAccounts: financialAccounts.map(f => ({
           ...f,
-          approximateValue: f.approximateValue?.toString() || ''
+          approximateValue: f.approximateValue?.toString() || '0'
         })),
         digitalAssets: digitalAssets.map(d => ({
           ...d,
-          approximateValue: d.approximateValue?.toString() || ''
+          approximateValue: d.approximateValue?.toString() || '0'
         }))
       },
       specificBequests,
@@ -190,22 +190,10 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     beneficiaries,
     guardians,
     assets: {
-      properties: properties.map(p => ({
-        ...p,
-        approximateValue: p.approximateValue?.toString() || ''
-      })),
-      vehicles: vehicles.map(v => ({
-        ...v,
-        approximateValue: v.approximateValue?.toString() || ''
-      })),
-      financialAccounts: financialAccounts.map(f => ({
-        ...f,
-        approximateValue: f.approximateValue?.toString() || ''
-      })),
-      digitalAssets: digitalAssets.map(d => ({
-        ...d,
-        approximateValue: d.approximateValue?.toString() || ''
-      }))
+      properties,
+      vehicles,
+      financialAccounts,
+      digitalAssets
     },
     specificBequests,
     residualEstate,
@@ -224,7 +212,24 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
           executors: data.willContent.executors,
           beneficiaries: data.willContent.beneficiaries,
           guardians: data.willContent.guardians,
-          assets: data.willContent.assets,
+          assets: {
+            properties: data.willContent.assets?.properties?.map(p => ({
+              ...p,
+              approximateValue: p.approximateValue?.toString() || '0'
+            })) || [],
+            vehicles: data.willContent.assets?.vehicles?.map(v => ({
+              ...v,
+              approximateValue: v.approximateValue?.toString() || '0'
+            })) || [],
+            financialAccounts: data.willContent.assets?.financialAccounts?.map(f => ({
+              ...f,
+              approximateValue: f.approximateValue?.toString() || '0'
+            })) || [],
+            digitalAssets: data.willContent.assets?.digitalAssets?.map(d => ({
+              ...d,
+              approximateValue: d.approximateValue?.toString() || '0'
+            })) || []
+          },
           specificBequests: data.willContent.specificBequests,
           residualEstate: data.willContent.residualEstate,
           finalArrangements: data.willContent.finalArrangements,
@@ -445,19 +450,19 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
         assets: {
           properties: properties.map(p => ({
             ...p,
-            approximateValue: p.approximateValue?.toString() || ''
+            approximateValue: p.approximateValue?.toString() || '0'
           })),
           vehicles: vehicles.map(v => ({
             ...v,
-            approximateValue: v.approximateValue?.toString() || ''
+            approximateValue: v.approximateValue?.toString() || '0'
           })),
           financialAccounts: financialAccounts.map(f => ({
             ...f,
-            approximateValue: f.approximateValue?.toString() || ''
+            approximateValue: f.approximateValue?.toString() || '0'
           })),
           digitalAssets: digitalAssets.map(d => ({
             ...d,
-            approximateValue: d.approximateValue?.toString() || ''
+            approximateValue: d.approximateValue?.toString() || '0'
           }))
         },
         specificBequests,
@@ -762,7 +767,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
                       value={residualEstate} 
                       label="residualEstate" 
                       onEdit={(value) => setResidualEstate(value)}
-                      onAiHelp={() => handleShowAIHelper('residualEstate')}
+                      onAiHelp={() => handleShowAIHelper('residualEestate')}
                     />
                     .
                   </p>
