@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
@@ -69,8 +68,7 @@ export default function TemplateWillCreationPage() {
       if (progress) {
         await saveWillProgress({
           ...progress,
-          responses: data,
-          updated_at: new Date().toISOString()
+          responses: data
         });
       }
       
@@ -78,15 +76,14 @@ export default function TemplateWillCreationPage() {
       if (progress?.will_id) {
         await updateWill(progress.will_id, {
           title: `${data.personalInfo?.fullName}'s Will`,
-          content: JSON.stringify(data),
-          updated_at: new Date().toISOString()
+          content: JSON.stringify(data)
         });
       } else {
         // Create a new will
         const willData = {
           title: `${data.personalInfo?.fullName}'s Will`,
           content: JSON.stringify(data),
-          status: 'draft',
+          status: 'draft' as const,
           template_type: templateId || '',
           ai_generated: false,
           document_url: ''

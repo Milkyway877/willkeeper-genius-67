@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Will {
@@ -12,6 +13,7 @@ export interface Will {
   template_type?: string;
   ai_generated?: boolean;
   metadata?: any;
+  signature?: string;
 }
 
 export interface CreateWillData {
@@ -22,6 +24,8 @@ export interface CreateWillData {
   template_type?: string;
   ai_generated?: boolean;
   metadata?: any;
+  signature?: string;
+  updated_at?: string;
 }
 
 // Add missing exports for compatibility
@@ -59,11 +63,11 @@ export const getWills = getUserWills;
 export interface WillDocument {
   id: string;
   will_id: string;
-  filename: string;
+  file_name: string;
   file_path: string;
   file_type: string;
   file_size: number;
-  uploaded_at: string;
+  created_at: string;
 }
 
 export const getWillDocuments = async (willId: string): Promise<WillDocument[]> => {
@@ -72,21 +76,22 @@ export const getWillDocuments = async (willId: string): Promise<WillDocument[]> 
   return [];
 };
 
-export const deleteWillDocument = async (documentId: string): Promise<boolean> => {
+export const deleteWillDocument = async (document: WillDocument): Promise<boolean> => {
   // Placeholder implementation
-  console.log('deleteWillDocument not fully implemented for document:', documentId);
+  console.log('deleteWillDocument not fully implemented for document:', document.id);
   return false;
 };
 
-export const getDocumentUrl = async (documentPath: string): Promise<string | null> => {
+export const getDocumentUrl = async (document: WillDocument): Promise<string | null> => {
   // Placeholder implementation
-  console.log('getDocumentUrl not fully implemented for path:', documentPath);
+  console.log('getDocumentUrl not fully implemented for document:', document.file_name);
   return null;
 };
 
-export const uploadWillDocument = async (willId: string, file: File): Promise<WillDocument | null> => {
+export const uploadWillDocument = async (willId: string, file: File, onProgress?: (progress: number) => void): Promise<WillDocument | null> => {
   // Placeholder implementation
   console.log('uploadWillDocument not fully implemented for will:', willId, 'file:', file.name);
+  if (onProgress) onProgress(100);
   return null;
 };
 
@@ -117,7 +122,8 @@ export const createWill = async (willData: CreateWillData): Promise<Will | null>
           document_url: willData.document_url || '',
           template_type: willData.template_type || 'custom',
           ai_generated: willData.ai_generated || false,
-          metadata: willData.metadata || null
+          metadata: willData.metadata || null,
+          signature: willData.signature || null
         }
       ])
       .select()

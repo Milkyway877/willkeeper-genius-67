@@ -62,7 +62,7 @@ export default function WillCreationAI() {
     try {
       const will = {
         title: data.responses.fullName ? `Will of ${data.responses.fullName}` : 'My Will',
-        status: 'draft',
+        status: 'draft' as const,
         document_url: '',
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,
@@ -84,7 +84,7 @@ export default function WillCreationAI() {
     try {
       const will = {
         title: willData.responses.fullName ? `Will of ${willData.responses.fullName}` : 'My Will',
-        status: 'active',
+        status: 'active' as const,
         document_url: '',
         template_type: selectedTemplate?.id || 'traditional',
         ai_generated: true,
