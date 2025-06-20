@@ -146,17 +146,29 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
   const generateDocumentText = (): string => {
     console.log('DocumentWillEditor: Generating document text with signature:', signature ? 'Yes' : 'No');
     
-    // Prepare comprehensive will content structure
+    // Prepare comprehensive will content structure with string conversion for approximateValue
     const comprehensiveWillContent = {
       personalInfo,
       executors,
       beneficiaries,
       guardians,
       assets: {
-        properties,
-        vehicles,
-        financialAccounts,
-        digitalAssets
+        properties: properties.map(p => ({
+          ...p,
+          approximateValue: p.approximateValue?.toString() || ''
+        })),
+        vehicles: vehicles.map(v => ({
+          ...v,
+          approximateValue: v.approximateValue?.toString() || ''
+        })),
+        financialAccounts: financialAccounts.map(f => ({
+          ...f,
+          approximateValue: f.approximateValue?.toString() || ''
+        })),
+        digitalAssets: digitalAssets.map(d => ({
+          ...d,
+          approximateValue: d.approximateValue?.toString() || ''
+        }))
       },
       specificBequests,
       residualEstate,
@@ -178,10 +190,22 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     beneficiaries,
     guardians,
     assets: {
-      properties,
-      vehicles,
-      financialAccounts,
-      digitalAssets
+      properties: properties.map(p => ({
+        ...p,
+        approximateValue: p.approximateValue?.toString() || ''
+      })),
+      vehicles: vehicles.map(v => ({
+        ...v,
+        approximateValue: v.approximateValue?.toString() || ''
+      })),
+      financialAccounts: financialAccounts.map(f => ({
+        ...f,
+        approximateValue: f.approximateValue?.toString() || ''
+      })),
+      digitalAssets: digitalAssets.map(d => ({
+        ...d,
+        approximateValue: d.approximateValue?.toString() || ''
+      }))
     },
     specificBequests,
     residualEstate,
@@ -190,24 +214,7 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
 
   // Enhanced auto-save functionality for real-time updates
   const { saving: autoSaving, lastSaved, saveError } = useFormAutoSave({
-    data: { 
-      willContent: {
-        personalInfo,
-        executors,
-        beneficiaries,
-        guardians,
-        assets: {
-          properties,
-          vehicles,
-          financialAccounts,
-          digitalAssets
-        },
-        specificBequests,
-        residualEstate,
-        finalArrangements
-      }, 
-      signature 
-    },
+    data: { willContent, signature },
     onSave: async (data) => {
       try {
         console.log('DocumentWillEditor: Auto-saving with signature:', data.signature ? 'Yes' : 'No');
@@ -276,8 +283,6 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       if (Math.abs(totalPercentage - 100) > 0.01) {
         return false;
       }
-      
-      // REMOVED: Signature requirement check
       
       return true;
     };
@@ -431,17 +436,29 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       
       const title = `${personalInfo.fullName}'s Will`;
       
-      // Generate comprehensive will content
+      // Generate comprehensive will content with proper type conversion
       const comprehensiveWillContent = {
         personalInfo,
         executors,
         beneficiaries,
         guardians,
         assets: {
-          properties,
-          vehicles,
-          financialAccounts,
-          digitalAssets
+          properties: properties.map(p => ({
+            ...p,
+            approximateValue: p.approximateValue?.toString() || ''
+          })),
+          vehicles: vehicles.map(v => ({
+            ...v,
+            approximateValue: v.approximateValue?.toString() || ''
+          })),
+          financialAccounts: financialAccounts.map(f => ({
+            ...f,
+            approximateValue: f.approximateValue?.toString() || ''
+          })),
+          digitalAssets: digitalAssets.map(d => ({
+            ...d,
+            approximateValue: d.approximateValue?.toString() || ''
+          }))
         },
         specificBequests,
         residualEstate,
@@ -1050,7 +1067,6 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
                 </DialogHeader>
                 <div className="mt-2 h-full overflow-y-auto">
                   <DocumentPreview 
-                    documentText={generateDocumentText()} 
                     willContent={willContent}
                     signature={signature}
                   />

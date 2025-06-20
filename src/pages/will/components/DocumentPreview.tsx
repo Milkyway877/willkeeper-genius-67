@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { generateWillContent } from '@/utils/willTemplateUtils';
+import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
 
 interface DocumentPreviewProps {
   documentText?: string;
@@ -10,48 +10,49 @@ interface DocumentPreviewProps {
 }
 
 export function DocumentPreview({ documentText, willContent, signature }: DocumentPreviewProps) {
-  // Generate comprehensive preview content
+  console.log('DocumentPreview: Rendering with professional formatting');
+  console.log('DocumentPreview: willContent structure:', willContent ? Object.keys(willContent) : 'none');
+  console.log('DocumentPreview: Has signature:', !!signature);
+
+  // Use professional document formatting for the preview
   const getPreviewContent = (): string => {
-    if (documentText) {
-      return documentText;
-    }
-    
     if (willContent) {
-      // Use the enhanced generateWillContent function
-      return generateWillContent({
-        ...willContent,
-        signature
-      });
+      // Use the professional document generator with the structured will content
+      console.log('DocumentPreview: Using professional document generator');
+      return generateProfessionalDocumentPreview(willContent, signature);
     }
     
-    return 'Your will document preview will appear here once you start filling in the details.';
+    if (documentText) {
+      // If only text is provided, try to parse it or use as-is
+      try {
+        const parsedContent = JSON.parse(documentText);
+        return generateProfessionalDocumentPreview(parsedContent, signature);
+      } catch {
+        // If parsing fails, use the professional generator with text content
+        return generateProfessionalDocumentPreview(documentText, signature);
+      }
+    }
+    
+    return `
+      <div style="padding: 2em; text-align: center; color: #666; font-family: Arial, sans-serif;">
+        <h3>Will Document Preview</h3>
+        <p>Your will document preview will appear here once you start filling in the details.</p>
+      </div>
+    `;
   };
 
   const previewContent = getPreviewContent();
 
   return (
-    <Card className="p-6 bg-white shadow-sm">
-      <div className="prose max-w-none">
-        <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed">
-          {previewContent}
-        </div>
-        
-        {signature && (
-          <div className="mt-8 pt-4 border-t border-gray-200">
-            <p className="text-sm font-medium mb-2">Digital Signature:</p>
-            <div className="bg-gray-50 p-3 rounded border">
-              <img 
-                src={signature} 
-                alt="Digital signature" 
-                className="max-w-xs border rounded bg-white p-2"
-              />
-              <p className="text-xs text-gray-600 mt-2">
-                Signed on: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+    <Card className="p-0 bg-white shadow-sm overflow-hidden">
+      <div 
+        dangerouslySetInnerHTML={{ __html: previewContent }}
+        className="professional-document-preview"
+        style={{ 
+          minHeight: '600px',
+          background: 'white'
+        }}
+      />
     </Card>
   );
 }
