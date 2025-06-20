@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Save, Eye, EyeOff, FileText, Users, Shield, Heart, Smartphone, Banknote, Home, Car } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SignatureCanvas from 'react-signature-canvas';
-import { generateWillContent } from '@/utils/willTemplateUtils';
+import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
 
 // Define interfaces for form data
 interface PersonalInfo {
@@ -50,6 +51,7 @@ interface Guardian {
   email: string;
   phone: string;
   address: string;
+  forChildren: string[]; // Added missing property
 }
 
 interface Property {
@@ -161,36 +163,15 @@ export function DocumentWillEditor({
   // Generate document text whenever form data changes
   useEffect(() => {
     try {
-      const templateContent = `LAST WILL AND TESTAMENT
-
-I, [Full Name], residing at [Address], being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-
-ARTICLE I: PERSONAL INFORMATION
-I declare that I was born on [Date of Birth] and that I am creating this will to ensure my wishes are carried out after my death.
-
-ARTICLE II: APPOINTMENT OF EXECUTOR
-I appoint [Executor Name] to serve as the Executor of my estate.
-
-ARTICLE III: BENEFICIARIES
-I bequeath my assets to the following beneficiaries:
-[Beneficiary details to be added]
-
-ARTICLE IV: SPECIFIC BEQUESTS
-[Specific bequests to be added]
-
-ARTICLE V: RESIDUAL ESTATE
-[Beneficiary names and distribution details]
-
-ARTICLE VI: FINAL ARRANGEMENTS
-[Final arrangements to be added]`;
-
-      const generatedText = generateWillContent(formData, templateContent);
+      console.log('Generating professional document with form data:', formData);
+      const generatedText = generateProfessionalDocumentPreview(formData, signature);
       setDocumentText(generatedText);
-      console.log('Generated document text:', generatedText);
+      console.log('Generated professional document text');
     } catch (error) {
-      console.error('Error generating document text:', error);
+      console.error('Error generating professional document text:', error);
+      setDocumentText('Error generating document preview. Please ensure all required fields are completed.');
     }
-  }, [formData]);
+  }, [formData, signature]);
 
   const handleSave = async () => {
     try {
@@ -287,6 +268,38 @@ ARTICLE VI: FINAL ARRANGEMENTS
       ...prev,
       beneficiaries: prev.beneficiaries.map(beneficiary =>
         beneficiary.id === id ? { ...beneficiary, [field]: value } : beneficiary
+      )
+    }));
+  };
+
+  const addGuardian = () => {
+    const newGuardian: Guardian = {
+      id: Date.now().toString(),
+      name: '',
+      relationship: '',
+      email: '',
+      phone: '',
+      address: '',
+      forChildren: [] // Initialize with empty array
+    };
+    setFormData(prev => ({
+      ...prev,
+      guardians: [...prev.guardians, newGuardian]
+    }));
+  };
+
+  const removeGuardian = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      guardians: prev.guardians.filter(guardian => guardian.id !== id)
+    }));
+  };
+
+  const updateGuardian = (id: string, field: keyof Guardian, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      guardians: prev.guardians.map(guardian =>
+        guardian.id === id ? { ...guardian, [field]: value } : guardian
       )
     }));
   };
@@ -526,6 +539,61 @@ ARTICLE VI: FINAL ARRANGEMENTS
                   <Button onClick={addBeneficiary} variant="outline" className="w-full">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Beneficiary
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Guardians
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {formData.guardians.map((guardian) => (
+                    <div key={guardian.id} className="p-4 border rounded-lg space-y-4">
+                      <div className="flex justify-between items-center">
+                        <Badge variant="outline">Guardian</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeGuardian(guardian.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Name</Label>
+                          <Input
+                            value={guardian.name}
+                            onChange={(e) => updateGuardian(guardian.id, 'name', e.target.value)}
+                            placeholder="Guardian's full name"
+                          />
+                        </div>
+                        <div>
+                          <Label>Relationship</Label>
+                          <Input
+                            value={guardian.relationship}
+                            onChange={(e) => updateGuardian(guardian.id, 'relationship', e.target.value)}
+                            placeholder="e.g., Sibling, Friend"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>For Children (comma-separated)</Label>
+                        <Input
+                          value={guardian.forChildren.join(', ')}
+                          onChange={(e) => updateGuardian(guardian.id, 'forChildren', e.target.value.split(',').map(s => s.trim()).filter(s => s))}
+                          placeholder="Names of children this guardian will care for"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <Button onClick={addGuardian} variant="outline" className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Guardian
                   </Button>
                 </CardContent>
               </Card>
