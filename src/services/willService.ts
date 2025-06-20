@@ -13,6 +13,17 @@ export interface Will {
   content?: string;
   signature?: string;
   user_id?: string;
+  // Add structured data fields
+  metadata?: any;
+  personal_info?: any;
+  executors?: any[];
+  beneficiaries?: any[];
+  guardians?: any[];
+  assets?: any;
+  specific_bequests?: string;
+  residual_estate?: string;
+  final_arrangements?: string;
+  document_text?: string;
 }
 
 export interface WillExecutor {
@@ -51,6 +62,92 @@ const inProgressOperations = {
   lastDraftTime: 0,
 };
 
+// Helper function to extract structured data from content
+const extractStructuredData = (willData: any) => {
+  let structuredData = {
+    personal_info: {},
+    executors: [],
+    beneficiaries: [],
+    guardians: [],
+    assets: {},
+    specific_bequests: '',
+    residual_estate: '',
+    final_arrangements: '',
+    document_text: '',
+    signature: null
+  };
+
+  // Handle nested willContent structure
+  if (willData.willContent) {
+    const { willContent } = willData;
+    
+    structuredData.personal_info = willContent.personalInfo || {};
+    structuredData.executors = willContent.executors || [];
+    structuredData.beneficiaries = willContent.beneficiaries || [];
+    structuredData.guardians = willContent.guardians || [];
+    structuredData.assets = willContent.assets || {};
+    structuredData.specific_bequests = willContent.specificBequests || '';
+    structuredData.residual_estate = willContent.residualEstate || '';
+    structuredData.final_arrangements = willContent.finalArrangements || '';
+    structuredData.signature = willData.signature || null;
+  }
+  // Handle direct structure (for template editor)
+  else if (willData.personalInfo || willData.executors || willData.beneficiaries) {
+    structuredData.personal_info = willData.personalInfo || {};
+    structuredData.executors = willData.executors || [];
+    structuredData.beneficiaries = willData.beneficiaries || [];
+    structuredData.guardians = willData.guardians || [];
+    structuredData.assets = willData.assets || {};
+    structuredData.specific_bequests = willData.specificBequests || '';
+    structuredData.residual_estate = willData.residualEstate || '';
+    structuredData.final_arrangements = willData.finalArrangements || '';
+    structuredData.signature = willData.signature || null;
+  }
+  // Handle form values structure (from template editor)
+  else if (willData.formValues) {
+    const { formValues } = willData;
+    structuredData.personal_info = {
+      fullName: formValues.fullName || '',
+      dateOfBirth: formValues.dateOfBirth || '',
+      address: formValues.homeAddress || '',
+      email: formValues.email || '',
+      phone: formValues.phoneNumber || ''
+    };
+    structuredData.executors = formValues.executors || [];
+    structuredData.beneficiaries = formValues.beneficiaries || [];
+    structuredData.final_arrangements = [
+      formValues.funeralPreferences,
+      formValues.memorialService,
+      formValues.obituary,
+      formValues.charitableDonations,
+      formValues.specialInstructions
+    ].filter(Boolean).join('\n\n') || '';
+    structuredData.document_text = willData.textContent || '';
+  }
+
+  return structuredData;
+};
+
+// Helper function to reconstruct data for the frontend
+const reconstructWillData = (dbWill: any) => {
+  return {
+    ...dbWill,
+    // Reconstruct willContent structure for DocumentWillEditor
+    willContent: {
+      personalInfo: dbWill.personal_info || {},
+      executors: dbWill.executors || [],
+      beneficiaries: dbWill.beneficiaries || [],
+      guardians: dbWill.guardians || [],
+      assets: dbWill.assets || {},
+      specificBequests: dbWill.specific_bequests || '',
+      residualEstate: dbWill.residual_estate || '',
+      finalArrangements: dbWill.final_arrangements || ''
+    },
+    signature: dbWill.signature,
+    documentText: dbWill.document_text || ''
+  };
+};
+
 // Helper function to initialize countdown for first will
 const initializeWillCountdown = async () => {
   const existingCountdown = localStorage.getItem('willCountdownStart');
@@ -82,7 +179,8 @@ export const getWills = async (): Promise<Will[]> => {
       return [];
     }
     
-    return data || [];
+    // Reconstruct data for frontend consumption
+    return (data || []).map(reconstructWillData);
   } catch (error) {
     console.error('Error in getWills:', error);
     return [];
@@ -110,7 +208,8 @@ export const getWill = async (id: string): Promise<Will | null> => {
       return null;
     }
     
-    return data;
+    // Reconstruct data for frontend consumption
+    return reconstructWillData(data);
   } catch (error) {
     console.error('Error in getWill:', error);
     return null;
@@ -135,14 +234,42 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
 
     const isFirstWill = !existingWills || existingWills.length === 0;
 
+    // Parse content to extract structured data
+    let contentData = {};
+    if (will.content) {
+      try {
+        contentData = JSON.parse(will.content);
+      } catch (e) {
+        console.error('Error parsing will content:', e);
+      }
+    }
+
+    // Extract structured data
+    const structuredData = extractStructuredData(contentData);
+    
+    console.log('Creating will with structured data:', structuredData);
+
     const willToCreate = {
-      ...will,
-      user_id: session.user.id,
-      document_url: will.document_url || '',
+      title: will.title,
       status: will.status || 'draft',
       template_type: will.template_type || 'custom',
       ai_generated: will.ai_generated || false,
-      subscription_required_after: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      document_url: will.document_url || '',
+      content: will.content || '',
+      user_id: session.user.id,
+      subscription_required_after: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      // Add structured data columns
+      metadata: { created_method: 'editor', version: '2.0' },
+      personal_info: structuredData.personal_info,
+      executors: structuredData.executors,
+      beneficiaries: structuredData.beneficiaries,
+      guardians: structuredData.guardians,
+      assets: structuredData.assets,
+      specific_bequests: structuredData.specific_bequests,
+      residual_estate: structuredData.residual_estate,
+      final_arrangements: structuredData.final_arrangements,
+      document_text: structuredData.document_text,
+      signature: structuredData.signature
     };
     
     console.log('Creating will with data:', willToCreate);
@@ -174,7 +301,7 @@ export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated
       }
     }
     
-    return data;
+    return reconstructWillData(data);
   } catch (error) {
     console.error('Error in createWill:', error);
     throw error;
@@ -190,10 +317,37 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
       throw new Error('You must be logged in to update a will');
     }
 
+    // Parse content to extract structured data if content is being updated
+    let structuredUpdates = {};
+    if (updates.content) {
+      try {
+        const contentData = JSON.parse(updates.content);
+        const structuredData = extractStructuredData(contentData);
+        structuredUpdates = {
+          personal_info: structuredData.personal_info,
+          executors: structuredData.executors,
+          beneficiaries: structuredData.beneficiaries,
+          guardians: structuredData.guardians,
+          assets: structuredData.assets,
+          specific_bequests: structuredData.specific_bequests,
+          residual_estate: structuredData.residual_estate,
+          final_arrangements: structuredData.final_arrangements,
+          document_text: structuredData.document_text,
+          signature: structuredData.signature
+        };
+        console.log('Updating will with structured data:', structuredUpdates);
+      } catch (e) {
+        console.error('Error parsing will content for update:', e);
+      }
+    }
+
     const updatedWill = {
       ...updates,
+      ...structuredUpdates,
       updated_at: new Date().toISOString()
     };
+
+    console.log('Updating will with data:', updatedWill);
 
     const { data, error } = await supabase
       .from('wills')
@@ -217,7 +371,7 @@ export const updateWill = async (id: string, updates: Partial<Will>): Promise<Wi
       console.error('Error creating notification:', notifError);
     }
     
-    return data;
+    return reconstructWillData(data);
   } catch (error) {
     console.error('Error in updateWill:', error);
     throw error;
