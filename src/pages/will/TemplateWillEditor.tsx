@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -237,16 +238,11 @@ Date: ${new Date().toLocaleDateString()}
       
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        content: finalWillContent,
-        status: 'draft' as const,
+        content: JSON.stringify({ formValues, textContent: finalWillContent }),
+        status: 'draft',
         template_type: templateId,
         ai_generated: false,
-        document_url: '',
-        metadata: {
-          formValues: formValues,
-          templateId: templateId,
-          savedAt: new Date().toISOString()
-        }
+        document_url: ''
       };
       
       const savedWill = await createWill(willData);
@@ -287,43 +283,33 @@ Date: ${new Date().toLocaleDateString()}
       
       const formValues = form.getValues();
       
-      // Generate the final will content with all user data
       const finalWillContent = generateWillContent(formValues, willContent);
       const contentWithTimestamp = finalWillContent + `\n\nFinalized on: ${new Date().toLocaleString()}`;
       
-      console.log('TemplateWillEditor: Final will content:', contentWithTimestamp);
-      
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        content: contentWithTimestamp,
-        status: 'active' as const,
+        content: JSON.stringify({ 
+          formValues, 
+          textContent: contentWithTimestamp,
+          finalizedAt: new Date().toISOString()
+        }),
+        status: 'active',
         template_type: templateId,
         ai_generated: false,
         document_url: '',
-        metadata: {
-          formValues: formValues,
-          templateId: templateId,
-          finalizedAt: new Date().toISOString()
-        }
       };
-      
-      console.log('TemplateWillEditor: Saving will data:', willData);
       
       const savedWill = await createWill(willData);
       
       if (savedWill && savedWill.id) {
         console.log('TemplateWillEditor: Will finalized successfully with ID:', savedWill.id);
-        
-        // Verify the saved content
-        console.log('TemplateWillEditor: Saved will content preview:', savedWill.content?.substring(0, 200));
-        
         setFinalizedWill(savedWill);
         setIsFinalized(true);
         setShowSuccessModal(true);
         
         toast({
           title: "Will Finalized Successfully!",
-          description: "Your will has been created with all your information.",
+          description: "Your will has been created. Next: upload documents and record your video testament.",
         });
       }
       

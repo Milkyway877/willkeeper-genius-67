@@ -1,283 +1,626 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
+import { createSystemNotification } from "./notificationService";
 
 export interface Will {
   id: string;
   title: string;
-  content: string;
-  status: 'draft' | 'active' | 'archived';
+  status: string;
+  document_url: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
-  document_url?: string;
   template_type?: string;
   ai_generated?: boolean;
-  metadata?: any;
+  content?: string;
   signature?: string;
+  user_id?: string;
 }
 
-export interface CreateWillData {
-  title: string;
-  content: string;
-  status: 'draft' | 'active' | 'archived';
-  document_url?: string;
-  template_type?: string;
-  ai_generated?: boolean;
-  metadata?: any;
-  signature?: string;
+export interface WillExecutor {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  created_at: string;
+  will_id?: string;
+}
+
+export interface WillBeneficiary {
+  id: string;
+  name: string;
+  relationship: string;
+  percentage?: number;
+  created_at: string;
+  will_id?: string;
+}
+
+export interface WillDocument {
+  id: string;
+  will_id: string;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  file_type: string;
+  created_at: string;
   updated_at?: string;
 }
 
-// Add missing exports for compatibility
-export const getUserWills = async (): Promise<Will[]> => {
+// Track in-progress operations to prevent duplicates
+const inProgressOperations = {
+  creatingDraft: false,
+  lastDraftTime: 0,
+};
+
+// Helper function to initialize countdown for first will
+const initializeWillCountdown = async () => {
+  const existingCountdown = localStorage.getItem('willCountdownStart');
+  if (!existingCountdown) {
+    // This is the first will, start the countdown
+    const countdownStart = new Date();
+    localStorage.setItem('willCountdownStart', countdownStart.toISOString());
+    console.log('Started will countdown for first will creation');
+  }
+};
+
+export const getWills = async (): Promise<Will[]> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
     
-    if (!user) {
-      throw new Error('User not authenticated');
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
     }
 
     const { data, error } = await supabase
       .from('wills')
       .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
+      .eq('user_id', session.user.id)
+      .order('updated_at', { ascending: false });
+      
     if (error) {
-      console.error('willService: Error fetching user wills:', error);
-      throw error;
+      console.error('Error fetching wills:', error);
+      return [];
     }
-
-    console.log('willService: User wills fetched:', data.length);
+    
     return data || [];
   } catch (error) {
-    console.error('willService: Error in getUserWills:', error);
+    console.error('Error in getWills:', error);
     return [];
-  }
-};
-
-// Alias for compatibility
-export const getWills = getUserWills;
-
-// Document-related placeholder exports (these would need proper implementation)
-export interface WillDocument {
-  id: string;
-  will_id: string;
-  file_name: string;
-  file_path: string;
-  file_type: string;
-  file_size: number;
-  created_at: string;
-}
-
-export const getWillDocuments = async (willId: string): Promise<WillDocument[]> => {
-  // Placeholder implementation
-  console.log('getWillDocuments not fully implemented for will:', willId);
-  return [];
-};
-
-export const deleteWillDocument = async (document: WillDocument): Promise<boolean> => {
-  // Placeholder implementation
-  console.log('deleteWillDocument not fully implemented for document:', document.id);
-  return false;
-};
-
-export const getDocumentUrl = async (document: WillDocument): Promise<string | null> => {
-  // Placeholder implementation
-  console.log('getDocumentUrl not fully implemented for document:', document.file_name);
-  return null;
-};
-
-export const uploadWillDocument = async (willId: string, file: File, onProgress?: (progress: number) => void): Promise<WillDocument | null> => {
-  // Placeholder implementation
-  console.log('uploadWillDocument not fully implemented for will:', willId, 'file:', file.name);
-  if (onProgress) onProgress(100);
-  return null;
-};
-
-export const createWill = async (willData: CreateWillData): Promise<Will | null> => {
-  try {
-    console.log('willService: Creating will with enhanced data structure:', {
-      title: willData.title,
-      contentLength: willData.content?.length,
-      status: willData.status,
-      template_type: willData.template_type,
-      hasMetadata: !!willData.metadata,
-      hasSignature: !!willData.signature
-    });
-
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    // Validate content structure
-    let parsedContent;
-    try {
-      parsedContent = JSON.parse(willData.content);
-      console.log('willService: Parsed content structure:', Object.keys(parsedContent));
-    } catch (parseError) {
-      console.warn('willService: Content is not JSON, treating as plain text');
-      parsedContent = { documentText: willData.content };
-    }
-
-    const { data, error } = await supabase
-      .from('wills')
-      .insert([
-        {
-          title: willData.title,
-          content: willData.content,
-          status: willData.status,
-          user_id: user.id,
-          document_url: willData.document_url || '',
-          template_type: willData.template_type || 'comprehensive',
-          ai_generated: willData.ai_generated || false,
-          metadata: willData.metadata || null,
-          signature: willData.signature || null
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('willService: Database error during will creation:', error);
-      
-      // Provide more specific error messages
-      if (error.code === '23505') {
-        throw new Error('A will with this title already exists. Please choose a different title.');
-      } else if (error.code === '42501') {
-        throw new Error('Permission denied. Please ensure you are logged in.');
-      } else if (error.message?.includes('content')) {
-        throw new Error('Invalid content format. Please try again.');
-      } else {
-        throw new Error(`Database error: ${error.message}`);
-      }
-    }
-
-    console.log('willService: Will created successfully:', {
-      id: data.id,
-      title: data.title,
-      contentPreview: data.content?.substring(0, 100),
-      status: data.status,
-      hasSignature: !!data.signature
-    });
-
-    return data;
-  } catch (error) {
-    console.error('willService: Error in createWill:', error);
-    
-    // Re-throw with better error context
-    if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error('An unexpected error occurred while creating your will.');
-    }
-  }
-};
-
-export const updateWill = async (id: string, willData: Partial<CreateWillData>): Promise<Will | null> => {
-  try {
-    console.log('willService: Updating will with enhanced structure:', { 
-      id, 
-      hasContent: !!willData.content,
-      hasSignature: !!willData.signature,
-      status: willData.status
-    });
-
-    // Validate content if provided
-    if (willData.content) {
-      try {
-        const parsedContent = JSON.parse(willData.content);
-        console.log('willService: Update content structure validated:', Object.keys(parsedContent));
-      } catch (parseError) {
-        console.warn('willService: Update content is not JSON, treating as plain text');
-      }
-    }
-
-    const { data, error } = await supabase
-      .from('wills')
-      .update({
-        ...willData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('willService: Database error during will update:', error);
-      
-      if (error.code === '42501') {
-        throw new Error('Permission denied. You can only update your own wills.');
-      } else if (error.code === '23503') {
-        throw new Error('Will not found or already deleted.');
-      } else {
-        throw new Error(`Update error: ${error.message}`);
-      }
-    }
-
-    console.log('willService: Will updated successfully:', {
-      id: data.id,
-      title: data.title,
-      status: data.status,
-      hasSignature: !!data.signature
-    });
-    
-    return data;
-  } catch (error) {
-    console.error('willService: Error in updateWill:', error);
-    
-    if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error('An unexpected error occurred while updating your will.');
-    }
   }
 };
 
 export const getWill = async (id: string): Promise<Will | null> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('wills')
       .select('*')
       .eq('id', id)
+      .eq('user_id', session.user.id)
       .single();
-
+      
     if (error) {
-      console.error('willService: Error fetching will:', error);
-      throw error;
+      console.error('Error fetching will:', error);
+      return null;
     }
-
-    console.log('willService: Will fetched successfully:', {
-      id: data.id,
-      title: data.title,
-      contentLength: data.content?.length,
-      hasMetadata: !!data.metadata
-    });
-
+    
     return data;
   } catch (error) {
-    console.error('willService: Error in getWill:', error);
+    console.error('Error in getWill:', error);
     return null;
+  }
+};
+
+export const createWill = async (will: Omit<Will, 'id' | 'created_at' | 'updated_at'>): Promise<Will | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      throw new Error('You must be logged in to create a will');
+    }
+    
+    // Check if this is the user's first will
+    const { data: existingWills } = await supabase
+      .from('wills')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .limit(1);
+
+    const isFirstWill = !existingWills || existingWills.length === 0;
+
+    const willToCreate = {
+      ...will,
+      user_id: session.user.id,
+      document_url: will.document_url || '',
+      status: will.status || 'draft',
+      template_type: will.template_type || 'custom',
+      ai_generated: will.ai_generated || false,
+      subscription_required_after: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    };
+    
+    console.log('Creating will with data:', willToCreate);
+    
+    const { data, error } = await supabase
+      .from('wills')
+      .insert(willToCreate)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error creating will:', error);
+      throw new Error(`Failed to create will: ${error.message}`);
+    }
+    
+    // Initialize countdown if this is the first will
+    if (isFirstWill && data) {
+      await initializeWillCountdown();
+    }
+
+    if (will.status === 'active') {
+      try {
+        await createSystemNotification('will_created', {
+          title: 'Will Created',
+          description: `Your will "${will.title}" has been finalized successfully.`
+        });
+      } catch (notifError) {
+        console.error('Error creating notification:', notifError);
+      }
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in createWill:', error);
+    throw error;
+  }
+};
+
+export const updateWill = async (id: string, updates: Partial<Will>): Promise<Will | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      throw new Error('You must be logged in to update a will');
+    }
+
+    const updatedWill = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('wills')
+      .update(updatedWill)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error updating will:', error);
+      throw new Error(`Failed to update will: ${error.message}`);
+    }
+    
+    try {
+      await createSystemNotification('will_updated', {
+        title: 'Will Updated',
+        description: `Your will "${data.title}" has been updated successfully.`
+      });
+    } catch (notifError) {
+      console.error('Error creating notification:', notifError);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in updateWill:', error);
+    throw error;
   }
 };
 
 export const deleteWill = async (id: string): Promise<boolean> => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return false;
+    }
+
+    const { data: willToDelete } = await supabase
+      .from('wills')
+      .select('title')
+      .eq('id', id)
+      .eq('user_id', session.user.id)
+      .single();
+    
     const { error } = await supabase
       .from('wills')
       .delete()
-      .eq('id', id);
-
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+      
     if (error) {
-      console.error('willService: Error deleting will:', error);
-      throw error;
+      console.error('Error deleting will:', error);
+      return false;
     }
-
-    console.log('willService: Will deleted successfully:', id);
+    
+    if (willToDelete) {
+      await createSystemNotification('will_deleted', {
+        title: 'Will Deleted',
+        description: `Your will "${willToDelete.title}" has been deleted.`
+      });
+    }
+    
     return true;
   } catch (error) {
-    console.error('willService: Error in deleteWill:', error);
+    console.error('Error in deleteWill:', error);
     return false;
   }
 };
+
+export const getWillExecutors = async (willId?: string): Promise<WillExecutor[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    let query = supabase
+      .from('will_executors')
+      .select('*');
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching executors:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error in getWillExecutors:', error);
+    return [];
+  }
+};
+
+export const createWillExecutor = async (executor: Omit<WillExecutor, 'id' | 'created_at'>): Promise<WillExecutor | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+    
+    const { data, error } = await supabase
+      .from('will_executors')
+      .insert(executor)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error creating executor:', error);
+      return null;
+    }
+    
+    await createSystemNotification('executor_added', {
+      title: 'Executor Added',
+      description: `${executor.name} has been added as an executor to your will.`
+    });
+    
+    return data;
+  } catch (error) {
+    console.error('Error in createWillExecutor:', error);
+    return null;
+  }
+};
+
+export const getWillBeneficiaries = async (willId?: string): Promise<WillBeneficiary[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    let query = supabase
+      .from('will_beneficiaries')
+      .select('*');
+      
+    if (willId) {
+      query = query.eq('will_id', willId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching beneficiaries:', error);
+      return [];
+    }
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.beneficiary_name,
+      relationship: item.relationship,
+      percentage: item.percentage,
+      created_at: item.created_at,
+      will_id: item.will_id
+    }));
+  } catch (error) {
+    console.error('Error in getWillBeneficiaries:', error);
+    return [];
+  }
+};
+
+export const createWillBeneficiary = async (beneficiary: Omit<WillBeneficiary, 'id' | 'created_at'>): Promise<WillBeneficiary | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+    
+    const dbBeneficiary = {
+      beneficiary_name: beneficiary.name,
+      relationship: beneficiary.relationship,
+      percentage: beneficiary.percentage,
+      will_id: beneficiary.will_id
+    };
+    
+    const { data, error } = await supabase
+      .from('will_beneficiaries')
+      .insert(dbBeneficiary)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error creating beneficiary:', error);
+      return null;
+    }
+    
+    await createSystemNotification('beneficiary_added', {
+      title: 'Beneficiary Added',
+      description: `${beneficiary.name} has been added as a beneficiary to your will.`
+    });
+    
+    return {
+      id: data.id,
+      name: data.beneficiary_name,
+      relationship: data.relationship,
+      percentage: data.percentage,
+      created_at: data.created_at,
+      will_id: data.will_id
+    };
+  } catch (error) {
+    console.error('Error in createWillBeneficiary:', error);
+    return null;
+  }
+};
+
+export const getWillDocuments = async (willId: string): Promise<WillDocument[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return [];
+    }
+
+    console.log(`Fetching documents for will_id: ${willId} and user_id: ${session.user.id}`);
+    
+    // Query the will_documents table directly
+    const { data, error } = await supabase
+      .from('will_documents')
+      .select('*')
+      .eq('will_id', willId)
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching will documents:', error);
+      return [];
+    }
+    
+    console.log('Documents retrieved:', data);
+    return data || [];
+  } catch (error) {
+    console.error('Error in getWillDocuments:', error);
+    return [];
+  }
+};
+
+// Type definition for progress callback
+type ProgressCallback = (progress: number) => void;
+
+export const uploadWillDocument = async (
+  willId: string, 
+  file: File, 
+  onProgress?: ProgressCallback
+): Promise<WillDocument | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return null;
+    }
+    
+    // Create a unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    // Use will_docs prefix to organize documents by will
+    const filePath = `will_docs/${willId}/${fileName}`;
+    
+    console.log(`Starting upload of ${file.name} (${file.size} bytes) to future-documents bucket with path: ${filePath}`);
+    
+    // Upload to Supabase Storage - using the existing future-documents bucket
+    const uploadOptions = {
+      cacheControl: '3600',
+      upsert: true
+    };
+    
+    // Upload the file to storage
+    const { error: uploadError, data: uploadData } = await supabase.storage
+      .from('future-documents')
+      .upload(filePath, file, uploadOptions);
+      
+    if (uploadError) {
+      console.error('Error uploading will document to storage:', uploadError);
+      return null;
+    }
+    
+    console.log('File uploaded to storage successfully:', uploadData);
+    
+    // Save document metadata in will_documents table
+    const documentData = {
+      will_id: willId,
+      user_id: session.user.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_size: file.size,
+      file_type: file.type
+    };
+    
+    console.log('Saving document metadata to will_documents:', documentData);
+    
+    const { data, error } = await supabase
+      .from('will_documents')
+      .insert(documentData)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error saving will document metadata to database:', error);
+      
+      // Try to clean up the uploaded file on error
+      console.log('Attempting to clean up uploaded file after database error');
+      await supabase.storage
+        .from('future-documents')
+        .remove([filePath]);
+        
+      return null;
+    }
+    
+    console.log('Document metadata saved to will_documents successfully:', data);
+    
+    // Create notification after successful upload
+    try {
+      await createSystemNotification('success', {
+        title: 'Document Added',
+        description: `Document ${file.name} has been added to your will.`
+      });
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Continue even if notification fails
+    }
+    
+    // Update progress to 100% after successful upload
+    if (onProgress) {
+      onProgress(100);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in uploadWillDocument:', error);
+    
+    // Update progress to show failure
+    if (onProgress) {
+      onProgress(0);
+    }
+    
+    return null;
+  }
+};
+
+export const deleteWillDocument = async (document: WillDocument): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('User is not authenticated');
+      return false;
+    }
+
+    console.log(`Attempting to delete document: ${document.id}, file path: ${document.file_path}`);
+    
+    // Delete the file from storage
+    const { error: storageError } = await supabase.storage
+      .from('future-documents')
+      .remove([document.file_path]);
+      
+    if (storageError) {
+      console.error('Error deleting file from storage:', storageError);
+      // Continue anyway to try to clean up the database entry
+    } else {
+      console.log('File deleted from storage successfully');
+    }
+    
+    // Delete the document metadata from will_documents table
+    const { error } = await supabase
+      .from('will_documents')
+      .delete()
+      .eq('id', document.id)
+      .eq('user_id', session.user.id);
+      
+    if (error) {
+      console.error('Error deleting document metadata from database:', error);
+      return false;
+    }
+    
+    console.log('Document metadata deleted from database successfully');
+    
+    // Create notification after successful deletion
+    try {
+      await createSystemNotification('info', {
+        title: 'Document Removed',
+        description: `Document ${document.file_name} has been removed from your will.`
+      });
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Continue even if notification fails
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteWillDocument:', error);
+    return false;
+  }
+};
+
+export const getDocumentUrl = async (document: WillDocument): Promise<string | null> => {
+  try {
+    console.log(`Getting signed URL for document: ${document.file_path}`);
+    
+    const { data, error } = await supabase.storage
+      .from('future-documents')
+      .createSignedUrl(document.file_path, 60); // URL valid for 60 seconds
+      
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    
+    console.log('Signed URL created successfully');
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error in getDocumentUrl:', error);
+    return null;
+  }
+};
+
+// Helper function to initialize countdown for first will

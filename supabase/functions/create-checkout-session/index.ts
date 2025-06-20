@@ -23,72 +23,33 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
   const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-
-  if (!stripeSecretKey) {
-    console.error('STRIPE_SECRET_KEY not found');
-    return new Response(JSON.stringify({ error: 'Stripe configuration error' }), { 
-      status: 500, 
-      headers: corsHeaders 
-    });
-  }
-
   const stripe = new Stripe(stripeSecretKey, { apiVersion: "2023-10-16" });
 
   try {
-    const { plan, billingPeriod, return_url } = await req.json();
+    const { plan, billingPeriod } = await req.json();
 
-    console.log('Creating checkout session for:', { plan, billingPeriod });
-
-    // Validate input
-    if (!plan || !billingPeriod) {
-      return new Response(JSON.stringify({ error: 'Missing plan or billing period' }), { 
-        status: 400, 
-        headers: corsHeaders 
-      });
-    }
-
-    // Updated price mapping - replace these with your actual Stripe price IDs
-    const priceMap = {
-      'starter': {
-        'monthly': 'price_starter_monthly_id',    // Replace with actual price ID
-        'yearly': 'price_starter_yearly_id',      // Replace with actual price ID
-        'lifetime': 'price_starter_lifetime_id'   // Replace with actual price ID
+    // Hardcoded prices and product IDs
+    const productMap = {
+      'platinum': {
+        'monthly': 'prod_S2537v7mpccHQI',
+        'yearly': 'prod_S2537v7mpccHQI',
+        'lifetime': 'prod_S2537v7mpccHQI',
       },
       'gold': {
-        'monthly': 'price_gold_monthly_id',       // Replace with actual price ID
-        'yearly': 'price_gold_yearly_id',         // Replace with actual price ID
-        'lifetime': 'price_gold_lifetime_id'      // Replace with actual price ID
+        'monthly': 'prod_S252Aj8D5tFfXg',
+        'yearly': 'prod_S252Aj8D5tFfXg',
+        'lifetime': 'prod_S252Aj8D5tFfXg',
       },
-      'platinum': {
-        'monthly': 'price_platinum_monthly_id',   // Replace with actual price ID
-        'yearly': 'price_platinum_yearly_id',     // Replace with actual price ID
-        'lifetime': 'price_platinum_lifetime_id'  // Replace with actual price ID
+      'starter': {
+        'monthly': 'prod_S251guGbh50tje',
+        'yearly': 'prod_S251guGbh50tje',
+        'lifetime': 'prod_S251guGbh50tje',
       }
     };
 
-    const priceId = priceMap[plan]?.[billingPeriod];
-    
-    if (!priceId) {
-      console.error('Invalid plan or billing period:', { plan, billingPeriod });
-      return new Response(JSON.stringify({ error: 'Invalid plan or billing period' }), { 
-        status: 400, 
-        headers: corsHeaders 
-      });
-    }
-
-    console.log('Using price ID:', priceId);
-
-    // Verify the price exists in Stripe
-    try {
-      const price = await stripe.prices.retrieve(priceId);
-      console.log('Price verified:', { id: price.id, amount: price.unit_amount });
-    } catch (priceError) {
-      console.error('Price not found in Stripe:', priceId, priceError);
-      return new Response(JSON.stringify({ error: 'Price configuration error' }), { 
-        status: 500, 
-        headers: corsHeaders 
-      });
-    }
+    const productId = productMap[plan][billingPeriod];
+    const product = await stripe.products.retrieve(productId);
+    const prices = await stripe.prices.list({ product: productId, active: true });
 
     // Get the authenticated user
     const authHeader = req.headers.get('Authorization');
@@ -103,14 +64,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     
     if (userError || !user) {
-      console.error('Authentication failed:', userError);
       return new Response(JSON.stringify({ error: 'Authentication failed' }), { 
         status: 401, 
         headers: corsHeaders 
       });
     }
-
-    console.log('User authenticated:', user.email);
 
     // Find or create Stripe customer
     let customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -118,40 +76,26 @@ serve(async (req) => {
     
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
-      console.log('Existing customer found:', customerId);
     } else {
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { user_id: user.id }
       });
       customerId = customer.id;
-      console.log('New customer created:', customerId);
     }
 
-    // Determine the checkout mode
-    const mode = billingPeriod === 'lifetime' ? 'payment' : 'subscription';
-
-    const sessionConfig = {
+    const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      line_items: [{ 
-        price: priceId, 
-        quantity: 1 
-      }],
-      mode: mode,
-      success_url: return_url || `${req.headers.get('origin')}/billing?success=true`,
+      line_items: [{ price: prices.data[0].id, quantity: 1 }],
+      mode: billingPeriod === 'lifetime' ? 'payment' : 'subscription',
+      success_url: `${req.headers.get('origin')}/billing?success=true`,
       cancel_url: `${req.headers.get('origin')}/billing?canceled=true`,
       metadata: {
         user_id: user.id,
         plan: plan,
         billing_period: billingPeriod
       }
-    };
-
-    console.log('Creating session with config:', sessionConfig);
-
-    const session = await stripe.checkout.sessions.create(sessionConfig);
-
-    console.log('Checkout session created successfully:', session.id);
+    });
 
     return new Response(JSON.stringify({ url: session.url }), { 
       status: 200, 
@@ -159,10 +103,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Checkout session error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred',
-      details: error.stack 
-    }), { 
+    return new Response(JSON.stringify({ error: error.message }), { 
       status: 500, 
       headers: corsHeaders 
     });

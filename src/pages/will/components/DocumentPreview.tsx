@@ -1,58 +1,71 @@
 
-import React from 'react';
-import { Card } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { WillContent } from './types';
+import { WillPreview } from './WillPreview';
 import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
 
 interface DocumentPreviewProps {
-  documentText?: string;
-  willContent?: any;
-  signature?: string | null;
+  willContent: WillContent;
+  signature: string | null;
+  documentText: string;
 }
 
-export function DocumentPreview({ documentText, willContent, signature }: DocumentPreviewProps) {
-  console.log('DocumentPreview: Rendering with professional formatting');
-  console.log('DocumentPreview: willContent structure:', willContent ? Object.keys(willContent) : 'none');
-  console.log('DocumentPreview: Has signature:', !!signature);
+export function DocumentPreview({ willContent, signature, documentText }: DocumentPreviewProps) {
+  // Generate formatted content from willContent if documentText is empty
+  const generateFormattedContent = () => {
+    if (documentText) return documentText;
+    
+    try {
+      const { personalInfo, executors, beneficiaries } = willContent;
+      
+      // Find primary executor
+      const primaryExecutor = executors?.find(e => e.isPrimary);
+      
+      // Format beneficiaries as text
+      const beneficiariesText = beneficiaries?.map(b => 
+        `- ${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate`
+      ).join('\n') || '- [No beneficiaries specified]';
+      
+      return `
+LAST WILL AND TESTAMENT
 
-  // Use professional document formatting for the preview
-  const getPreviewContent = (): string => {
-    if (willContent) {
-      // Use the professional document generator with the structured will content
-      console.log('DocumentPreview: Using professional document generator');
-      return generateProfessionalDocumentPreview(willContent, signature);
+I, ${personalInfo?.fullName || '[Full Name]'}, residing at ${personalInfo?.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on ${personalInfo?.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
+
+ARTICLE II: APPOINTMENT OF EXECUTOR
+I appoint ${primaryExecutor?.name || '[Executor Name]'} to serve as the Executor of my estate.
+
+ARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:
+${beneficiariesText}
+
+ARTICLE IV: SPECIFIC BEQUESTS
+${willContent.specificBequests || '[No specific bequests specified]'}
+
+ARTICLE V: RESIDUAL ESTATE
+${willContent.residualEstate || 'I give all the rest and residue of my estate to my beneficiaries in the proportions specified above.'}
+
+ARTICLE VI: FINAL ARRANGEMENTS
+${willContent.finalArrangements || '[No specific final arrangements specified]'}
+      `;
+    } catch (error) {
+      console.error("Error generating document preview:", error);
+      return "Error generating document preview. Please try again.";
     }
-    
-    if (documentText) {
-      // If only text is provided, try to parse it or use as-is
-      try {
-        const parsedContent = JSON.parse(documentText);
-        return generateProfessionalDocumentPreview(parsedContent, signature);
-      } catch {
-        // If parsing fails, use the professional generator with text content
-        return generateProfessionalDocumentPreview(documentText, signature);
-      }
-    }
-    
-    return `
-      <div style="padding: 2em; text-align: center; color: #666; font-family: Arial, sans-serif;">
-        <h3>Will Document Preview</h3>
-        <p>Your will document preview will appear here once you start filling in the details.</p>
-      </div>
-    `;
   };
-
-  const previewContent = getPreviewContent();
-
+  
+  const formattedContent = generateFormattedContent();
+  
   return (
-    <Card className="p-0 bg-white shadow-sm overflow-hidden">
-      <div 
-        dangerouslySetInnerHTML={{ __html: previewContent }}
-        className="professional-document-preview"
-        style={{ 
-          minHeight: '600px',
-          background: 'white'
-        }}
+    <div className="p-6 bg-white rounded-lg border border-gray-200">
+      <WillPreview 
+        content={formattedContent} 
+        formatted={true}
+        useProfessionalFormat={true}
       />
-    </Card>
+    </div>
   );
 }

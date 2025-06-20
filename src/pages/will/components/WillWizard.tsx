@@ -161,7 +161,7 @@ export function WillWizard({ onWillCreated }: WillWizardProps = {}) {
       const newWill = await createWill({
         title: title,
         content: template.content,
-        status: 'draft' as const,
+        status: 'draft',
         document_url: '',
         template_type: template.id,
         ai_generated: false
