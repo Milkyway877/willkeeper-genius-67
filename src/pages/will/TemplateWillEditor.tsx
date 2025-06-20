@@ -237,11 +237,16 @@ Date: ${new Date().toLocaleDateString()}
       
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        content: JSON.stringify({ formValues, textContent: finalWillContent }),
-        status: 'draft',
+        content: finalWillContent,
+        status: 'draft' as const,
         template_type: templateId,
         ai_generated: false,
-        document_url: ''
+        document_url: '',
+        metadata: {
+          formValues: formValues,
+          templateId: templateId,
+          savedAt: new Date().toISOString()
+        }
       };
       
       const savedWill = await createWill(willData);
@@ -290,13 +295,11 @@ Date: ${new Date().toLocaleDateString()}
       
       const willData = {
         title: `${formValues.fullName}'s Will`,
-        // Store the actual generated will content as the main content
         content: contentWithTimestamp,
-        status: 'active',
+        status: 'active' as const,
         template_type: templateId,
         ai_generated: false,
         document_url: '',
-        // Store form data separately in metadata field for future editing
         metadata: {
           formValues: formValues,
           templateId: templateId,
