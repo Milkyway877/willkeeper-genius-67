@@ -12,48 +12,45 @@ interface DocumentPreviewProps {
 }
 
 export function DocumentPreview({ willContent, signature, documentText }: DocumentPreviewProps) {
-  // Generate formatted content from willContent if documentText is empty
+  console.log('DocumentPreview received willContent:', willContent);
+  console.log('DocumentPreview received documentText:', documentText);
+  
+  // Use the professional document generator for proper formatting
   const generateFormattedContent = () => {
-    if (documentText) return documentText;
-    
     try {
-      const { personalInfo, executors, beneficiaries } = willContent;
+      // If we have structured willContent, use it directly
+      if (willContent && Object.keys(willContent).length > 0) {
+        console.log('Using structured willContent for professional format');
+        return generateProfessionalDocumentPreview(willContent, signature);
+      }
       
-      // Find primary executor
-      const primaryExecutor = executors?.find(e => e.isPrimary);
+      // If we have documentText but no structured content, try to parse it
+      if (documentText && documentText.trim()) {
+        console.log('Using documentText for professional format');
+        return generateProfessionalDocumentPreview(documentText, signature);
+      }
       
-      // Format beneficiaries as text
-      const beneficiariesText = beneficiaries?.map(b => 
-        `- ${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate`
-      ).join('\n') || '- [No beneficiaries specified]';
+      // Fallback to basic structure
+      console.log('Using fallback structure for professional format');
+      const fallbackContent = {
+        personalInfo: {
+          fullName: '[Full Name]',
+          address: '[Address]',
+          dateOfBirth: '[Date of Birth]'
+        },
+        executors: [],
+        beneficiaries: [],
+        finalArrangements: 'No specific arrangements specified'
+      };
       
-      return `
-LAST WILL AND TESTAMENT
-
-I, ${personalInfo?.fullName || '[Full Name]'}, residing at ${personalInfo?.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-
-ARTICLE I: PERSONAL INFORMATION
-I declare that I was born on ${personalInfo?.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
-
-ARTICLE II: APPOINTMENT OF EXECUTOR
-I appoint ${primaryExecutor?.name || '[Executor Name]'} to serve as the Executor of my estate.
-
-ARTICLE III: BENEFICIARIES
-I bequeath my assets to the following beneficiaries:
-${beneficiariesText}
-
-ARTICLE IV: SPECIFIC BEQUESTS
-${willContent.specificBequests || '[No specific bequests specified]'}
-
-ARTICLE V: RESIDUAL ESTATE
-${willContent.residualEstate || 'I give all the rest and residue of my estate to my beneficiaries in the proportions specified above.'}
-
-ARTICLE VI: FINAL ARRANGEMENTS
-${willContent.finalArrangements || '[No specific final arrangements specified]'}
-      `;
+      return generateProfessionalDocumentPreview(fallbackContent, signature);
     } catch (error) {
-      console.error("Error generating document preview:", error);
-      return "Error generating document preview. Please try again.";
+      console.error("Error generating professional document preview:", error);
+      return `<div style="padding: 2em; text-align: center; color: #666;">
+                <h3>Error generating document preview</h3>
+                <p>Please ensure all required fields are completed and try again.</p>
+                <p style="font-size: 0.9em; color: #999;">Error: ${error instanceof Error ? error.message : 'Unknown error'}</p>
+              </div>`;
     }
   };
   
@@ -61,10 +58,9 @@ ${willContent.finalArrangements || '[No specific final arrangements specified]'}
   
   return (
     <div className="p-6 bg-white rounded-lg border border-gray-200">
-      <WillPreview 
-        content={formattedContent} 
-        formatted={true}
-        useProfessionalFormat={true}
+      <div 
+        dangerouslySetInnerHTML={{ __html: formattedContent }}
+        className="professional-will-preview"
       />
     </div>
   );
