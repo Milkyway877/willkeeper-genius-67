@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Will {
@@ -97,18 +96,29 @@ export const uploadWillDocument = async (willId: string, file: File, onProgress?
 
 export const createWill = async (willData: CreateWillData): Promise<Will | null> => {
   try {
-    console.log('willService: Creating will with data:', {
+    console.log('willService: Creating will with enhanced data structure:', {
       title: willData.title,
       contentLength: willData.content?.length,
       status: willData.status,
       template_type: willData.template_type,
-      hasMetadata: !!willData.metadata
+      hasMetadata: !!willData.metadata,
+      hasSignature: !!willData.signature
     });
 
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
       throw new Error('User not authenticated');
+    }
+
+    // Validate content structure
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(willData.content);
+      console.log('willService: Parsed content structure:', Object.keys(parsedContent));
+    } catch (parseError) {
+      console.warn('willService: Content is not JSON, treating as plain text');
+      parsedContent = { documentText: willData.content };
     }
 
     const { data, error } = await supabase
@@ -120,7 +130,7 @@ export const createWill = async (willData: CreateWillData): Promise<Will | null>
           status: willData.status,
           user_id: user.id,
           document_url: willData.document_url || '',
-          template_type: willData.template_type || 'custom',
+          template_type: willData.template_type || 'comprehensive',
           ai_generated: willData.ai_generated || false,
           metadata: willData.metadata || null,
           signature: willData.signature || null
@@ -130,27 +140,59 @@ export const createWill = async (willData: CreateWillData): Promise<Will | null>
       .single();
 
     if (error) {
-      console.error('willService: Error creating will:', error);
-      throw error;
+      console.error('willService: Database error during will creation:', error);
+      
+      // Provide more specific error messages
+      if (error.code === '23505') {
+        throw new Error('A will with this title already exists. Please choose a different title.');
+      } else if (error.code === '42501') {
+        throw new Error('Permission denied. Please ensure you are logged in.');
+      } else if (error.message?.includes('content')) {
+        throw new Error('Invalid content format. Please try again.');
+      } else {
+        throw new Error(`Database error: ${error.message}`);
+      }
     }
 
     console.log('willService: Will created successfully:', {
       id: data.id,
       title: data.title,
       contentPreview: data.content?.substring(0, 100),
-      status: data.status
+      status: data.status,
+      hasSignature: !!data.signature
     });
 
     return data;
   } catch (error) {
     console.error('willService: Error in createWill:', error);
-    return null;
+    
+    // Re-throw with better error context
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error('An unexpected error occurred while creating your will.');
+    }
   }
 };
 
 export const updateWill = async (id: string, willData: Partial<CreateWillData>): Promise<Will | null> => {
   try {
-    console.log('willService: Updating will:', { id, hasContent: !!willData.content });
+    console.log('willService: Updating will with enhanced structure:', { 
+      id, 
+      hasContent: !!willData.content,
+      hasSignature: !!willData.signature,
+      status: willData.status
+    });
+
+    // Validate content if provided
+    if (willData.content) {
+      try {
+        const parsedContent = JSON.parse(willData.content);
+        console.log('willService: Update content structure validated:', Object.keys(parsedContent));
+      } catch (parseError) {
+        console.warn('willService: Update content is not JSON, treating as plain text');
+      }
+    }
 
     const { data, error } = await supabase
       .from('wills')
@@ -163,15 +205,33 @@ export const updateWill = async (id: string, willData: Partial<CreateWillData>):
       .single();
 
     if (error) {
-      console.error('willService: Error updating will:', error);
-      throw error;
+      console.error('willService: Database error during will update:', error);
+      
+      if (error.code === '42501') {
+        throw new Error('Permission denied. You can only update your own wills.');
+      } else if (error.code === '23503') {
+        throw new Error('Will not found or already deleted.');
+      } else {
+        throw new Error(`Update error: ${error.message}`);
+      }
     }
 
-    console.log('willService: Will updated successfully:', data.id);
+    console.log('willService: Will updated successfully:', {
+      id: data.id,
+      title: data.title,
+      status: data.status,
+      hasSignature: !!data.signature
+    });
+    
     return data;
   } catch (error) {
     console.error('willService: Error in updateWill:', error);
-    return null;
+    
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error('An unexpected error occurred while updating your will.');
+    }
   }
 };
 

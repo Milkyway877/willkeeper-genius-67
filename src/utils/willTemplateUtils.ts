@@ -31,187 +31,286 @@ type WillFormValues = {
   specialInstructions?: string;
 };
 
-/**
- * Check if form values contain meaningful user data beyond default empty values
- */
-const hasValidUserData = (formValues: WillFormValues): boolean => {
-  // If no form values at all, there's definitely no valid data
-  if (!formValues) return false;
-  
-  // Check if user has entered basic personal details
-  const hasPersonalInfo = formValues.fullName && formValues.fullName.trim().length > 0;
-  
-  // Check if executors have been defined with names
-  const hasExecutorInfo = formValues.executors && 
-    Array.isArray(formValues.executors) && 
-    formValues.executors.some(e => e?.name && e.name.trim().length > 0);
-  
-  // Check if beneficiaries have been defined with names
-  const hasBeneficiaryInfo = formValues.beneficiaries && 
-    Array.isArray(formValues.beneficiaries) && 
-    formValues.beneficiaries.some(b => b?.name && b.name.trim().length > 0);
-  
-  return hasPersonalInfo || hasExecutorInfo || hasBeneficiaryInfo;
+// Enhanced will content type that matches DocumentWillEditor structure
+type EnhancedWillContent = {
+  personalInfo?: {
+    fullName?: string;
+    dateOfBirth?: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+  };
+  executors?: Array<{
+    id?: string;
+    name?: string;
+    relationship?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    isPrimary?: boolean;
+  }>;
+  beneficiaries?: Array<{
+    id?: string;
+    name?: string;
+    relationship?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    percentage?: number;
+  }>;
+  guardians?: Array<{
+    id?: string;
+    name?: string;
+    relationship?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    forChildren?: string[];
+  }>;
+  assets?: {
+    properties?: Array<{
+      id?: string;
+      description?: string;
+      address?: string;
+      approximateValue?: string;
+    }>;
+    vehicles?: Array<{
+      id?: string;
+      description?: string;
+      registrationNumber?: string;
+      approximateValue?: string;
+    }>;
+    financialAccounts?: Array<{
+      id?: string;
+      accountType?: string;
+      institution?: string;
+      approximateValue?: string;
+    }>;
+    digitalAssets?: Array<{
+      id?: string;
+      description?: string;
+      platform?: string;
+      approximateValue?: string;
+    }>;
+  };
+  specificBequests?: string;
+  residualEstate?: string;
+  finalArrangements?: string;
+  signature?: string | null;
 };
 
 /**
- * Generate will content based on form values and template
- * 
- * @param formValues Form values from user input
- * @param templateContent Base template content
- * @returns Updated will content
+ * Generate comprehensive will content from form data
  */
-export const generateWillContent = (formValues: WillFormValues, templateContent: string): string => {
-  console.log("Generating will content from form values:", formValues);
+export const generateWillContent = (formValues: WillFormValues | EnhancedWillContent, templateContent?: string): string => {
+  console.log("Generating comprehensive will content from:", formValues);
   
-  // If no meaningful inputs yet, return the original template or placeholder
-  if (!hasValidUserData(formValues)) {
-    console.log("No valid user data found, returning original template");
-    return templateContent;
+  // Handle both old and new data structures
+  const isEnhanced = 'personalInfo' in formValues;
+  
+  let personalInfo, executors, beneficiaries, assets, guardians, specificBequests, residualEstate, finalArrangements, signature;
+  
+  if (isEnhanced) {
+    const enhanced = formValues as EnhancedWillContent;
+    personalInfo = enhanced.personalInfo || {};
+    executors = enhanced.executors || [];
+    beneficiaries = enhanced.beneficiaries || [];
+    assets = enhanced.assets || {};
+    guardians = enhanced.guardians || [];
+    specificBequests = enhanced.specificBequests || '';
+    residualEstate = enhanced.residualEstate || '';
+    finalArrangements = enhanced.finalArrangements || '';
+    signature = enhanced.signature;
+  } else {
+    const legacy = formValues as WillFormValues;
+    personalInfo = {
+      fullName: legacy.fullName,
+      dateOfBirth: legacy.dateOfBirth,
+      address: legacy.homeAddress,
+      email: legacy.email,
+      phone: legacy.phoneNumber
+    };
+    executors = legacy.executors || [];
+    beneficiaries = legacy.beneficiaries || [];
+    assets = {};
+    guardians = [];
+    specificBequests = '';
+    residualEstate = '';
+    finalArrangements = [
+      legacy.funeralPreferences,
+      legacy.memorialService,
+      legacy.obituary,
+      legacy.charitableDonations,
+      legacy.specialInstructions
+    ].filter(Boolean).join('\n\n');
   }
   
-  let newContent = templateContent;
-  
-  // Replace personal information
-  if (formValues.fullName) {
-    newContent = newContent.replace(/\[Full Name\]/g, formValues.fullName);
+  // Generate comprehensive will document
+  let willContent = `LAST WILL AND TESTAMENT
+
+I, ${personalInfo.fullName || '[Full Name]'}, residing at ${personalInfo.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
+
+ARTICLE I: PERSONAL INFORMATION
+I declare that I was born on ${personalInfo.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.`;
+
+  if (personalInfo.email || personalInfo.phone) {
+    willContent += `\n\nContact Information:`;
+    if (personalInfo.email) willContent += `\nEmail: ${personalInfo.email}`;
+    if (personalInfo.phone) willContent += `\nPhone: ${personalInfo.phone}`;
   }
-  
-  if (formValues.dateOfBirth) {
-    newContent = newContent.replace(/\[Date of Birth\]/g, formValues.dateOfBirth);
-  }
-  
-  if (formValues.homeAddress) {
-    newContent = newContent.replace(/\[Address\]/g, formValues.homeAddress);
-  }
-  
-  // Replace executor information
-  const executors = formValues.executors || [];
-  const primaryExecutor = executors.find(e => e?.isPrimary) || executors[0];
-  const alternateExecutor = executors.find(e => !e?.isPrimary && e?.name) || executors[1];
+
+  // EXECUTORS SECTION
+  willContent += `\n\nARTICLE II: APPOINTMENT OF EXECUTOR`;
+  const primaryExecutor = executors.find(e => e.isPrimary) || executors[0];
+  const alternateExecutors = executors.filter(e => !e.isPrimary);
   
   if (primaryExecutor?.name) {
-    newContent = newContent.replace(/\[Executor Name\]/g, primaryExecutor.name);
-  }
-  
-  if (alternateExecutor?.name) {
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, alternateExecutor.name);
-  } else if (executors.length > 1 && executors[1]?.name) {
-    // Try to use the second executor as alternate if not explicitly marked
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, executors[1].name);
-  }
-  
-  // Replace beneficiary information
-  const beneficiaries = formValues.beneficiaries || [];
-  
-  if (beneficiaries.length > 0) {
-    let beneficiaryText = "";
-    let beneficiaryDistribution = "";
+    willContent += `\nI appoint ${primaryExecutor.name} (${primaryExecutor.relationship || 'Relationship not specified'}) to serve as the Executor of my estate.`;
+    if (primaryExecutor.address) willContent += ` Their address is ${primaryExecutor.address}.`;
+    if (primaryExecutor.email) willContent += ` Email: ${primaryExecutor.email}.`;
+    if (primaryExecutor.phone) willContent += ` Phone: ${primaryExecutor.phone}.`;
     
-    // Filter out empty beneficiaries
-    const validBeneficiaries = beneficiaries.filter(b => b?.name);
-    
-    if (validBeneficiaries.length > 0) {
-      // Create detailed beneficiary listing
-      beneficiaryText = validBeneficiaries
-        .map(b => {
-          const percentage = typeof b.percentage === 'number' 
-            ? b.percentage 
-            : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
-          
-          return `- ${b.name} (${b.relationship || 'Relationship not specified'}): ${percentage || 0}% of the estate`;
-        })
-        .join('\n');
-      
-      // Create distribution summary
-      beneficiaryDistribution = validBeneficiaries
-        .map(b => {
-          const percentage = typeof b.percentage === 'number' 
-            ? b.percentage 
-            : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
-          
-          return `${b.name} (${percentage || 0}%)`;
-        })
-        .join(', ');
-      
-      // Replace placeholders
-      if (beneficiaryText) {
-        newContent = newContent.replace(/\[Beneficiary details to be added\]/g, beneficiaryText);
-      }
-      
-      if (beneficiaryDistribution) {
-        newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, beneficiaryDistribution);
-      }
+    if (alternateExecutors.length > 0 && alternateExecutors[0]?.name) {
+      willContent += `\n\nIf they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} (${alternateExecutors[0].relationship || 'Relationship not specified'}) to serve as alternate Executor.`;
+      if (alternateExecutors[0].address) willContent += ` Their address is ${alternateExecutors[0].address}.`;
     }
+  } else {
+    willContent += `\nI appoint [Executor to be named] to serve as the Executor of my estate.`;
+  }
+
+  // BENEFICIARIES SECTION
+  willContent += `\n\nARTICLE III: BENEFICIARIES
+I bequeath my assets to the following beneficiaries:`;
+  
+  if (beneficiaries.length > 0 && beneficiaries.some(b => b.name)) {
+    const validBeneficiaries = beneficiaries.filter(b => b.name);
+    validBeneficiaries.forEach(b => {
+      const percentage = typeof b.percentage === 'number' ? b.percentage : (b.percentage ? parseFloat(b.percentage.toString()) : 0);
+      willContent += `\n- ${b.name} (${b.relationship || 'Relationship not specified'}): ${percentage}% of estate`;
+      if (b.address) willContent += ` - Address: ${b.address}`;
+      if (b.email) willContent += ` - Email: ${b.email}`;
+      if (b.phone) willContent += ` - Phone: ${b.phone}`;
+    });
+  } else {
+    willContent += `\n[Beneficiaries to be specified]`;
+  }
+
+  // GUARDIANSHIP SECTION
+  willContent += `\n\nARTICLE IV: GUARDIANSHIP`;
+  if (guardians && guardians.length > 0 && guardians.some(g => g.name)) {
+    willContent += `\nI appoint the following guardian(s) for my minor children:`;
+    guardians.filter(g => g.name).forEach(g => {
+      willContent += `\n- ${g.name} (${g.relationship || 'Relationship not specified'})`;
+      if (g.address) willContent += ` - Address: ${g.address}`;
+      if (g.forChildren && g.forChildren.length > 0) {
+        willContent += ` - For children: ${g.forChildren.join(', ')}`;
+      }
+    });
+  } else {
+    willContent += `\nI do not have minor children requiring guardianship at this time.`;
+  }
+
+  // ASSETS SECTION
+  willContent += `\n\nARTICLE V: ASSETS`;
+  willContent += `\nI own the following assets:`;
+  
+  let hasAssets = false;
+  
+  if (assets.properties && assets.properties.length > 0) {
+    willContent += `\n\nReal Estate Properties:`;
+    assets.properties.forEach(prop => {
+      willContent += `\n- ${prop.description || '[Property Description]'} located at ${prop.address || '[Address]'}`;
+      if (prop.approximateValue) willContent += ` (Approximate value: ${prop.approximateValue})`;
+    });
+    hasAssets = true;
   }
   
-  // Replace final arrangements
-  let finalArrangements = "";
-  
-  if (formValues.funeralPreferences) {
-    finalArrangements += `Funeral Preferences: ${formValues.funeralPreferences}\n\n`;
+  if (assets.vehicles && assets.vehicles.length > 0) {
+    willContent += `\n\nVehicles:`;
+    assets.vehicles.forEach(vehicle => {
+      willContent += `\n- ${vehicle.description || '[Vehicle Description]'}`;
+      if (vehicle.registrationNumber) willContent += ` (Registration: ${vehicle.registrationNumber})`;
+      if (vehicle.approximateValue) willContent += ` (Approximate value: ${vehicle.approximateValue})`;
+    });
+    hasAssets = true;
   }
   
-  if (formValues.memorialService) {
-    finalArrangements += `Memorial Service: ${formValues.memorialService}\n\n`;
+  if (assets.financialAccounts && assets.financialAccounts.length > 0) {
+    willContent += `\n\nFinancial Accounts:`;
+    assets.financialAccounts.forEach(account => {
+      willContent += `\n- ${account.accountType || '[Account Type]'} at ${account.institution || '[Institution]'}`;
+      if (account.approximateValue) willContent += ` (Approximate value: ${account.approximateValue})`;
+    });
+    hasAssets = true;
   }
   
-  if (formValues.obituary) {
-    finalArrangements += `Obituary: ${formValues.obituary}\n\n`;
+  if (assets.digitalAssets && assets.digitalAssets.length > 0) {
+    willContent += `\n\nDigital Assets:`;
+    assets.digitalAssets.forEach(asset => {
+      willContent += `\n- ${asset.description || '[Asset Description]'} on ${asset.platform || '[Platform]'}`;
+      if (asset.approximateValue) willContent += ` (Approximate value: ${asset.approximateValue})`;
+    });
+    hasAssets = true;
   }
   
-  if (formValues.charitableDonations) {
-    finalArrangements += `Charitable Donations: ${formValues.charitableDonations}\n\n`;
+  if (!hasAssets) {
+    willContent += `\n[Assets to be catalogued]`;
   }
-  
-  if (formValues.specialInstructions) {
-    finalArrangements += `Special Instructions: ${formValues.specialInstructions}`;
+
+  // SPECIFIC BEQUESTS SECTION
+  willContent += `\n\nARTICLE VI: SPECIFIC BEQUESTS`;
+  if (specificBequests && specificBequests.trim()) {
+    willContent += `\n${specificBequests}`;
+  } else {
+    willContent += `\nNo specific bequests have been designated at this time.`;
   }
-  
-  if (finalArrangements) {
-    newContent = newContent.replace(/\[Final arrangements to be added\]/g, finalArrangements);
+
+  // RESIDUAL ESTATE SECTION
+  willContent += `\n\nARTICLE VII: RESIDUAL ESTATE`;
+  if (residualEstate && residualEstate.trim()) {
+    willContent += `\nI give all the rest and residue of my estate to ${residualEstate}.`;
+  } else {
+    willContent += `\nI give all the rest and residue of my estate to my beneficiaries in the proportions specified above.`;
   }
-  
-  // Only replace generic placeholders if we have meaningful data and the user has started filling out sections
-  // This prevents showing incomplete/error warnings prematurely
-  if (hasValidUserData(formValues) && Object.keys(formValues).length > 2) {
-    // If there are no specific instructions for some sections, replace with generic text
-    newContent = newContent.replace(/\[Beneficiary details to be added\]/g, "No beneficiaries specified");
-    newContent = newContent.replace(/\[Beneficiary names and distribution details\]/g, "my legal heirs according to applicable law");
-    newContent = newContent.replace(/\[Specific bequests to be added\]/g, "No specific bequests have been specified");
-    newContent = newContent.replace(/\[Final arrangements to be added\]/g, "No specific final arrangements have been specified");
-    newContent = newContent.replace(/\[Executor Name\]/g, "the person appointed by the court");
-    newContent = newContent.replace(/\[Alternate Executor Name\]/g, "a person appointed by the court");
-    newContent = newContent.replace(/\[Address\]/g, "my current legal address");
-    newContent = newContent.replace(/\[Full Name\]/g, "the testator");
-    newContent = newContent.replace(/\[Date of Birth\]/g, "the testator's date of birth");
+
+  // FINAL ARRANGEMENTS SECTION
+  willContent += `\n\nARTICLE VIII: FINAL ARRANGEMENTS`;
+  if (finalArrangements && finalArrangements.trim()) {
+    willContent += `\n${finalArrangements}`;
+  } else {
+    willContent += `\nNo specific final arrangements have been designated.`;
   }
+
+  // SIGNATURE SECTION
+  willContent += `\n\nSIGNATURE`;
+  willContent += `\nI sign this Last Will and Testament on ${new Date().toLocaleDateString()}.`;
   
-  console.log("Generated will content:", newContent);
-  return newContent;
+  if (signature) {
+    willContent += `\n\nDigitally signed on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`;
+  }
+
+  willContent += `\n\n_________________________________
+${personalInfo.fullName || '[Testator Name]'}
+Testator`;
+
+  console.log("Generated comprehensive will content:", willContent.substring(0, 200) + "...");
+  return willContent;
 };
 
 /**
  * Check if will content is complete with all required information
  */
 export const validateWillContent = (content: string): boolean => {
-  // If no real content yet, don't show it as invalid
-  if (!content || 
-      content.includes('Start chatting') || 
-      content.includes('Your will document will appear here')) {
+  if (!content || content.includes('Start chatting') || content.includes('Your will document will appear here')) {
     return true;
   }
   
   const placeholders = [
     "[Full Name]",
-    "[Address]",
+    "[Address]", 
     "[Date of Birth]",
-    "[Executor Name]",
-    "[Alternate Executor Name]",
-    "[Beneficiary details to be added]",
-    "[Specific bequests to be added]",
-    "[Beneficiary names and distribution details]",
-    "[Final arrangements to be added]"
+    "[Executor to be named]",
+    "[Beneficiaries to be specified]"
   ];
   
   return !placeholders.some(placeholder => content.includes(placeholder));
@@ -227,15 +326,15 @@ export const detectCompletedSections = (content: string): string[] => {
     completedSections.push('personal_info');
   }
   
-  if (!content.includes("[Beneficiary details to be added]") && !content.includes("[Beneficiary names and distribution details]")) {
+  if (!content.includes("[Beneficiaries to be specified]")) {
     completedSections.push('beneficiaries');
   }
   
-  if (!content.includes("[Executor Name]")) {
+  if (!content.includes("[Executor to be named]")) {
     completedSections.push('executor');
   }
   
-  if (!content.includes("[Final arrangements to be added]")) {
+  if (!content.includes("No specific final arrangements")) {
     completedSections.push('final_wishes');
   }
   

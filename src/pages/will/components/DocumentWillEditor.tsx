@@ -142,73 +142,30 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
     }
   }, [signature]);
 
-  // Generate document text function - Enhanced with signature debugging
+  // Enhanced generateDocumentText function using the improved willTemplateUtils
   const generateDocumentText = (): string => {
     console.log('DocumentWillEditor: Generating document text with signature:', signature ? 'Yes' : 'No');
     
-    const primaryExecutor = executors.find(e => e.isPrimary);
-    const alternateExecutors = executors.filter(e => !e.isPrimary);
-    
-    const beneficiariesText = beneficiaries.map(b => 
-      `- ${b.name || '[Beneficiary Name]'} (${b.relationship || 'relation'}): ${b.percentage || 0}% of estate`
-    ).join('\n');
-    
-    const documentText = `
-LAST WILL AND TESTAMENT
+    // Prepare comprehensive will content structure
+    const comprehensiveWillContent = {
+      personalInfo,
+      executors,
+      beneficiaries,
+      guardians,
+      assets: {
+        properties,
+        vehicles,
+        financialAccounts,
+        digitalAssets
+      },
+      specificBequests,
+      residualEstate,
+      finalArrangements,
+      signature
+    };
 
-I, ${personalInfo.fullName || '[Full Name]'}, residing at ${personalInfo.address || '[Address]'}, being of sound mind, do hereby make, publish, and declare this to be my Last Will and Testament, hereby revoking all wills and codicils previously made by me.
-
-ARTICLE I: PERSONAL INFORMATION
-I declare that I was born on ${personalInfo.dateOfBirth || '[Date of Birth]'} and that I am creating this will to ensure my wishes are carried out after my death.
-
-ARTICLE II: APPOINTMENT OF EXECUTOR
-I appoint ${primaryExecutor?.name || '[Primary Executor]'} to serve as the Executor of my estate. ${
-  alternateExecutors.length > 0 
-    ? `If they are unable or unwilling to serve, I appoint ${alternateExecutors[0].name} to serve as alternate Executor.` 
-    : ''
-}
-
-ARTICLE III: BENEFICIARIES
-I bequeath my assets to the following beneficiaries:
-${beneficiariesText}
-
-ARTICLE IV: ASSETS & SPECIFIC BEQUESTS
-I own the following assets:
-
-${properties.map(prop => 
-  `- ${prop.description || '[Property Description]'} at ${prop.address || '[Address]'}: ${prop.approximateValue || '[Value]'}`
-).join('\n')}
-
-${vehicles.map(vehicle => 
-  `- ${vehicle.description || '[Vehicle Description]'} (${vehicle.registrationNumber || 'registration'}): ${vehicle.approximateValue || '[Value]'}`
-).join('\n')}
-
-${financialAccounts.map(account => 
-  `- ${account.accountType || '[Account Type]'} at ${account.institution || '[Institution]'}: ${account.approximateValue || '[Value]'}`
-).join('\n')}
-
-${digitalAssets.map(asset => 
-  `- ${asset.description || '[Asset Description]'} (${asset.platform || 'platform'}): ${asset.approximateValue || '[Value]'}`
-).join('\n')}
-
-ARTICLE IV: SPECIFIC BEQUESTS
-${specificBequests || '[No specific bequests specified]'}
-
-ARTICLE V: RESIDUAL ESTATE
-I give all the rest and residue of my estate to ${residualEstate || 'my beneficiaries in the proportions specified above'}.
-
-ARTICLE VI: GUARDIANSHIP
-${guardians.length > 0 ? (
-  `I appoint the following guardian(s) for my minor children:\n${guardians.map(g => `- ${g.name} (${g.relationship})`).join('\n')}`
-) : (
-  'I do not have minor children at this time.'
-)}
-
-ARTICLE VII: FINAL ARRANGEMENTS
-${finalArrangements || '[No specific final arrangements specified]'}
-
-${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
-    `;
+    // Use the enhanced generateWillContent function
+    const documentText = generateWillContent(comprehensiveWillContent);
     
     console.log('DocumentWillEditor: Generated document includes signature reference:', documentText.includes('Digitally signed'));
     return documentText;
@@ -233,16 +190,53 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
 
   // Enhanced auto-save functionality for real-time updates
   const { saving: autoSaving, lastSaved, saveError } = useFormAutoSave({
-    data: { willContent, signature },
+    data: { 
+      willContent: {
+        personalInfo,
+        executors,
+        beneficiaries,
+        guardians,
+        assets: {
+          properties,
+          vehicles,
+          financialAccounts,
+          digitalAssets
+        },
+        specificBequests,
+        residualEstate,
+        finalArrangements
+      }, 
+      signature 
+    },
     onSave: async (data) => {
       try {
         console.log('DocumentWillEditor: Auto-saving with signature:', data.signature ? 'Yes' : 'No');
         
+        const fullDocumentText = generateWillContent({
+          personalInfo: data.willContent.personalInfo,
+          executors: data.willContent.executors,
+          beneficiaries: data.willContent.beneficiaries,
+          guardians: data.willContent.guardians,
+          assets: data.willContent.assets,
+          specificBequests: data.willContent.specificBequests,
+          residualEstate: data.willContent.residualEstate,
+          finalArrangements: data.willContent.finalArrangements,
+          signature: data.signature
+        });
+        
         if (!willId && onSave) {
-          onSave({ ...data.willContent, signature: data.signature });
+          onSave({ 
+            ...data.willContent, 
+            signature: data.signature,
+            documentText: fullDocumentText
+          });
         } else if (willId) {
           await updateWill(willId, {
-            content: JSON.stringify({ ...data.willContent, signature: data.signature }),
+            content: JSON.stringify({ 
+              ...data.willContent, 
+              signature: data.signature,
+              documentText: fullDocumentText
+            }),
             title: `${data.willContent.personalInfo.fullName}'s Will`,
             updated_at: new Date().toISOString()
           });
@@ -418,7 +412,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
     });
   };
 
-  // Enhanced will finalization - REMOVED signature validation
+  // Enhanced will finalization with comprehensive content generation
   const handleGenerateOfficialWill = async () => {
     try {
       console.log('DocumentWillEditor: Starting will finalization...');
@@ -436,33 +430,56 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
       setIsGenerating(true);
       
       const title = `${personalInfo.fullName}'s Will`;
-      const documentText = generateDocumentText();
-      const contentWithSignature = documentText + (signature ? `\n\nDigitally signed on: ${new Date().toLocaleDateString()}` : '');
       
-      console.log('DocumentWillEditor: Final content includes signature text:', contentWithSignature.includes('Digitally signed'));
+      // Generate comprehensive will content
+      const comprehensiveWillContent = {
+        personalInfo,
+        executors,
+        beneficiaries,
+        guardians,
+        assets: {
+          properties,
+          vehicles,
+          financialAccounts,
+          digitalAssets
+        },
+        specificBequests,
+        residualEstate,
+        finalArrangements,
+        signature
+      };
+      
+      const finalDocumentText = generateWillContent(comprehensiveWillContent);
+      
+      console.log('DocumentWillEditor: Final document preview:', finalDocumentText.substring(0, 300));
       
       let finalWill: Will | null = null;
       
       try {
+        const willData = {
+          title: title,
+          content: JSON.stringify({
+            willContent: comprehensiveWillContent,
+            signature,
+            documentText: finalDocumentText
+          }),
+          status: 'active' as const,
+          template_type: templateId,
+          document_url: '',
+          ai_generated: false
+        };
+        
         if (willId) {
-          finalWill = await updateWill(willId, {
-            status: 'active' as const,
-            content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
-            title: title
-          });
+          finalWill = await updateWill(willId, willData);
         } else if (onSave) {
-          const documentData = {
-            title: title,
-            content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
-            status: 'active' as const,
-            template_type: templateId,
-            document_url: '',
-            ai_generated: false
-          };
-          
-          finalWill = await createWill(documentData);
+          finalWill = await createWill(willData);
           if (finalWill && onSave) {
-            onSave({ ...willContent, signature, id: finalWill.id });
+            onSave({ 
+              ...comprehensiveWillContent, 
+              signature, 
+              id: finalWill.id,
+              documentText: finalDocumentText
+            });
           }
         }
         
@@ -474,7 +491,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
           
           toast({
             title: "Will Finalized Successfully!",
-            description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
+            description: "Your comprehensive will has been created with all your information.",
           });
         } else {
           throw new Error('Failed to create or update will - no data returned');
