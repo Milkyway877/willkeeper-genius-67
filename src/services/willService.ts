@@ -77,7 +77,7 @@ const extractStructuredData = (willData: any) => {
     signature: null
   };
 
-  // Handle nested willContent structure
+  // Handle nested willContent structure (old format)
   if (willData.willContent) {
     const { willContent } = willData;
     
@@ -91,21 +91,10 @@ const extractStructuredData = (willData: any) => {
     structuredData.final_arrangements = willContent.finalArrangements || '';
     structuredData.signature = willData.signature || null;
   }
-  // Handle direct structure (for template editor)
-  else if (willData.personalInfo || willData.executors || willData.beneficiaries) {
-    structuredData.personal_info = willData.personalInfo || {};
-    structuredData.executors = willData.executors || [];
-    structuredData.beneficiaries = willData.beneficiaries || [];
-    structuredData.guardians = willData.guardians || [];
-    structuredData.assets = willData.assets || {};
-    structuredData.specific_bequests = willData.specificBequests || '';
-    structuredData.residual_estate = willData.residualEstate || '';
-    structuredData.final_arrangements = willData.finalArrangements || '';
-    structuredData.signature = willData.signature || null;
-  }
-  // Handle form values structure (from template editor)
+  // Handle flat structure from TemplateWillEditor/DocumentWillEditor (new format)
   else if (willData.formValues) {
     const { formValues } = willData;
+    
     structuredData.personal_info = {
       fullName: formValues.fullName || '',
       dateOfBirth: formValues.dateOfBirth || '',
@@ -115,6 +104,10 @@ const extractStructuredData = (willData: any) => {
     };
     structuredData.executors = formValues.executors || [];
     structuredData.beneficiaries = formValues.beneficiaries || [];
+    structuredData.guardians = formValues.guardians || [];
+    structuredData.assets = formValues.assets || {};
+    structuredData.specific_bequests = formValues.specificBequests || '';
+    structuredData.residual_estate = formValues.residualEstate || '';
     structuredData.final_arrangements = [
       formValues.funeralPreferences,
       formValues.memorialService,
@@ -123,6 +116,40 @@ const extractStructuredData = (willData: any) => {
       formValues.specialInstructions
     ].filter(Boolean).join('\n\n') || '';
     structuredData.document_text = willData.textContent || '';
+    structuredData.signature = willData.signature || null;
+  }
+  // Handle direct flat structure (for backward compatibility)
+  else if (willData.fullName || willData.personalInfo || willData.executors || willData.beneficiaries) {
+    if (willData.fullName) {
+      // Direct flat structure
+      structuredData.personal_info = {
+        fullName: willData.fullName || '',
+        dateOfBirth: willData.dateOfBirth || '',
+        address: willData.homeAddress || '',
+        email: willData.email || '',
+        phone: willData.phoneNumber || ''
+      };
+      structuredData.executors = willData.executors || [];
+      structuredData.beneficiaries = willData.beneficiaries || [];
+      structuredData.final_arrangements = [
+        willData.funeralPreferences,
+        willData.memorialService,
+        willData.obituary,
+        willData.charitableDonations,
+        willData.specialInstructions
+      ].filter(Boolean).join('\n\n') || '';
+    } else {
+      // Old nested structure
+      structuredData.personal_info = willData.personalInfo || {};
+      structuredData.executors = willData.executors || [];
+      structuredData.beneficiaries = willData.beneficiaries || [];
+      structuredData.guardians = willData.guardians || [];
+      structuredData.assets = willData.assets || {};
+      structuredData.specific_bequests = willData.specificBequests || '';
+      structuredData.residual_estate = willData.residualEstate || '';
+      structuredData.final_arrangements = willData.finalArrangements || '';
+      structuredData.signature = willData.signature || null;
+    }
   }
 
   return structuredData;
@@ -130,21 +157,111 @@ const extractStructuredData = (willData: any) => {
 
 // Helper function to reconstruct data for the frontend
 const reconstructWillData = (dbWill: any) => {
-  return {
-    ...dbWill,
-    // Reconstruct willContent structure for DocumentWillEditor
-    willContent: {
-      personalInfo: dbWill.personal_info || {},
+  // If we have structured data in the database, use it
+  if (dbWill.personal_info || dbWill.executors || dbWill.beneficiaries) {
+    return {
+      ...dbWill,
+      // Reconstruct flat structure for DocumentWillEditor
+      fullName: dbWill.personal_info?.fullName || '',
+      dateOfBirth: dbWill.personal_info?.dateOfBirth || '',
+      homeAddress: dbWill.personal_info?.address || '',
+      email: dbWill.personal_info?.email || '',
+      phoneNumber: dbWill.personal_info?.phone || '',
       executors: dbWill.executors || [],
       beneficiaries: dbWill.beneficiaries || [],
       guardians: dbWill.guardians || [],
       assets: dbWill.assets || {},
       specificBequests: dbWill.specific_bequests || '',
       residualEstate: dbWill.residual_estate || '',
-      finalArrangements: dbWill.final_arrangements || ''
+      funeralPreferences: '',
+      memorialService: '',
+      obituary: '',
+      charitableDonations: '',
+      specialInstructions: '',
+      signature: dbWill.signature,
+      documentText: dbWill.document_text || '',
+      // Also reconstruct nested structure for compatibility
+      willContent: {
+        personalInfo: dbWill.personal_info || {},
+        executors: dbWill.executors || [],
+        beneficiaries: dbWill.beneficiaries || [],
+        guardians: dbWill.guardians || [],
+        assets: dbWill.assets || {},
+        specificBequests: dbWill.specific_bequests || '',
+        residualEstate: dbWill.residual_estate || '',
+        finalArrangements: dbWill.final_arrangements || ''
+      }
+    };
+  }
+  
+  // Fallback to parsing from content field (old format)
+  let parsedContent = {};
+  if (dbWill.content) {
+    try {
+      parsedContent = JSON.parse(dbWill.content);
+    } catch (e) {
+      console.log('Could not parse will content:', e);
+    }
+  }
+  
+  // Extract from parsed content if available
+  if (parsedContent.formValues) {
+    const { formValues } = parsedContent;
+    return {
+      ...dbWill,
+      fullName: formValues.fullName || '',
+      dateOfBirth: formValues.dateOfBirth || '',
+      homeAddress: formValues.homeAddress || '',
+      email: formValues.email || '',
+      phoneNumber: formValues.phoneNumber || '',
+      executors: formValues.executors || [],
+      beneficiaries: formValues.beneficiaries || [],
+      funeralPreferences: formValues.funeralPreferences || '',
+      memorialService: formValues.memorialService || '',
+      obituary: formValues.obituary || '',
+      charitableDonations: formValues.charitableDonations || '',
+      specialInstructions: formValues.specialInstructions || '',
+      signature: parsedContent.signature || null,
+      documentText: parsedContent.textContent || '',
+      willContent: {
+        personalInfo: {
+          fullName: formValues.fullName || '',
+          dateOfBirth: formValues.dateOfBirth || '',
+          address: formValues.homeAddress || '',
+          email: formValues.email || '',
+          phone: formValues.phoneNumber || ''
+        },
+        executors: formValues.executors || [],
+        beneficiaries: formValues.beneficiaries || [],
+        guardians: [],
+        assets: {},
+        specificBequests: '',
+        residualEstate: '',
+        finalArrangements: [
+          formValues.funeralPreferences,
+          formValues.memorialService,
+          formValues.obituary,
+          formValues.charitableDonations,
+          formValues.specialInstructions
+        ].filter(Boolean).join('\n\n') || ''
+      }
+    };
+  }
+  
+  return {
+    ...dbWill,
+    willContent: {
+      personalInfo: {},
+      executors: [],
+      beneficiaries: [],
+      guardians: [],
+      assets: {},
+      specificBequests: '',
+      residualEstate: '',
+      finalArrangements: ''
     },
-    signature: dbWill.signature,
-    documentText: dbWill.document_text || ''
+    signature: null,
+    documentText: ''
   };
 };
 
@@ -778,3 +895,5 @@ export const getDocumentUrl = async (document: WillDocument): Promise<string | n
 };
 
 // Helper function to initialize countdown for first will
+
+</edits_to_apply>
