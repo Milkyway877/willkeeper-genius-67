@@ -342,7 +342,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
       const documentData = {
         title: `${personalInfo.fullName}'s Will`,
         content: JSON.stringify({ ...willContent, signature }),
-        status: 'draft',
+        status: 'draft' as const,
         template_type: templateId,
         document_url: '',
       };
@@ -446,7 +446,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
       try {
         if (willId) {
           finalWill = await updateWill(willId, {
-            status: 'active',
+            status: 'active' as const,
             content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
             title: title
           });
@@ -454,7 +454,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
           const documentData = {
             title: title,
             content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
-            status: 'active',
+            status: 'active' as const,
             template_type: templateId,
             document_url: '',
             ai_generated: false
@@ -915,7 +915,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                     </li>
                     <li className="flex items-center justify-between">
                       <span>Allocation (100%)</span>
-                      {Math.abs(beneficiaries.reduce((sum, b) => sum + (b.percentage || 0), 0) - 100) < 0.01 ? (
+                      {Math.abs(beneficiaries.reduce((sum, b) => sum + (b.percentage || 0), 0) - 100 < 0.01 ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : (
                         <Button 
