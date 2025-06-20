@@ -915,7 +915,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                     </li>
                     <li className="flex items-center justify-between">
                       <span>Allocation (100%)</span>
-                      {Math.abs(beneficiaries.reduce((sum, b) => sum + (b.percentage || 0), 0) - 100 < 0.01 ? (
+                      {Math.abs(beneficiaries.reduce((sum, b) => sum + (b.percentage || 0), 0) - 100) < 0.01 ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : (
                         <Button 
