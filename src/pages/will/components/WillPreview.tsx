@@ -24,29 +24,19 @@ export function WillPreview({
   React.useEffect(() => {
     console.log('WillPreview: Render with formatted:', formatted);
     console.log('WillPreview: useProfessionalFormat:', useProfessionalFormat);
-    console.log('WillPreview: content type:', typeof content);
-    console.log('WillPreview: content:', content);
-  }, [formatted, useProfessionalFormat, content]);
+    console.log('WillPreview: isFinalized:', isFinalized);
+  }, [formatted, useProfessionalFormat, isFinalized]);
   
   if (useProfessionalFormat) {
     // For professional format, use the structured data directly
-    try {
-      const professionalHtml = generateProfessionalDocumentPreview(content, null);
-      
-      return (
-        <div 
-          dangerouslySetInnerHTML={{ __html: professionalHtml }}
-          className="professional-will-preview"
-        />
-      );
-    } catch (error) {
-      console.error('Error generating professional preview:', error);
-      return (
-        <div className="p-4 border border-red-200 bg-red-50 rounded">
-          <p className="text-red-800">Error generating document preview. Please check your form data.</p>
-        </div>
-      );
-    }
+    const professionalHtml = generateProfessionalDocumentPreview(content, null);
+    
+    return (
+      <div 
+        dangerouslySetInnerHTML={{ __html: professionalHtml }}
+        className="professional-will-preview"
+      />
+    );
   }
   
   // For regular formatted preview, use text content
