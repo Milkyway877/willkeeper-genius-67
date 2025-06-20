@@ -5,108 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DocumentPreview } from './DocumentPreview';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Save, Eye, EyeOff, FileText, Users, Shield, Heart, Smartphone, Banknote, Home, Car } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Trash2, Save, Eye, EyeOff, FileText, Users, Shield, Heart, Banknote } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
-import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
-
-// Define interfaces for form data
-interface PersonalInfo {
-  fullName: string;
-  dateOfBirth: string;
-  address: string;
-  email: string;
-  phoneNumber: string;
-}
-
-interface Executor {
-  id: string;
-  name: string;
-  relationship: string;
-  email: string;
-  phone: string;
-  address: string;
-  isPrimary: boolean;
-}
-
-interface Beneficiary {
-  id: string;
-  name: string;
-  relationship: string;
-  email: string;
-  phone: string;
-  address: string;
-  percentage: number;
-}
-
-interface Guardian {
-  id: string;
-  name: string;
-  relationship: string;
-  email: string;
-  phone: string;
-  address: string;
-  forChildren: string[]; // Added missing property
-}
-
-interface Property {
-  id: string;
-  description: string;
-  address: string;
-  approximateValue: number;
-  ownershipType: string;
-  mortgageDetails?: string;
-  insuranceInfo?: string;
-}
-
-interface Vehicle {
-  id: string;
-  description: string;
-  registrationNumber: string;
-  approximateValue: number;
-  loanInfo?: string;
-  insuranceInfo?: string;
-}
-
-interface FinancialAccount {
-  id: string;
-  accountType: string;
-  institution: string;
-  accountNumber: string;
-  approximateValue: number;
-  beneficiaryDesignation?: string;
-}
-
-interface DigitalAsset {
-  id: string;
-  description: string;
-  accessInformation: string;
-  approximateValue: number;
-  platform?: string;
-}
-
-interface WillContent {
-  personalInfo: PersonalInfo;
-  executors: Executor[];
-  beneficiaries: Beneficiary[];
-  guardians: Guardian[];
-  assets: {
-    properties: Property[];
-    vehicles: Vehicle[];
-    financialAccounts: FinancialAccount[];
-    digitalAssets: DigitalAsset[];
-  };
-  funeralPreferences: string;
-  memorialService: string;
-  obituary: string;
-  charitableDonations: string;
-  specialInstructions: string;
-}
+import { WillContent, Executor, Beneficiary, Guardian } from './types';
 
 interface DocumentWillEditorProps {
   templateId: string;
@@ -133,7 +38,7 @@ export function DocumentWillEditor({
       dateOfBirth: '',
       address: '',
       email: '',
-      phoneNumber: ''
+      phone: ''
     },
     executors: [],
     beneficiaries: [],
@@ -144,11 +49,9 @@ export function DocumentWillEditor({
       financialAccounts: [],
       digitalAssets: []
     },
-    funeralPreferences: '',
-    memorialService: '',
-    obituary: '',
-    charitableDonations: '',
-    specialInstructions: ''
+    specificBequests: '',
+    residualEstate: '',
+    finalArrangements: ''
   });
 
   const [documentText, setDocumentText] = useState('');
@@ -162,15 +65,8 @@ export function DocumentWillEditor({
 
   // Generate document text whenever form data changes
   useEffect(() => {
-    try {
-      console.log('Generating professional document with form data:', formData);
-      const generatedText = generateProfessionalDocumentPreview(formData, signature);
-      setDocumentText(generatedText);
-      console.log('Generated professional document text');
-    } catch (error) {
-      console.error('Error generating professional document text:', error);
-      setDocumentText('Error generating document preview. Please ensure all required fields are completed.');
-    }
+    console.log('Form data updated:', formData);
+    setDocumentText(JSON.stringify(formData));
   }, [formData, signature]);
 
   const handleSave = async () => {
@@ -179,16 +75,7 @@ export function DocumentWillEditor({
       
       if (onSave) {
         await onSave({
-          personalInfo: formData.personalInfo,
-          executors: formData.executors,
-          beneficiaries: formData.beneficiaries,
-          guardians: formData.guardians,
-          assets: formData.assets,
-          funeralPreferences: formData.funeralPreferences,
-          memorialService: formData.memorialService,
-          obituary: formData.obituary,
-          charitableDonations: formData.charitableDonations,
-          specialInstructions: formData.specialInstructions,
+          ...formData,
           documentText: documentText,
           signature: signature
         });
@@ -280,7 +167,7 @@ export function DocumentWillEditor({
       email: '',
       phone: '',
       address: '',
-      forChildren: [] // Initialize with empty array
+      forChildren: []
     };
     setFormData(prev => ({
       ...prev,
@@ -410,7 +297,7 @@ export function DocumentWillEditor({
                       <Input
                         id="email"
                         type="email"
-                        value={formData.personalInfo.email}
+                        value={formData.personalInfo.email || ''}
                         onChange={(e) => setFormData(prev => ({
                           ...prev,
                           personalInfo: { ...prev.personalInfo, email: e.target.value }
@@ -422,10 +309,10 @@ export function DocumentWillEditor({
                       <Label htmlFor="phone">Phone Number</Label>
                       <Input
                         id="phone"
-                        value={formData.personalInfo.phoneNumber}
+                        value={formData.personalInfo.phone || ''}
                         onChange={(e) => setFormData(prev => ({
                           ...prev,
-                          personalInfo: { ...prev.personalInfo, phoneNumber: e.target.value }
+                          personalInfo: { ...prev.personalInfo, phone: e.target.value }
                         }))}
                         placeholder="Enter your phone number"
                       />
@@ -627,41 +514,28 @@ export function DocumentWillEditor({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="funeral">Funeral Preferences</Label>
+                    <Label htmlFor="finalArrangements">Final Arrangements</Label>
                     <Textarea
-                      id="funeral"
-                      value={formData.funeralPreferences}
+                      id="finalArrangements"
+                      value={formData.finalArrangements || ''}
                       onChange={(e) => setFormData(prev => ({
                         ...prev,
-                        funeralPreferences: e.target.value
+                        finalArrangements: e.target.value
                       }))}
-                      placeholder="Describe your funeral preferences..."
+                      placeholder="Describe your final arrangements and wishes..."
                       rows={3}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="memorial">Memorial Service</Label>
+                    <Label htmlFor="specificBequests">Specific Bequests</Label>
                     <Textarea
-                      id="memorial"
-                      value={formData.memorialService}
+                      id="specificBequests"
+                      value={formData.specificBequests || ''}
                       onChange={(e) => setFormData(prev => ({
                         ...prev,
-                        memorialService: e.target.value
+                        specificBequests: e.target.value
                       }))}
-                      placeholder="Describe your memorial service wishes..."
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="special">Special Instructions</Label>
-                    <Textarea
-                      id="special"
-                      value={formData.specialInstructions}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        specialInstructions: e.target.value
-                      }))}
-                      placeholder="Any special instructions or wishes..."
+                      placeholder="Any specific items or bequests..."
                       rows={3}
                     />
                   </div>

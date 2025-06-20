@@ -1,8 +1,6 @@
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import { WillContent } from './types';
-import { WillPreview } from './WillPreview';
 import { generateProfessionalDocumentPreview } from '@/utils/professionalDocumentUtils';
 
 interface DocumentPreviewProps {
@@ -13,37 +11,13 @@ interface DocumentPreviewProps {
 
 export function DocumentPreview({ willContent, signature, documentText }: DocumentPreviewProps) {
   console.log('DocumentPreview received willContent:', willContent);
-  console.log('DocumentPreview received documentText:', documentText);
+  console.log('DocumentPreview received signature:', signature);
   
-  // Use the professional document generator for proper formatting
+  // Use the professional document generator with the structured willContent
   const generateFormattedContent = () => {
     try {
-      // If we have structured willContent, use it directly
-      if (willContent && Object.keys(willContent).length > 0) {
-        console.log('Using structured willContent for professional format');
-        return generateProfessionalDocumentPreview(willContent, signature);
-      }
-      
-      // If we have documentText but no structured content, try to parse it
-      if (documentText && documentText.trim()) {
-        console.log('Using documentText for professional format');
-        return generateProfessionalDocumentPreview(documentText, signature);
-      }
-      
-      // Fallback to basic structure
-      console.log('Using fallback structure for professional format');
-      const fallbackContent = {
-        personalInfo: {
-          fullName: '[Full Name]',
-          address: '[Address]',
-          dateOfBirth: '[Date of Birth]'
-        },
-        executors: [],
-        beneficiaries: [],
-        finalArrangements: 'No specific arrangements specified'
-      };
-      
-      return generateProfessionalDocumentPreview(fallbackContent, signature);
+      console.log('Generating professional document with structured content');
+      return generateProfessionalDocumentPreview(willContent, signature);
     } catch (error) {
       console.error("Error generating professional document preview:", error);
       return `<div style="padding: 2em; text-align: center; color: #666;">

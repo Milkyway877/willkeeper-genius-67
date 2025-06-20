@@ -24,10 +24,9 @@ export function WillPreview({
   React.useEffect(() => {
     console.log('WillPreview: Render with formatted:', formatted);
     console.log('WillPreview: useProfessionalFormat:', useProfessionalFormat);
-    console.log('WillPreview: isFinalized:', isFinalized);
     console.log('WillPreview: content type:', typeof content);
     console.log('WillPreview: content:', content);
-  }, [formatted, useProfessionalFormat, isFinalized, content]);
+  }, [formatted, useProfessionalFormat, content]);
   
   if (useProfessionalFormat) {
     // For professional format, use the structured data directly
