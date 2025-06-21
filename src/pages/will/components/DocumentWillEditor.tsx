@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Logo } from '@/components/ui/logo/Logo';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck, BookOpen, Lightbulb, AlertTriangle } from 'lucide-react';
+import { Check, Save, Pen, MessageCircleQuestion, Eye, AlertCircle, Loader2, Clock, FileCheck, BookOpen, Lightbulb } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { DigitalSignature } from './TemplateSections/DigitalSignature';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -46,66 +46,68 @@ interface DocumentWillEditorProps {
 }
 
 export function DocumentWillEditor({ templateId, initialData = {}, willId, onSave }: DocumentWillEditorProps) {
-  // State for personal information
+  // Initialize state from reconstructed data structure
   const [personalInfo, setPersonalInfo] = useState({
-    fullName: initialData?.fullName || '',
-    dateOfBirth: initialData?.dateOfBirth || '',
-    address: initialData?.homeAddress || '',
-    email: initialData?.email || '',
-    phone: initialData?.phoneNumber || '',
+    fullName: initialData?.willContent?.personalInfo?.fullName || initialData?.fullName || '',
+    dateOfBirth: initialData?.willContent?.personalInfo?.dateOfBirth || initialData?.dateOfBirth || '',
+    address: initialData?.willContent?.personalInfo?.address || initialData?.homeAddress || '',
+    email: initialData?.willContent?.personalInfo?.email || initialData?.email || '',
+    phone: initialData?.willContent?.personalInfo?.phone || initialData?.phoneNumber || '',
   });
 
-  // State for structured contact data
+  // State for structured contact data - properly initialize from reconstructed data
   const [executors, setExecutors] = useState<Executor[]>(
-    initialData?.executors || [
+    initialData?.willContent?.executors || initialData?.executors || [
       { id: 'exec-1', name: '', relationship: '', email: '', phone: '', address: '', isPrimary: true }
     ]
   );
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(
-    initialData?.beneficiaries || [
+    initialData?.willContent?.beneficiaries || initialData?.beneficiaries || [
       { id: 'ben-1', name: '', relationship: '', email: '', phone: '', address: '', percentage: 0 }
     ]
   );
 
   const [guardians, setGuardians] = useState<Guardian[]>(
-    initialData?.guardians || [
+    initialData?.willContent?.guardians || initialData?.guardians || [
       { id: 'guard-1', name: '', relationship: '', email: '', phone: '', address: '', forChildren: [] }
     ]
   );
 
-  // State for assets
+  // State for assets - properly initialize from reconstructed data
   const [properties, setProperties] = useState<Property[]>(
-    initialData?.properties || []
+    initialData?.willContent?.assets?.properties || initialData?.properties || []
   );
 
   const [vehicles, setVehicles] = useState<Vehicle[]>(
-    initialData?.vehicles || []
+    initialData?.willContent?.assets?.vehicles || initialData?.vehicles || []
   );
 
   const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>(
-    initialData?.financialAccounts || []
+    initialData?.willContent?.assets?.financialAccounts || initialData?.financialAccounts || []
   );
 
   const [digitalAssets, setDigitalAssets] = useState<DigitalAsset[]>(
-    initialData?.digitalAssets || []
+    initialData?.willContent?.assets?.digitalAssets || initialData?.digitalAssets || []
   );
 
-  // State for other will content
+  // State for other will content - properly initialize from reconstructed data
   const [specificBequests, setSpecificBequests] = useState(
-    initialData?.specificBequests || ''
+    initialData?.willContent?.specificBequests || initialData?.specificBequests || ''
   );
   
   const [residualEstate, setResidualEstate] = useState(
-    initialData?.residualEstate || ''
+    initialData?.willContent?.residualEstate || initialData?.residualEstate || ''
   );
   
   const [finalArrangements, setFinalArrangements] = useState(
-    initialData?.finalArrangements || ''
+    initialData?.willContent?.finalArrangements || initialData?.finalArrangements || ''
   );
   
-  // Enhanced signature state with debugging
-  const [signature, setSignature] = useState<string | null>(initialData?.signature || null);
+  // Enhanced signature state - properly initialize from reconstructed data
+  const [signature, setSignature] = useState<string | null>(
+    initialData?.signature || null
+  );
   
   // UI state
   const [showAIHelper, setShowAIHelper] = useState<string | null>(null);
@@ -141,6 +143,24 @@ export function DocumentWillEditor({ templateId, initialData = {}, willId, onSav
       console.log('DocumentWillEditor: Signature starts with:', signature.substring(0, 30));
     }
   }, [signature]);
+
+  // Debug data initialization
+  useEffect(() => {
+    console.log('DocumentWillEditor: Initialized with data:', {
+      personalInfo,
+      executors: executors.length,
+      beneficiaries: beneficiaries.length,
+      guardians: guardians.length,
+      properties: properties.length,
+      vehicles: vehicles.length,
+      financialAccounts: financialAccounts.length,
+      digitalAssets: digitalAssets.length,
+      specificBequests: !!specificBequests,
+      residualEstate: !!residualEstate,
+      finalArrangements: !!finalArrangements,
+      signature: !!signature
+    });
+  }, []);
 
   // Generate document text function - Enhanced with signature debugging
   const generateDocumentText = (): string => {
@@ -242,7 +262,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
           onSave({ ...data.willContent, signature: data.signature });
         } else if (willId) {
           await updateWill(willId, {
-            content: JSON.stringify({ ...data.willContent, signature: data.signature }),
+            content: JSON.stringify({ ...data.willContent, signature: data.signature, documentText: generateDocumentText() }),
             title: `${data.willContent.personalInfo.fullName}'s Will`,
             updated_at: new Date().toISOString()
           });
@@ -258,7 +278,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
     enabled: true
   });
 
-  // Check if the document is complete - Enhanced with signature requirement
+  // Check if the document is complete - REMOVED signature requirement
   useEffect(() => {
     const checkCompleteness = () => {
       // Basic completeness check
@@ -283,18 +303,15 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
         return false;
       }
       
-      // Signature is required for completeness
-      if (!signature) {
-        return false;
-      }
+      // REMOVED: Signature requirement check
       
       return true;
     };
     
     const complete = checkCompleteness();
-    console.log('DocumentWillEditor: Document completeness check:', complete, 'Has signature:', !!signature);
+    console.log('DocumentWillEditor: Document completeness check:', complete);
     setIsComplete(complete);
-  }, [personalInfo, executors, beneficiaries, signature]);
+  }, [personalInfo, executors, beneficiaries]);
 
   // Handle AI Assistant for a field
   const handleShowAIHelper = (field: string, position?: { x: number, y: number }) => {
@@ -344,7 +361,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
       
       const documentData = {
         title: `${personalInfo.fullName}'s Will`,
-        content: JSON.stringify({ ...willContent, signature }),
+        content: JSON.stringify({ ...willContent, signature, documentText: generateDocumentText() }),
         status: 'draft',
         template_type: templateId,
         document_url: '',
@@ -421,12 +438,11 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
     });
   };
 
-  // Enhanced will finalization with signature validation
+  // Enhanced will finalization - REMOVED signature validation
   const handleGenerateOfficialWill = async () => {
     try {
       console.log('DocumentWillEditor: Starting will finalization...');
       console.log('DocumentWillEditor: Is complete:', isComplete);
-      console.log('DocumentWillEditor: Has signature:', !!signature);
       
       if (!isComplete) {
         toast({
@@ -436,56 +452,70 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
         });
         return;
       }
-      
-      if (!signature) {
-        toast({
-          title: "Signature Required",
-          description: "Please add your digital signature before finalizing your will.",
-          variant: "destructive"
-        });
-        return;
-      }
 
       setIsGenerating(true);
       
       const title = `${personalInfo.fullName}'s Will`;
       const documentText = generateDocumentText();
-      const contentWithSignature = documentText + `\n\nDigitally signed on: ${new Date().toLocaleDateString()}`;
+      const contentWithSignature = documentText + (signature ? `\n\nDigitally signed on: ${new Date().toLocaleDateString()}` : '');
       
       console.log('DocumentWillEditor: Final content includes signature text:', contentWithSignature.includes('Digitally signed'));
       
       let finalWill: Will | null = null;
       
-      if (willId) {
-        finalWill = await updateWill(willId, {
-          status: 'active',
-          content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
-          title: title
-        });
-      } else if (onSave) {
-        const documentData = {
-          title: title,
-          content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
-          status: 'active',
-          template_type: templateId,
-          document_url: '',
-        };
-        
-        finalWill = await createWill(documentData);
-        if (finalWill && onSave) {
-          onSave({ ...willContent, signature, id: finalWill.id });
+      try {
+        if (willId) {
+          finalWill = await updateWill(willId, {
+            status: 'active',
+            content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
+            title: title
+          });
+        } else if (onSave) {
+          const documentData = {
+            title: title,
+            content: JSON.stringify({ willContent, signature, documentText: contentWithSignature }),
+            status: 'active',
+            template_type: templateId,
+            document_url: '',
+            ai_generated: false
+          };
+          
+          finalWill = await createWill(documentData);
+          if (finalWill && onSave) {
+            onSave({ ...willContent, signature, id: finalWill.id });
+          }
         }
-      }
-      
-      if (finalWill) {
-        console.log('DocumentWillEditor: Will finalized successfully with ID:', finalWill.id);
-        setGeneratedWill(finalWill);
-        setFinalizedWillId(finalWill.id);
-        setShowSuccessScreen(true);
+        
+        if (finalWill) {
+          console.log('DocumentWillEditor: Will finalized successfully with ID:', finalWill.id);
+          setGeneratedWill(finalWill);
+          setFinalizedWillId(finalWill.id);
+          setShowSuccessScreen(true);
+          
+          toast({
+            title: "Will Finalized Successfully!",
+            description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
+          });
+        } else {
+          throw new Error('Failed to create or update will - no data returned');
+        }
+      } catch (dbError: any) {
+        console.error('Database error during will finalization:', dbError);
+        
+        let errorMessage = "There was an error finalizing your will. Please try again.";
+        
+        if (dbError.message?.includes('permission denied') || dbError.message?.includes('403')) {
+          errorMessage = "Permission denied. Please ensure you're logged in and try again.";
+        } else if (dbError.message?.includes('network')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (dbError.message) {
+          errorMessage = `Error: ${dbError.message}`;
+        }
         
         toast({
-          title: "Will Finalized Successfully!",
-          description: "Your will has been created. You have 24 hours of free access before upgrade is required.",
+          title: "Finalization Error",
+          description: errorMessage,
+          variant: "destructive"
         });
       }
       
@@ -493,7 +523,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
       console.error("Error generating official will:", error);
       toast({
         title: "Finalization Error",
-        description: "There was an error finalizing your will. Please try again.",
+        description: "There was an unexpected error finalizing your will. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -718,7 +748,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                       value={residualEstate} 
                       label="residualEstate" 
                       onEdit={(value) => setResidualEstate(value)}
-                      onAiHelp={() => handleShowAIHelper('residualEestate')}
+                      onAiHelp={() => handleShowAIHelper('residualEstate')}
                     />
                     .
                   </p>
@@ -770,7 +800,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <p className="text-sm text-blue-800 mb-2">
-                      <strong>Important:</strong> Your digital signature is required to finalize your will.
+                      <strong>Optional:</strong> Your digital signature can be added to enhance your will.
                     </p>
                     <div className="text-xs text-blue-600">
                       Current status: {signature ? '✅ Signature captured' : '❌ No signature'}
@@ -797,7 +827,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   {!signature && (
                     <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                       <p className="text-sm text-amber-800">
-                        ⚠️ Please sign above to complete your will. Your signature is required for legal validity.
+                        ℹ️ You can add your signature above if desired. This is optional for will finalization.
                       </p>
                     </div>
                   )}
@@ -943,9 +973,9 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   </ul>
                 </div>
                 
-                {/* Enhanced Signature Section with Visual Status */}
+                {/* Updated Signature Section - now optional */}
                 <div className="space-y-1">
-                  <h4 className="font-medium">Digital Signature</h4>
+                  <h4 className="font-medium">Digital Signature (Optional)</h4>
                   <div className="ml-2">
                     {signature ? (
                       <div className="space-y-2">
@@ -955,18 +985,18 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                         </div>
                         <div className="bg-green-50 border border-green-200 rounded p-2">
                           <div className="text-xs text-green-700 font-medium">✅ Signature captured</div>
-                          <div className="text-xs text-green-600 mt-1">Ready for will finalization</div>
+                          <div className="text-xs text-green-600 mt-1">Will be included in final document</div>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span>Signature Status</span>
-                          <AlertCircle className="h-4 w-4 text-amber-500" />
+                          <span className="text-xs text-gray-500">Optional</span>
                         </div>
-                        <div className="bg-amber-50 border border-amber-200 rounded p-2">
-                          <div className="text-xs text-amber-700 font-medium">❌ No signature</div>
-                          <div className="text-xs text-amber-600 mt-1">Required to finalize will</div>
+                        <div className="bg-gray-50 border border-gray-200 rounded p-2">
+                          <div className="text-xs text-gray-700 font-medium">No signature</div>
+                          <div className="text-xs text-gray-600 mt-1">Can be added if desired</div>
                         </div>
                       </div>
                     )}
@@ -987,7 +1017,7 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                 <Button 
                   onClick={handleGenerateOfficialWill} 
                   className="w-full"
-                  disabled={!isComplete || !signature || isGenerating}
+                  disabled={!isComplete || isGenerating}
                 >
                   {isGenerating ? (
                     <>
@@ -1006,11 +1036,11 @@ ${signature ? `\nDigitally signed on: ${new Date().toLocaleDateString()}` : ''}
                   Free will creation - 24 hours secure access included
                 </div>
                 
-                {/* Enhanced Debug Information */}
+                {/* Updated Debug Information */}
                 <div className="text-xs text-gray-400 border-t pt-2 space-y-1">
-                  <div>Signature: {signature ? '✓ Captured' : '✗ Missing'}</div>
+                  <div>Signature: {signature ? '✓ Optional - Captured' : '✗ Optional - Not added'}</div>
                   <div>Document Complete: {isComplete ? '✓ Yes' : '✗ No'}</div>
-                  <div>Can Finalize: {isComplete && signature ? '✓ Yes' : '✗ No'}</div>
+                  <div>Can Finalize: {isComplete ? '✓ Yes' : '✗ No'}</div>
                 </div>
               </div>
             </Card>

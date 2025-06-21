@@ -1,17 +1,17 @@
 
 import React from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
-import { EmailVerificationBanner } from '@/components/auth/EmailVerificationBanner';
+import { EmailVerificationForm } from '@/components/auth/EmailVerificationForm';
 import { VerificationInfoPanel } from '@/components/auth/VerificationInfoPanel';
 
-export default function VerifyEmailBanner() {
+export default function EmailVerificationPage() {
   return (
     <AuthLayout
-      title="Email Verification Required"
-      subtitle="Please verify your email to continue"
+      title="Email Verification"
+      subtitle="Verify your email address to activate your account"
       rightPanel={<VerificationInfoPanel />}
     >
-      <EmailVerificationBanner />
+      <EmailVerificationForm />
     </AuthLayout>
   );
 }

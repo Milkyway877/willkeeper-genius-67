@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
@@ -55,7 +56,6 @@ const willSchema = z.object({
   obituary: z.string().optional(),
   charitableDonations: z.string().optional(),
   specialInstructions: z.string().optional(),
-  signature: z.string().optional(),
 });
 
 type WillFormValues = z.infer<typeof willSchema>;
@@ -155,7 +155,6 @@ Date: ${new Date().toLocaleDateString()}
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   
   const [formData, setFormData] = useState<WillFormValues | null>(null);
-  const [signature, setSignature] = useState<string>(initialData.signature || "");
   
   const form = useForm<WillFormValues>({
     resolver: zodResolver(willSchema),
@@ -172,7 +171,6 @@ Date: ${new Date().toLocaleDateString()}
       obituary: initialData?.obituary || '',
       charitableDonations: initialData?.charitableDonations || '',
       specialInstructions: initialData?.specialInstructions || '',
-      signature: initialData?.signature || '',
     }
   });
   
@@ -189,7 +187,6 @@ Date: ${new Date().toLocaleDateString()}
     
     const newContent = generateWillContent(values, willContent);
     setWillContent(newContent);
-    setSignature(values.signature || "");
   };
   
   // Transform form data to structured format for professional preview
@@ -227,9 +224,6 @@ Date: ${new Date().toLocaleDateString()}
       
       const formValues = form.getValues();
       console.log("TemplateWillEditor: Saving draft");
-      
-      // Ensure signature is included
-      formValues.signature = signature;
       
       const finalWillContent = generateWillContent(formValues, willContent);
       
@@ -285,11 +279,9 @@ Date: ${new Date().toLocaleDateString()}
         return;
       }
       
-      // Ensure signature is included
-      const formValues = form.getValues();
-      formValues.signature = signature;
-      
       setIsGenerating(true);
+      
+      const formValues = form.getValues();
       
       const finalWillContent = generateWillContent(formValues, willContent);
       const contentWithTimestamp = finalWillContent + `\n\nFinalized on: ${new Date().toLocaleString()}`;
@@ -356,20 +348,7 @@ Date: ${new Date().toLocaleDateString()}
               <ExecutorsSection defaultOpen={false} />
               <AssetsSection defaultOpen={false} />
               <FinalWishesSection defaultOpen={false} />
-              <Card className="p-4">
-                <div className="mb-2 font-semibold">Signature</div>
-                <input
-                  type="text"
-                  className="w-full border rounded p-2"
-                  placeholder="Type your full name as signature"
-                  value={signature}
-                  onChange={e => {
-                    setSignature(e.target.value);
-                    form.setValue('signature', e.target.value);
-                  }}
-                />
-                <div className="text-xs text-gray-500 mt-1">This will be used as your digital signature.</div>
-              </Card>
+              
               {/* Next Steps Information Panel */}
               <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
                 <div className="p-6">
@@ -425,7 +404,7 @@ Date: ${new Date().toLocaleDateString()}
                 <WillPreviewSection 
                   defaultOpen={true} 
                   content={willContent}
-                  signature={signature}
+                  structuredData={getStructuredData()}
                   title={`${form.getValues().fullName || 'My'}'s Will`}
                   isWillFinalized={isFinalized}
                 />

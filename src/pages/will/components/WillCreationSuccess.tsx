@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,7 +15,8 @@ import {
   Lock,
   Crown,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Timer
 } from 'lucide-react';
 import { Will } from '@/services/willService';
 import { downloadDocument } from '@/utils/documentUtils';
@@ -28,9 +29,10 @@ import { RandomSubscriptionPrompt } from './RandomSubscriptionPrompt';
 interface WillCreationSuccessProps {
   will: Will;
   onClose: () => void;
+  autoRedirect?: boolean;
 }
 
-export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps) {
+export function WillCreationSuccess({ will, onClose, autoRedirect = true }: WillCreationSuccessProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { subscriptionStatus } = useSubscriptionStatus();
@@ -44,6 +46,56 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
     triggerPrompt 
   } = useRandomSubscriptionPrompts();
 
+  const [countdown, setCountdown] = useState(5);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  useEffect(() => {
+    if (autoRedirect && will?.id) {
+      // Store the newly created will ID for highlighting in the dashboard
+      sessionStorage.setItem('newlyCreatedWill', will.id);
+      
+      // Start countdown
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleAutoRedirect();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [autoRedirect, will?.id]);
+
+  const handleAutoRedirect = () => {
+    setIsRedirecting(true);
+    toast({
+      title: "Redirecting to Your Wills",
+      description: "Taking you to see your newly created will...",
+    });
+    
+    setTimeout(() => {
+      navigate('/wills');
+    }, 500);
+  };
+
+  const handleViewWill = () => {
+    if (will?.id) {
+      sessionStorage.setItem('newlyCreatedWill', will.id);
+      navigate(`/will/${will.id}`);
+    }
+  };
+
+  const handleViewAllWills = () => {
+    if (will?.id) {
+      sessionStorage.setItem('newlyCreatedWill', will.id);
+    }
+    navigate('/wills');
+  };
+
   const handleDownload = async () => {
     if (!subscriptionStatus.isSubscribed && !subscriptionStatus.isTrial) {
       toast({
@@ -51,7 +103,7 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
         description: "Download functionality requires a WillTank subscription. Upgrade now to download your will!",
         variant: "destructive"
       });
-      triggerPrompt(); // Show subscription prompt
+      triggerPrompt();
       return;
     }
 
@@ -94,6 +146,27 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
           </DialogHeader>
           
           <div className="space-y-6">
+            {autoRedirect && countdown > 0 && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <Timer className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      Automatically redirecting to your wills dashboard in <strong>{countdown}</strong> seconds...
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleViewAllWills}
+                      className="ml-4"
+                    >
+                      Go Now
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Card className="p-4 bg-green-50 border-green-200">
               <div className="flex items-center gap-3">
                 <Shield className="h-8 w-8 text-green-600" />
@@ -122,7 +195,7 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
                       className="mt-2 bg-amber-600 hover:bg-amber-700"
                     >
                       <Crown className="h-4 w-4 mr-2" />
-                      Upgrade to WillTank - $9.99/month
+                      Upgrade to WillTank
                     </Button>
                   </div>
                 </AlertDescription>
@@ -163,7 +236,7 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
             
             <div className="flex flex-col sm:flex-row gap-3">
               <Button 
-                onClick={() => navigate(`/will/${will.id}`)} 
+                onClick={handleViewWill} 
                 variant="outline" 
                 className="flex-1"
               >
@@ -193,6 +266,23 @@ export function WillCreationSuccess({ will, onClose }: WillCreationSuccessProps)
               <Button variant="outline" className="flex-1">
                 <Share2 className="h-4 w-4 mr-2" />
                 Share Access
+              </Button>
+            </div>
+
+            <div className="text-center">
+              <Button 
+                onClick={handleViewAllWills}
+                className="bg-willtank-600 hover:bg-willtank-700"
+                disabled={isRedirecting}
+              >
+                {isRedirecting ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                    Redirecting...
+                  </>
+                ) : (
+                  "View All My Wills"
+                )}
               </Button>
             </div>
 

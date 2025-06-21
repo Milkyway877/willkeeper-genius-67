@@ -23,6 +23,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getDashboardSummary } from '@/services/dashboardService';
 import { DeathVerificationWidget } from '@/components/death-verification/DeathVerificationWidget';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { WelcomeOnboardingPopup } from '@/components/onboarding/WelcomeOnboardingPopup';
+import { useOnboardingPopup } from '@/hooks/useOnboardingPopup';
 
 // Mock data for charts - in real app, this would come from your services
 const activityData = [
@@ -104,6 +106,14 @@ export default function Dashboard() {
     queryKey: ['dashboardSummary'],
     queryFn: getDashboardSummary
   });
+
+  const { 
+    showOnboarding, 
+    closeOnboarding, 
+    completeOnboarding, 
+    isCompleting,
+    isLoading: isLoadingOnboarding 
+  } = useOnboardingPopup();
   
   return (
     <Layout>
@@ -307,6 +317,14 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      
+      {/* Onboarding Popup */}
+      <WelcomeOnboardingPopup 
+        open={showOnboarding} 
+        onClose={closeOnboarding}
+        onComplete={completeOnboarding}
+        isCompleting={isCompleting}
+      />
     </Layout>
   );
 }
