@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, useAnimation } from 'framer-motion';
-import { RotatingGlobe } from './RotatingGlobe';
+import { RealisticEarthGlobe } from './RealisticEarthGlobe';
 
 export function Hero() {
   const controls = useAnimation();
@@ -127,7 +127,7 @@ export function Hero() {
             </motion.div>
           </motion.div>
           
-          {/* Right content - Globe */}
+          {/* Right content - Realistic Earth Globe */}
           <motion.div 
             className="flex justify-center items-center lg:justify-end"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -148,7 +148,7 @@ export function Hero() {
                   ease: "linear" 
                 }}
               ></motion.div>
-              <RotatingGlobe />
+              <RealisticEarthGlobe />
             </div>
           </motion.div>
         </div>
